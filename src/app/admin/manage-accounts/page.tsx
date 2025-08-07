@@ -448,7 +448,7 @@ export default function ManageAccountsPage() {
                                           </SelectItem>
                                         ))
                                       ) : (
-                                        <SelectItem value="" disabled>
+                                        <SelectItem value="no-users" disabled>
                                           No users available (admins excluded)
                                         </SelectItem>
                                       )}
@@ -469,7 +469,10 @@ export default function ManageAccountsPage() {
                                   </Select>
                                 </div>
                               </div>
-                              <Button onClick={assignUserToAccount} disabled={!selectedUser}>
+                              <Button 
+                                onClick={assignUserToAccount} 
+                                disabled={!selectedUser || selectedUser === 'no-users'}
+                              >
                                 <UserPlus className="h-4 w-4 mr-2" />
                                 Assign User
                               </Button>
