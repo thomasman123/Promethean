@@ -423,18 +423,35 @@ export default function ManageAccountsPage() {
                               <div className="grid grid-cols-2 gap-4">
                                 <div>
                                   <Label htmlFor="user-select">Select User</Label>
-                                  <Select value={selectedUser} onValueChange={setSelectedUser}>
+                                                                    <Select value={selectedUser} onValueChange={setSelectedUser}>
                                     <SelectTrigger>
                                       <SelectValue placeholder="Choose a user" />
                                     </SelectTrigger>
                                     <SelectContent>
                                       {users
-                                        .filter(user => !accountAccess[account.id]?.some(access => access.user_id === user.id))
-                                        .map((user) => (
-                                        <SelectItem key={user.id} value={user.id}>
-                                          {user.full_name || user.email}
+                                        .filter(user => 
+                                          !accountAccess[account.id]?.some(access => access.user_id === user.id) &&
+                                          user.role !== 'admin' // Exclude admin users
+                                        )
+                                        .length > 0 ? (
+                                        users
+                                          .filter(user => 
+                                            !accountAccess[account.id]?.some(access => access.user_id === user.id) &&
+                                            user.role !== 'admin'
+                                          )
+                                          .map((user) => (
+                                          <SelectItem key={user.id} value={user.id}>
+                                            {user.full_name || user.email} 
+                                            <span className="text-xs text-muted-foreground ml-2">
+                                              ({user.role})
+                                            </span>
+                                          </SelectItem>
+                                        ))
+                                      ) : (
+                                        <SelectItem value="" disabled>
+                                          No users available (admins excluded)
                                         </SelectItem>
-                                      ))}
+                                      )}
                                     </SelectContent>
                                   </Select>
                                 </div>
