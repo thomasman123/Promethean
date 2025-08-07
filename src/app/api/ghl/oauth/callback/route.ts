@@ -160,6 +160,11 @@ async function getLocationInfo(accessToken: string) {
   }
 }
 
+interface GHLLocation {
+  id: string
+  name?: string
+}
+
 async function saveConnection(params: {
   accountId: string
   accessToken: string
@@ -167,7 +172,7 @@ async function saveConnection(params: {
   expiresIn: number
   locationId?: string
   companyId?: string
-  locations: any[]
+  locations: GHLLocation[]
 }) {
   try {
     const { accountId, accessToken, refreshToken, expiresIn, locationId, companyId, locations } = params

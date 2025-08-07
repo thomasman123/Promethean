@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { AppSidebar } from "@/components/app-sidebar"
 import {
   Breadcrumb,
@@ -52,6 +52,7 @@ export default function CRMConnectionPage() {
     if (selectedAccountId) {
       fetchConnection()
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedAccountId])
 
   useEffect(() => {
@@ -71,6 +72,7 @@ export default function CRMConnectionPage() {
       // Clean up URL
       window.history.replaceState({}, '', window.location.pathname)
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const fetchConnection = async () => {
@@ -220,7 +222,7 @@ export default function CRMConnectionPage() {
             <div className="text-center space-y-4">
               <h1 className="text-2xl font-bold">Access Denied</h1>
               <p className="text-muted-foreground">
-                You don't have permission to manage CRM connections.
+                You don&apos;t have permission to manage CRM connections.
               </p>
             </div>
           </div>
@@ -383,7 +385,7 @@ export default function CRMConnectionPage() {
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <p className="text-sm text-muted-foreground">
-                      This integration connects through GoHighLevel's marketplace app system, providing access to all scopes and webhooks available through their v2 API.
+                      This integration connects through GoHighLevel&apos;s marketplace app system, providing access to all scopes and webhooks available through their v2 API.
                     </p>
                     <p className="text-sm text-muted-foreground">
                       You can manage specific permissions and scopes directly in your GoHighLevel marketplace app settings rather than in this interface.
