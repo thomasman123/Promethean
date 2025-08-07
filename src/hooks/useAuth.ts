@@ -282,7 +282,18 @@ export function useAuth() {
 
   const getUserRole = (): UserRole | null => {
     const currentAccess = getCurrentAccountAccess()
-    return currentAccess?.role || user?.profile?.role || null
+    const accountRole = currentAccess?.role
+    const profileRole = user?.profile?.role
+    
+    console.log('getUserRole debug:', {
+      selectedAccountId,
+      currentAccess,
+      accountRole,
+      profileRole,
+      finalRole: accountRole || profileRole
+    })
+    
+    return accountRole || profileRole || null
   }
 
   const canAccessAccount = (accountId: string): boolean => {
@@ -297,7 +308,15 @@ export function useAuth() {
 
   const isModerator = (): boolean => {
     const role = getUserRole()
-    return role === 'admin' || role === 'moderator'
+    const result = role === 'admin' || role === 'moderator'
+    
+    console.log('isModerator debug:', {
+      role,
+      result,
+      selectedAccountId
+    })
+    
+    return result
   }
 
   const getSelectedAccount = () => {

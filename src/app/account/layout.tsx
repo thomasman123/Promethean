@@ -9,7 +9,7 @@ export default function AccountLayout({
 }: {
   children: React.ReactNode
 }) {
-  const { user, loading, isModerator } = useAuth()
+  const { user, loading, getAccountBasedPermissions } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
@@ -22,12 +22,13 @@ export default function AccountLayout({
       return
     }
 
-    // If user is not admin or moderator, redirect to dashboard
-    if (!isModerator()) {
+    // Check account-based permissions instead of just global role
+    const permissions = getAccountBasedPermissions()
+    if (!permissions.canManageAccount) {
       router.replace('/dashboard')
       return
     }
-  }, [user, loading, isModerator, router])
+  }, [user, loading, getAccountBasedPermissions, router])
 
   // Show loading while checking auth
   if (loading) {
@@ -42,7 +43,8 @@ export default function AccountLayout({
   }
 
   // Show unauthorized message for unauthorized users
-  if (!user || !isModerator()) {
+  const permissions = getAccountBasedPermissions()
+  if (!user || !permissions.canManageAccount) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center space-y-4">
