@@ -245,10 +245,10 @@ export default function ManageAccountsPage() {
     try {
       const { error } = await supabase
         .rpc('grant_account_access', {
-          user_id: selectedUser,
-          account_id: selectedAccount.id,
-          role: selectedRole,
-          granted_by_user_id: user?.id
+          p_user_id: selectedUser,
+          p_account_id: selectedAccount.id,
+          p_role: selectedRole,
+          p_granted_by_user_id: user?.id
         })
 
       if (error) throw error

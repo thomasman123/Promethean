@@ -324,10 +324,10 @@ export type Database = {
       }
       grant_account_access: {
         Args: {
-          user_id: string
-          account_id: string
-          role?: Database["public"]["Enums"]["user_role"]
-          granted_by_user_id?: string
+          p_user_id: string
+          p_account_id: string
+          p_role?: Database["public"]["Enums"]["user_role"]
+          p_granted_by_user_id?: string
         }
         Returns: {
           account_id: string
