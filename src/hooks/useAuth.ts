@@ -110,19 +110,62 @@ export function useAuth() {
 
       // Get user's account access
       console.log('Fetching account access for user:', authUser.id)
-      const { data: accountAccess, error: accessError } = await supabase
-        .from('account_access')
-        .select(`
-          *,
-          account:accounts(*)
-        `)
-        .eq('user_id', authUser.id)
-        .eq('is_active', true)
+      let accountAccess: (AccountAccess & { account: Accounts })[] = []
+      
+      try {
+        const { data, error: accessError } = await supabase
+          .from('account_access')
+          .select(`
+            *,
+            account:accounts(*)
+          `)
+          .eq('user_id', authUser.id)
+          .eq('is_active', true)
 
-      if (accessError) {
-        console.error('Error fetching account access:', accessError)
-      } else {
-        console.log('Account access fetched:', accountAccess)
+        if (accessError) {
+          console.error('Error fetching account access:', accessError)
+          console.error('Account access error details:', {
+            code: accessError.code,
+            message: accessError.message,
+            details: accessError.details,
+            hint: accessError.hint
+          })
+          
+          // Try to create default account access if none exists  
+          if (accessError.code === 'PGRST116') {
+            console.log('No account access found, attempting to create default access...')
+            
+            const { data: newAccess, error: createAccessError } = await supabase
+              .from('account_access')
+              .insert({
+                user_id: authUser.id,
+                account_id: '01234567-0123-4567-8901-000000000001', // Default to first account
+                role: 'setter',
+                is_active: true
+              })
+              .select(`
+                *,
+                account:accounts(*)
+              `)
+              .single()
+            
+            if (createAccessError) {
+              console.error('Failed to create account access:', createAccessError)
+              accountAccess = []
+            } else {
+              console.log('Account access created successfully:', newAccess)
+              accountAccess = [newAccess]
+            }
+          } else {
+            accountAccess = []
+          }
+        } else {
+          console.log('Account access fetched:', data)
+          accountAccess = data || []
+        }
+      } catch (accountError) {
+        console.error('Exception in account access fetch:', accountError)
+        accountAccess = []
       }
 
       const userWithProfile: UserWithProfile = {
