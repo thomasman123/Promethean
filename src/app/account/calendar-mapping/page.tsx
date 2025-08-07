@@ -72,18 +72,11 @@ export default function CalendarMappingPage() {
   const fetchCalendarsAndMappings = async () => {
     if (!selectedAccountId) return
 
-    console.log('🐛 DEBUG - Calendar Mapping Page:', {
-      selectedAccountId,
-      userRole: permissions.currentRole,
-      isAdmin: getAccountBasedPermissions().isAccountSpecific === false
-    })
-
     setLoading(true)
     setError(null)
 
     try {
       // Fetch GHL calendars
-      console.log('🐛 DEBUG - Fetching calendars for accountId:', selectedAccountId)
       const calendarsResponse = await fetch(`/api/ghl/calendars?accountId=${selectedAccountId}`)
       const calendarsData = await calendarsResponse.json()
 
