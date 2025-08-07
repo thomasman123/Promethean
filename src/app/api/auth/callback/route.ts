@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@supabase/supabase-js'
 
 export async function GET(request: NextRequest) {
   try {
@@ -175,14 +175,25 @@ async function saveConnection(params: {
   try {
     const { accountId, accessToken, refreshToken, expiresIn, locationId, companyId, locations } = params
     
+    // Create a service client that bypasses RLS for OAuth operations
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error('Missing Supabase configuration')
+      return { success: false, error: 'Missing configuration' }
+    }
+    
+    const supabaseService = createClient(supabaseUrl, supabaseServiceKey)
+    
     // Calculate token expiration time
     const expiresAt = new Date(Date.now() + (expiresIn * 1000)).toISOString()
     
     // Use the first location if no specific location ID is provided
     const ghlLocationId = locationId || (locations.length > 0 ? locations[0].id : null)
     
-    // Upsert the connection
-    const { error } = await supabase
+    // Upsert the connection using service role
+    const { error } = await supabaseService
       .from('ghl_connections')
       .upsert({
         account_id: accountId,
