@@ -11,4 +11,9 @@ export type Tables = Database['public']['Tables']
 export type Accounts = Tables['accounts']['Row']
 export type Appointments = Tables['appointments']['Row']
 export type Dials = Tables['dials']['Row']
-export type Discoveries = Tables['discoveries']['Row'] 
+export type Discoveries = Tables['discoveries']['Row']
+export type Profiles = Tables['profiles']['Row']
+export type AccountAccess = Tables['account_access']['Row']
+
+// Auth types
+export type UserRole = Database['public']['Enums']['user_role'] 
