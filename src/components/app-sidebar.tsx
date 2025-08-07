@@ -129,7 +129,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               const account = data.accounts.find(acc => acc.id === value)
               if (account) setSelectedAccount(account)
             }}>
-              <SelectTrigger className="h-auto p-2 border-0 shadow-none bg-transparent hover:bg-sidebar-accent data-[state=open]:bg-sidebar-accent">
+              <SelectTrigger className="h-auto p-2 border-0 shadow-none bg-transparent hover:bg-transparent focus:bg-transparent data-[state=open]:bg-transparent focus:ring-0 focus:ring-offset-0">
                 <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
                   <Command className="size-4" />
                 </div>
@@ -138,7 +138,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   <span className="truncate text-xs text-muted-foreground">{selectedAccount.plan}</span>
                 </div>
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent align="center" sideOffset={8}>
                 {data.accounts.map((account) => (
                   <SelectItem key={account.id} value={account.id}>
                     <div className="flex items-center gap-2">
