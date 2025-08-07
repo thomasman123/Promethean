@@ -134,7 +134,7 @@ export default function CRMConnectionPage() {
 
       // Build the OAuth URL with proper scopes for GHL marketplace app
       const ghlClientId = process.env.NEXT_PUBLIC_GHL_CLIENT_ID || 'your-ghl-client-id'
-      const redirectUri = `${window.location.origin}/api/ghl/oauth/callback`
+      const redirectUri = `${window.location.origin}/api/auth/callback`
       
       // Use comprehensive scopes - these can be managed in the GHL marketplace app settings
       const scopes = [

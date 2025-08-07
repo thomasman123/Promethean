@@ -87,7 +87,7 @@ async function exchangeCodeForToken(code: string) {
   try {
     const clientId = process.env.GHL_CLIENT_ID
     const clientSecret = process.env.GHL_CLIENT_SECRET
-    const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/ghl/oauth/callback`
+    const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback`
 
     if (!clientId || !clientSecret) {
       return { success: false, error: 'Missing GHL credentials' }

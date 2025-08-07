@@ -25,7 +25,7 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 2. **Configure App Settings**
    - **App Type**: Public
    - **Distribution Type**: Sub Account
-   - **Redirect URI**: `http://localhost:3000/api/ghl/oauth/callback` (or your production URL)
+   - **Redirect URI**: `http://localhost:3000/api/auth/callback` (or your production URL)
    - **App Name**: Your app name
    - **Description**: Brief description of your app
 
