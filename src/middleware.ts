@@ -62,8 +62,28 @@ export async function middleware(req: NextRequest) {
   }
 
   // Redirect to login if user is not authenticated and trying to access protected routes
-  if (!session && req.nextUrl.pathname.startsWith('/dashboard')) {
+  if (!session && (req.nextUrl.pathname.startsWith('/dashboard') || req.nextUrl.pathname.startsWith('/admin'))) {
     return NextResponse.redirect(new URL('/login', req.url))
+  }
+
+  // Check admin access for admin routes
+  if (session && req.nextUrl.pathname.startsWith('/admin')) {
+    try {
+      // Get user profile to check role
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', session.user.id)
+        .single()
+
+      if (error || !profile || profile.role !== 'admin') {
+        console.log('Middleware - Admin access denied for user:', session.user.id, 'role:', profile?.role)
+        return NextResponse.redirect(new URL('/dashboard', req.url))
+      }
+    } catch (error) {
+      console.log('Middleware - Error checking admin access:', error)
+      return NextResponse.redirect(new URL('/dashboard', req.url))
+    }
   }
 
   // Redirect to dashboard if user is authenticated and trying to access auth pages
@@ -78,6 +98,7 @@ export const config = {
   matcher: [
     '/',
     '/dashboard/:path*',
+    '/admin/:path*',
     '/login',
     '/signup',
   ],

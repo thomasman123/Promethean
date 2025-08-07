@@ -129,7 +129,7 @@ const staticData = {
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const { user, loading, selectedAccountId, setSelectedAccountId, getAvailableAccounts } = useAuth()
+  const { user, loading, selectedAccountId, setSelectedAccountId, getAvailableAccounts, isAdmin } = useAuth()
   const availableAccounts = getAvailableAccounts()
   const selectedAccount = availableAccounts.find(acc => acc.id === selectedAccountId) || availableAccounts[0]
 
@@ -207,7 +207,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={staticData.navMain} />
+        <NavMain items={staticData.navMain.filter(item => {
+          // Hide Admin section for non-admin users
+          if (item.title === 'Admin') {
+            return isAdmin()
+          }
+          return true
+        })} />
         <NavSecondary items={staticData.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>
