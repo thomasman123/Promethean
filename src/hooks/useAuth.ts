@@ -14,6 +14,7 @@ export function useAuth() {
   const [user, setUser] = useState<UserWithProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null)
+  const [allAccounts, setAllAccounts] = useState<Accounts[]>([])
 
   useEffect(() => {
     // Get initial session
@@ -220,9 +221,34 @@ export function useAuth() {
 
       setUser(userWithProfile)
 
-      // Set default selected account if none is set
-      if (!selectedAccountId && accountAccess && accountAccess.length > 0) {
-        setSelectedAccountId(accountAccess[0].account_id)
+      // For admin users, also fetch all accounts
+      if (profile?.role === 'admin') {
+        try {
+          const { data: accounts, error: accountsError } = await supabase
+            .from('accounts')
+            .select('*')
+            .eq('is_active', true)
+            .order('name')
+
+          if (accountsError) {
+            console.warn('Error fetching all accounts for admin:', accountsError)
+            setAllAccounts([])
+          } else {
+            setAllAccounts(accounts || [])
+            // Set default selected account if none is set
+            if (!selectedAccountId && accounts && accounts.length > 0) {
+              setSelectedAccountId(accounts[0].id)
+            }
+          }
+        } catch (error) {
+          console.warn('Exception fetching all accounts:', error)
+          setAllAccounts([])
+        }
+      } else {
+        // Set default selected account if none is set for non-admin users
+        if (!selectedAccountId && accountAccess && accountAccess.length > 0) {
+          setSelectedAccountId(accountAccess[0].account_id)
+        }
       }
 
     } catch (error) {
@@ -237,6 +263,15 @@ export function useAuth() {
   }
 
   const getAvailableAccounts = () => {
+    // If user is admin, they have access to all accounts
+    if (user?.profile?.role === 'admin') {
+      return allAccounts.map(account => ({
+        id: account.id,
+        name: account.name,
+        description: account.description
+      }))
+    }
+    // For non-admin users, return accounts they have specific access to
     return user?.accountAccess?.map(access => access.account) || []
   }
 
