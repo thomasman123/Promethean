@@ -151,7 +151,7 @@ export default function CRMConnectionPage() {
       // Add state parameter to track the account this connection is for
       const state = selectedAccountId
       
-      const authUrl = `https://marketplace.leadconnectorhq.com/oauth/chooselocation?response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&client_id=${ghlClientId}&scope=${encodeURIComponent(scopes)}&state=${encodeURIComponent(state)}`
+      const authUrl = `https://marketplace.gohighlevel.com/oauth/chooselocation?response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&client_id=${ghlClientId}&scope=${encodeURIComponent(scopes)}&state=${encodeURIComponent(state)}`
       
       // Redirect to GHL OAuth
       window.location.href = authUrl

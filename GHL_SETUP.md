@@ -18,8 +18,9 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 
 1. **Create a Marketplace App**
    - Go to [https://marketplace.gohighlevel.com](https://marketplace.gohighlevel.com)
-   - Sign up for a developer account
+   - Sign up for a developer account  
    - Create a new app
+   - **Note**: The OAuth flow will use the GoHighLevel marketplace interface, but API calls use leadconnectorhq.com endpoints
 
 2. **Configure App Settings**
    - **App Type**: Public
