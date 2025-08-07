@@ -4,7 +4,6 @@ import * as React from "react"
 import {
   BarChart3,
   Bot,
-  ChevronDown,
   Command,
   LifeBuoy,
   MegaphoneIcon,
@@ -20,7 +19,6 @@ import {
   SidebarFooter,
   SidebarHeader,
   SidebarMenu,
-  SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
 import {
@@ -131,24 +129,26 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               const account = data.accounts.find(acc => acc.id === value)
               if (account) setSelectedAccount(account)
             }}>
-              <SelectTrigger className="h-auto p-0 border-0 shadow-none">
-                <SidebarMenuButton size="lg" className="w-full">
-                  <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
-                    <Command className="size-4" />
-                  </div>
-                  <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-medium">{selectedAccount.name}</span>
-                    <span className="truncate text-xs">{selectedAccount.plan}</span>
-                  </div>
-                  <ChevronDown className="ml-auto size-4" />
-                </SidebarMenuButton>
+              <SelectTrigger className="h-auto p-2 border-0 shadow-none bg-transparent hover:bg-sidebar-accent data-[state=open]:bg-sidebar-accent">
+                <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
+                  <Command className="size-4" />
+                </div>
+                <div className="grid flex-1 text-left text-sm leading-tight ml-2">
+                  <span className="truncate font-medium">{selectedAccount.name}</span>
+                  <span className="truncate text-xs text-muted-foreground">{selectedAccount.plan}</span>
+                </div>
               </SelectTrigger>
               <SelectContent>
                 {data.accounts.map((account) => (
                   <SelectItem key={account.id} value={account.id}>
-                    <div className="grid text-left text-sm leading-tight">
-                      <span className="truncate font-medium">{account.name}</span>
-                      <span className="truncate text-xs text-muted-foreground">{account.plan}</span>
+                    <div className="flex items-center gap-2">
+                      <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-6 items-center justify-center rounded-md">
+                        <Command className="size-3" />
+                      </div>
+                      <div className="grid text-left text-sm leading-tight">
+                        <span className="truncate font-medium">{account.name}</span>
+                        <span className="truncate text-xs text-muted-foreground">{account.plan}</span>
+                      </div>
                     </div>
                   </SelectItem>
                 ))}
