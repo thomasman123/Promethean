@@ -234,9 +234,14 @@ export function useAuth() {
             console.warn('Error fetching all accounts for admin:', accountsError)
             setAllAccounts([])
           } else {
+            console.log('🐛 DEBUG - Admin accounts fetched:', {
+              count: accounts?.length || 0,
+              accounts: accounts?.map(a => ({ id: a.id, name: a.name })) || []
+            })
             setAllAccounts(accounts || [])
             // Set default selected account if none is set
             if (!selectedAccountId && accounts && accounts.length > 0) {
+              console.log('🐛 DEBUG - Setting default selectedAccountId for admin:', accounts[0].id)
               setSelectedAccountId(accounts[0].id)
             }
           }

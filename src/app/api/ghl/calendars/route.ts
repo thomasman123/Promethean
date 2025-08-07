@@ -12,9 +12,26 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const accountId = searchParams.get('accountId')
 
+    console.log('🐛 DEBUG - Calendars API called with accountId:', accountId)
+
     if (!accountId) {
       return NextResponse.json({ error: 'Account ID is required' }, { status: 400 })
     }
+
+    // First, let's check what connections exist for debugging
+    const { data: allConnections, error: allConnectionsError } = await supabase
+      .from('ghl_connections')
+      .select('*')
+
+    console.log('🐛 DEBUG - All GHL connections in database:', {
+      count: allConnections?.length || 0,
+      connections: allConnections?.map(c => ({
+        id: c.id,
+        account_id: c.account_id,
+        is_connected: c.is_connected,
+        connection_status: c.connection_status
+      })) || []
+    })
 
     // Get the GHL connection for this account
     const { data: connection, error: connectionError } = await supabase
@@ -23,6 +40,18 @@ export async function GET(request: NextRequest) {
       .eq('account_id', accountId)
       .eq('is_connected', true)
       .single()
+
+    console.log('🐛 DEBUG - Connection query result:', {
+      accountId,
+      connection: connection ? {
+        id: connection.id,
+        account_id: connection.account_id,
+        is_connected: connection.is_connected,
+        connection_status: connection.connection_status,
+        has_access_token: !!connection.access_token
+      } : null,
+      error: connectionError
+    })
 
     if (connectionError || !connection) {
       return NextResponse.json({ 
