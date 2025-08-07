@@ -274,6 +274,50 @@ export type Database = {
           },
         ]
       }
+      calendar_mappings: {
+        Row: {
+          id: string
+          account_id: string
+          ghl_calendar_id: string
+          calendar_name: string
+          calendar_description: string | null
+          is_enabled: boolean
+          target_table: 'appointments' | 'discoveries'
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          account_id: string
+          ghl_calendar_id: string
+          calendar_name: string
+          calendar_description?: string | null
+          is_enabled?: boolean
+          target_table?: 'appointments' | 'discoveries'
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          account_id?: string
+          ghl_calendar_id?: string
+          calendar_name?: string
+          calendar_description?: string | null
+          is_enabled?: boolean
+          target_table?: 'appointments' | 'discoveries'
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calendar_mappings_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ghl_connections: {
         Row: {
           id: string

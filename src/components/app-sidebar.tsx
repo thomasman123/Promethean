@@ -105,7 +105,7 @@ const staticData = {
         },
         {
           title: "Calendar Mapping",
-          url: "#",
+          url: "/account/calendar-mapping",
         },
         {
           title: "Team Members",
