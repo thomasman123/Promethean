@@ -101,7 +101,7 @@ const staticData = {
       items: [
         {
           title: "CRM Connection",
-          url: "#",
+          url: "/account/crm-connection",
         },
         {
           title: "Calendar Mapping",
