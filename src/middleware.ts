@@ -46,6 +46,11 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(new URL('/dashboard', req.url))
   }
 
+  // Allow access to landing page (/) for everyone
+  if (req.nextUrl.pathname === '/') {
+    return supabaseResponse
+  }
+
   return supabaseResponse
 }
 
