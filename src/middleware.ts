@@ -32,14 +32,29 @@ export async function middleware(req: NextRequest) {
     }
   )
 
-  // Refresh session if expired - this step is important  
-  const {
-    data: { session },
-  } = await supabase.auth.getSession()
+  // Try to get session and refresh if needed
+  let session = null
+  try {
+    const { data, error } = await supabase.auth.getSession()
+    if (error) {
+      console.log('Middleware - Session error:', error.message)
+    }
+    session = data.session
+    
+    // If no session but we have cookies, try to refresh
+    if (!session && req.cookies.getAll().some(c => c.name.includes('sb-'))) {
+      console.log('Middleware - Attempting session refresh...')
+      const { data: refreshData } = await supabase.auth.refreshSession()
+      session = refreshData.session
+    }
+  } catch (error) {
+    console.log('Middleware - Error getting session:', error)
+  }
 
   // Debug: Log session and cookies for troubleshooting
   console.log('Middleware - Session exists:', !!session)
   console.log('Middleware - Path:', req.nextUrl.pathname)
+  console.log('Middleware - All cookies:', req.cookies.getAll().map(c => c.name))
   console.log('Middleware - Auth cookies:', req.cookies.getAll().filter(c => c.name.includes('sb-')).map(c => c.name))
 
   // Allow access to landing page (/) for everyone
@@ -62,6 +77,7 @@ export async function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
+    '/',
     '/dashboard/:path*',
     '/login',
     '/signup',

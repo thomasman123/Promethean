@@ -33,7 +33,9 @@ export default function LoginPage() {
 
     // Listen for auth state changes and redirect when logged in
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log("Auth state change:", event, !!session)
       if (event === 'SIGNED_IN' && session) {
+        console.log("Redirecting to dashboard...")
         // Force a page refresh to ensure middleware sees the new session
         window.location.href = '/dashboard'
       }
@@ -59,6 +61,8 @@ export default function LoginPage() {
 
       if (data.user) {
         toast.success("Successfully logged in!")
+        console.log("Login successful, user:", data.user.email)
+        console.log("Session data:", data.session)
         // Auth state listener will handle the redirect
       }
     } catch (error) {
