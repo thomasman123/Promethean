@@ -44,8 +44,16 @@ export function useAuth() {
 
   const fetchUserProfile = async (authUser: User) => {
     try {
-      console.log('Fetching profile for user:', authUser.id)
-      console.log('Auth user details:', { id: authUser.id, email: authUser.email })
+      try {
+        console.log('Fetching profile for user:', authUser?.id || 'no id')
+        console.log('Auth user details:', { 
+          id: authUser?.id || 'no id', 
+          email: authUser?.email || 'no email',
+          hasMetadata: !!authUser?.user_metadata
+        })
+      } catch (logError) {
+        console.log('Error in initial logging:', logError)
+      }
       
       // Get user profile
       const profileResult = await supabase
@@ -58,13 +66,17 @@ export function useAuth() {
       const profileError = profileResult.error
 
       if (profileError) {
-        console.error('Error fetching profile:', profileError)
-        console.error('Profile error details:', {
-          code: profileError.code,
-          message: profileError.message,
-          details: profileError.details,
-          hint: profileError.hint
-        })
+        try {
+          console.error('Error fetching profile:', profileError)
+          console.error('Profile error details:', {
+            code: profileError?.code || 'no code',
+            message: profileError?.message || 'no message', 
+            details: profileError?.details || 'no details',
+            hint: profileError?.hint || 'no hint'
+          })
+        } catch (logError) {
+          console.log('Error logging profile error:', logError)
+        }
         
         // If profile doesn't exist, try to create it
         if (profileError.code === 'PGRST116') {
@@ -82,7 +94,11 @@ export function useAuth() {
             .single()
             
           if (createError) {
-            console.error('Failed to create profile:', createError)
+            try {
+              console.error('Failed to create profile:', createError)
+            } catch (logError) {
+              console.log('Error logging profile create error:', logError)
+            }
             setUser({
               ...authUser,
               profile: null,
@@ -91,7 +107,11 @@ export function useAuth() {
             setLoading(false)
             return
           } else {
-            console.log('Profile created successfully:', newProfile)
+            try {
+              console.log('Profile created successfully:', newProfile)
+            } catch (logError) {
+              console.log('Error logging profile create success:', logError)
+            }
             profile = newProfile
           }
         } else {
@@ -106,7 +126,11 @@ export function useAuth() {
         }
       }
 
-      console.log('Profile fetched successfully:', profile)
+      try {
+        console.log('Profile fetched successfully:', profile)
+      } catch (logError) {
+        console.log('Error logging profile fetch success:', logError)
+      }
 
       // Get user's account access
       console.log('Fetching account access for user:', authUser.id)
@@ -123,13 +147,17 @@ export function useAuth() {
           .eq('is_active', true)
 
         if (accessError) {
-          console.error('Error fetching account access:', accessError)
-          console.error('Account access error details:', {
-            code: accessError.code,
-            message: accessError.message,
-            details: accessError.details,
-            hint: accessError.hint
-          })
+          try {
+            console.error('Error fetching account access:', accessError)
+            console.error('Account access error details:', {
+              code: accessError?.code || 'no code',
+              message: accessError?.message || 'no message',
+              details: accessError?.details || 'no details',
+              hint: accessError?.hint || 'no hint'
+            })
+          } catch (logError) {
+            console.log('Error logging account access error:', logError)
+          }
           
           // Try to create default account access if none exists  
           if (accessError.code === 'PGRST116') {
@@ -150,21 +178,37 @@ export function useAuth() {
               .single()
             
             if (createAccessError) {
-              console.error('Failed to create account access:', createAccessError)
+              try {
+                console.error('Failed to create account access:', createAccessError)
+              } catch (logError) {
+                console.log('Error logging create access error:', logError)
+              }
               accountAccess = []
             } else {
-              console.log('Account access created successfully:', newAccess)
+              try {
+                console.log('Account access created successfully:', newAccess)
+              } catch (logError) {
+                console.log('Error logging account access success:', logError)
+              }
               accountAccess = [newAccess]
             }
           } else {
             accountAccess = []
           }
         } else {
-          console.log('Account access fetched:', data)
+          try {
+            console.log('Account access fetched:', data)
+          } catch (logError) {
+            console.log('Error logging account access fetch success:', logError)
+          }
           accountAccess = data || []
         }
       } catch (accountError) {
-        console.error('Exception in account access fetch:', accountError)
+        try {
+          console.error('Exception in account access fetch:', accountError)
+        } catch (logError) {
+          console.log('Error logging account exception:', logError)
+        }
         accountAccess = []
       }
 
