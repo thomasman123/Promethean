@@ -62,7 +62,7 @@ export async function middleware(req: NextRequest) {
   }
 
   // Redirect to login if user is not authenticated and trying to access protected routes
-  if (!session && (req.nextUrl.pathname.startsWith('/dashboard') || req.nextUrl.pathname.startsWith('/admin'))) {
+  if (!session && (req.nextUrl.pathname.startsWith('/dashboard') || req.nextUrl.pathname.startsWith('/admin') || req.nextUrl.pathname.startsWith('/account'))) {
     return NextResponse.redirect(new URL('/login', req.url))
   }
 
@@ -86,6 +86,26 @@ export async function middleware(req: NextRequest) {
     }
   }
 
+  // Check moderator/admin access for account routes
+  if (session && req.nextUrl.pathname.startsWith('/account')) {
+    try {
+      // Get user profile to check role
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', session.user.id)
+        .single()
+
+      if (error || !profile || (profile.role !== 'admin' && profile.role !== 'moderator')) {
+        console.log('Middleware - Account access denied for user:', session.user.id, 'role:', profile?.role)
+        return NextResponse.redirect(new URL('/dashboard', req.url))
+      }
+    } catch (error) {
+      console.log('Middleware - Error checking account access:', error)
+      return NextResponse.redirect(new URL('/dashboard', req.url))
+    }
+  }
+
   // Redirect to dashboard if user is authenticated and trying to access auth pages
   if (session && (req.nextUrl.pathname === '/login' || req.nextUrl.pathname === '/signup')) {
     return NextResponse.redirect(new URL('/dashboard', req.url))
@@ -99,6 +119,7 @@ export const config = {
     '/',
     '/dashboard/:path*',
     '/admin/:path*',
+    '/account/:path*',
     '/login',
     '/signup',
   ],

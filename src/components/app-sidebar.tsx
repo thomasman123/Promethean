@@ -129,9 +129,31 @@ const staticData = {
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const { user, loading, selectedAccountId, setSelectedAccountId, getAvailableAccounts, isAdmin } = useAuth()
+  const { user, loading, selectedAccountId, setSelectedAccountId, getAvailableAccounts, isAdmin, isModerator } = useAuth()
   const availableAccounts = getAvailableAccounts()
   const selectedAccount = availableAccounts.find(acc => acc.id === selectedAccountId) || availableAccounts[0]
+
+  // Filter navigation items based on user role
+  const getFilteredNavItems = () => {
+    return staticData.navMain.filter(item => {
+      // Hide Admin section for non-admin users
+      if (item.title === 'Admin') {
+        return isAdmin()
+      }
+      
+      // Hide Account section for setters and sales reps
+      if (item.title === 'Account') {
+        return isModerator() // Only admin and moderator can see Account section
+      }
+      
+      // Hide certain features based on role
+      if (item.title === 'Ads') {
+        return isModerator() // Only admin and moderator can manage ads
+      }
+      
+      return true // Show Dashboard and AI Tools to everyone
+    })
+  }
 
   if (loading) {
     return (
@@ -207,13 +229,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={staticData.navMain.filter(item => {
-          // Hide Admin section for non-admin users
-          if (item.title === 'Admin') {
-            return isAdmin()
-          }
-          return true
-        })} />
+        <NavMain items={getFilteredNavItems()} />
         <NavSecondary items={staticData.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>

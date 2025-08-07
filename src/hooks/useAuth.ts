@@ -300,6 +300,35 @@ export function useAuth() {
     return role === 'admin' || role === 'moderator'
   }
 
+  const getSelectedAccount = () => {
+    const accounts = getAvailableAccounts()
+    return accounts.find(acc => acc.id === selectedAccountId) || accounts[0] || null
+  }
+
+  const hasAccountAccess = (): boolean => {
+    // Admins have access to all accounts
+    if (isAdmin()) return true
+    
+    // Other users need specific account access
+    return !!getCurrentAccountAccess()
+  }
+
+  const getAccountBasedPermissions = () => {
+    const role = getUserRole()
+    const account = getSelectedAccount()
+    
+    return {
+      canViewDashboard: true, // Everyone can see dashboard
+      canViewAds: isModerator(), // Only moderators and admins
+      canViewAITools: true, // Everyone can see AI tools  
+      canManageAccount: isModerator(), // Only moderators and admins
+      canManageTeam: isModerator(), // Only moderators and admins
+      currentAccount: account,
+      currentRole: role,
+      isAccountSpecific: !isAdmin() // Non-admins are account-specific
+    }
+  }
+
   return {
     user,
     loading,
@@ -312,5 +341,8 @@ export function useAuth() {
     canAccessAccount,
     isAdmin,
     isModerator,
+    getSelectedAccount,
+    hasAccountAccess,
+    getAccountBasedPermissions,
   }
 } 
