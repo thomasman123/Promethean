@@ -37,7 +37,11 @@ export default function LoginPage() {
 
       if (data.user) {
         toast.success("Successfully logged in!")
-        router.push("/dashboard")
+        
+        // Small delay to ensure auth state is updated, then redirect
+        setTimeout(() => {
+          router.replace("/dashboard")
+        }, 100)
       }
     } catch (error) {
       toast.error("An unexpected error occurred")
