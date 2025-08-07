@@ -42,7 +42,7 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+
 import { Textarea } from "@/components/ui/textarea"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Badge } from "@/components/ui/badge"
@@ -52,7 +52,6 @@ import {
   Building2, 
   Plus, 
   Settings, 
-  Users, 
   UserPlus, 
   Trash2,
   Shield,
@@ -100,20 +99,18 @@ export default function ManageAccountsPage() {
   const [newAccountName, setNewAccountName] = useState("")
   const [newAccountDescription, setNewAccountDescription] = useState("")
   const [selectedUser, setSelectedUser] = useState("")
-  const [selectedRole, setSelectedRole] = useState<'admin' | 'moderator' | 'sales_rep' | 'setter'>('setter')
+  const [selectedRole, setSelectedRole] = useState<'moderator' | 'sales_rep' | 'setter'>('setter')
   
   const [createAccountOpen, setCreateAccountOpen] = useState(false)
   const [assignUserOpen, setAssignUserOpen] = useState(false)
 
   const roleColors = {
-    admin: "bg-red-100 text-red-800 border-red-200",
     moderator: "bg-blue-100 text-blue-800 border-blue-200", 
     sales_rep: "bg-green-100 text-green-800 border-green-200",
     setter: "bg-yellow-100 text-yellow-800 border-yellow-200"
   }
 
   const roleIcons = {
-    admin: Shield,
     moderator: Settings,
     sales_rep: TrendingUp,
     setter: PhoneCall
@@ -286,6 +283,8 @@ export default function ManageAccountsPage() {
   }
 
   const getRoleIcon = (role: string) => {
+    // For account-based roles, we don't show admin (app-wide role)
+    if (role === 'admin') return <Shield className="h-3 w-3" />
     const IconComponent = roleIcons[role as keyof typeof roleIcons]
     return IconComponent ? <IconComponent className="h-3 w-3" /> : null
   }
@@ -377,203 +376,159 @@ export default function ManageAccountsPage() {
             </Dialog>
           </div>
 
-          <Tabs defaultValue="accounts" className="space-y-4">
-            <TabsList>
-              <TabsTrigger value="accounts">Accounts Overview</TabsTrigger>
-              <TabsTrigger value="details">Account Details</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="accounts" className="space-y-4">
-              <div className="grid gap-4">
-                {accounts.map((account) => (
-                  <Card key={account.id} className="cursor-pointer hover:shadow-md transition-shadow">
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <CardTitle className="flex items-center gap-2">
-                            <Building2 className="h-5 w-5" />
-                            {account.name}
-                          </CardTitle>
-                          {account.description && (
-                            <CardDescription>{account.description}</CardDescription>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge variant={account.is_active ? "default" : "secondary"}>
-                            {account.is_active ? "Active" : "Inactive"}
-                          </Badge>
+          <div className="space-y-4">
+            {accounts.map((account) => (
+              <Card key={account.id} className="hover:shadow-md transition-shadow">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="flex items-center gap-2">
+                        <Building2 className="h-5 w-5" />
+                        {account.name}
+                      </CardTitle>
+                      {account.description && (
+                        <CardDescription>{account.description}</CardDescription>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={account.is_active ? "default" : "secondary"}>
+                        {account.is_active ? "Active" : "Inactive"}
+                      </Badge>
+                      <Dialog open={assignUserOpen && selectedAccount?.id === account.id} onOpenChange={(open) => {
+                        setAssignUserOpen(open)
+                        if (open) setSelectedAccount(account)
+                      }}>
+                        <DialogTrigger asChild>
                           <Button 
                             variant="outline" 
                             size="sm"
-                            onClick={() => {
-                              setSelectedAccount(account)
-                              // Switch to details tab
-                              const tabsTrigger = document.querySelector('[data-state="active"]')?.parentElement?.querySelector('[value="details"]') as HTMLElement
-                              tabsTrigger?.click()
-                            }}
+                            onClick={() => setSelectedAccount(account)}
                           >
+                            <UserPlus className="h-4 w-4 mr-2" />
                             Manage Users
                           </Button>
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-sm text-muted-foreground">
-                        {accountAccess[account.id]?.length || 0} assigned users
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="details" className="space-y-4">
-              {selectedAccount ? (
-                <div className="space-y-4">
-                  <Card>
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <CardTitle className="flex items-center gap-2">
-                            <Building2 className="h-5 w-5" />
-                            {selectedAccount.name}
-                          </CardTitle>
-                          {selectedAccount.description && (
-                            <CardDescription>{selectedAccount.description}</CardDescription>
-                          )}
-                        </div>
-                        <Dialog open={assignUserOpen} onOpenChange={setAssignUserOpen}>
-                          <DialogTrigger asChild>
-                            <Button>
-                              <UserPlus className="h-4 w-4 mr-2" />
-                              Assign User
-                            </Button>
-                          </DialogTrigger>
-                          <DialogContent>
-                            <DialogHeader>
-                              <DialogTitle>Assign User to {selectedAccount.name}</DialogTitle>
-                              <DialogDescription>
-                                Select a user and assign their role in this account.
-                              </DialogDescription>
-                            </DialogHeader>
-                            <div className="space-y-4">
-                              <div>
-                                <Label htmlFor="user-select">Select User</Label>
-                                <Select value={selectedUser} onValueChange={setSelectedUser}>
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Choose a user" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {users
-                                      .filter(user => !accountAccess[selectedAccount.id]?.some(access => access.user_id === user.id))
-                                      .map((user) => (
-                                      <SelectItem key={user.id} value={user.id}>
-                                        {user.full_name || user.email}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-4xl">
+                          <DialogHeader>
+                            <DialogTitle>Manage Users for {account.name}</DialogTitle>
+                            <DialogDescription>
+                              Assign users to this account and manage their roles. Note: Admin role is app-wide, not account-specific.
+                            </DialogDescription>
+                          </DialogHeader>
+                          
+                          <div className="space-y-6">
+                            {/* Assign New User Section */}
+                            <div className="border rounded-lg p-4 space-y-4">
+                              <h3 className="text-lg font-medium">Assign New User</h3>
+                              <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                  <Label htmlFor="user-select">Select User</Label>
+                                  <Select value={selectedUser} onValueChange={setSelectedUser}>
+                                    <SelectTrigger>
+                                      <SelectValue placeholder="Choose a user" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {users
+                                        .filter(user => !accountAccess[account.id]?.some(access => access.user_id === user.id))
+                                        .map((user) => (
+                                        <SelectItem key={user.id} value={user.id}>
+                                          {user.full_name || user.email}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div>
+                                  <Label htmlFor="role-select">Account Role</Label>
+                                  <Select value={selectedRole} onValueChange={(value: 'moderator' | 'sales_rep' | 'setter') => setSelectedRole(value)}>
+                                    <SelectTrigger>
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="moderator">Moderator</SelectItem>
+                                      <SelectItem value="sales_rep">Sales Rep</SelectItem>
+                                      <SelectItem value="setter">Setter</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
                               </div>
-                              <div>
-                                <Label htmlFor="role-select">Role</Label>
-                                <Select value={selectedRole} onValueChange={(value: 'admin' | 'moderator' | 'sales_rep' | 'setter') => setSelectedRole(value)}>
-                                  <SelectTrigger>
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="admin">Admin</SelectItem>
-                                    <SelectItem value="moderator">Moderator</SelectItem>
-                                    <SelectItem value="sales_rep">Sales Rep</SelectItem>
-                                    <SelectItem value="setter">Setter</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                              <div className="flex justify-end gap-2">
-                                <Button variant="outline" onClick={() => setAssignUserOpen(false)}>
-                                  Cancel
-                                </Button>
-                                <Button onClick={assignUserToAccount}>Assign User</Button>
-                              </div>
+                              <Button onClick={assignUserToAccount} disabled={!selectedUser}>
+                                <UserPlus className="h-4 w-4 mr-2" />
+                                Assign User
+                              </Button>
                             </div>
-                          </DialogContent>
-                        </Dialog>
-                      </div>
-                    </CardHeader>
-                  </Card>
 
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Users className="h-5 w-5" />
-                        Assigned Users
-                      </CardTitle>
-                      <CardDescription>
-                        Users with access to this account and their roles
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      {accountAccess[selectedAccount.id]?.length > 0 ? (
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Name</TableHead>
-                              <TableHead>Email</TableHead>
-                              <TableHead>Role</TableHead>
-                              <TableHead>Granted</TableHead>
-                              <TableHead>Actions</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {accountAccess[selectedAccount.id].map((access) => (
-                              <TableRow key={access.id}>
-                                <TableCell className="font-medium">
-                                  {access.user_profile?.full_name || 'N/A'}
-                                </TableCell>
-                                <TableCell>{access.user_profile?.email}</TableCell>
-                                <TableCell>
-                                  <Badge className={roleColors[access.role]}>
-                                    <span className="flex items-center gap-1">
-                                      {getRoleIcon(access.role)}
-                                      {access.role.replace('_', ' ')}
-                                    </span>
-                                  </Badge>
-                                </TableCell>
-                                <TableCell>
-                                  {new Date(access.granted_at).toLocaleDateString()}
-                                </TableCell>
-                                <TableCell>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => removeUserFromAccount(selectedAccount.id, access.user_id)}
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      ) : (
-                        <div className="text-center py-8 text-muted-foreground">
-                          No users assigned to this account yet.
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                </div>
-              ) : (
-                <Card>
-                  <CardContent className="text-center py-8">
-                    <Building2 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                    <p className="text-muted-foreground">
-                      Select an account from the overview to manage its users
-                    </p>
-                  </CardContent>
-                </Card>
-              )}
-            </TabsContent>
-          </Tabs>
+                            {/* Current Users Section */}
+                            <div className="space-y-4">
+                              <h3 className="text-lg font-medium">Current Users ({accountAccess[account.id]?.length || 0})</h3>
+                              {accountAccess[account.id]?.length > 0 ? (
+                                <Table>
+                                  <TableHeader>
+                                    <TableRow>
+                                      <TableHead>Name</TableHead>
+                                      <TableHead>Email</TableHead>
+                                      <TableHead>Account Role</TableHead>
+                                      <TableHead>Granted</TableHead>
+                                      <TableHead>Actions</TableHead>
+                                    </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                    {accountAccess[account.id].map((access) => (
+                                      <TableRow key={access.id}>
+                                        <TableCell className="font-medium">
+                                          {access.user_profile?.full_name || 'N/A'}
+                                        </TableCell>
+                                        <TableCell>{access.user_profile?.email}</TableCell>
+                                        <TableCell>
+                                          <Badge className={access.role === 'admin' ? "bg-red-100 text-red-800 border-red-200" : roleColors[access.role as keyof typeof roleColors]}>
+                                            <span className="flex items-center gap-1">
+                                              {getRoleIcon(access.role)}
+                                              {access.role.replace('_', ' ')}
+                                            </span>
+                                          </Badge>
+                                        </TableCell>
+                                        <TableCell>
+                                          {new Date(access.granted_at).toLocaleDateString()}
+                                        </TableCell>
+                                        <TableCell>
+                                          <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => removeUserFromAccount(account.id, access.user_id)}
+                                          >
+                                            <Trash2 className="h-4 w-4" />
+                                          </Button>
+                                        </TableCell>
+                                      </TableRow>
+                                    ))}
+                                  </TableBody>
+                                </Table>
+                              ) : (
+                                <div className="text-center py-8 text-muted-foreground">
+                                  No users assigned to this account yet.
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex justify-end">
+                            <Button variant="outline" onClick={() => setAssignUserOpen(false)}>
+                              Close
+                            </Button>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-sm text-muted-foreground">
+                    {accountAccess[account.id]?.length || 0} assigned users
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </div>
       </SidebarInset>
     </SidebarProvider>
