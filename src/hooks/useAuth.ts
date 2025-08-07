@@ -45,27 +45,65 @@ export function useAuth() {
   const fetchUserProfile = async (authUser: User) => {
     try {
       console.log('Fetching profile for user:', authUser.id)
+      console.log('Auth user details:', { id: authUser.id, email: authUser.email })
       
       // Get user profile
-      const { data: profile, error: profileError } = await supabase
+      const profileResult = await supabase
         .from('profiles')
         .select('*')
         .eq('id', authUser.id)
         .single()
+        
+      let profile = profileResult.data
+      const profileError = profileResult.error
 
       if (profileError) {
         console.error('Error fetching profile:', profileError)
-        // If profile doesn't exist, continue with basic user data
-        if (profileError.code === 'PGRST116') {
-          console.log('Profile not found, using basic user data')
-        }
-        setUser({
-          ...authUser,
-          profile: null,
-          accountAccess: []
+        console.error('Profile error details:', {
+          code: profileError.code,
+          message: profileError.message,
+          details: profileError.details,
+          hint: profileError.hint
         })
-        setLoading(false)
-        return
+        
+        // If profile doesn't exist, try to create it
+        if (profileError.code === 'PGRST116') {
+          console.log('Profile not found, attempting to create one...')
+          
+          const { data: newProfile, error: createError } = await supabase
+            .from('profiles')
+            .insert({
+              id: authUser.id,
+              email: authUser.email || '',
+              full_name: authUser.user_metadata?.full_name || '',
+              role: 'setter'
+            })
+            .select()
+            .single()
+            
+          if (createError) {
+            console.error('Failed to create profile:', createError)
+            setUser({
+              ...authUser,
+              profile: null,
+              accountAccess: []
+            })
+            setLoading(false)
+            return
+          } else {
+            console.log('Profile created successfully:', newProfile)
+            profile = newProfile
+          }
+        } else {
+          // Other error, just continue without profile
+          setUser({
+            ...authUser,
+            profile: null,
+            accountAccess: []
+          })
+          setLoading(false)
+          return
+        }
       }
 
       console.log('Profile fetched successfully:', profile)
