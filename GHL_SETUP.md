@@ -39,8 +39,6 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
    - `calendars.write`
    - `conversations.readonly`
    - `conversations.write`
-   - `workflows.readonly`
-   - `workflows.write`
    - `locations.readonly`
    - `businesses.readonly`
    - `users.readonly`

@@ -136,17 +136,16 @@ export default function CRMConnectionPage() {
       const ghlClientId = process.env.NEXT_PUBLIC_GHL_CLIENT_ID || 'your-ghl-client-id'
       const redirectUri = `${window.location.origin}/api/auth/callback`
       
-      // Use comprehensive scopes - these can be managed in the GHL marketplace app settings
-      const scopes = [
-        'contacts.readonly', 'contacts.write',
-        'opportunities.readonly', 'opportunities.write', 
-        'calendars.readonly', 'calendars.write',
-        'conversations.readonly', 'conversations.write',
-        'workflows.readonly', 'workflows.write',
-        'locations.readonly',
-        'businesses.readonly',
-        'users.readonly'
-      ].join(' ')
+             // Use comprehensive scopes - these can be managed in the GHL marketplace app settings
+       const scopes = [
+         'contacts.readonly', 'contacts.write',
+         'opportunities.readonly', 'opportunities.write', 
+         'calendars.readonly', 'calendars.write',
+         'conversations.readonly', 'conversations.write',
+         'locations.readonly',
+         'businesses.readonly',
+         'users.readonly'
+       ].join(' ')
       
       // Add state parameter to track the account this connection is for
       const state = selectedAccountId
