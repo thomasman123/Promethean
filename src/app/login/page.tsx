@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -20,6 +20,28 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const router = useRouter()
 
+  // Check if user is already logged in and redirect
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session) {
+        router.replace('/dashboard')
+      }
+    }
+    
+    checkAuth()
+
+    // Listen for auth state changes and redirect when logged in
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session) {
+        // Force a page refresh to ensure middleware sees the new session
+        window.location.href = '/dashboard'
+      }
+    })
+
+    return () => subscription.unsubscribe()
+  }, [router])
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
@@ -37,11 +59,7 @@ export default function LoginPage() {
 
       if (data.user) {
         toast.success("Successfully logged in!")
-        
-        // Small delay to ensure auth state is updated, then redirect
-        setTimeout(() => {
-          router.replace("/dashboard")
-        }, 100)
+        // Auth state listener will handle the redirect
       }
     } catch (error) {
       toast.error("An unexpected error occurred")

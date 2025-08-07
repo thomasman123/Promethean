@@ -32,9 +32,20 @@ export async function middleware(req: NextRequest) {
     }
   )
 
+  // Refresh session if expired - this step is important  
   const {
     data: { session },
   } = await supabase.auth.getSession()
+
+  // Debug: Log session and cookies for troubleshooting
+  console.log('Middleware - Session exists:', !!session)
+  console.log('Middleware - Path:', req.nextUrl.pathname)
+  console.log('Middleware - Auth cookies:', req.cookies.getAll().filter(c => c.name.includes('sb-')).map(c => c.name))
+
+  // Allow access to landing page (/) for everyone
+  if (req.nextUrl.pathname === '/') {
+    return supabaseResponse
+  }
 
   // Redirect to login if user is not authenticated and trying to access protected routes
   if (!session && req.nextUrl.pathname.startsWith('/dashboard')) {
@@ -44,11 +55,6 @@ export async function middleware(req: NextRequest) {
   // Redirect to dashboard if user is authenticated and trying to access auth pages
   if (session && (req.nextUrl.pathname === '/login' || req.nextUrl.pathname === '/signup')) {
     return NextResponse.redirect(new URL('/dashboard', req.url))
-  }
-
-  // Allow access to landing page (/) for everyone
-  if (req.nextUrl.pathname === '/') {
-    return supabaseResponse
   }
 
   return supabaseResponse
