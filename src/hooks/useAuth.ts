@@ -67,8 +67,8 @@ export function useAuth() {
 
       if (profileError) {
         try {
-          console.error('Error fetching profile:', profileError)
-          console.error('Profile error details:', {
+          console.warn('Error fetching profile:', profileError)
+          console.warn('Profile error details:', {
             code: profileError?.code || 'no code',
             message: profileError?.message || 'no message', 
             details: profileError?.details || 'no details',
@@ -95,7 +95,7 @@ export function useAuth() {
             
           if (createError) {
             try {
-              console.error('Failed to create profile:', createError)
+              console.warn('Failed to create profile:', createError)
             } catch (logError) {
               console.log('Error logging profile create error:', logError)
             }
@@ -148,8 +148,8 @@ export function useAuth() {
 
         if (accessError) {
           try {
-            console.error('Error fetching account access:', accessError)
-            console.error('Account access error details:', {
+            console.warn('Error fetching account access:', accessError)
+            console.warn('Account access error details:', {
               code: accessError?.code || 'no code',
               message: accessError?.message || 'no message',
               details: accessError?.details || 'no details',
@@ -179,7 +179,7 @@ export function useAuth() {
             
             if (createAccessError) {
               try {
-                console.error('Failed to create account access:', createAccessError)
+                console.warn('Failed to create account access:', createAccessError)
               } catch (logError) {
                 console.log('Error logging create access error:', logError)
               }
@@ -205,7 +205,7 @@ export function useAuth() {
         }
       } catch (accountError) {
         try {
-          console.error('Exception in account access fetch:', accountError)
+          console.warn('Exception in account access fetch:', accountError)
         } catch (logError) {
           console.log('Error logging account exception:', logError)
         }
@@ -226,7 +226,7 @@ export function useAuth() {
       }
 
     } catch (error) {
-      console.error('Error in fetchUserProfile:', error)
+      console.warn('Error in fetchUserProfile:', error)
     } finally {
       setLoading(false)
     }

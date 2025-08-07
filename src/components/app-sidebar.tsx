@@ -9,6 +9,7 @@ import {
   MegaphoneIcon,
   Send,
   Settings,
+  Shield,
 } from "lucide-react"
 
 import { NavMain } from "@/components/nav-main"
@@ -79,6 +80,17 @@ const staticData = {
         {
           title: "KPI Breakdown",
           url: "#",
+        },
+      ],
+    },
+    {
+      title: "Admin",
+      url: "/admin",
+      icon: Shield,
+      items: [
+        {
+          title: "Manage Accounts",
+          url: "/admin/manage-accounts",
         },
       ],
     },
