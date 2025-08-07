@@ -67,8 +67,8 @@ export default function CRMConnectionPage() {
       // Clean up URL
       window.history.replaceState({}, '', window.location.pathname)
     } else if (error) {
-      // Handle OAuth errors
-      console.error('OAuth error:', error)
+      // Handle OAuth errors - just log, don't throw
+      console.warn('OAuth error:', error)
       // Clean up URL
       window.history.replaceState({}, '', window.location.pathname)
     }

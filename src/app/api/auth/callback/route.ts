@@ -32,14 +32,12 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Get location info from GHL to determine which account this belongs to
+    // Get location info from GHL (optional - don't fail if this doesn't work)
     const locationInfo = await getLocationInfo(tokenResponse.access_token)
     
     if (!locationInfo.success) {
-      console.error('Failed to get location info:', locationInfo.error)
-      return NextResponse.redirect(
-        new URL(`/account/crm-connection?error=location_info_failed`, request.url)
-      )
+      console.warn('Failed to get location info, continuing without it:', locationInfo.error)
+      // Continue without location info - we'll still save the connection
     }
 
     // Get the account ID from state parameter
@@ -60,7 +58,7 @@ export async function GET(request: NextRequest) {
       expiresIn: tokenResponse.expires_in,
       locationId: tokenResponse.location_id,
       companyId: tokenResponse.company_id,
-      locations: locationInfo.locations
+      locations: locationInfo.success ? locationInfo.locations : []
     })
 
     if (!saveResult.success) {
@@ -135,7 +133,7 @@ async function exchangeCodeForToken(code: string) {
 async function getLocationInfo(accessToken: string) {
   try {
     // Get location information from GHL API
-    const response = await fetch('https://services.leadconnectorhq.com/locations/', {
+    const response = await fetch('https://services.leadconnectorhq.com/locations', {
       headers: {
         'Authorization': `Bearer ${accessToken}`,
         'Version': '2021-07-28',
