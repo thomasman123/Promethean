@@ -312,7 +312,39 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_user_accounts: {
+        Args: { user_id: string }
+        Returns: {
+          account_id: string
+          account_name: string
+          account_description: string
+          user_role: Database["public"]["Enums"]["user_role"]
+          granted_at: string
+        }[]
+      }
+      grant_account_access: {
+        Args: {
+          user_id: string
+          account_id: string
+          role?: Database["public"]["Enums"]["user_role"]
+          granted_by_user_id?: string
+        }
+        Returns: {
+          account_id: string
+          created_at: string
+          granted_at: string
+          granted_by: string | null
+          id: string
+          is_active: boolean
+          role: Database["public"]["Enums"]["user_role"]
+          updated_at: string
+          user_id: string
+        }
+      }
+      revoke_account_access: {
+        Args: { user_id: string; account_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       user_role: "admin" | "moderator" | "sales_rep" | "setter"
