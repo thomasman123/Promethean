@@ -15,6 +15,7 @@ export function useAuth() {
   const [loading, setLoading] = useState(true)
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null)
   const [allAccounts, setAllAccounts] = useState<Accounts[]>([])
+  const [accountChangeTimestamp, setAccountChangeTimestamp] = useState<number>(Date.now())
 
   useEffect(() => {
     // Get initial session
@@ -41,7 +42,7 @@ export function useAuth() {
     })
 
     return () => subscription.unsubscribe()
-  }, [selectedAccountId])
+  }, []) // Remove selectedAccountId dependency to avoid re-running auth flow
 
   const fetchUserProfile = async (authUser: User) => {
     try {
@@ -334,11 +335,16 @@ export function useAuth() {
     }
   }
 
+  const handleAccountChange = (accountId: string) => {
+    setSelectedAccountId(accountId)
+    setAccountChangeTimestamp(Date.now())
+  }
+
   return {
     user,
     loading,
     selectedAccountId,
-    setSelectedAccountId,
+    setSelectedAccountId: handleAccountChange, // Use the new handler
     signOut,
     getAvailableAccounts,
     getCurrentAccountAccess,
@@ -349,5 +355,6 @@ export function useAuth() {
     getSelectedAccount,
     hasAccountAccess,
     getAccountBasedPermissions,
+    accountChangeTimestamp, // Export the timestamp for pages to react to
   }
 } 

@@ -42,7 +42,7 @@ interface GHLConnection {
 }
 
 export default function CRMConnectionPage() {
-  const { selectedAccountId, getAccountBasedPermissions } = useAuth()
+  const { selectedAccountId, getAccountBasedPermissions, accountChangeTimestamp } = useAuth()
   const permissions = getAccountBasedPermissions()
   const [connection, setConnection] = useState<GHLConnection | null>(null)
   const [loading, setLoading] = useState(true)
@@ -53,7 +53,7 @@ export default function CRMConnectionPage() {
       fetchConnection()
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedAccountId])
+  }, [selectedAccountId, accountChangeTimestamp])
 
   useEffect(() => {
     // Handle OAuth callback results

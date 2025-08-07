@@ -55,7 +55,7 @@ interface CalendarMapping {
 }
 
 export default function CalendarMappingPage() {
-  const { selectedAccountId, getAccountBasedPermissions } = useAuth()
+  const { selectedAccountId, getAccountBasedPermissions, accountChangeTimestamp } = useAuth()
   const permissions = getAccountBasedPermissions()
   const [calendars, setCalendars] = useState<GHLCalendar[]>([])
   const [mappings, setMappings] = useState<CalendarMapping[]>([])
@@ -67,7 +67,7 @@ export default function CalendarMappingPage() {
     if (selectedAccountId) {
       fetchCalendarsAndMappings()
     }
-  }, [selectedAccountId])
+  }, [selectedAccountId, accountChangeTimestamp])
 
   const fetchCalendarsAndMappings = async () => {
     if (!selectedAccountId) return

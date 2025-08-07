@@ -1,5 +1,6 @@
 "use client"
 
+import React from "react"
 import { AppSidebar } from "@/components/app-sidebar"
 import {
   Breadcrumb,
@@ -21,9 +22,16 @@ import { useAuth } from "@/hooks/useAuth"
 import { Settings, Users, Calendar, Zap } from "lucide-react"
 
 export default function AccountPage() {
-  const { getAccountBasedPermissions, getSelectedAccount } = useAuth()
+  const { getAccountBasedPermissions, getSelectedAccount, accountChangeTimestamp } = useAuth()
   const permissions = getAccountBasedPermissions()
   const selectedAccount = getSelectedAccount()
+
+  // Force re-render when account changes (even though data is reactive, this ensures UI updates)
+  const accountData = React.useMemo(() => ({
+    permissions,
+    selectedAccount,
+    timestamp: accountChangeTimestamp
+  }), [permissions, selectedAccount, accountChangeTimestamp])
 
   const accountSections = [
     {
