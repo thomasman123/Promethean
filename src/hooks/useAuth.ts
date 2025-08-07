@@ -6,7 +6,7 @@ import type { User } from '@supabase/supabase-js'
 import type { Profiles, AccountAccess, Accounts, UserRole } from '@/lib/supabase'
 
 interface UserWithProfile extends User {
-  profile?: Profiles
+  profile?: Profiles | null
   accountAccess?: (AccountAccess & { account: Accounts })[]
 }
 
@@ -44,6 +44,8 @@ export function useAuth() {
 
   const fetchUserProfile = async (authUser: User) => {
     try {
+      console.log('Fetching profile for user:', authUser.id)
+      
       // Get user profile
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
@@ -53,12 +55,23 @@ export function useAuth() {
 
       if (profileError) {
         console.error('Error fetching profile:', profileError)
-        setUser(authUser)
+        // If profile doesn't exist, continue with basic user data
+        if (profileError.code === 'PGRST116') {
+          console.log('Profile not found, using basic user data')
+        }
+        setUser({
+          ...authUser,
+          profile: null,
+          accountAccess: []
+        })
         setLoading(false)
         return
       }
 
+      console.log('Profile fetched successfully:', profile)
+
       // Get user's account access
+      console.log('Fetching account access for user:', authUser.id)
       const { data: accountAccess, error: accessError } = await supabase
         .from('account_access')
         .select(`
@@ -70,6 +83,8 @@ export function useAuth() {
 
       if (accessError) {
         console.error('Error fetching account access:', accessError)
+      } else {
+        console.log('Account access fetched:', accountAccess)
       }
 
       const userWithProfile: UserWithProfile = {

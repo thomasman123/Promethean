@@ -51,11 +51,10 @@ export async function middleware(req: NextRequest) {
     console.log('Middleware - Error getting session:', error)
   }
 
-  // Debug: Log session and cookies for troubleshooting
-  console.log('Middleware - Session exists:', !!session)
-  console.log('Middleware - Path:', req.nextUrl.pathname)
-  console.log('Middleware - All cookies:', req.cookies.getAll().map(c => c.name))
-  console.log('Middleware - Auth cookies:', req.cookies.getAll().filter(c => c.name.includes('sb-')).map(c => c.name))
+  // Debug: Only log for troubleshooting when needed
+  if (process.env.NODE_ENV === 'development') {
+    console.log('Middleware - Session exists:', !!session, 'Path:', req.nextUrl.pathname)
+  }
 
   // Allow access to landing page (/) for everyone
   if (req.nextUrl.pathname === '/') {
