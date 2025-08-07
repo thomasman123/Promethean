@@ -54,7 +54,6 @@ import {
   Settings, 
   Users, 
   UserPlus, 
-  Edit, 
   Trash2,
   Shield,
   PhoneCall,
@@ -123,7 +122,7 @@ export default function ManageAccountsPage() {
   useEffect(() => {
     fetchAccounts()
     fetchUsers()
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchAccounts = async () => {
     try {
@@ -155,7 +154,7 @@ export default function ManageAccountsPage() {
         .from('profiles')
         .select('*')
         .eq('is_active', true)
-        .order('full_name')
+        .order('email') // Order by email instead since it's always present
 
       if (error) throw error
       setUsers(data || [])
@@ -167,20 +166,43 @@ export default function ManageAccountsPage() {
 
   const fetchAccountAccess = async (accountId: string) => {
     try {
-      const { data, error } = await supabase
+      // First get account access records
+      const { data: accessData, error: accessError } = await supabase
         .from('account_access')
-        .select(`
-          *,
-          user_profile:profiles(*)
-        `)
+        .select('*')
         .eq('account_id', accountId)
         .eq('is_active', true)
 
-      if (error) throw error
+      if (accessError) throw accessError
+
+      if (!accessData || accessData.length === 0) {
+        setAccountAccess(prev => ({
+          ...prev,
+          [accountId]: []
+        }))
+        return
+      }
+
+      // Get user IDs
+      const userIds = accessData.map(access => access.user_id)
+
+      // Then get user profiles
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('*')
+        .in('id', userIds)
+
+      if (profilesError) throw profilesError
+
+      // Combine the data
+      const transformedData: AccountAccess[] = accessData.map(access => ({
+        ...access,
+        user_profile: profilesData?.find(profile => profile.id === access.user_id)
+      }))
       
       setAccountAccess(prev => ({
         ...prev,
-        [accountId]: data || []
+        [accountId]: transformedData
       }))
     } catch (error) {
       console.error('Error fetching account access:', error)
@@ -194,7 +216,7 @@ export default function ManageAccountsPage() {
     }
 
     try {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('accounts')
         .insert([{
           name: newAccountName.trim(),
@@ -454,7 +476,7 @@ export default function ManageAccountsPage() {
                               </div>
                               <div>
                                 <Label htmlFor="role-select">Role</Label>
-                                <Select value={selectedRole} onValueChange={(value: any) => setSelectedRole(value)}>
+                                <Select value={selectedRole} onValueChange={(value: 'admin' | 'moderator' | 'sales_rep' | 'setter') => setSelectedRole(value)}>
                                   <SelectTrigger>
                                     <SelectValue />
                                   </SelectTrigger>
