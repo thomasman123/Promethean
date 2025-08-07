@@ -8,6 +8,7 @@ import {
   LifeBuoy,
   MegaphoneIcon,
   Send,
+  Settings,
 } from "lucide-react"
 
 import { NavMain } from "@/components/nav-main"
@@ -98,6 +99,25 @@ const data = {
         },
         {
           title: "KPI Breakdown",
+          url: "#",
+        },
+      ],
+    },
+    {
+      title: "Account",
+      url: "#",
+      icon: Settings,
+      items: [
+        {
+          title: "CRM Connection",
+          url: "#",
+        },
+        {
+          title: "Calendar Mapping",
+          url: "#",
+        },
+        {
+          title: "Team Members",
           url: "#",
         },
       ],
