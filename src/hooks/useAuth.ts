@@ -17,6 +17,7 @@ export function useAuth() {
   const [allAccounts, setAllAccounts] = useState<Accounts[]>([])
   const [accountChangeTimestamp, setAccountChangeTimestamp] = useState<number>(Date.now())
   const localStorageKey = (userId?: string | null) => `promethean:selectedAccountId:${userId || 'anon'}`
+  const accountChangedEvent = 'promethean:selectedAccountChanged'
 
   useEffect(() => {
     // Get initial session
@@ -52,6 +53,41 @@ export function useAuth() {
       try {
         window.localStorage.setItem(localStorageKey(userId), selectedAccountId)
       } catch {}
+    }
+  }, [selectedAccountId, user?.id])
+
+  // Cross-component/tab synchronization for account selection
+  useEffect(() => {
+    const onAccountChanged = (e: Event) => {
+      try {
+        const custom = e as CustomEvent<string>
+        const newAccountId = custom.detail
+        if (newAccountId && newAccountId !== selectedAccountId) {
+          // Apply without rebroadcast
+          setSelectedAccountId(newAccountId)
+          setAccountChangeTimestamp(Date.now())
+        }
+      } catch {}
+    }
+
+    const onStorage = (e: StorageEvent) => {
+      if (!user?.id) return
+      if (e.key === localStorageKey(user.id) && e.newValue && e.newValue !== selectedAccountId) {
+        setSelectedAccountId(e.newValue)
+        setAccountChangeTimestamp(Date.now())
+      }
+    }
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener(accountChangedEvent, onAccountChanged as EventListener)
+      window.addEventListener('storage', onStorage)
+    }
+
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener(accountChangedEvent, onAccountChanged as EventListener)
+        window.removeEventListener('storage', onStorage)
+      }
     }
   }, [selectedAccountId, user?.id])
 
@@ -369,6 +405,12 @@ export function useAuth() {
   const handleAccountChange = (accountId: string) => {
     setSelectedAccountId(accountId)
     setAccountChangeTimestamp(Date.now())
+    // Broadcast change to other hook instances in this tab
+    try {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent(accountChangedEvent, { detail: accountId }))
+      }
+    } catch {}
   }
 
   return {
