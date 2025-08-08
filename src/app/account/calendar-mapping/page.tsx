@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { AppSidebar } from "@/components/app-sidebar"
 import {
   Breadcrumb,
@@ -62,23 +62,35 @@ export default function CalendarMappingPage() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const latestAccountRef = useRef<string | null>(null)
 
   useEffect(() => {
-    if (selectedAccountId) {
-      fetchCalendarsAndMappings()
-    }
+    if (!selectedAccountId) return
+    // Immediately reflect account change in UI to avoid showing stale data
+    latestAccountRef.current = selectedAccountId
+    setCalendars([])
+    setMappings([])
+    setError(null)
+    setLoading(true)
+
+    fetchCalendarsAndMappings()
   }, [selectedAccountId, accountChangeTimestamp])
 
   const fetchCalendarsAndMappings = async () => {
     if (!selectedAccountId) return
-
-    setLoading(true)
-    setError(null)
+    const requestAccountId = selectedAccountId
 
     try {
-      // Fetch GHL calendars
-      const calendarsResponse = await fetch(`/api/ghl/calendars?accountId=${selectedAccountId}`)
+      // Fetch GHL calendars (disable cache and add timestamp to avoid any stale caching)
+      const ts = Date.now()
+      const calendarsResponse = await fetch(`/api/ghl/calendars?accountId=${requestAccountId}&_ts=${ts}`, {
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-store' },
+      })
       const calendarsData = await calendarsResponse.json()
+
+      // If user switched accounts while we were fetching, ignore this result
+      if (latestAccountRef.current !== requestAccountId) return
 
       if (!calendarsResponse.ok) {
         throw new Error(calendarsData.error || 'Failed to fetch calendars')
@@ -90,7 +102,10 @@ export default function CalendarMappingPage() {
       const { data: mappingsData, error: mappingsError } = await supabase
         .from('calendar_mappings')
         .select('*')
-        .eq('account_id', selectedAccountId)
+        .eq('account_id', requestAccountId)
+
+      // If user switched accounts while we were fetching, ignore this result
+      if (latestAccountRef.current !== requestAccountId) return
 
       if (mappingsError) {
         console.error('Error fetching mappings:', mappingsError)
@@ -99,16 +114,29 @@ export default function CalendarMappingPage() {
       }
 
     } catch (error) {
-      console.error('Error fetching calendars and mappings:', error)
-      setError(error instanceof Error ? error.message : 'Failed to load calendars')
+      // Only set the error if this response is still relevant
+      if (latestAccountRef.current === requestAccountId) {
+        console.error('Error fetching calendars and mappings:', error)
+        setError(error instanceof Error ? error.message : 'Failed to load calendars')
+      }
     } finally {
-      setLoading(false)
+      if (latestAccountRef.current === requestAccountId) {
+        setLoading(false)
+      }
     }
   }
 
   const refreshCalendars = async () => {
     setRefreshing(true)
-    await fetchCalendarsAndMappings()
+    // Clear current data to signal refresh for current account
+    if (selectedAccountId) {
+      latestAccountRef.current = selectedAccountId
+      setCalendars([])
+      setMappings([])
+      setError(null)
+      setLoading(true)
+      await fetchCalendarsAndMappings()
+    }
     setRefreshing(false)
   }
 
@@ -192,6 +220,7 @@ export default function CalendarMappingPage() {
   }
 
   
+
   return (
     <SidebarProvider>
       <AppSidebar />
@@ -301,7 +330,7 @@ export default function CalendarMappingPage() {
                               Sync appointments from this calendar to your database
                             </p>
                           </div>
-                                                     <Switch
+                          <Switch
                              checked={isEnabled}
                              onCheckedChange={(checked: boolean) => toggleCalendarEnabled(calendar.id, checked)}
                            />
