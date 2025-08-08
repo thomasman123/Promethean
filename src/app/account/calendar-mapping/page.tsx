@@ -63,6 +63,7 @@ export default function CalendarMappingPage() {
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const latestAccountRef = useRef<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
 
   useEffect(() => {
     if (!selectedAccountId) return
@@ -71,6 +72,7 @@ export default function CalendarMappingPage() {
     setCalendars([])
     setMappings([])
     setError(null)
+    setNotice(null)
     setLoading(true)
 
     fetchCalendarsAndMappings()
@@ -93,10 +95,24 @@ export default function CalendarMappingPage() {
       if (latestAccountRef.current !== requestAccountId) return
 
       if (!calendarsResponse.ok) {
-        throw new Error(calendarsData.error || 'Failed to fetch calendars')
+        // Handle expected states gracefully without throwing noisy errors
+        if (calendarsResponse.status === 404 && (calendarsData?.error || '').toLowerCase().includes('no active ghl connection')) {
+          setCalendars([])
+          setNotice('No active GoHighLevel connection for this account. Connect it in Account → CRM Connection.')
+        } else if (calendarsResponse.status === 401) {
+          setCalendars([])
+          setNotice('GoHighLevel token expired. Please reconnect your CRM in Account → CRM Connection.')
+        } else if (calendarsResponse.status === 403) {
+          setCalendars([])
+          setNotice('This GoHighLevel token has no access to the selected location. Try reconnecting the CRM.')
+        } else {
+          // Unexpected
+          throw new Error(calendarsData.error || 'Failed to fetch calendars')
+        }
+      } else {
+        setCalendars(calendarsData.calendars || [])
+        setNotice(null)
       }
-
-      setCalendars(calendarsData.calendars || [])
 
       // Fetch existing mappings
       const { data: mappingsData, error: mappingsError } = await supabase
@@ -116,7 +132,7 @@ export default function CalendarMappingPage() {
     } catch (error) {
       // Only set the error if this response is still relevant
       if (latestAccountRef.current === requestAccountId) {
-        console.error('Error fetching calendars and mappings:', error)
+        console.warn('Calendars load warning:', error)
         setError(error instanceof Error ? error.message : 'Failed to load calendars')
       }
     } finally {
@@ -134,6 +150,7 @@ export default function CalendarMappingPage() {
       setCalendars([])
       setMappings([])
       setError(null)
+      setNotice(null)
       setLoading(true)
       await fetchCalendarsAndMappings()
     }
@@ -275,6 +292,12 @@ export default function CalendarMappingPage() {
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+            {!error && notice && (
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{notice}</AlertDescription>
               </Alert>
             )}
 
