@@ -61,6 +61,7 @@ export async function GET(request: NextRequest) {
             is_connected: connection.is_connected,
             connection_status: connection.connection_status,
             has_access_token: !!connection.access_token,
+            has_location_id: !!connection.ghl_location_id,
           }
         : null,
       error: connectionError?.message || null,
@@ -85,12 +86,22 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    const locationId = connection.ghl_location_id || ''
+    console.log('🐛 DEBUG - Using GHL location for calendars request:', locationId || '(none)')
+
     // Fetch calendars from GHL API
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${connection.access_token}`,
+      Version: '2021-07-28',
+      Accept: 'application/json',
+    }
+
+    if (locationId) {
+      headers['Location'] = locationId
+    }
+
     const calendarsResponse = await fetch('https://services.leadconnectorhq.com/calendars/', {
-      headers: {
-        Authorization: `Bearer ${connection.access_token}`,
-        Version: '2021-07-28',
-      },
+      headers,
     })
 
     if (!calendarsResponse.ok) {
