@@ -1,0 +1,144 @@
+"use client";
+
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuTrigger 
+} from "@/components/ui/dropdown-menu";
+import { 
+  MoreHorizontal, 
+  Copy, 
+  Trash2, 
+  Edit, 
+  Pin, 
+  Info,
+  Maximize2 
+} from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
+
+interface ChartWrapperProps {
+  title: string;
+  description?: string;
+  formula?: string;
+  isLoading?: boolean;
+  error?: string;
+  pinned?: boolean;
+  onEdit?: () => void;
+  onDuplicate?: () => void;
+  onDelete?: () => void;
+  onPin?: () => void;
+  onFullscreen?: () => void;
+  className?: string;
+  children: React.ReactNode;
+}
+
+export function ChartWrapper({
+  title,
+  description,
+  formula,
+  isLoading,
+  error,
+  pinned,
+  onEdit,
+  onDuplicate,
+  onDelete,
+  onPin,
+  onFullscreen,
+  className,
+  children
+}: ChartWrapperProps) {
+  return (
+    <Card className={cn("h-full flex flex-col", pinned && "ring-2 ring-primary", className)}>
+      <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-3">
+        <div className="flex-1">
+          <CardTitle className="text-base font-medium">{title}</CardTitle>
+          {description && (
+            <CardDescription className="text-sm mt-1">{description}</CardDescription>
+          )}
+        </div>
+        
+        <div className="flex items-center gap-1">
+          {formula && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <Info className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="font-mono text-xs">{formula}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {onEdit && (
+                <DropdownMenuItem onClick={onEdit}>
+                  <Edit className="mr-2 h-4 w-4" />
+                  Edit
+                </DropdownMenuItem>
+              )}
+              {onDuplicate && (
+                <DropdownMenuItem onClick={onDuplicate}>
+                  <Copy className="mr-2 h-4 w-4" />
+                  Duplicate
+                </DropdownMenuItem>
+              )}
+              {onPin && (
+                <DropdownMenuItem onClick={onPin}>
+                  <Pin className="mr-2 h-4 w-4" />
+                  {pinned ? 'Unpin' : 'Pin'}
+                </DropdownMenuItem>
+              )}
+              {onFullscreen && (
+                <DropdownMenuItem onClick={onFullscreen}>
+                  <Maximize2 className="mr-2 h-4 w-4" />
+                  Fullscreen
+                </DropdownMenuItem>
+              )}
+              {onDelete && (
+                <>
+                  <DropdownMenuItem className="text-destructive" onClick={onDelete}>
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </CardHeader>
+      
+      <CardContent className="flex-1 pb-4">
+        {isLoading ? (
+          <div className="h-full flex items-center justify-center">
+            <Skeleton className="w-full h-full" />
+          </div>
+        ) : error ? (
+          <div className="h-full flex items-center justify-center">
+            <p className="text-sm text-muted-foreground text-center">
+              {error}
+            </p>
+          </div>
+        ) : (
+          <div className="h-full">
+            {children}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+} 
