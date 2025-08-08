@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useAuth } from '@/hooks/useAuth'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 
 interface TeamMember {
   account_id: string
@@ -36,6 +37,7 @@ export default function TeamMembersPage() {
   const [fullName, setFullName] = useState('')
   const [role, setRole] = useState<TeamMember['role']>('setter')
   const [inviting, setInviting] = useState(false)
+  const [openInvite, setOpenInvite] = useState(false)
 
   useEffect(() => {
     if (!selectedAccountId) return
@@ -62,6 +64,19 @@ export default function TeamMembersPage() {
     }
   }
 
+  const fetchGhlUsers = async () => {
+    if (!selectedAccountId) return
+    try {
+      const ts = Date.now()
+      const res = await fetch(`/api/team/ghl?accountId=${selectedAccountId}&_ts=${ts}`, { cache: 'no-store' })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to fetch GHL users')
+      setGhlUsers(data.users || [])
+    } catch {
+      // ignore silently for now
+    }
+  }
+
   const invite = async () => {
     if (!selectedAccountId || !email) return
     setInviting(true)
@@ -79,23 +94,11 @@ export default function TeamMembersPage() {
       setFullName('')
       setRole('setter')
       await fetchMembers()
+      setOpenInvite(false)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to invite')
     } finally {
       setInviting(false)
-    }
-  }
-
-  const fetchGhlUsers = async () => {
-    if (!selectedAccountId) return
-    try {
-      const ts = Date.now()
-      const res = await fetch(`/api/team/ghl?accountId=${selectedAccountId}&_ts=${ts}`, { cache: 'no-store' })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Failed to fetch GHL users')
-      setGhlUsers(data.users || [])
-    } catch {
-      // ignore silently for now
     }
   }
 
@@ -137,14 +140,15 @@ export default function TeamMembersPage() {
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-2">
+            <Button onClick={() => setOpenInvite(true)}>Invite Member</Button>
             <ThemeToggle />
           </div>
         </header>
 
         <div className="flex flex-1 flex-col gap-4 p-4">
-          <div className="grid gap-4 lg:grid-cols-3">
-            <Card className="lg:col-span-2">
+          <div className="grid gap-4">
+            <Card>
               <CardHeader>
                 <CardTitle>Members</CardTitle>
               </CardHeader>
@@ -172,59 +176,66 @@ export default function TeamMembersPage() {
                 )}
               </CardContent>
             </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Invite Member</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Email</Label>
-                  <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="member@company.com" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Full name</Label>
-                  <Input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Jane Doe" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Role</Label>
-                  <Select value={role} onValueChange={(v: TeamMember['role']) => setRole(v)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="setter">Setter</SelectItem>
-                      <SelectItem value="sales_rep">Sales Rep</SelectItem>
-                      <SelectItem value="moderator">Moderator</SelectItem>
-                      <SelectItem value="admin">Admin</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <Button onClick={invite} disabled={inviting || !email}>Invite</Button>
-                <p className="text-xs text-muted-foreground">
-                  Invitations backfill historical appointments and dials for this email/name so reporting links correctly once they join.
-                </p>
-                {ghlUsers.length > 0 && (
-                  <div className="space-y-2 pt-4 border-t">
-                    <div className="text-sm font-medium">Invite from GHL</div>
-                    <div className="space-y-2 max-h-56 overflow-auto pr-1">
-                      {ghlUsers.map((u) => (
-                        <div key={u.id} className="flex items-center justify-between rounded-md border p-2">
-                          <div>
-                            <div className="text-sm">{u.name || u.email || 'Unknown'}</div>
-                            <div className="text-xs text-muted-foreground">{u.email || 'no email'}</div>
-                          </div>
-                          <Button size="sm" variant="outline" disabled={!u.email} onClick={() => { setEmail(u.email || ''); setFullName(u.name || ''); setRole('setter') }}>Fill</Button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
           </div>
         </div>
       </SidebarInset>
+
+      <Dialog open={openInvite} onOpenChange={(o) => { setOpenInvite(o); if (!o) { setEmail(''); setFullName(''); setRole('setter') } }}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Invite Member</DialogTitle>
+            <DialogDescription>
+              Invitations backfill historical appointments and dials for this email/name so reporting links correctly once they join.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>Email</Label>
+              <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="member@company.com" />
+            </div>
+            <div className="space-y-2">
+              <Label>Full name</Label>
+              <Input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Jane Doe" />
+            </div>
+            <div className="space-y-2">
+              <Label>Role</Label>
+              <Select value={role} onValueChange={(v: TeamMember['role']) => setRole(v)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="setter">Setter</SelectItem>
+                  <SelectItem value="sales_rep">Sales Rep</SelectItem>
+                  <SelectItem value="moderator">Moderator</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {ghlUsers.length > 0 && (
+              <div className="space-y-2 pt-2 border-t">
+                <div className="text-sm font-medium">Invite from GHL</div>
+                <div className="space-y-2 max-h-56 overflow-auto pr-1">
+                  {ghlUsers.map((u) => (
+                    <div key={u.id} className="flex items-center justify-between rounded-md border p-2">
+                      <div>
+                        <div className="text-sm">{u.name || u.email || 'Unknown'}</div>
+                        <div className="text-xs text-muted-foreground">{u.email || 'no email'}</div>
+                      </div>
+                      <Button size="sm" variant="outline" disabled={!u.email} onClick={() => { setEmail(u.email || ''); setFullName(u.name || ''); setRole('setter') }}>Fill</Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button onClick={invite} disabled={inviting || !email}>Invite</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </SidebarProvider>
   )
 } 
