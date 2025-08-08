@@ -212,24 +212,7 @@ export default function CRMConnectionPage() {
     }
   }
 
-  if (!permissions.canManageAccount) {
-    return (
-      <SidebarProvider>
-        <AppSidebar />
-        <SidebarInset>
-          <div className="min-h-screen flex items-center justify-center">
-            <div className="text-center space-y-4">
-              <h1 className="text-2xl font-bold">Access Denied</h1>
-              <p className="text-muted-foreground">
-                You don&apos;t have permission to manage CRM connections.
-              </p>
-            </div>
-          </div>
-        </SidebarInset>
-      </SidebarProvider>
-    )
-  }
-
+  
   return (
     <SidebarProvider>
       <AppSidebar />
