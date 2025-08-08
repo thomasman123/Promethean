@@ -155,12 +155,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     })
   }
 
+  // Keep navigation stable; hide until user is known
   if (loading) {
-    return (
-      <Sidebar variant="inset" {...props}>
-        <div className="p-4">Loading...</div>
-      </Sidebar>
-    )
+    return <Sidebar variant="inset" {...props} />
   }
 
   if (!user) {
