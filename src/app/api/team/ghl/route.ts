@@ -44,13 +44,25 @@ export async function GET(request: NextRequest) {
       Accept: 'application/json',
     }
 
+    const fetchUsersViaLocationPath = async (locationId: string) => {
+      const url = `https://services.leadconnectorhq.com/locations/${encodeURIComponent(locationId)}/users/`
+      const resp = await fetch(url, { headers: baseHeaders })
+      return resp
+    }
+
     const fetchUsers = async (locationId?: string) => {
       const headers = { ...baseHeaders }
       if (locationId) headers['Location'] = locationId
 
-      // Try users endpoint; fallback with query param
+      // Try location path first when we have a location id
+      if (locationId) {
+        const pathResp = await fetchUsersViaLocationPath(locationId)
+        if (pathResp.ok) return pathResp
+      }
+
+      // Try generic users endpoint with header
       let resp = await fetch('https://services.leadconnectorhq.com/users/', { headers })
-      if (!resp.ok && locationId && resp.status === 403) {
+      if (!resp.ok && locationId && (resp.status === 403 || resp.status === 422)) {
         const urlWithQuery = new URL('https://services.leadconnectorhq.com/users/')
         urlWithQuery.searchParams.set('locationId', locationId)
         resp = await fetch(urlWithQuery.toString(), { headers: baseHeaders })
@@ -61,7 +73,7 @@ export async function GET(request: NextRequest) {
     let locationId = connection.ghl_location_id || ''
     let usersResp = await fetchUsers(locationId || undefined)
 
-    if (!usersResp.ok && usersResp.status === 403) {
+    if (!usersResp.ok && (usersResp.status === 403 || usersResp.status === 422)) {
       // Discover locations and retry
       const locResp = await fetch('https://services.leadconnectorhq.com/locations', { headers: baseHeaders })
       if (locResp.ok) {
@@ -78,12 +90,16 @@ export async function GET(request: NextRequest) {
             break
           }
         }
+      } else {
+        const t = await locResp.text().catch(() => '')
+        console.warn('GHL locations fallback failed:', locResp.status, t)
       }
     }
 
     if (!usersResp.ok) {
-      const text = await usersResp.text()
-      return NextResponse.json({ error: `Failed to fetch GHL users: ${usersResp.status}`, details: text }, { status: usersResp.status })
+      const text = await usersResp.text().catch(() => '')
+      console.error('GHL Users API error:', usersResp.status, text)
+      return NextResponse.json({ error: `Failed to fetch GHL users: ${usersResp.status}` }, { status: usersResp.status })
     }
 
     const usersData = await usersResp.json()
@@ -96,6 +112,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ users })
   } catch (e) {
+    console.error('Team GHL API error:', e)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 } 
