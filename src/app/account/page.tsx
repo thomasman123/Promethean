@@ -1,6 +1,7 @@
 "use client"
 
 import React from "react"
+import Link from "next/link"
 import { AppSidebar } from "@/components/app-sidebar"
 import {
   Breadcrumb,
@@ -38,6 +39,7 @@ export default function AccountPage() {
       title: "CRM Connection",
       description: "Connect your CRM to sync leads and opportunities",
       icon: Zap,
+      href: "/account/crm-connection",
       available: permissions.canManageAccount,
       requiredRole: "Moderator or Admin"
     },
@@ -45,6 +47,7 @@ export default function AccountPage() {
       title: "Calendar Mapping", 
       description: "Map your calendar for appointment scheduling",
       icon: Calendar,
+      href: "/account/calendar-mapping",
       available: permissions.canManageAccount,
       requiredRole: "Moderator or Admin"
     },
@@ -52,6 +55,7 @@ export default function AccountPage() {
       title: "Team Members",
       description: "Manage users and roles for this account",
       icon: Users,
+      href: "/account/team-members",
       available: permissions.canManageTeam,
       requiredRole: "Moderator or Admin"
     },
@@ -59,6 +63,7 @@ export default function AccountPage() {
       title: "Account Settings",
       description: "Configure account preferences and settings",
       icon: Settings,
+      href: "/account",
       available: permissions.canManageAccount,
       requiredRole: "Moderator or Admin"
     }
@@ -90,53 +95,45 @@ export default function AccountPage() {
         </header>
         <div className="flex flex-1 flex-col gap-4 p-4">
           <div className="space-y-4">
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight">Account Settings</h1>
-              <p className="text-muted-foreground">
-                Manage settings and configurations for {selectedAccount?.name || 'your account'}
-              </p>
+            <div className="flex items-center gap-2">
+              <Settings className="h-6 w-6" />
+              <h1 className="text-3xl font-bold tracking-tight">Account</h1>
             </div>
+            <p className="text-muted-foreground">
+              Manage account-level tools and settings for {selectedAccount?.name || 'your account'}.
+            </p>
 
             {permissions.isAccountSpecific && (
-              <Card className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950">
+              <Card>
                 <CardHeader>
-                  <CardTitle className="text-blue-800 dark:text-blue-200">
-                    Account Scope
-                  </CardTitle>
+                  <CardTitle className="text-base">Current Account</CardTitle>
+                  <CardDescription>
+                    You are working within <strong>{selectedAccount?.name}</strong>. Your role: <strong>{permissions.currentRole}</strong>.
+                  </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-blue-700 dark:text-blue-300">
-                    You are currently working within: <strong>{selectedAccount?.name}</strong>
-                  </p>
-                  <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                    Your role: <strong>{permissions.currentRole}</strong>
-                  </p>
-                </CardContent>
               </Card>
             )}
 
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {accountSections.map((section) => (
-                <Card key={section.title} className={!section.available ? "opacity-50" : ""}>
-                  <CardHeader>
-                    <div className="flex items-center gap-2">
-                      <section.icon className="h-5 w-5" />
-                      <CardTitle className="text-lg">{section.title}</CardTitle>
-                    </div>
-                    <CardDescription>{section.description}</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {section.available ? (
-                      <p className="text-sm text-green-600 dark:text-green-400">
-                        ✓ Available for your role
-                      </p>
-                    ) : (
-                      <p className="text-sm text-muted-foreground">
-                        ⚠ Requires: {section.requiredRole}
-                      </p>
-                    )}
-                  </CardContent>
-                </Card>
+                <Link key={section.title} href={section.href} aria-disabled={!section.available}>
+                  <Card className={`hover:shadow-md transition-shadow cursor-pointer ${!section.available ? 'opacity-60' : ''}`}>
+                    <CardHeader>
+                      <div className="flex items-center gap-2">
+                        <section.icon className="h-5 w-5" />
+                        <CardTitle className="text-lg">{section.title}</CardTitle>
+                      </div>
+                      <CardDescription>{section.description}</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      {section.available ? (
+                        <p className="text-sm text-muted-foreground">Open</p>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">Requires: {section.requiredRole}</p>
+                      )}
+                    </CardContent>
+                  </Card>
+                </Link>
               ))}
             </div>
           </div>
