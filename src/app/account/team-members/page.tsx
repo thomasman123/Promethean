@@ -28,6 +28,7 @@ export default function TeamMembersPage() {
   const { selectedAccountId, getAccountBasedPermissions, accountChangeTimestamp } = useAuth()
   const permissions = getAccountBasedPermissions()
   const [members, setMembers] = useState<TeamMember[]>([])
+  const [ghlUsers, setGhlUsers] = useState<Array<{ id: string; email: string | null; name: string | null; role: string | null }>>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -41,7 +42,9 @@ export default function TeamMembersPage() {
     setLoading(true)
     setError(null)
     setMembers([])
+    setGhlUsers([])
     fetchMembers()
+    fetchGhlUsers()
   }, [selectedAccountId, accountChangeTimestamp])
 
   const fetchMembers = async () => {
@@ -80,6 +83,19 @@ export default function TeamMembersPage() {
       setError(e instanceof Error ? e.message : 'Failed to invite')
     } finally {
       setInviting(false)
+    }
+  }
+
+  const fetchGhlUsers = async () => {
+    if (!selectedAccountId) return
+    try {
+      const ts = Date.now()
+      const res = await fetch(`/api/team/ghl?accountId=${selectedAccountId}&_ts=${ts}`, { cache: 'no-store' })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to fetch GHL users')
+      setGhlUsers(data.users || [])
+    } catch {
+      // ignore silently for now
     }
   }
 
@@ -188,6 +204,22 @@ export default function TeamMembersPage() {
                 <p className="text-xs text-muted-foreground">
                   Invitations backfill historical appointments and dials for this email/name so reporting links correctly once they join.
                 </p>
+                {ghlUsers.length > 0 && (
+                  <div className="space-y-2 pt-4 border-t">
+                    <div className="text-sm font-medium">Invite from GHL</div>
+                    <div className="space-y-2 max-h-56 overflow-auto pr-1">
+                      {ghlUsers.map((u) => (
+                        <div key={u.id} className="flex items-center justify-between rounded-md border p-2">
+                          <div>
+                            <div className="text-sm">{u.name || u.email || 'Unknown'}</div>
+                            <div className="text-xs text-muted-foreground">{u.email || 'no email'}</div>
+                          </div>
+                          <Button size="sm" variant="outline" disabled={!u.email} onClick={() => { setEmail(u.email || ''); setFullName(u.name || ''); setRole('setter') }}>Fill</Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
