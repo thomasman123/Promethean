@@ -102,6 +102,39 @@ export default function TeamMembersPage() {
     }
   }
 
+  const updateRole = async (userId: string, newRole: TeamMember['role']) => {
+    if (!selectedAccountId) return
+    try {
+      const res = await fetch('/api/team/update-role', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accountId: selectedAccountId, userId, role: newRole }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to update role')
+      await fetchMembers()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to update role')
+    }
+  }
+
+  const removeMember = async (userId: string) => {
+    if (!selectedAccountId) return
+    if (!confirm('Remove this member from the account?')) return
+    try {
+      const res = await fetch('/api/team/remove', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accountId: selectedAccountId, userId }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to remove member')
+      await fetchMembers()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to remove member')
+    }
+  }
+
   if (!permissions.canManageAccount) {
     return (
       <SidebarProvider>
@@ -163,12 +196,25 @@ export default function TeamMembersPage() {
                       <div className="text-muted-foreground">No members yet.</div>
                     ) : (
                       members.map((m) => (
-                        <div key={m.user_id} className="flex items-center justify-between rounded-lg border p-3">
-                          <div>
-                            <div className="font-medium">{m.full_name || m.email}</div>
-                            <div className="text-xs text-muted-foreground">{m.email}</div>
+                        <div key={m.user_id} className="flex items-center justify-between rounded-lg border p-3 gap-3">
+                          <div className="min-w-0">
+                            <div className="font-medium truncate">{m.full_name || m.email}</div>
+                            <div className="text-xs text-muted-foreground truncate">{m.email}</div>
                           </div>
-                          <div className="text-sm text-muted-foreground capitalize">{m.role.replace('_',' ')}</div>
+                          <div className="flex items-center gap-2">
+                            <Select value={m.role} onValueChange={(v: TeamMember['role']) => updateRole(m.user_id, v)}>
+                              <SelectTrigger className="w-36 capitalize">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="setter">Setter</SelectItem>
+                                <SelectItem value="sales_rep">Sales Rep</SelectItem>
+                                <SelectItem value="moderator">Moderator</SelectItem>
+                                <SelectItem value="admin">Admin</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <Button variant="outline" size="sm" onClick={() => removeMember(m.user_id)}>Remove</Button>
+                          </div>
                         </div>
                       ))
                     )}
