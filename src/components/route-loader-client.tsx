@@ -24,7 +24,7 @@ export function RouteLoader({ children }: { children: React.ReactNode }) {
   const overlay = useMemo(() => (
     active && target
       ? createPortal(
-          <div className="fixed inset-0 z-[9999] pointer-events-none bg-background/80 backdrop-blur-sm transition-opacity duration-300">
+          <div className="absolute inset-0 z-[9999] pointer-events-none bg-background/80 backdrop-blur-sm transition-opacity duration-300">
             <div className="flex h-full w-full items-center justify-center">
               <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent" />
             </div>

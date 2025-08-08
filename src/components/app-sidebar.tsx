@@ -35,23 +35,23 @@ const staticData = {
   navMain: [
     {
       title: "Dashboard",
-      url: "#",
+      url: "/dashboard",
       icon: BarChart3,
       isActive: true,
       items: [
-        { title: "Appointments", url: "#" },
-        { title: "Discoveries", url: "#" },
-        { title: "Dials", url: "#" },
+        { title: "Appointments", url: "/dashboard/appointments" },
+        { title: "Discoveries", url: "/dashboard/discoveries" },
+        { title: "Dials", url: "/dashboard/dials" },
       ],
     },
-    { title: "Ads", url: "/ads", icon: MegaphoneIcon, items: [ { title: "Setup", url: "#" }, { title: "Campaigns", url: "#" } ] },
-    { title: "AI Tools", url: "/ai-tools", icon: Bot, items: [ { title: "Call Analysis", url: "#" }, { title: "KPI Breakdown", url: "#" } ] },
+    { title: "Ads", url: "/ads", icon: MegaphoneIcon, items: [ { title: "Setup", url: "/ads/setup" }, { title: "Campaigns", url: "/ads/campaigns" } ] },
+    { title: "AI Tools", url: "/ai-tools", icon: Bot, items: [ { title: "Call Analysis", url: "/ai-tools/call-analysis" }, { title: "KPI Breakdown", url: "/ai-tools/kpi-breakdown" } ] },
     { title: "Admin", url: "/admin", icon: Shield, items: [ { title: "Manage Accounts", url: "/admin/manage-accounts" } ] },
     { title: "Account", url: "/account", icon: Settings, items: [ { title: "CRM Connection", url: "/account/crm-connection" }, { title: "Calendar Mapping", url: "/account/calendar-mapping" }, { title: "Team Members", url: "/account/team-members" } ] },
   ],
   navSecondary: [
-    { title: "Support", url: "#", icon: LifeBuoy },
-    { title: "Feedback", url: "#", icon: Send },
+    { title: "Support", url: "/support", icon: LifeBuoy },
+    { title: "Feedback", url: "/feedback", icon: Send },
   ],
 }
 
