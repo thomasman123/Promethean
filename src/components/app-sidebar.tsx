@@ -55,7 +55,7 @@ const staticData = {
     },
     {
       title: "Ads",
-      url: "#",
+      url: "/ads",
       icon: MegaphoneIcon,
       items: [
         {
@@ -70,7 +70,7 @@ const staticData = {
     },
     {
       title: "AI Tools",
-      url: "#",
+      url: "/ai-tools",
       icon: Bot,
       items: [
         {
@@ -96,7 +96,7 @@ const staticData = {
     },
     {
       title: "Account",
-      url: "#",
+      url: "/account",
       icon: Settings,
       items: [
         {
