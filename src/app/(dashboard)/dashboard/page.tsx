@@ -89,7 +89,7 @@ export default function DashboardPage() {
   }, [isDirty, saveCurrentView]);
   
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-screen overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between p-6 border-b">
         <div>
