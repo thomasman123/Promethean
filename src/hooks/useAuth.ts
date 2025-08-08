@@ -16,6 +16,7 @@ export function useAuth() {
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null)
   const [allAccounts, setAllAccounts] = useState<Accounts[]>([])
   const [accountChangeTimestamp, setAccountChangeTimestamp] = useState<number>(Date.now())
+  const localStorageKey = (userId?: string | null) => `promethean:selectedAccountId:${userId || 'anon'}`
 
   useEffect(() => {
     // Get initial session
@@ -43,6 +44,16 @@ export function useAuth() {
 
     return () => subscription.unsubscribe()
   }, []) // Remove selectedAccountId dependency to avoid re-running auth flow
+
+  // Persist selected account across refreshes
+  useEffect(() => {
+    const userId = user?.id || null
+    if (selectedAccountId) {
+      try {
+        window.localStorage.setItem(localStorageKey(userId), selectedAccountId)
+      } catch {}
+    }
+  }, [selectedAccountId, user?.id])
 
   const fetchUserProfile = async (authUser: User) => {
     try {
@@ -240,10 +251,20 @@ export function useAuth() {
               accounts: accounts?.map(a => ({ id: a.id, name: a.name })) || []
             })
             setAllAccounts(accounts || [])
-            // Set default selected account if none is set
+            // Restore persisted selection if available and accessible
             if (!selectedAccountId && accounts && accounts.length > 0) {
-              console.log('🐛 DEBUG - Setting default selectedAccountId for admin:', accounts[0].id)
-              setSelectedAccountId(accounts[0].id)
+              let restored: string | null = null
+              try {
+                restored = window.localStorage.getItem(localStorageKey(authUser.id))
+              } catch {}
+              const isValid = restored && accounts.some(a => a.id === restored)
+              if (isValid && restored) {
+                console.log('🐛 DEBUG - Restoring persisted selectedAccountId for admin:', restored)
+                setSelectedAccountId(restored)
+              } else {
+                console.log('🐛 DEBUG - Setting default selectedAccountId for admin:', accounts[0].id)
+                setSelectedAccountId(accounts[0].id)
+              }
             }
           }
         } catch (error) {
@@ -253,7 +274,17 @@ export function useAuth() {
       } else {
         // Set default selected account if none is set for non-admin users
         if (!selectedAccountId && accountAccess && accountAccess.length > 0) {
-          setSelectedAccountId(accountAccess[0].account_id)
+          let restored: string | null = null
+          try {
+            restored = window.localStorage.getItem(localStorageKey(authUser.id))
+          } catch {}
+          const isValid = restored && accountAccess.some(a => a.account_id === restored)
+          if (isValid && restored) {
+            console.log('🐛 DEBUG - Restoring persisted selectedAccountId for user:', restored)
+            setSelectedAccountId(restored)
+          } else {
+            setSelectedAccountId(accountAccess[0].account_id)
+          }
         }
       }
 
