@@ -109,7 +109,7 @@ const staticData = {
         },
         {
           title: "Team Members",
-          url: "#",
+          url: "/account/team-members",
         },
       ],
     },

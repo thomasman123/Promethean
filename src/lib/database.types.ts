@@ -409,7 +409,17 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      team_members: {
+        Row: {
+          account_id: string
+          user_id: string
+          email: string
+          full_name: string | null
+          role: Database["public"]["Enums"]["user_role"]
+          is_active: boolean
+          granted_at: string
+        }
+      }
     }
     Functions: {
       get_user_accounts: {
