@@ -4,7 +4,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { SwordsLoader } from "@/components/SwordsLoader";
-import { ClientLoader } from "@/components/route-loader-client";
+import { RouteLoader } from "@/components/route-loader-client";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -30,14 +30,9 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-          <ClientLoader>
-            {(active) => (
-              <>
-                <SwordsLoader active={active} />
-                {children}
-              </>
-            )}
-          </ClientLoader>
+          <RouteLoader>
+            {children}
+          </RouteLoader>
           <Toaster />
         </ThemeProvider>
       </body>

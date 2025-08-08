@@ -2,18 +2,23 @@
 
 import { useEffect, useState } from 'react'
 import { usePathname, useSearchParams } from 'next/navigation'
+import { SwordsLoader } from '@/components/SwordsLoader'
 
-export function ClientLoader({ children }: { children: (active: boolean) => React.ReactNode }) {
+export function RouteLoader({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const [active, setActive] = useState(false)
 
   useEffect(() => {
-    // Trigger on navigation start
     setActive(true)
     const id = setTimeout(() => setActive(false), 700)
     return () => clearTimeout(id)
   }, [pathname, searchParams?.toString()])
 
-  return <>{children(active)}</>
+  return (
+    <>
+      <SwordsLoader active={active} />
+      {children}
+    </>
+  )
 } 
