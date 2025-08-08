@@ -1,3 +1,8 @@
+"use client"
+
+import { useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { useAuth } from "@/hooks/useAuth"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -17,6 +22,34 @@ import { Shield, Users } from "lucide-react"
 import Link from "next/link"
 
 export default function AdminPage() {
+  const { user, loading, isAdmin } = useAuth()
+  const router = useRouter()
+
+  useEffect(() => {
+    if (loading) return
+    if (!user) {
+      router.replace('/login')
+      return
+    }
+    if (!isAdmin()) {
+      router.replace('/dashboard')
+      return
+    }
+  }, [user, loading, isAdmin, router])
+
+  if (loading || !user || !isAdmin()) {
+    return (
+      <SidebarInset>
+        <div className="flex items-center justify-center min-h-96">
+          <div className="text-center">
+            <h2 className="text-lg font-semibold">Access Denied</h2>
+            <p className="text-muted-foreground">You don't have permission to access this page.</p>
+          </div>
+        </div>
+      </SidebarInset>
+    )
+  }
+
   return (
     <SidebarInset>
       <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">

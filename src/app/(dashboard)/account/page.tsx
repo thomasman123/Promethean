@@ -2,6 +2,7 @@
 
 import React from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -21,7 +22,8 @@ import { useAuth } from "@/hooks/useAuth"
 import { Settings, Users, Calendar, Zap } from "lucide-react"
 
 export default function AccountPage() {
-  const { getAccountBasedPermissions, getSelectedAccount, accountChangeTimestamp } = useAuth()
+  const { user, loading, getAccountBasedPermissions, getSelectedAccount, accountChangeTimestamp } = useAuth()
+  const router = useRouter()
   const permissions = getAccountBasedPermissions()
   const selectedAccount = getSelectedAccount()
 
@@ -31,6 +33,31 @@ export default function AccountPage() {
     selectedAccount,
     timestamp: accountChangeTimestamp
   }), [permissions, selectedAccount, accountChangeTimestamp])
+
+  React.useEffect(() => {
+    if (loading) return
+    if (!user) {
+      router.replace('/login')
+      return
+    }
+    if (!permissions.canManageAccount) {
+      router.replace('/dashboard')
+      return
+    }
+  }, [user, loading, permissions.canManageAccount, router])
+
+  if (loading || !user || !permissions.canManageAccount) {
+    return (
+      <SidebarInset>
+        <div className="flex items-center justify-center min-h-96">
+          <div className="text-center">
+            <h2 className="text-lg font-semibold">Access Denied</h2>
+            <p className="text-muted-foreground">You don't have permission to access account settings.</p>
+          </div>
+        </div>
+      </SidebarInset>
+    )
+  }
 
   const accountSections = [
     {
