@@ -1,5 +1,6 @@
 -- Allow moderators and admins to read profiles of users in their accounts (for team view)
-CREATE POLICY IF NOT EXISTS "Moderators can read profiles for their accounts" ON profiles
+DROP POLICY IF EXISTS "Moderators can read profiles for their accounts" ON profiles;
+CREATE POLICY "Moderators can read profiles for their accounts" ON profiles
   FOR SELECT USING (
     EXISTS (
       SELECT 1 FROM account_access aa_me
