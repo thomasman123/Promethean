@@ -39,135 +39,78 @@ const staticData = {
       icon: BarChart3,
       isActive: true,
       items: [
-        {
-          title: "Appointments",
-          url: "#",
-        },
-        {
-          title: "Discoveries",
-          url: "#",
-        },
-        {
-          title: "Dials",
-          url: "#",
-        },
+        { title: "Appointments", url: "#" },
+        { title: "Discoveries", url: "#" },
+        { title: "Dials", url: "#" },
       ],
     },
-    {
-      title: "Ads",
-      url: "/ads",
-      icon: MegaphoneIcon,
-      items: [
-        {
-          title: "Setup",
-          url: "#",
-        },
-        {
-          title: "Campaigns",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "AI Tools",
-      url: "/ai-tools",
-      icon: Bot,
-      items: [
-        {
-          title: "Call Analysis",
-          url: "#",
-        },
-        {
-          title: "KPI Breakdown",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Admin",
-      url: "/admin",
-      icon: Shield,
-      items: [
-        {
-          title: "Manage Accounts",
-          url: "/admin/manage-accounts",
-        },
-      ],
-    },
-    {
-      title: "Account",
-      url: "/account",
-      icon: Settings,
-      items: [
-        {
-          title: "CRM Connection",
-          url: "/account/crm-connection",
-        },
-        {
-          title: "Calendar Mapping",
-          url: "/account/calendar-mapping",
-        },
-        {
-          title: "Team Members",
-          url: "/account/team-members",
-        },
-      ],
-    },
+    { title: "Ads", url: "/ads", icon: MegaphoneIcon, items: [ { title: "Setup", url: "#" }, { title: "Campaigns", url: "#" } ] },
+    { title: "AI Tools", url: "/ai-tools", icon: Bot, items: [ { title: "Call Analysis", url: "#" }, { title: "KPI Breakdown", url: "#" } ] },
+    { title: "Admin", url: "/admin", icon: Shield, items: [ { title: "Manage Accounts", url: "/admin/manage-accounts" } ] },
+    { title: "Account", url: "/account", icon: Settings, items: [ { title: "CRM Connection", url: "/account/crm-connection" }, { title: "Calendar Mapping", url: "/account/calendar-mapping" }, { title: "Team Members", url: "/account/team-members" } ] },
   ],
   navSecondary: [
-    {
-      title: "Support",
-      url: "#",
-      icon: LifeBuoy,
-    },
-    {
-      title: "Feedback",
-      url: "#",
-      icon: Send,
-    },
+    { title: "Support", url: "#", icon: LifeBuoy },
+    { title: "Feedback", url: "#", icon: Send },
   ],
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { user, loading, selectedAccountId, setSelectedAccountId, getAvailableAccounts, isAdmin, isModerator } = useAuth()
-  const availableAccounts = getAvailableAccounts()
-  const selectedAccount = availableAccounts.find(acc => acc.id === selectedAccountId) || availableAccounts[0]
 
-  // Filter navigation items based on user role
+  // Snapshot last known values so UI stays stable during transient loading
+  const lastUserRef = React.useRef<typeof user>(null)
+  const lastAccountsRef = React.useRef(getAvailableAccounts())
+  const lastSelectedRef = React.useRef<string | null>(selectedAccountId)
+  const lastIsAdminRef = React.useRef<boolean>(false)
+  const lastIsModeratorRef = React.useRef<boolean>(false)
+
+  React.useEffect(() => {
+    if (user) lastUserRef.current = user
+    const accs = getAvailableAccounts()
+    if (accs && accs.length) lastAccountsRef.current = accs
+    if (selectedAccountId) lastSelectedRef.current = selectedAccountId
+    // Compute role flags when not loading
+    if (!loading) {
+      lastIsAdminRef.current = !!(user && user.profile?.role === 'admin')
+      lastIsModeratorRef.current = lastIsAdminRef.current || !!(user && (user.profile?.role === 'moderator'))
+    }
+  }, [user, loading, selectedAccountId, getAvailableAccounts])
+
+  const effectiveUser = user || lastUserRef.current
+  const availableAccounts = getAvailableAccounts()
+  const effectiveAccounts = (availableAccounts && availableAccounts.length) ? availableAccounts : lastAccountsRef.current
+  const effectiveSelectedId = selectedAccountId || lastSelectedRef.current
+
+  const roleIsAdmin = !loading ? isAdmin() : lastIsAdminRef.current
+  const roleIsModerator = !loading ? isModerator() : lastIsModeratorRef.current
+
   const getFilteredNavItems = () => {
     return staticData.navMain.filter(item => {
-      // Hide Admin section for non-admin users
       if (item.title === 'Admin') {
-        return isAdmin()
+        return roleIsAdmin
       }
-      
-      // Hide Account section for setters and sales reps
       if (item.title === 'Account') {
-        return isModerator() // Only admin and moderator can see Account section
+        return roleIsModerator
       }
-      
-      // Hide certain features based on role
       if (item.title === 'Ads') {
-        return isModerator() // Only admin and moderator can manage ads
+        return roleIsModerator
       }
-      
-      return true // Show Dashboard and AI Tools to everyone
+      return true
     })
   }
 
-  // Keep navigation stable; hide until user is known
-  if (loading) {
+  // If no user at all (first load before auth), render empty shell to keep layout
+  if (!effectiveUser) {
     return <Sidebar variant="inset" {...props} />
   }
 
-  if (!user) {
-    return null
-  }
+  const selectedAccount = effectiveAccounts.find(acc => acc.id === effectiveSelectedId) || effectiveAccounts[0]
 
   const userData = {
-    name: user.profile?.full_name || user.email?.split('@')[0] || 'User',
-    email: user.email || '',
-    avatar: user.profile?.avatar_url || '',
+    name: effectiveUser.profile?.full_name || effectiveUser.email?.split('@')[0] || 'User',
+    email: effectiveUser.email || '',
+    avatar: effectiveUser.profile?.avatar_url || '',
   }
 
   return (
@@ -175,9 +118,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            {availableAccounts.length > 1 ? (
+            {effectiveAccounts.length > 1 ? (
               <Select 
-                value={selectedAccountId || ''} 
+                value={effectiveSelectedId || ''} 
                 onValueChange={(value) => setSelectedAccountId(value)}
               >
                 <SelectTrigger className="h-auto p-2 border-0 shadow-none bg-transparent hover:bg-transparent focus:bg-transparent data-[state=open]:bg-transparent focus:ring-0 focus:ring-offset-0">
@@ -192,7 +135,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   </div>
                 </SelectTrigger>
                 <SelectContent align="center" sideOffset={8}>
-                  {availableAccounts.map((account) => (
+                  {effectiveAccounts.map((account) => (
                     <SelectItem key={account.id} value={account.id}>
                       <div className="flex items-center gap-2">
                         <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-6 items-center justify-center rounded-md">
