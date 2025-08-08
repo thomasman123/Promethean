@@ -86,41 +86,85 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const locationId = connection.ghl_location_id || ''
-    console.log('🐛 DEBUG - Using GHL location for calendars request:', locationId || '(none)')
-
-    // Fetch calendars from GHL API
-    const headers: Record<string, string> = {
+    const baseHeaders: Record<string, string> = {
       Authorization: `Bearer ${connection.access_token}`,
       Version: '2021-07-28',
       Accept: 'application/json',
     }
 
-    if (locationId) {
-      headers['Location'] = locationId
+    const fetchCalendars = async (locationId?: string) => {
+      const headers = { ...baseHeaders }
+      if (locationId) headers['Location'] = locationId
+
+      const url = new URL('https://services.leadconnectorhq.com/calendars/')
+      // Try with header first
+      let resp = await fetch(url.toString(), { headers })
+      if (!resp.ok && locationId && resp.status === 403) {
+        // Try again with query param as fallback for some environments
+        const urlWithQuery = new URL('https://services.leadconnectorhq.com/calendars/')
+        urlWithQuery.searchParams.set('locationId', locationId)
+        resp = await fetch(urlWithQuery.toString(), { headers: baseHeaders })
+      }
+      return resp
     }
 
-    const calendarsResponse = await fetch('https://services.leadconnectorhq.com/calendars/', {
-      headers,
-    })
+    let locationId = connection.ghl_location_id || ''
+    console.log('🐛 DEBUG - Attempting calendars fetch with location:', locationId || '(none)')
 
-    if (!calendarsResponse.ok) {
-      const errorText = await calendarsResponse.text()
-      console.error('GHL Calendars API error:', calendarsResponse.status, errorText)
-      return NextResponse.json(
-        {
-          error: `Failed to fetch calendars: ${calendarsResponse.status}`,
-        },
-        { status: calendarsResponse.status }
-      )
+    // First attempt using stored location (or none)
+    let calendarsResponse = await fetchCalendars(locationId || undefined)
+
+    if (calendarsResponse.ok) {
+      const calendarsData = await calendarsResponse.json()
+      return NextResponse.json({ success: true, calendars: calendarsData.calendars || [] })
     }
 
-    const calendarsData = await calendarsResponse.json()
+    // If forbidden, try discovering valid locations and retry
+    if (calendarsResponse.status === 403) {
+      console.warn('Calendars fetch returned 403. Attempting to discover accessible locations...')
+      const locationsResp = await fetch('https://services.leadconnectorhq.com/locations', {
+        headers: baseHeaders,
+      })
 
-    return NextResponse.json({
-      success: true,
-      calendars: calendarsData.calendars || [],
-    })
+      if (locationsResp.ok) {
+        const locData = await locationsResp.json()
+        const locations: Array<{ id: string; name?: string }> = locData.locations || []
+        console.log('🐛 DEBUG - Locations available to token:', locations.map((l) => l.id))
+
+        for (const loc of locations) {
+          const tryResp = await fetchCalendars(loc.id)
+          if (tryResp.ok) {
+            const calendarsData = await tryResp.json()
+
+            // If we used a different location than stored, try to update it for next time
+            if (loc.id !== locationId) {
+              const { error: updErr } = await supabase
+                .from('ghl_connections')
+                .update({ ghl_location_id: loc.id })
+                .eq('account_id', accountId)
+              if (updErr) {
+                console.warn('Failed to update ghl_location_id after discovery:', updErr.message)
+              } else {
+                console.log('Updated ghl_location_id to discovered working location:', loc.id)
+              }
+            }
+
+            return NextResponse.json({ success: true, calendars: calendarsData.calendars || [] })
+          }
+        }
+      } else {
+        const txt = await locationsResp.text()
+        console.warn('Failed to list locations for discovery:', locationsResp.status, txt)
+      }
+    }
+
+    // At this point, propagate the error content
+    const errorText = await calendarsResponse.text()
+    console.error('GHL Calendars API error (final):', calendarsResponse.status, errorText)
+    return NextResponse.json(
+      { error: `Failed to fetch calendars: ${calendarsResponse.status}` },
+      { status: calendarsResponse.status }
+    )
   } catch (error) {
     console.error('Error fetching GHL calendars:', error)
     return NextResponse.json(
