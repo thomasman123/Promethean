@@ -13,6 +13,16 @@ import { useAuth } from "@/hooks/useAuth";
 
 // Mock metrics registry for demo
 const mockMetricsRegistry: MetricDefinition[] = [
+  // Compare Mode Metrics
+  {
+    name: "setter_rep_performance",
+    displayName: "Setter × Rep Performance",
+    description: "Compare performance across setter-rep combinations",
+    category: "Compare Mode",
+    supportedBreakdowns: ["link"],
+    recommendedVisualizations: ["compareMatrix", "compareTable"],
+    formula: "Aggregated metrics by setter-rep pairs"
+  },
   {
     name: "revenue_total",
     displayName: "Total Revenue",

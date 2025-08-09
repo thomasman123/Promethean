@@ -6,8 +6,11 @@ import {
   DashboardWidget, 
   DashboardFilters, 
   CompareEntity,
+  CompareModeSettings,
   MetricDefinition,
-  ViewScope 
+  ViewScope,
+  CompareScope,
+  AttributionMode
 } from './types';
 import { supabase } from '@/lib/supabase';
 
@@ -27,6 +30,7 @@ interface DashboardState {
   // Compare mode
   compareMode: boolean;
   compareEntities: CompareEntity[];
+  compareModeSettings: CompareModeSettings;
   
   // Metrics registry
   metricsRegistry: MetricDefinition[];
@@ -65,6 +69,7 @@ interface DashboardState {
   addCompareEntity: (entity: CompareEntity) => void;
   removeCompareEntity: (entityId: string) => void;
   clearCompareEntities: () => void;
+  updateCompareModeSettings: (settings: Partial<CompareModeSettings>) => void;
   
   // Registry actions
   setMetricsRegistry: (metrics: MetricDefinition[]) => void;
@@ -89,6 +94,12 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
   filters: {},
   compareMode: false,
   compareEntities: [],
+  compareModeSettings: {
+    scope: 'setter',
+    attributionMode: 'primary',
+    excludeInCallDials: true,
+    excludeRepDials: true
+  },
   metricsRegistry: [],
   isLoadingRegistry: false,
   isAddWidgetModalOpen: false,
@@ -102,6 +113,12 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
     filters: view.filters,
     compareMode: view.compareMode,
     compareEntities: view.compareEntities,
+    compareModeSettings: (view as any).compareModeSettings || {
+      scope: 'setter',
+      attributionMode: 'primary',
+      excludeInCallDials: true,
+      excludeRepDials: true
+    },
     isDirty: false
   }),
   
@@ -448,6 +465,13 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
   
   clearCompareEntities: () => {
     set({ compareEntities: [], isDirty: true });
+  },
+  
+  updateCompareModeSettings: (settings) => {
+    set((state) => ({
+      compareModeSettings: { ...state.compareModeSettings, ...settings },
+      isDirty: true
+    }));
   },
   
   // Registry actions

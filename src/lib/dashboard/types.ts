@@ -1,4 +1,4 @@
-export type VizType = 'kpi' | 'line' | 'bar' | 'area' | 'pie' | 'donut' | 'table' | 'funnel';
+export type VizType = 'kpi' | 'line' | 'bar' | 'area' | 'pie' | 'donut' | 'table' | 'funnel' | 'compareMatrix' | 'compareTable';
 export type BreakdownType = 'total' | 'rep' | 'setter' | 'link' | 'time';
 export type ViewScope = 'private' | 'team' | 'global';
 
@@ -40,11 +40,29 @@ export interface DashboardWidget {
   pinned?: boolean;
 }
 
+export type CompareScope = 'setter' | 'rep' | 'pair';
+export type AttributionMode = 'primary' | 'last-touch' | 'assist';
+
 export interface CompareEntity {
   id: string;
   type: 'rep' | 'setter' | 'team' | 'account';
   name: string;
   color?: string;
+}
+
+export interface CompareModeSettings {
+  scope: CompareScope;
+  attributionMode: AttributionMode;
+  excludeInCallDials: boolean;
+  excludeRepDials: boolean;
+}
+
+export interface SetterRepPair {
+  setterId: string;
+  setterName: string;
+  repId: string;
+  repName: string;
+  metrics?: Record<string, any>;
 }
 
 export interface DashboardView {

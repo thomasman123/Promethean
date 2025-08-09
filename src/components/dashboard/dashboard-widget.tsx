@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { ChartWrapper, KPIChart, LineChart, BarChart, AreaChart, PieChart, DonutChart, TableChart } from "./charts";
+import { CompareWidget } from "./compare-widget";
 import { DashboardWidget as WidgetType, MetricData } from "@/lib/dashboard/types";
 import { useDashboardStore } from "@/lib/dashboard/store";
 import { supabase } from "@/lib/supabase";
@@ -165,6 +166,7 @@ export function DashboardWidget({ widget }: DashboardWidgetProps) {
     filters, 
     compareMode, 
     compareEntities,
+    compareModeSettings,
     updateWidget,
     removeWidget,
     duplicateWidget,
@@ -172,6 +174,11 @@ export function DashboardWidget({ widget }: DashboardWidgetProps) {
   } = useDashboardStore();
   
   const metricDefinition = metricsRegistry.find(m => m.name === widget.metricName);
+  
+  // Special handling for compare mode widgets
+  if (widget.vizType === 'compareMatrix' || widget.vizType === 'compareTable') {
+    return <CompareWidget widgetId={widget.id} />;
+  }
   
   // Filter entities based on widget breakdown type
   const relevantEntities = compareMode 

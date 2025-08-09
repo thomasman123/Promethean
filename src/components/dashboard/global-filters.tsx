@@ -5,9 +5,10 @@ import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { MultiSelect, MultiSelectOption } from "@/components/ui/multi-select";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { X, Filter, ToggleLeft, ToggleRight, Users, UserCheck } from "lucide-react";
+import { X, Filter, ToggleLeft, ToggleRight } from "lucide-react";
 import { useDashboardStore } from "@/lib/dashboard/store";
 import { DateRange } from "react-day-picker";
+import { CompareModeControls } from "./compare-mode-controls";
 import { cn } from "@/lib/utils";
 
 interface GlobalFiltersProps {
@@ -35,11 +36,7 @@ export function GlobalFilters({ className }: GlobalFiltersProps) {
     setFilters, 
     clearFilters,
     compareMode,
-    toggleCompareMode,
-    compareEntities,
-    addCompareEntity,
-    removeCompareEntity,
-    clearCompareEntities
+    toggleCompareMode
   } = useDashboardStore();
   
   const handleDateChange = (dateRange: DateRange | undefined) => {
@@ -55,27 +52,6 @@ export function GlobalFilters({ className }: GlobalFiltersProps) {
   
   const handleSetterChange = (setterIds: string[]) => {
     setFilters({ setterIds });
-  };
-  
-  const handleCompareEntitySelect = (type: 'rep' | 'setter', ids: string[]) => {
-    // Clear existing entities of this type
-    compareEntities
-      .filter(e => e.type === type)
-      .forEach(e => removeCompareEntity(e.id));
-    
-    // Add new entities
-    const options = type === 'rep' ? mockReps : mockSetters;
-    ids.forEach(id => {
-      const option = options.find(o => o.value === id);
-      if (option) {
-        addCompareEntity({
-          id,
-          type,
-          name: option.label,
-          color: `hsl(${Math.random() * 360}, 70%, 50%)` // Random color
-        });
-      }
-    });
   };
   
   const activeFilterCount = Object.values(filters).filter(v => 
@@ -159,57 +135,13 @@ export function GlobalFilters({ className }: GlobalFiltersProps) {
         )}
       </div>
       
-      {/* Compare Mode Entity Selection */}
+      {/* Compare Mode Controls */}
       {compareMode && (
-        <div className="flex items-center gap-4 pt-2 border-t">
-          <span className="text-sm font-medium">Compare:</span>
-          
-          {/* Compare Reps */}
-          <div className="flex items-center gap-2">
-            <Users className="h-4 w-4 text-muted-foreground" />
-            <MultiSelect
-              options={mockReps}
-              selected={compareEntities.filter(e => e.type === 'rep').map(e => e.id)}
-              onChange={(ids) => handleCompareEntitySelect('rep', ids)}
-              placeholder="Select reps to compare"
-              className="w-[220px]"
-              maxItems={4}
-            />
-          </div>
-          
-          {/* Compare Setters */}
-          <div className="flex items-center gap-2">
-            <UserCheck className="h-4 w-4 text-muted-foreground" />
-            <MultiSelect
-              options={mockSetters}
-              selected={compareEntities.filter(e => e.type === 'setter').map(e => e.id)}
-              onChange={(ids) => handleCompareEntitySelect('setter', ids)}
-              placeholder="Select setters to compare"
-              className="w-[220px]"
-              maxItems={4}
-            />
-          </div>
-          
-          {compareEntities.length > 0 && (
-            <>
-              <Separator orientation="vertical" className="h-6" />
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">
-                  Comparing {compareEntities.length} entities
-                </span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={clearCompareEntities}
-                  className="h-6 px-2"
-                >
-                  <X className="h-3 w-3" />
-                  Clear
-                </Button>
-              </div>
-            </>
-          )}
-        </div>
+        <CompareModeControls 
+          reps={mockReps}
+          setters={mockSetters}
+          className="mt-4"
+        />
       )}
     </div>
   );

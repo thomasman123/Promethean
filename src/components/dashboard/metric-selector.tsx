@@ -36,6 +36,7 @@ const categoryIcons: Record<string, React.ReactNode> = {
   "Pipeline": <TrendingUp className="h-4 w-4" />,
   "Quality": <Target className="h-4 w-4" />,
   "Team": <Users className="h-4 w-4" />,
+  "Compare Mode": <Users className="h-4 w-4" />,
 };
 
 // Visualization type labels
@@ -48,6 +49,8 @@ const vizTypeLabels: Record<VizType, string> = {
   donut: "Donut Chart",
   table: "Table",
   funnel: "Funnel",
+  compareMatrix: "Comparison Matrix",
+  compareTable: "Comparison Table",
 };
 
 export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
