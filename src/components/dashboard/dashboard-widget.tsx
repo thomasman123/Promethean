@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { ChartWrapper, KPIChart, LineChart, BarChart, AreaChart, PieChart, DonutChart, TableChart } from "./charts";
 import { CompareWidget } from "./compare-widget";
+import { WidgetDetailModal } from "./widget-detail-modal";
 import { DashboardWidget as WidgetType, MetricData } from "@/lib/dashboard/types";
 import { useDashboardStore } from "@/lib/dashboard/store";
 import { supabase } from "@/lib/supabase";
@@ -161,6 +162,7 @@ export function DashboardWidget({ widget }: DashboardWidgetProps) {
   const [data, setData] = useState<MetricData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | undefined>(undefined);
+  const [showDetailModal, setShowDetailModal] = useState(false);
   
   const { 
     filters, 
@@ -385,19 +387,37 @@ export function DashboardWidget({ widget }: DashboardWidgetProps) {
   };
   
   return (
-    <ChartWrapper
-      title={widget.settings?.title || metricDefinition?.displayName || widget.metricName}
-      description={metricDefinition?.description}
-      formula={metricDefinition?.formula}
-      isLoading={isLoading}
-      error={error}
-      pinned={widget.pinned}
-      onEdit={() => console.log('Edit widget:', widget.id)}
-      onDuplicate={() => duplicateWidget(widget.id)}
-      onDelete={() => removeWidget(widget.id)}
-      onPin={() => updateWidget(widget.id, { pinned: !widget.pinned })}
-    >
-      {renderChart()}
-    </ChartWrapper>
+    <>
+      <div 
+        className="cursor-pointer"
+        onClick={() => setShowDetailModal(true)}
+      >
+        <ChartWrapper
+          title={widget.settings?.title || metricDefinition?.displayName || widget.metricName}
+          description={metricDefinition?.description}
+          formula={metricDefinition?.formula}
+          isLoading={isLoading}
+          error={error}
+          pinned={widget.pinned}
+          compareMode={compareMode && relevantEntities.length > 0}
+          compareEntities={relevantEntities.length}
+          onEdit={() => console.log('Edit widget:', widget.id)}
+          onDuplicate={() => duplicateWidget(widget.id)}
+          onDelete={() => removeWidget(widget.id)}
+          onPin={() => updateWidget(widget.id, { pinned: !widget.pinned })}
+        >
+          {renderChart()}
+        </ChartWrapper>
+      </div>
+      
+      {data && (
+        <WidgetDetailModal
+          widget={widget}
+          data={data}
+          open={showDetailModal}
+          onOpenChange={setShowDetailModal}
+        />
+      )}
+    </>
   );
 } 

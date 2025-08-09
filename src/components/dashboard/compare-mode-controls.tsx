@@ -169,7 +169,23 @@ export function CompareModeControls({ className, reps, setters }: CompareModeCon
 
       {/* Attribution Mode */}
       <div className="space-y-2">
-        <Label className="text-sm font-medium">Attribution Mode</Label>
+        <div className="flex items-center gap-2">
+          <Label className="text-sm font-medium">Attribution Mode</Label>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger>
+                <Info className="h-3 w-3 text-muted-foreground" />
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs">
+                <div className="space-y-2 text-sm">
+                  <p><strong>Primary:</strong> Uses setter_id from appointment/discovery</p>
+                  <p><strong>Last-Touch:</strong> Last setter interaction before booking</p>
+                  <p><strong>Assist:</strong> Shows all setters who touched the contact</p>
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
         <Select
           value={compareModeSettings.attributionMode}
           onValueChange={(v) => updateCompareModeSettings({ attributionMode: v as AttributionMode })}
@@ -179,28 +195,13 @@ export function CompareModeControls({ className, reps, setters }: CompareModeCon
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="primary">
-              <div>
-                <div className="font-medium">Primary (Booked-By)</div>
-                <div className="text-xs text-muted-foreground">
-                  Uses setter_id from appointment/discovery
-                </div>
-              </div>
+              Primary (Booked-By)
             </SelectItem>
             <SelectItem value="last-touch">
-              <div>
-                <div className="font-medium">Last-Touch</div>
-                <div className="text-xs text-muted-foreground">
-                  Last setter interaction before booking
-                </div>
-              </div>
+              Last-Touch
             </SelectItem>
             <SelectItem value="assist">
-              <div>
-                <div className="font-medium">Assist</div>
-                <div className="text-xs text-muted-foreground">
-                  Shows all setters who touched the contact
-                </div>
-              </div>
+              Assist
             </SelectItem>
           </SelectContent>
         </Select>

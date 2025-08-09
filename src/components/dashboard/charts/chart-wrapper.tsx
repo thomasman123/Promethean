@@ -2,6 +2,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -15,7 +16,8 @@ import {
   Edit, 
   Pin, 
   Info,
-  Maximize2 
+  Maximize2,
+  Users
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -28,6 +30,8 @@ interface ChartWrapperProps {
   isLoading?: boolean;
   error?: string;
   pinned?: boolean;
+  compareMode?: boolean;
+  compareEntities?: number;
   onEdit?: () => void;
   onDuplicate?: () => void;
   onDelete?: () => void;
@@ -44,6 +48,8 @@ export function ChartWrapper({
   isLoading,
   error,
   pinned,
+  compareMode,
+  compareEntities,
   onEdit,
   onDuplicate,
   onDelete,
@@ -56,9 +62,17 @@ export function ChartWrapper({
     <Card className={cn("h-full flex flex-col", pinned && "ring-2 ring-primary", className)}>
       <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-3">
         <div className="flex-1">
-          <CardTitle className="text-base font-medium">{title}</CardTitle>
+          <div className="flex items-center gap-2 mb-1">
+            <CardTitle className="text-base font-medium">{title}</CardTitle>
+            {compareMode && compareEntities && compareEntities > 0 && (
+              <Badge variant="secondary" className="gap-1">
+                <Users className="h-3 w-3" />
+                Comparing {compareEntities}
+              </Badge>
+            )}
+          </div>
           {description && (
-            <CardDescription className="text-sm mt-1">{description}</CardDescription>
+            <CardDescription className="text-sm">{description}</CardDescription>
           )}
         </div>
         
