@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ChartWrapper, KPIChart, LineChart, BarChart, AreaChart, PieChart, DonutChart } from "./charts";
+import { ChartWrapper, KPIChart, LineChart, BarChart, AreaChart, PieChart, DonutChart, TableChart } from "./charts";
 import { DashboardWidget as WidgetType, MetricData } from "@/lib/dashboard/types";
 import { useDashboardStore } from "@/lib/dashboard/store";
 import { supabase } from "@/lib/supabase";
@@ -120,6 +120,34 @@ const generateMockData = (widget: WidgetType, compareEntities?: any[]): MetricDa
       name,
       value: Math.floor(Math.random() * 5000) + 1000
     }));
+    
+    return { metricName, breakdown, data };
+  }
+  
+  // Table data
+  if (vizType === 'table' && (breakdown === 'rep' || breakdown === 'setter')) {
+    const entities = breakdown === 'rep' 
+      ? ['John Doe', 'Jane Smith', 'Bob Johnson', 'Alice Williams', 'Charlie Brown']
+      : ['Charlie Brown', 'David Lee', 'Emma Wilson', 'Frank Miller', 'George White'];
+    
+    const data = entities.map(name => {
+      const revenue = Math.floor(Math.random() * 50000) + 10000;
+      const appointments = Math.floor(Math.random() * 100) + 20;
+      const showRate = 60 + Math.random() * 35;
+      const closeRate = 15 + Math.random() * 25;
+      const trend = Math.floor(Math.random() * 40) - 20;
+      
+      return {
+        name,
+        revenue,
+        appointments,
+        showRate,
+        closeRate,
+        avgDeal: revenue / appointments,
+        trend,
+        sparkline: Array.from({ length: 7 }, () => Math.floor(Math.random() * 100) + 50)
+      };
+    });
     
     return { metricName, breakdown, data };
   }
@@ -319,6 +347,28 @@ export function DashboardWidget({ widget }: DashboardWidgetProps) {
             data={data.data}
             showLegend={true}
             showLabels={true}
+          />
+        );
+        
+      case 'table':
+        const columns = [
+          { key: 'name', label: 'Name' },
+          { key: 'revenue', label: 'Revenue', type: 'currency' as const, align: 'right' as const },
+          { key: 'appointments', label: 'Appointments', type: 'number' as const, align: 'center' as const },
+          { key: 'showRate', label: 'Show Rate', type: 'percentage' as const, align: 'center' as const },
+          { key: 'closeRate', label: 'Close Rate', type: 'percentage' as const, align: 'center' as const },
+          { key: 'avgDeal', label: 'Avg Deal', type: 'currency' as const, align: 'right' as const },
+          { key: 'trend', label: 'Trend', type: 'trend' as const, align: 'center' as const },
+          { key: 'sparkline', label: 'Last 7 Days', type: 'sparkline' as const, align: 'center' as const }
+        ];
+        
+        return (
+          <TableChart
+            data={data.data}
+            columns={columns}
+            showRowNumbers={true}
+            striped={true}
+            hoverable={true}
           />
         );
         
