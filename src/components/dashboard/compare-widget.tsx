@@ -91,18 +91,39 @@ export function CompareWidget({ widgetId, className }: CompareWidgetProps) {
     const loadData = async () => {
       setLoading(true);
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
-      const mockPairs = generateMockPairs(
-        selectedSetters.map(s => s.id),
-        selectedReps.map(r => r.id),
-        filters,
-        compareModeSettings
-      );
-      
-      setPairs(mockPairs);
-      setLoading(false);
+      try {
+        // Use mock data for now until backend is ready
+        // TODO: Replace with real API call
+        // const response = await fetch('/api/dashboard/compare-metrics', {
+        //   method: 'POST',
+        //   headers: { 'Content-Type': 'application/json' },
+        //   body: JSON.stringify({
+        //     accountId: selectedAccountId,
+        //     filters: {
+        //       ...filters,
+        //       setterIds: selectedSetters.map(s => s.id),
+        //       repIds: selectedReps.map(r => r.id)
+        //     },
+        //     compareSettings: compareModeSettings
+        //   })
+        // });
+        // const result = await response.json();
+        
+        await new Promise(resolve => setTimeout(resolve, 800));
+        
+        const mockPairs = generateMockPairs(
+          selectedSetters.map(s => s.id),
+          selectedReps.map(r => r.id),
+          filters,
+          compareModeSettings
+        );
+        
+        setPairs(mockPairs);
+      } catch (error) {
+        console.error('Failed to load compare metrics:', error);
+      } finally {
+        setLoading(false);
+      }
     };
     
     loadData();
