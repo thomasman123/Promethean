@@ -9,6 +9,7 @@ import {
   MetricDefinition,
   ViewScope 
 } from './types';
+import { supabase } from '@/lib/supabase';
 
 interface DashboardState {
   // Current view
@@ -39,10 +40,14 @@ interface DashboardState {
   // Actions
   setCurrentView: (view: DashboardView) => void;
   setViews: (views: DashboardView[]) => void;
-  createView: (name: string, scope: ViewScope, notes?: string) => Promise<void>;
+
+  // Views persistence
+  loadViewsForAccount: (accountId: string) => Promise<void>;
+  createView: (name: string, scope: ViewScope, notes: string | undefined, accountId: string) => Promise<void>;
   updateView: (viewId: string, updates: Partial<DashboardView>) => Promise<void>;
   deleteView: (viewId: string) => Promise<void>;
   duplicateView: (viewId: string, newName: string) => Promise<void>;
+  loadView: (viewId: string) => Promise<void>;
   
   // Widget actions
   addWidget: (widget: Omit<DashboardWidget, 'id'>) => void;
@@ -69,9 +74,8 @@ interface DashboardState {
   setViewManagerOpen: (isOpen: boolean) => void;
   setSelectedWidget: (widgetId: string | null) => void;
   
-  // Save/Load
+  // Save current
   saveCurrentView: () => Promise<void>;
-  loadView: (viewId: string) => Promise<void>;
   resetToSaved: () => void;
 }
 
@@ -102,25 +106,246 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
   }),
   
   setViews: (views) => set({ views }),
-  
-  createView: async (name, scope, notes) => {
-    // This will be implemented with API call
-    console.log('Creating view:', { name, scope, notes });
+
+  loadViewsForAccount: async (accountId: string) => {
+    if (!accountId) return;
+    set({ isLoadingViews: true });
+    const { data, error } = await supabase
+      .from('dashboard_views')
+      .select('*')
+      .eq('account_id', accountId)
+      .order('created_at', { ascending: false });
+    if (error) {
+      console.warn('Failed to load views:', error);
+      set({ views: [], isLoadingViews: false });
+      return;
+    }
+
+    // Map to DashboardView type if needed (keys are snake_case in DB)
+    const views: DashboardView[] = (data || []).map((v: any) => ({
+      id: v.id,
+      name: v.name,
+      accountId: v.account_id,
+      createdBy: v.created_by,
+      scope: v.scope,
+      notes: v.notes || undefined,
+      filters: v.filters || {},
+      widgets: v.widgets || [],
+      compareMode: !!v.compare_mode,
+      compareEntities: v.compare_entities || [],
+      isDefault: !!v.is_default,
+      createdAt: v.created_at,
+      updatedAt: v.updated_at,
+    }));
+
+    set({ views, isLoadingViews: false });
+
+    // Set current view if not set
+    const state = get();
+    if (!state.currentView) {
+      const defaultView = views.find(v => v.isDefault) || views[0] || null;
+      if (defaultView) {
+        state.setCurrentView(defaultView);
+      }
+    }
   },
-  
+
+  createView: async (name, scope, notes, accountId) => {
+    const { data: userData } = await supabase.auth.getUser();
+    const userId = userData.user?.id;
+    if (!userId || !accountId) {
+      console.warn('Missing userId or accountId when creating view');
+      return;
+    }
+
+    const state = get();
+    const payload = {
+      name,
+      account_id: accountId,
+      created_by: userId,
+      scope,
+      notes: notes || '',
+      filters: state.filters,
+      widgets: state.widgets,
+      compare_mode: state.compareMode,
+      compare_entities: state.compareEntities,
+      is_default: false,
+    };
+
+    const { data, error } = await supabase
+      .from('dashboard_views')
+      .insert(payload)
+      .select('*')
+      .single();
+
+    if (error) {
+      console.warn('Failed to create view:', error);
+      return;
+    }
+
+    // Refresh views list and set current view to the newly created one
+    await get().loadViewsForAccount(accountId);
+    if (data) {
+      const newView: DashboardView = {
+        id: data.id,
+        name: data.name,
+        accountId: data.account_id,
+        createdBy: data.created_by,
+        scope: data.scope,
+        notes: data.notes || undefined,
+        filters: data.filters || {},
+        widgets: data.widgets || [],
+        compareMode: !!data.compare_mode,
+        compareEntities: data.compare_entities || [],
+        isDefault: !!data.is_default,
+        createdAt: data.created_at,
+        updatedAt: data.updated_at,
+      };
+      set({ currentView: newView });
+      // Ensure local state reflects saved view
+      get().setCurrentView(newView);
+    }
+  },
+
   updateView: async (viewId, updates) => {
-    // This will be implemented with API call
-    console.log('Updating view:', { viewId, updates });
+    // Map camelCase updates to snake_case
+    const mapped: any = {};
+    if (updates.name !== undefined) mapped.name = updates.name;
+    if ((updates as any).accountId !== undefined) mapped.account_id = (updates as any).accountId;
+    if ((updates as any).createdBy !== undefined) mapped.created_by = (updates as any).createdBy;
+    if (updates.scope !== undefined) mapped.scope = updates.scope;
+    if (updates.notes !== undefined) mapped.notes = updates.notes || '';
+    if (updates.filters !== undefined) mapped.filters = updates.filters;
+    if (updates.widgets !== undefined) mapped.widgets = updates.widgets;
+    if (updates.compareMode !== undefined) mapped.compare_mode = updates.compareMode;
+    if (updates.compareEntities !== undefined) mapped.compare_entities = updates.compareEntities;
+    if (updates.isDefault !== undefined) mapped.is_default = updates.isDefault;
+
+    const { data, error } = await supabase
+      .from('dashboard_views')
+      .update(mapped)
+      .eq('id', viewId)
+      .select('*')
+      .single();
+
+    if (error) {
+      console.warn('Failed to update view:', error);
+      return;
+    }
+
+    // Update local cache
+    set((state) => ({
+      views: state.views.map(v => v.id === viewId ? {
+        ...v,
+        name: data.name,
+        notes: data.notes || undefined,
+        scope: data.scope,
+        filters: data.filters || {},
+        widgets: data.widgets || [],
+        compareMode: !!data.compare_mode,
+        compareEntities: data.compare_entities || [],
+        isDefault: !!data.is_default,
+        updatedAt: data.updated_at,
+      } : v)
+    }));
   },
-  
+
   deleteView: async (viewId) => {
-    // This will be implemented with API call
-    console.log('Deleting view:', viewId);
+    const { data: existing } = await supabase
+      .from('dashboard_views')
+      .select('account_id')
+      .eq('id', viewId)
+      .single();
+
+    const { error } = await supabase
+      .from('dashboard_views')
+      .delete()
+      .eq('id', viewId);
+
+    if (error) {
+      console.warn('Failed to delete view:', error);
+      return;
+    }
+
+    // Refresh list and clear current if it was deleted
+    if (existing?.account_id) {
+      await get().loadViewsForAccount(existing.account_id);
+    }
+    set((state) => ({
+      currentView: state.currentView?.id === viewId ? null : state.currentView,
+    }));
   },
-  
+
   duplicateView: async (viewId, newName) => {
-    // This will be implemented with API call
-    console.log('Duplicating view:', { viewId, newName });
+    const { data: view, error: loadError } = await supabase
+      .from('dashboard_views')
+      .select('*')
+      .eq('id', viewId)
+      .single();
+
+    if (loadError || !view) {
+      console.warn('Failed to load view to duplicate:', loadError);
+      return;
+    }
+
+    const { data: userData } = await supabase.auth.getUser();
+    const userId = userData.user?.id;
+    if (!userId) return;
+
+    const payload = {
+      name: newName,
+      account_id: view.account_id,
+      created_by: userId,
+      scope: view.scope,
+      notes: view.notes || '',
+      filters: view.filters || {},
+      widgets: view.widgets || [],
+      compare_mode: !!view.compare_mode,
+      compare_entities: view.compare_entities || [],
+      is_default: false,
+    };
+
+    const { error: dupError } = await supabase
+      .from('dashboard_views')
+      .insert(payload);
+
+    if (dupError) {
+      console.warn('Failed to duplicate view:', dupError);
+      return;
+    }
+
+    await get().loadViewsForAccount(view.account_id);
+  },
+
+  loadView: async (viewId) => {
+    const { data, error } = await supabase
+      .from('dashboard_views')
+      .select('*')
+      .eq('id', viewId)
+      .single();
+
+    if (error || !data) {
+      console.warn('Failed to load view by id:', error);
+      return;
+    }
+
+    const view: DashboardView = {
+      id: data.id,
+      name: data.name,
+      accountId: data.account_id,
+      createdBy: data.created_by,
+      scope: data.scope,
+      notes: data.notes || undefined,
+      filters: data.filters || {},
+      widgets: data.widgets || [],
+      compareMode: !!data.compare_mode,
+      compareEntities: data.compare_entities || [],
+      isDefault: !!data.is_default,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at,
+    };
+
+    get().setCurrentView(view);
   },
   
   // Widget actions
@@ -243,7 +468,7 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
     set({ selectedWidgetId: widgetId });
   },
   
-  // Save/Load
+  // Save current view
   saveCurrentView: async () => {
     const state = get();
     if (!state.currentView) return;
@@ -257,12 +482,7 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
     
     set({ isDirty: false });
   },
-  
-  loadView: async (viewId) => {
-    // This will be implemented with API call
-    console.log('Loading view:', viewId);
-  },
-  
+
   resetToSaved: () => {
     const currentView = get().currentView;
     if (!currentView) return;

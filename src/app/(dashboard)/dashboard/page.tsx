@@ -8,7 +8,8 @@ import { DashboardGrid } from "@/components/dashboard/dashboard-grid";
 import { MetricSelector } from "@/components/dashboard/metric-selector";
 import { ViewsManager } from "@/components/dashboard/views-manager";
 import { useDashboardStore } from "@/lib/dashboard/store";
-import { MetricDefinition, BreakdownType, VizType } from "@/lib/dashboard/types";
+import { MetricDefinition } from "@/lib/dashboard/types";
+import { useAuth } from "@/hooks/useAuth";
 
 // Mock metrics registry for demo
 const mockMetricsRegistry: MetricDefinition[] = [
@@ -89,21 +90,30 @@ export default function DashboardPage() {
     setMetricsRegistry,
     widgets,
     isDirty,
-    saveCurrentView
+    saveCurrentView,
+    loadViewsForAccount
   } = useDashboardStore();
+
+  const { selectedAccountId, accountChangeTimestamp } = useAuth();
   
   // Initialize metrics registry
   useEffect(() => {
     setMetricsRegistry(mockMetricsRegistry);
   }, [setMetricsRegistry]);
+
+  // Load views for current account and refresh upon account change
+  useEffect(() => {
+    if (selectedAccountId) {
+      loadViewsForAccount(selectedAccountId);
+    }
+  }, [selectedAccountId, accountChangeTimestamp, loadViewsForAccount]);
   
   // Auto-save when changes are made
   useEffect(() => {
     if (isDirty) {
       const timer = setTimeout(() => {
         saveCurrentView();
-      }, 2000); // Save after 2 seconds of no changes
-      
+      }, 2000);
       return () => clearTimeout(timer);
     }
   }, [isDirty, saveCurrentView]);
@@ -143,8 +153,8 @@ export default function DashboardPage() {
                 <Plus className="h-4 w-4" />
                 Add Widget
               </Button>
-        </div>
-        </div>
+            </div>
+          </div>
         ) : (
           <DashboardGrid className="p-4" />
         )}

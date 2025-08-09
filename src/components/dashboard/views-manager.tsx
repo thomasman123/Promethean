@@ -81,9 +81,13 @@ export function ViewsManager({ className }: ViewsManagerProps) {
   };
   
   const handleSaveView = async () => {
+    // Need accountId to create
+    const accountId = currentView?.accountId || window.localStorage.getItem('promethean:selectedAccountId:' + (typeof window !== 'undefined' ? (JSON.parse(window.localStorage.getItem('supabase.auth.token') || '{}')?.currentSession?.user?.id || 'anon') : 'anon')) || undefined;
+
     if (isNewView) {
+      if (!accountId) return alert('No account selected for this view.');
       // Create new view
-      await createView(viewName, viewScope, viewNotes);
+      await createView(viewName, viewScope, viewNotes, accountId);
     } else if (currentView) {
       // Update existing view
       await updateView(currentView.id, {
