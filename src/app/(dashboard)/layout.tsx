@@ -12,7 +12,7 @@ export default function DashboardLayout({
     <SidebarProvider>
       <AppSidebar />
       <SidebarInset>
-        {children}
+      {children}
       </SidebarInset>
     </SidebarProvider>
   )

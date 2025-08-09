@@ -77,7 +77,7 @@ CREATE POLICY "Admins can update team/global views" ON public.dashboard_views
             SELECT 1 FROM public.profiles 
             WHERE id = auth.uid() 
             AND account_id = dashboard_views.account_id
-            AND role IN ('admin', 'super_admin')
+            AND role = 'admin'
         )
     );
 

@@ -6,6 +6,7 @@ import { Plus } from "lucide-react";
 import { GlobalFilters } from "@/components/dashboard/global-filters";
 import { DashboardGrid } from "@/components/dashboard/dashboard-grid";
 import { MetricSelector } from "@/components/dashboard/metric-selector";
+import { ViewsManager } from "@/components/dashboard/views-manager";
 import { useDashboardStore } from "@/lib/dashboard/store";
 import { MetricDefinition, BreakdownType, VizType } from "@/lib/dashboard/types";
 
@@ -17,7 +18,7 @@ const mockMetricsRegistry: MetricDefinition[] = [
     description: "Total revenue across all sources",
     category: "Revenue",
     supportedBreakdowns: ["total", "time", "rep", "setter"],
-    recommendedVisualizations: ["kpi", "line", "bar"],
+    recommendedVisualizations: ["kpi", "line", "bar", "area"],
     formula: "SUM(appointment_value)",
     unit: "$"
   },
@@ -59,6 +60,25 @@ const mockMetricsRegistry: MetricDefinition[] = [
     recommendedVisualizations: ["kpi", "bar", "table"],
     formula: "SUM(revenue) / COUNT(appointments)",
     unit: "$"
+  },
+  {
+    name: "revenue_by_source",
+    displayName: "Revenue by Source",
+    description: "Revenue breakdown by acquisition source",
+    category: "Revenue",
+    supportedBreakdowns: ["rep", "setter"],
+    recommendedVisualizations: ["pie", "donut", "bar"],
+    formula: "GROUP BY source, SUM(revenue)",
+    unit: "$"
+  },
+  {
+    name: "appointments_by_status",
+    displayName: "Appointments by Status",
+    description: "Breakdown of appointments by their current status",
+    category: "Appointments",
+    supportedBreakdowns: ["rep", "setter"],
+    recommendedVisualizations: ["pie", "donut", "bar"],
+    formula: "GROUP BY status, COUNT(appointments)"
   }
 ];
 
@@ -98,10 +118,13 @@ export default function DashboardPage() {
             Track and analyze your team's performance
           </p>
         </div>
-        <Button onClick={() => setAddWidgetModalOpen(true)} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Add Widget
-        </Button>
+        <div className="flex items-center gap-2">
+          <ViewsManager />
+          <Button onClick={() => setAddWidgetModalOpen(true)} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Add Widget
+          </Button>
+        </div>
       </div>
       
       {/* Global Filters */}
@@ -120,8 +143,8 @@ export default function DashboardPage() {
                 <Plus className="h-4 w-4" />
                 Add Widget
               </Button>
-            </div>
-          </div>
+        </div>
+        </div>
         ) : (
           <DashboardGrid className="p-4" />
         )}
