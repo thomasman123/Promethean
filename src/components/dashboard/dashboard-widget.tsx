@@ -40,7 +40,7 @@ const generateMockData = (widget: WidgetType, compareEntities?: any[]): MetricDa
     };
   }
   
-  if (breakdown === 'time' && vizType === 'line') {
+  if (breakdown === 'time' && (vizType === 'line' || vizType === 'area' || vizType === 'sparkline')) {
     const days = 30;
     const baseData = Array.from({ length: days }, (_, i) => {
       const date = new Date();
@@ -66,13 +66,16 @@ const generateMockData = (widget: WidgetType, compareEntities?: any[]): MetricDa
     return { metricName, breakdown, data: baseData };
   }
   
-  if ((breakdown === 'rep' || breakdown === 'setter') && vizType === 'bar') {
+  if ((breakdown === 'rep' || breakdown === 'setter') && (vizType === 'bar' || vizType === 'horizontalBar' || vizType === 'stackedBar' || vizType === 'pie' || vizType === 'donut' || vizType === 'table' || vizType === 'radialBar')) {
     // If compare mode, show comparison between selected entities
     if (compareEntities && compareEntities.length > 0) {
       const data = compareEntities.map(entity => ({
         name: entity.name,
         value: Math.floor(Math.random() * 5000) + 1000
       }));
+      if (vizType === 'stackedBar') {
+        return { metricName, breakdown, data: data.map(d => ({ ...d, value2: Math.floor(Math.random() * 4000) + 500 })) };
+      }
       return { metricName, breakdown, data };
     }
     
@@ -82,6 +85,9 @@ const generateMockData = (widget: WidgetType, compareEntities?: any[]): MetricDa
       name,
       value: Math.floor(Math.random() * 5000) + 1000
     }));
+    if (vizType === 'stackedBar') {
+      return { metricName, breakdown, data: data.map(d => ({ ...d, value2: Math.floor(Math.random() * 4000) + 500 })) };
+    }
     return { metricName, breakdown, data };
   }
   
@@ -113,7 +119,7 @@ const generateMockData = (widget: WidgetType, compareEntities?: any[]): MetricDa
   }
   
   // Pie/Donut chart data
-  if ((vizType === 'pie' || vizType === 'donut') && (breakdown === 'rep' || breakdown === 'setter')) {
+  if ((vizType === 'pie' || vizType === 'donut' || vizType === 'radialBar') && (breakdown === 'rep' || breakdown === 'setter')) {
     const categories = breakdown === 'rep' 
       ? ['John Doe', 'Jane Smith', 'Bob Johnson', 'Alice Williams']
       : ['Charlie Brown', 'David Lee', 'Emma Wilson', 'Frank Miller'];

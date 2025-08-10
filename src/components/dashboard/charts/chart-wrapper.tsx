@@ -148,7 +148,7 @@ export function ChartWrapper({
             </p>
           </div>
         ) : (
-          <div className="h-full">
+          <div className="h-full relative overflow-hidden">
             {children}
           </div>
         )}
