@@ -79,6 +79,18 @@ const vizTypeLabels: Record<VizType, string> = {
   sparkline: "Sparkline",
 };
 
+// Derive sensible visualization defaults when none are provided by the registry
+function getRecommendedVizFromBreakdowns(breakdowns: BreakdownType[]): VizType[] {
+  if (!breakdowns || breakdowns.length === 0) return ["kpi"];
+  if (breakdowns.includes("link")) return ["compareMatrix", "compareTable"];
+  if (breakdowns.includes("time")) return ["line", "area", "sparkline"] as VizType[];
+  if (breakdowns.includes("total")) return ["kpi"];
+  if (breakdowns.includes("rep") || breakdowns.includes("setter")) {
+    return ["bar", "pie", "table"];
+  }
+  return ["kpi"];
+}
+
 const FAVORITES_KEY = "promethean.metric.favorites";
 const RECENTS_KEY = "promethean.metric.recents";
 
@@ -175,9 +187,10 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
 
   const handleMetricSelect = (metric: MetricDefinition) => {
     setSelectedMetric(metric);
-    const initialViz = metric.recommendedVisualizations[0] || 'kpi';
-    setSelectedViz(initialViz);
-    setSelectedBreakdown(getDefaultBreakdownForViz(initialViz));
+    const fallbacks = getRecommendedVizFromBreakdowns(metric.supportedBreakdowns);
+    const initialViz = (metric as any).recommendedVisualizations?.[0] || fallbacks[0] || 'kpi';
+    setSelectedViz(initialViz as VizType);
+    setSelectedBreakdown(getDefaultBreakdownForViz(initialViz as VizType));
   };
 
   const handleVizChange = (viz: VizType) => {
@@ -356,7 +369,10 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
                         <Badge variant="secondary" className="text-xs">Recommended</Badge>
                       </div>
                       <div className="flex flex-wrap gap-2">
-                        {selectedMetric.recommendedVisualizations.map((viz) => (
+                        {(selectedMetric as any).recommendedVisualizations?.length
+                          ? (selectedMetric as any).recommendedVisualizations
+                          : getRecommendedVizFromBreakdowns(selectedMetric.supportedBreakdowns)
+                        .map((viz: VizType) => (
                           <Button
                             key={viz}
                             type="button"
