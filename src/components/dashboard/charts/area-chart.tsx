@@ -65,9 +65,19 @@ export function AreaChart({
     return value;
   };
 
+  const safeData = Array.isArray(data) && data.length > 0
+    ? data
+    : [
+        areas.reduce((acc, area) => {
+          acc[xAxisKey] = xAxisType === 'date' ? new Date().toISOString() : 'No data';
+          acc[area.dataKey] = 0;
+          return acc;
+        }, {} as Record<string, any>)
+      ];
+
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <RechartsAreaChart data={data} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
+      <RechartsAreaChart data={safeData} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
         {showGrid && (
           <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
         )}

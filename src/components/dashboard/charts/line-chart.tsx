@@ -63,9 +63,20 @@ export function LineChart({
     return value;
   };
 
+  // Fallback to a minimal dataset so the chart still renders
+  const safeData = Array.isArray(data) && data.length > 0
+    ? data
+    : [
+        lines.reduce((acc, line) => {
+          acc[xAxisKey] = xAxisType === 'date' ? new Date().toISOString() : 'No data';
+          acc[line.dataKey] = 0;
+          return acc;
+        }, {} as Record<string, any>)
+      ];
+
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <RechartsLineChart data={data} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
+      <RechartsLineChart data={safeData} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
         {showGrid && (
           <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
         )}

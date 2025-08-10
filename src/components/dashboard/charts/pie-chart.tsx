@@ -83,8 +83,11 @@ export function PieChart({
   disableTooltip = false
 }: PieChartProps) {
   // Calculate total for percentage calculation
-  const total = data.reduce((sum, entry) => sum + entry.value, 0);
-  const dataWithTotal = data.map(item => ({ ...item, total }));
+  const hasData = Array.isArray(data) && data.length > 0;
+  const fallback = [{ name: 'No data', value: 0, color: undefined as string | undefined }];
+  const source = hasData ? data : fallback;
+  const total = source.reduce((sum, entry) => sum + entry.value, 0);
+  const dataWithTotal = (source as Array<{ name: string; value: number; color?: string }>).map(item => ({ ...item, total }));
 
   return (
     <ResponsiveContainer width="100%" height={height}>

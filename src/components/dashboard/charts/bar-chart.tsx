@@ -56,9 +56,18 @@ export function BarChart({
   barSize,
   disableTooltip = false
 }: BarChartProps) {
+  const safeData = Array.isArray(data) && data.length > 0
+    ? data
+    : [
+        bars.reduce((acc, bar) => {
+          acc[xAxisKey] = 'No data';
+          acc[bar.dataKey] = 0;
+          return acc;
+        }, {} as Record<string, any>)
+      ];
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <RechartsBarChart data={data} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
+      <RechartsBarChart data={safeData} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
         {showGrid && (
           <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
         )}
