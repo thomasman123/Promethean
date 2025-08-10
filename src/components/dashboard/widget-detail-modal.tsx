@@ -11,6 +11,7 @@ import { LineChart, BarChart, AreaChart, PieChart, DonutChart } from "./charts";
 import { DashboardWidget as WidgetType, MetricData } from "@/lib/dashboard/types";
 import { useDashboardStore } from "@/lib/dashboard/store";
 import { cn } from "@/lib/utils";
+import { Card as UiCard } from "@/components/ui/card";
 
 interface WidgetDetailModalProps {
   widget: WidgetType;
@@ -61,6 +62,7 @@ export function WidgetDetailModal({ widget, data, open, onOpenChange }: WidgetDe
         );
         
       case 'bar':
+        // Show a bar per entity (data should already be entity categories)
         return (
           <div className="h-[400px]">
             <BarChart
@@ -76,7 +78,7 @@ export function WidgetDetailModal({ widget, data, open, onOpenChange }: WidgetDe
             />
           </div>
         );
-        
+      
       case 'area':
         return (
           <div className="h-[400px]">
@@ -120,6 +122,45 @@ export function WidgetDetailModal({ widget, data, open, onOpenChange }: WidgetDe
       default:
         return null;
     }
+  };
+
+  const renderComparisonKPI = () => {
+    if (!compareMode || relevantEntities.length === 0) return null;
+    const formatNumber = (n: number) => Math.round(n).toLocaleString();
+
+    // If time series multi-series: sum per entity
+    let totals: Array<{ id: string; total: number; name: string }> = [];
+    if (Array.isArray(data.data) && data.data.length > 0) {
+      const sample = data.data[0];
+      if (typeof sample === 'object' && 'date' in sample) {
+        totals = relevantEntities.map((e) => ({
+          id: e.id,
+          name: e.name,
+          total: data.data.reduce((sum: number, row: any) => sum + (Number(row[e.id]) || 0), 0),
+        }));
+      } else if (typeof sample === 'object' && 'name' in sample && 'value' in sample) {
+        totals = data.data
+          .filter((row: any) => typeof row.value === 'number')
+          .map((row: any) => ({ id: row.name, name: row.name, total: Number(row.value) }));
+      }
+    }
+
+    if (totals.length === 0) return null;
+    const sorted = [...totals].sort((a, b) => b.total - a.total);
+    const top = sorted[0];
+    const second = sorted[1] || { total: 0 } as any;
+    const diff = top.total - (second.total || 0);
+    const pct = second.total > 0 ? (diff / second.total) * 100 : 0;
+
+    return (
+      <div className="mb-4">
+        <div className="rounded-lg border p-4 bg-card">
+          <div className="text-sm text-muted-foreground mb-1">Comparison</div>
+          <div className="text-3xl font-bold">{formatNumber(diff)} <span className="text-base font-normal text-muted-foreground">(+{pct.toFixed(1)}%)</span></div>
+          <div className="text-xs text-muted-foreground mt-1">Top vs next best across selected {widget.breakdown === 'rep' ? 'reps' : widget.breakdown === 'setter' ? 'setters' : 'entities'}</div>
+        </div>
+      </div>
+    );
   };
 
   const renderDataTable = () => {
@@ -212,6 +253,7 @@ export function WidgetDetailModal({ widget, data, open, onOpenChange }: WidgetDe
           </TabsList>
 
           <TabsContent value="visualization" className="space-y-4">
+            {renderComparisonKPI()}
             {renderFullChart()}
             {renderCompareSummary()}
           </TabsContent>

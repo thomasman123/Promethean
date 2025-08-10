@@ -10,9 +10,6 @@ import { useDashboardStore } from "@/lib/dashboard/store";
 import { DateRange } from "react-day-picker";
 import { CompareModeControls } from "./compare-mode-controls";
 import { cn } from "@/lib/utils";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { Input } from "@/components/ui/input";
 
 interface GlobalFiltersProps {
   className?: string;
@@ -40,9 +37,7 @@ export function GlobalFilters({ className }: GlobalFiltersProps) {
     clearFilters,
     compareMode,
     toggleCompareMode,
-    globalWidgetSettings,
-    setGlobalWidgetSettings,
-    applyGlobalSettingsToWidgets
+    
   } = useDashboardStore();
   
   const handleDateChange = (dateRange: DateRange | undefined) => {
@@ -141,46 +136,6 @@ export function GlobalFilters({ className }: GlobalFiltersProps) {
         )}
       </div>
       
-      {/* Global Display Settings */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-        <div className="flex items-center justify-between rounded-md border p-3">
-          <div>
-            <div className="text-sm font-medium">Logarithmic y-axis</div>
-            <div className="text-xs text-muted-foreground">Apply to all charts</div>
-          </div>
-          <Switch
-            checked={globalWidgetSettings.yAxisScale === 'log'}
-            onCheckedChange={(v) => setGlobalWidgetSettings({ yAxisScale: v ? 'log' : 'linear' })}
-          />
-        </div>
-        <div className="flex items-center justify-between rounded-md border p-3">
-          <div>
-            <div className="text-sm font-medium">Show rolling average</div>
-            <div className="text-xs text-muted-foreground">Smooth time series</div>
-          </div>
-          <Switch
-            checked={!!globalWidgetSettings.showRollingAvg}
-            onCheckedChange={(v) => setGlobalWidgetSettings({ showRollingAvg: v })}
-          />
-        </div>
-        <div className="rounded-md border p-3">
-          <Label htmlFor="global-ra" className="text-xs">Rolling avg days</Label>
-          <Input
-            id="global-ra"
-            type="number"
-            min={3}
-            max={60}
-            value={globalWidgetSettings.rollingAvgDays || 7}
-            onChange={(e) => setGlobalWidgetSettings({ rollingAvgDays: Number(e.target.value) || 7 })}
-          />
-        </div>
-        <div className="flex items-center justify-between gap-2">
-          <Button className="w-full" variant="secondary" onClick={applyGlobalSettingsToWidgets}>
-            Apply to all widgets
-          </Button>
-        </div>
-      </div>
-
       {/* Compare Mode Controls */}
       {compareMode && (
         <CompareModeControls 

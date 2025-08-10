@@ -10,8 +10,7 @@ import {
   MetricDefinition,
   ViewScope,
   CompareScope,
-  AttributionMode,
-  WidgetSettings
+  AttributionMode
 } from './types';
 import { supabase } from '@/lib/supabase';
 
@@ -41,12 +40,7 @@ interface DashboardState {
   isAddWidgetModalOpen: boolean;
   isViewManagerOpen: boolean;
   isDirty: boolean; // Track unsaved changes
-
-  // Global widget display settings
-  globalWidgetSettings: WidgetSettings;
-  setGlobalWidgetSettings: (settings: Partial<WidgetSettings>) => void;
-  applyGlobalSettingsToWidgets: () => void;
-  
+ 
   // Actions
   setCurrentView: (view: DashboardView) => void;
   setViews: (views: DashboardView[]) => void;
@@ -111,16 +105,7 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
   isAddWidgetModalOpen: false,
   isViewManagerOpen: false,
   isDirty: false,
-
-  // Global widget display settings
-  globalWidgetSettings: {
-    yAxisScale: 'linear',
-    showRollingAvg: false,
-    rollingAvgDays: 7,
-    compareVsPrevious: false,
-    previousPeriodType: 'week'
-  },
-  
+ 
   // View actions
   setCurrentView: (view) => set({ 
     currentView: view,
@@ -138,24 +123,6 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
   }),
   
   setViews: (views) => set({ views }),
-
-  // Update global widget display settings
-  setGlobalWidgetSettings: (settings) => {
-    set((state) => ({
-      globalWidgetSettings: { ...state.globalWidgetSettings, ...settings },
-      isDirty: true,
-    }));
-  },
-
-  applyGlobalSettingsToWidgets: () => {
-    set((state) => ({
-      widgets: state.widgets.map((w) => ({
-        ...w,
-        settings: { ...state.globalWidgetSettings, ...(w.settings || {}) },
-      })),
-      isDirty: true,
-    }));
-  },
 
   loadViewsForAccount: async (accountId: string) => {
     if (!accountId) return;
