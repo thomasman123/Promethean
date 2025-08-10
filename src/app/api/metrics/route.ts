@@ -10,10 +10,22 @@ export async function POST(request: NextRequest) {
     const supabase = createRouteHandlerClient({ cookies })
     
     // Check authentication
+    console.log('🐛 DEBUG - Metrics API: Checking authentication...')
     const { data: { session }, error: authError } = await supabase.auth.getSession()
+    
+    console.log('🐛 DEBUG - Metrics API Auth Result:', {
+      hasSession: !!session,
+      hasUser: !!session?.user,
+      userId: session?.user?.id,
+      authError: authError?.message,
+    })
+    
     if (authError || !session) {
+      console.log('🐛 DEBUG - Metrics API: Authentication failed')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+    
+    console.log('🐛 DEBUG - Metrics API: Authentication successful')
 
     // Parse request body
     const body = await request.json()
