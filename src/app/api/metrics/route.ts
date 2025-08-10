@@ -7,7 +7,9 @@ import { getAllMetricNames } from '@/lib/metrics/registry'
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies })
+    const supabase = createRouteHandlerClient({ 
+      cookies: async () => await cookies() 
+    })
     
     // Check authentication
     console.log('🐛 DEBUG - Metrics API: Checking authentication...')
@@ -75,7 +77,9 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies })
+    const supabase = createRouteHandlerClient({ 
+      cookies: async () => await cookies() 
+    })
     
     // Check authentication
     const { data: { session }, error: authError } = await supabase.auth.getSession()

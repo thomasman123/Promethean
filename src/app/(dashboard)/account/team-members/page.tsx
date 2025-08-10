@@ -168,45 +168,39 @@ export default function TeamMembersPage() {
             </BreadcrumbList>
           </Breadcrumb>
           <div className="ml-auto flex items-center gap-2">
-            <Button onClick={() => setOpenInvite(true)}>Invite Member</Button>
             <ThemeToggle />
           </div>
         </header>
 
         <div className="flex flex-1 flex-col gap-4 p-4">
-          <div className="grid gap-4">
+          <div className="grid auto-rows-min gap-4 md:grid-cols-1">
             <Card>
-              <CardHeader>
-                <CardTitle>Members</CardTitle>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+                <CardTitle>Team Members</CardTitle>
+                <Button onClick={() => setOpenInvite(true)}>Invite Member</Button>
               </CardHeader>
-              <CardContent>
-                {loading ? (
-                  <div className="py-6 text-muted-foreground">Loading members...</div>
-                ) : error ? (
-                  <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>
-                ) : (
+              <CardContent className="space-y-4">
+                {loading && <div>Loading...</div>}
+                {error && (
+                  <Alert>
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
+                )}
+                {!loading && (
                   <div className="space-y-3">
                     {members.length === 0 ? (
-                      <div className="text-muted-foreground">No members yet.</div>
+                      <div className="text-sm text-muted-foreground">No team members found.</div>
                     ) : (
                       members.map((m) => (
-                        <div key={m.user_id} className="flex items-center justify-between rounded-lg border p-3 gap-3">
-                          <div className="min-w-0">
-                            <div className="font-medium truncate">{m.full_name || m.email}</div>
-                            <div className="text-xs text-muted-foreground truncate">{m.email}</div>
+                        <div key={m.user_id} className="flex items-center justify-between p-3 border rounded">
+                          <div className="space-y-1">
+                            <div className="font-medium">{m.full_name || 'Unknown'}</div>
+                            <div className="text-sm text-muted-foreground">{m.email}</div>
+                            <div className="text-xs text-muted-foreground">
+                              Role: {m.role.replace('_', ' ')} | Status: {m.is_active ? 'Active' : 'Inactive'}
+                            </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <Select value={m.role} onValueChange={(v: TeamMember['role']) => updateRole(m.user_id, v)}>
-                              <SelectTrigger className="w-36 capitalize">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="setter">Setter</SelectItem>
-                                <SelectItem value="sales_rep">Sales Rep</SelectItem>
-                                <SelectItem value="moderator">Moderator</SelectItem>
-                                <SelectItem value="admin">Admin</SelectItem>
-                              </SelectContent>
-                            </Select>
+                          <div className="flex gap-2">
                             <Button variant="outline" size="sm" onClick={() => removeMember(m.user_id)}>Remove</Button>
                           </div>
                         </div>
@@ -218,64 +212,54 @@ export default function TeamMembersPage() {
             </Card>
           </div>
         </div>
-      </SidebarInset>
 
-      <Dialog open={openInvite} onOpenChange={(o) => { setOpenInvite(o); if (!o) { setEmail(''); setFullName(''); setRole('setter') } }}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Invite Member</DialogTitle>
-            <DialogDescription>
-              Invitations backfill historical appointments and dials for this email/name so reporting links correctly once they join.
-            </DialogDescription>
-          </DialogHeader>
+        <Dialog open={openInvite} onOpenChange={(o) => { setOpenInvite(o); if (!o) { setEmail(''); setFullName(''); setRole('setter') } }}>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Invite Member</DialogTitle>
+              <DialogDescription>
+                Invitations backfill historical appointments and dials for this email/name so reporting links correctly once they join.
+              </DialogDescription>
+            </DialogHeader>
 
-          <div className="space-y-4 py-2">
-            <div className="space-y-2">
-              <Label>Email</Label>
-              <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="member@company.com" />
-            </div>
-            <div className="space-y-2">
-              <Label>Full name</Label>
-              <Input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Jane Doe" />
-            </div>
-            <div className="space-y-2">
-              <Label>Role</Label>
-              <Select value={role} onValueChange={(v: TeamMember['role']) => setRole(v)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="setter">Setter</SelectItem>
-                  <SelectItem value="sales_rep">Sales Rep</SelectItem>
-                  <SelectItem value="moderator">Moderator</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {ghlUsers.length > 0 && (
-              <div className="space-y-2 pt-2 border-t">
-                <div className="text-sm font-medium">Invite from GHL</div>
-                <div className="space-y-2 max-h-56 overflow-auto pr-1">
-                  {ghlUsers.map((u) => (
-                    <div key={u.id} className="flex items-center justify-between rounded-md border p-2">
-                      <div>
-                        <div className="text-sm">{u.name || u.email || 'Unknown'}</div>
-                        <div className="text-xs text-muted-foreground">{u.email || 'no email'}</div>
-                      </div>
-                      <Button size="sm" variant="outline" disabled={!u.email} onClick={() => { setEmail(u.email || ''); setFullName(u.name || ''); setRole('setter') }}>Fill</Button>
-                    </div>
-                  ))}
-                </div>
+            <div className="space-y-4 py-2">
+              <div className="space-y-2">
+                <Label>Email</Label>
+                <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="member@company.com" />
               </div>
-            )}
-          </div>
 
-          <DialogFooter>
-            <Button onClick={invite} disabled={inviting || !email}>Invite</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+              <div className="space-y-2">
+                <Label>Full Name</Label>
+                <Input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="John Doe" />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Role</Label>
+                <Select value={role} onValueChange={(v) => setRole(v as TeamMember['role'])}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="moderator">Moderator</SelectItem>
+                    <SelectItem value="sales_rep">Sales Rep</SelectItem>
+                    <SelectItem value="setter">Setter</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {error && (
+                <div className="p-3 text-sm bg-red-50 border border-red-200 rounded text-red-600">
+                  {error}
+                </div>
+              )}
+            </div>
+
+            <DialogFooter>
+              <Button onClick={invite} disabled={inviting || !email}>Invite</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
     </SidebarInset>
   )
 } 
