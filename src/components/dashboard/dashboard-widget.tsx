@@ -402,7 +402,7 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
               lines={[{
                 dataKey: 'value',
                 name: widget.settings?.title || metricDefinition?.displayName || widget.metricName,
-                color: 'hsl(var(--primary))'
+                color: 'hsl(var(--chart-1))'
               }]}
               xAxisKey="name"
               xAxisType="category"
@@ -421,7 +421,7 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
               lines={[{
                 dataKey: 'value',
                 name: widget.settings?.title || metricDefinition?.displayName || widget.metricName,
-                color: 'hsl(var(--primary))'
+                color: 'hsl(var(--chart-1))'
               }]}
               xAxisKey="name"
               xAxisType="category"
@@ -439,7 +439,7 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
             lines={[{
               dataKey: 'value',
               name: widget.settings?.title || metricDefinition?.displayName || widget.metricName,
-              color: 'hsl(var(--primary))'
+              color: 'hsl(var(--chart-1))'
             }]}
             xAxisKey="name"
             xAxisType="category"
