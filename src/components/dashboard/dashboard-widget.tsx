@@ -171,7 +171,8 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | undefined>(undefined);
   const [showDetailModal, setShowDetailModal] = useState(false);
-  const [wasRecentlyDragging, setWasRecentlyDragging] = useState(false);
+  const [mouseDownTime, setMouseDownTime] = useState<number | null>(null);
+  const [mouseDownPosition, setMouseDownPosition] = useState<{ x: number; y: number } | null>(null);
   
   const { 
     filters, 
@@ -185,19 +186,6 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
   } = useDashboardStore();
   
   const metricDefinition = metricsRegistry.find(m => m.name === widget.metricName);
-  
-  // Track drag state changes to prevent accidental clicks after drag
-  useEffect(() => {
-    if (isDragging) {
-      setWasRecentlyDragging(true);
-    } else if (wasRecentlyDragging) {
-      // Small delay to prevent click events immediately after drag stops
-      const timeout = setTimeout(() => {
-        setWasRecentlyDragging(false);
-      }, 150);
-      return () => clearTimeout(timeout);
-    }
-  }, [isDragging, wasRecentlyDragging]);
   
   // Special handling for compare mode widgets
   if (widget.vizType === 'compareMatrix' || widget.vizType === 'compareTable') {
@@ -240,29 +228,13 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
   
   // Memoize chart rendering to prevent unnecessary re-renders during drag
   const renderChart = useCallback(() => {
-    if (!data) {
-      console.log('No data available for widget:', widget.id, widget.metricName, widget.vizType, widget.breakdown);
-      return null;
-    }
-    
-    console.log('Rendering chart for widget:', {
-      id: widget.id,
-      metricName: widget.metricName,
-      vizType: widget.vizType,
-      breakdown: widget.breakdown,
-      data: data
-    });
+    if (!data) return null;
     
     // Create a stable key for chart components to prevent unnecessary remounting
     const chartKey = `chart-${widget.id}-${widget.vizType}-${isDragging ? 'dragging' : 'static'}`;
     
     switch (widget.vizType) {
       case 'kpi':
-        console.log('KPI data structure:', {
-          'data.data': data.data,
-          'data.data.value': data.data.value,
-          'data.data.comparison': data.data.comparison
-        });
         return (
           <KPIChart
             key={chartKey}
@@ -481,14 +453,32 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
     <>
       <div 
         className="cursor-pointer"
-        onClick={(e) => {
-          // Prevent modal from opening during or immediately after drag
-          if (isDragging || wasRecentlyDragging) {
-            e.preventDefault();
-            e.stopPropagation();
-            return;
+        onMouseDown={(e) => {
+          setMouseDownTime(Date.now());
+          setMouseDownPosition({ x: e.clientX, y: e.clientY });
+        }}
+        onMouseUp={(e) => {
+          // Only trigger click if it was a quick click (not a drag)
+          if (mouseDownTime && mouseDownPosition) {
+            const timeDiff = Date.now() - mouseDownTime;
+            const distance = Math.sqrt(
+              Math.pow(e.clientX - mouseDownPosition.x, 2) + 
+              Math.pow(e.clientY - mouseDownPosition.y, 2)
+            );
+            
+            // Consider it a click if it was quick (<300ms) and didn't move much (<5px)
+            if (timeDiff < 300 && distance < 5 && !isDragging) {
+              setShowDetailModal(true);
+            }
           }
-          setShowDetailModal(true);
+          
+          setMouseDownTime(null);
+          setMouseDownPosition(null);
+        }}
+        onClick={(e) => {
+          // Prevent default click behavior since we handle it in onMouseUp
+          e.preventDefault();
+          e.stopPropagation();
         }}
       >
         <ChartWrapper
