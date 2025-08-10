@@ -222,11 +222,13 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
       setError(undefined);
       
       try {
-        const { filters: globalFilters } = useDashboardStore.getState();
-        
+        // Wait for account selection before fetching data
         if (!selectedAccountId) {
-          throw new Error('No account selected');
+          setIsLoading(false);
+          return;
         }
+
+        const { filters: globalFilters } = useDashboardStore.getState();
 
         // Prepare filters for metrics API
         const now = new Date();
@@ -598,11 +600,18 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
             <div className="h-full flex items-center justify-center bg-muted/20 rounded">
               <div className="text-sm text-muted-foreground">Moving...</div>
             </div>
-          ) : (
-            <div key={`widget-content-${widget.id}`}>
-              {renderChart()}
+                  ) : !selectedAccountId ? (
+          <div className="h-full flex items-center justify-center text-muted-foreground">
+            <div className="text-center">
+              <div className="text-sm mb-1">No account selected</div>
+              <div className="text-xs">Please select an account from the sidebar</div>
             </div>
-          )}
+          </div>
+        ) : (
+          <div key={`widget-content-${widget.id}`}>
+            {renderChart()}
+          </div>
+        )}
         </ChartWrapper>
       </div>
       
