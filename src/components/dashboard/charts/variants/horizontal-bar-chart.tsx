@@ -30,9 +30,13 @@ const HorizontalBarChart = ({
   showGrid = true,
   height = '100%',
 }: Props) => {
+  const safeData = Array.isArray(data) && data.length > 0
+    ? data
+    : [{ [nameKey]: 'No data', [dataKey]: 0 }];
+    
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <ReBarChart data={data} layout="vertical" margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
+      <ReBarChart data={safeData} layout="vertical" margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
         {showGrid && <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />}
         <XAxis type="number" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
         <YAxis dataKey={nameKey} type="category" tick={{ fill: 'hsl(var(--muted-foreground))' }} width={120} />

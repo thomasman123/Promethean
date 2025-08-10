@@ -12,9 +12,17 @@ interface Props {
 }
 
 const StackedBarChart = ({ data, series, xAxisKey, height = '100%', showLegend = true, showGrid = true }: Props) => {
+  const safeData = Array.isArray(data) && data.length > 0
+    ? data
+    : [series.reduce((acc, s) => {
+        acc[xAxisKey] = 'No data';
+        acc[s.key] = 0;
+        return acc;
+      }, {} as Record<string, any>)];
+      
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <ReBarChart data={data} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
+      <ReBarChart data={safeData} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
         {showGrid && <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />}
         <XAxis dataKey={xAxisKey} tick={{ fill: 'hsl(var(--muted-foreground))' }} />
         <YAxis tick={{ fill: 'hsl(var(--muted-foreground))' }} />

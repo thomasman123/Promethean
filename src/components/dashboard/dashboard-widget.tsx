@@ -1,7 +1,22 @@
 "use client";
 
 import { useEffect, useState, useMemo, useCallback } from "react";
-import { ChartWrapper, KPIChart, LineChart, BarChart, AreaChart, PieChart, DonutChart, TableChart } from "./charts";
+import { 
+  ChartWrapper, 
+  KPIChart, 
+  LineChart, 
+  BarChart, 
+  AreaChart, 
+  PieChart, 
+  DonutChart, 
+  TableChart,
+  HorizontalBarChart,
+  StackedBarChart,
+  ScatterChart,
+  RadarChart,
+  RadialBarChart,
+  SparklineChart
+} from "./charts";
 import { CompareWidget } from "./compare-widget";
 import { WidgetDetailModal } from "./widget-detail-modal";
 import { DashboardWidget as WidgetType, MetricData } from "@/lib/dashboard/types";
@@ -374,51 +389,76 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
         );
         
       case 'line':
-        // Multi-series for compare mode
-        if (compareMode && relevantEntities.length > 0) {
-          const lines = relevantEntities.map((entity, index) => ({
-            dataKey: entity.id,
-            name: entity.name,
-            color: entity.color || COMPARE_COLORS[index % COMPARE_COLORS.length]
-          }));
-          
+        // For total breakdowns, create a single point line
+        if (widget.breakdown === 'total') {
+          const lineData = [{
+            name: 'Total',
+            value: (data.data as any).value || 0
+          }];
           return (
             <LineChart
               key={chartKey}
-              data={data.data}
-              lines={lines}
-              xAxisKey="date"
-              xAxisType="date"
-              showLegend={true}
+              data={lineData}
+              lines={[{
+                dataKey: 'value',
+                name: widget.settings?.title || metricDefinition?.displayName || widget.metricName,
+                color: 'hsl(var(--primary))'
+              }]}
+              xAxisKey="name"
+              xAxisType="category"
+              showLegend={false}
               disableTooltip={isDragging}
             />
           );
         }
         
-        // Single series
+        // For rep/setter breakdowns, use the array data
+        if (widget.breakdown === 'rep' || widget.breakdown === 'setter') {
+          return (
+            <LineChart
+              key={chartKey}
+              data={Array.isArray(data.data) ? data.data : []}
+              lines={[{
+                dataKey: 'value',
+                name: widget.settings?.title || metricDefinition?.displayName || widget.metricName,
+                color: 'hsl(var(--primary))'
+              }]}
+              xAxisKey="name"
+              xAxisType="category"
+              showLegend={false}
+              disableTooltip={isDragging}
+            />
+          );
+        }
+        
+        // Default fallback
         return (
           <LineChart
             key={chartKey}
-            data={data.data}
+            data={Array.isArray(data.data) ? data.data : [{ name: 'No data', value: 0 }]}
             lines={[{
               dataKey: 'value',
               name: widget.settings?.title || metricDefinition?.displayName || widget.metricName,
               color: 'hsl(var(--primary))'
             }]}
-            xAxisKey="date"
-            xAxisType="date"
+            xAxisKey="name"
+            xAxisType="category"
             showLegend={false}
             disableTooltip={isDragging}
           />
         );
         
       case 'bar':
-        // Compare mode changes the data structure
-        if (compareMode && relevantEntities.length > 0) {
+        // For total breakdowns, create a single bar
+        if (widget.breakdown === 'total') {
+          const barData = [{
+            name: 'Total',
+            value: (data.data as any).value || 0
+          }];
           return (
             <BarChart
               key={chartKey}
-              data={data.data}
+              data={barData}
               bars={[{
                 dataKey: 'value',
                 name: widget.settings?.title || metricDefinition?.displayName || widget.metricName,
@@ -431,10 +471,11 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
           );
         }
         
+        // For rep/setter/link breakdowns, use the array data
         return (
           <BarChart
             key={chartKey}
-            data={data.data}
+            data={Array.isArray(data.data) ? data.data : []}
             bars={[{
               dataKey: 'value',
               name: widget.settings?.title || metricDefinition?.displayName || widget.metricName,
@@ -447,50 +488,88 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
         );
         
       case 'area':
-        // Multi-series for compare mode
-        if (compareMode && relevantEntities.length > 0) {
-          const areas = relevantEntities.map((entity, index) => ({
-            dataKey: entity.id,
-            name: entity.name,
-            color: entity.color || COMPARE_COLORS[index % COMPARE_COLORS.length]
-          }));
-          
+        // For total breakdowns, create a single point area
+        if (widget.breakdown === 'total') {
+          const areaData = [{
+            name: 'Total',
+            value: (data.data as any).value || 0
+          }];
           return (
             <AreaChart
               key={chartKey}
-              data={data.data}
-              areas={areas}
-              xAxisKey="date"
-              xAxisType="date"
-              showLegend={true}
-              stacked={true}
+              data={areaData}
+              areas={[{
+                dataKey: 'value',
+                name: widget.settings?.title || metricDefinition?.displayName || widget.metricName,
+                color: 'hsl(var(--primary))'
+              }]}
+              xAxisKey="name"
+              xAxisType="category"
+              showLegend={false}
               disableTooltip={isDragging}
             />
           );
         }
         
-        // Single series
+        // For rep/setter breakdowns, use the array data
+        if (widget.breakdown === 'rep' || widget.breakdown === 'setter') {
+          return (
+            <AreaChart
+              key={chartKey}
+              data={Array.isArray(data.data) ? data.data : []}
+              areas={[{
+                dataKey: 'value',
+                name: widget.settings?.title || metricDefinition?.displayName || widget.metricName,
+                color: 'hsl(var(--primary))'
+              }]}
+              xAxisKey="name"
+              xAxisType="category"
+              showLegend={false}
+              disableTooltip={isDragging}
+            />
+          );
+        }
+        
+        // Default fallback
         return (
           <AreaChart
             key={chartKey}
-            data={data.data}
+            data={Array.isArray(data.data) ? data.data : [{ name: 'No data', value: 0 }]}
             areas={[{
               dataKey: 'value',
               name: widget.settings?.title || metricDefinition?.displayName || widget.metricName,
               color: 'hsl(var(--primary))'
             }]}
-            xAxisKey="date"
-            xAxisType="date"
+            xAxisKey="name"
+            xAxisType="category"
             showLegend={false}
             disableTooltip={isDragging}
           />
         );
         
       case 'pie':
+        // For total breakdowns, pie chart doesn't make sense, show a single slice
+        if (widget.breakdown === 'total') {
+          const pieData = [{
+            name: 'Total',
+            value: (data.data as any).value || 0
+          }];
+          return (
+            <PieChart
+              key={chartKey}
+              data={pieData}
+              showLegend={false}
+              showLabels={true}
+              disableTooltip={isDragging}
+            />
+          );
+        }
+        
+        // For rep/setter breakdowns, use the array data
         return (
           <PieChart
             key={chartKey}
-            data={data.data}
+            data={Array.isArray(data.data) ? data.data : []}
             showLegend={true}
             showLabels={true}
             disableTooltip={isDragging}
@@ -498,10 +577,28 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
         );
         
       case 'donut':
+        // For total breakdowns, donut chart doesn't make sense, show a single slice
+        if (widget.breakdown === 'total') {
+          const donutData = [{
+            name: 'Total',
+            value: (data.data as any).value || 0
+          }];
+          return (
+            <DonutChart
+              key={chartKey}
+              data={donutData}
+              showLegend={false}
+              showLabels={true}
+              disableTooltip={isDragging}
+            />
+          );
+        }
+        
+        // For rep/setter breakdowns, use the array data
         return (
           <DonutChart
             key={chartKey}
-            data={data.data}
+            data={Array.isArray(data.data) ? data.data : []}
             showLegend={true}
             showLabels={true}
             disableTooltip={isDragging}
@@ -509,67 +606,206 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
         );
 
       case 'horizontalBar':
+        // For total breakdowns, create a single bar
+        if (widget.breakdown === 'total') {
+          const hBarData = [{
+            name: 'Total',
+            value: (data.data as any).value || 0
+          }];
+          return (
+            <HorizontalBarChart
+              key={chartKey}
+              data={hBarData}
+              dataKey="value"
+              nameKey="name"
+              color='hsl(var(--primary))'
+              showLegend={false}
+            />
+          );
+        }
+        
+        // For rep/setter breakdowns, use the array data
         return (
-          <BarChart
+          <HorizontalBarChart
             key={chartKey}
-            data={data.data}
-            bars={[{ dataKey: 'value', name: widget.settings?.title || widget.metricName, color: 'hsl(var(--primary))' }]}
-            xAxisKey="name"
+            data={Array.isArray(data.data) ? data.data : []}
+            dataKey="value"
+            nameKey="name"
+            color='hsl(var(--primary))'
             showLegend={false}
-            disableTooltip={isDragging}
           />
         );
 
       case 'stackedBar':
-        // Derive a simple two-series mock for now if not present
+        // For total breakdowns, stacked bar doesn't make sense
+        if (widget.breakdown === 'total') {
+          const stackedData = [{
+            name: 'Total',
+            value: (data.data as any).value || 0
+          }];
+          return (
+            <StackedBarChart
+              key={chartKey}
+              data={stackedData}
+              series={[{ key: 'value', name: 'Total', color: 'hsl(var(--primary))' }]}
+              xAxisKey="name"
+              showLegend={false}
+            />
+          );
+        }
+        
+        // For rep/setter breakdowns, use single series for now
         return (
-          <BarChart
+          <StackedBarChart
             key={chartKey}
-            data={data.data}
-            bars={[
-              { dataKey: 'value', name: 'A', color: 'hsl(var(--primary))' },
-              { dataKey: 'value2', name: 'B', color: 'hsl(215 70% 50%)' },
-            ]}
+            data={Array.isArray(data.data) ? data.data : []}
+            series={[{ key: 'value', name: widget.settings?.title || widget.metricName, color: 'hsl(var(--primary))' }]}
             xAxisKey="name"
             showLegend={true}
-            stacked={true}
-            disableTooltip={isDragging}
           />
         );
 
       case 'sparkline':
+        // For total breakdowns, create a minimal sparkline
+        if (widget.breakdown === 'total') {
+          const sparkData = [{ value: (data.data as any).value || 0 }];
+          return (
+            <SparklineChart
+              key={chartKey}
+              data={sparkData}
+              color='hsl(var(--primary))'
+            />
+          );
+        }
+        
+        // For rep/setter breakdowns, use the values
         return (
-          <AreaChart
+          <SparklineChart
             key={chartKey}
-            data={Array.isArray(data.data) ? data.data.map((d: any) => ({ date: d.date || d.name, value: d.value })) : []}
-            areas={[{ dataKey: 'value', name: 'Value', color: 'hsl(var(--primary))' }]}
-            xAxisKey="date"
-            xAxisType="category"
-            showLegend={false}
-            disableTooltip={isDragging}
+            data={Array.isArray(data.data) ? data.data.map((d: any) => ({ value: d.value })) : []}
+            color='hsl(var(--primary))'
           />
         );
  
       case 'table':
-        const columns = [
-          { key: 'name', label: 'Name' },
-          { key: 'revenue', label: 'Revenue', type: 'currency' as const, align: 'right' as const },
-          { key: 'appointments', label: 'Appointments', type: 'number' as const, align: 'center' as const },
-          { key: 'showRate', label: 'Show Rate', type: 'percentage' as const, align: 'center' as const },
-          { key: 'closeRate', label: 'Close Rate', type: 'percentage' as const, align: 'center' as const },
-          { key: 'avgDeal', label: 'Avg Deal', type: 'currency' as const, align: 'right' as const },
-          { key: 'trend', label: 'Trend', type: 'trend' as const, align: 'center' as const },
-          { key: 'sparkline', label: 'Last 7 Days', type: 'sparkline' as const, align: 'center' as const }
+        // For total breakdowns, show a simple table
+        if (widget.breakdown === 'total') {
+          const tableData = [{
+            name: 'Total',
+            value: (data.data as any).value || 0
+          }];
+          const simpleColumns = [
+            { key: 'name', label: 'Metric' },
+            { key: 'value', label: 'Value', type: 'number' as const, align: 'right' as const }
+          ];
+          
+          return (
+            <TableChart
+              key={chartKey}
+              data={tableData}
+              columns={simpleColumns}
+              showRowNumbers={false}
+              striped={false}
+              hoverable={false}
+            />
+          );
+        }
+        
+        // For rep/setter breakdowns, show name and value
+        const tableData2 = Array.isArray(data.data) ? data.data : [];
+        const columns2 = [
+          { key: 'name', label: widget.breakdown === 'rep' ? 'Rep' : 'Setter' },
+          { key: 'value', label: 'Value', type: 'number' as const, align: 'right' as const }
         ];
         
         return (
           <TableChart
             key={chartKey}
-            data={data.data}
-            columns={columns}
+            data={tableData2}
+            columns={columns2}
             showRowNumbers={true}
             striped={true}
             hoverable={true}
+          />
+        );
+        
+      case 'scatter':
+        // For scatter we need x,y pairs - for now use index as x
+        const scatterData = widget.breakdown === 'total' 
+          ? [{ x: 0, y: (data.data as any).value || 0, name: 'Total' }]
+          : Array.isArray(data.data) 
+            ? data.data.map((d: any, i: number) => ({ x: i, y: d.value, name: d.name }))
+            : [];
+        
+        return (
+          <ScatterChart
+            key={chartKey}
+            data={scatterData}
+            series={[{ name: widget.settings?.title || widget.metricName, color: 'hsl(var(--primary))' }]}
+            xLabel="Index"
+            yLabel="Value"
+          />
+        );
+        
+      case 'radar':
+        // For radar chart, we need multiple data points
+        if (widget.breakdown === 'total') {
+          // Radar doesn't make sense for single total, show as single point
+          const radarData = [{ category: 'Total', value: (data.data as any).value || 0 }];
+          return (
+            <RadarChart
+              key={chartKey}
+              data={radarData}
+              categoryKey="category"
+              series={[{ key: 'value', name: 'Total', color: 'hsl(var(--primary))' }]}
+            />
+          );
+        }
+        
+        // For rep/setter breakdowns
+        const radarData = Array.isArray(data.data) 
+          ? data.data.map((d: any) => ({ category: d.name, value: d.value }))
+          : [];
+          
+        return (
+          <RadarChart
+            key={chartKey}
+            data={radarData}
+            categoryKey="category"
+            series={[{ key: 'value', name: widget.settings?.title || widget.metricName, color: 'hsl(var(--primary))' }]}
+          />
+        );
+        
+      case 'radialBar':
+        // For total breakdowns
+        if (widget.breakdown === 'total') {
+          const radialData = [{
+            name: 'Total',
+            value: (data.data as any).value || 0,
+            fill: 'hsl(var(--primary))'
+          }];
+          return (
+            <RadialBarChart
+              key={chartKey}
+              data={radialData}
+            />
+          );
+        }
+        
+        // For rep/setter breakdowns
+        const colors = ['hsl(var(--primary))', 'hsl(215 70% 50%)', 'hsl(142 71% 45%)', 'hsl(47 85% 63%)', 'hsl(280 70% 50%)'];
+        const radialData = Array.isArray(data.data) 
+          ? data.data.slice(0, 5).map((d: any, i: number) => ({ // Limit to 5 for radial bar
+              name: d.name,
+              value: d.value,
+              fill: colors[i % colors.length]
+            }))
+          : [];
+          
+        return (
+          <RadialBarChart
+            key={chartKey}
+            data={radialData}
           />
         );
         
