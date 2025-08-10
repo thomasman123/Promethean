@@ -37,6 +37,7 @@ import {
 import { useDashboardStore } from "@/lib/dashboard/store";
 import { ViewScope } from "@/lib/dashboard/types";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
 
 interface ViewsManagerProps {
   className?: string;
@@ -49,6 +50,7 @@ const scopeIcons = {
 };
 
 export function ViewsManager({ className }: ViewsManagerProps) {
+  const { selectedAccountId } = useAuth();
   const { 
     currentView,
     views,
@@ -81,8 +83,8 @@ export function ViewsManager({ className }: ViewsManagerProps) {
   };
   
   const handleSaveView = async () => {
-    // Need accountId to create
-    const accountId = currentView?.accountId || window.localStorage.getItem('promethean:selectedAccountId:' + (typeof window !== 'undefined' ? (JSON.parse(window.localStorage.getItem('supabase.auth.token') || '{}')?.currentSession?.user?.id || 'anon') : 'anon')) || undefined;
+    // Use the selected account from auth context
+    const accountId = currentView?.accountId || selectedAccountId || undefined;
 
     if (isNewView) {
       if (!accountId) return alert('No account selected for this view.');
