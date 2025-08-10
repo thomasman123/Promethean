@@ -171,8 +171,6 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | undefined>(undefined);
   const [showDetailModal, setShowDetailModal] = useState(false);
-  const [mouseDownTime, setMouseDownTime] = useState<number | null>(null);
-  const [mouseDownPosition, setMouseDownPosition] = useState<{ x: number; y: number } | null>(null);
   
   const { 
     filters, 
@@ -451,36 +449,7 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
   
   return (
     <>
-      <div 
-        className="cursor-pointer"
-        onMouseDown={(e) => {
-          setMouseDownTime(Date.now());
-          setMouseDownPosition({ x: e.clientX, y: e.clientY });
-        }}
-        onMouseUp={(e) => {
-          // Only trigger click if it was a quick click (not a drag)
-          if (mouseDownTime && mouseDownPosition) {
-            const timeDiff = Date.now() - mouseDownTime;
-            const distance = Math.sqrt(
-              Math.pow(e.clientX - mouseDownPosition.x, 2) + 
-              Math.pow(e.clientY - mouseDownPosition.y, 2)
-            );
-            
-            // Consider it a click if it was quick (<300ms) and didn't move much (<5px)
-            if (timeDiff < 300 && distance < 5 && !isDragging) {
-              setShowDetailModal(true);
-            }
-          }
-          
-          setMouseDownTime(null);
-          setMouseDownPosition(null);
-        }}
-        onClick={(e) => {
-          // Prevent default click behavior since we handle it in onMouseUp
-          e.preventDefault();
-          e.stopPropagation();
-        }}
-      >
+      <div>
         <ChartWrapper
           title={widget.settings?.title || metricDefinition?.displayName || widget.metricName}
           description={metricDefinition?.description}
@@ -494,6 +463,7 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
           onDuplicate={() => duplicateWidget(widget.id)}
           onDelete={() => removeWidget(widget.id)}
           onPin={() => updateWidget(widget.id, { pinned: !widget.pinned })}
+          onFullscreen={() => setShowDetailModal(true)}
         >
           {isDragging ? (
             <div className="h-full flex items-center justify-center bg-muted/20 rounded">
