@@ -460,9 +460,13 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
           onDelete={() => removeWidget(widget.id)}
           onPin={() => updateWidget(widget.id, { pinned: !widget.pinned })}
         >
-          <div className={isDragging ? "pointer-events-none" : ""}>
-            {renderChart()}
-          </div>
+          {isDragging ? (
+            <div className="h-full flex items-center justify-center bg-muted/20 rounded">
+              <div className="text-sm text-muted-foreground">Moving...</div>
+            </div>
+          ) : (
+            renderChart()
+          )}
         </ChartWrapper>
       </div>
       
