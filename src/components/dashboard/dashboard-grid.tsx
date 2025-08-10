@@ -25,8 +25,8 @@ export function DashboardGrid({ className }: DashboardGridProps) {
       y: widget.position.y,
       w: widget.size.w,
       h: widget.size.h,
-      minW: 2,
-      minH: 3,
+      minW: 3,
+      minH: 6,
       maxW: 12,
       static: widget.pinned
     }))
