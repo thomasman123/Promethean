@@ -26,7 +26,7 @@ interface AreaChartProps {
   stacked?: boolean;
   showGrid?: boolean;
   showLegend?: boolean;
-  height?: number;
+  height?: number | string;
   disableTooltip?: boolean;
 }
 
@@ -55,7 +55,7 @@ export function AreaChart({
   stacked = false,
   showGrid = true,
   showLegend = true,
-  height = 300,
+  height = '100%',
   disableTooltip = false
 }: AreaChartProps) {
   const formatXAxis = (value: any) => {

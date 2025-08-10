@@ -4,10 +4,10 @@ import { ResponsiveContainer, RadialBarChart as ReRadialBarChart, RadialBar, Leg
 
 interface Props {
   data: Array<{ name: string; value: number; fill?: string }>;
-  height?: number;
+  height?: number | string;
 }
 
-const RadialBarChart = ({ data, height = 320 }: Props) => {
+const RadialBarChart = ({ data, height = '100%' }: Props) => {
   return (
     <ResponsiveContainer width="100%" height={height}>
       <ReRadialBarChart cx="50%" cy="50%" innerRadius="20%" outerRadius="90%" data={data}>

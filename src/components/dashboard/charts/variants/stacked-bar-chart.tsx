@@ -6,12 +6,12 @@ interface Props {
   data: Array<Record<string, any>>;
   series: Array<{ key: string; name: string; color: string }>;
   xAxisKey: string;
-  height?: number;
+  height?: number | string;
   showLegend?: boolean;
   showGrid?: boolean;
 }
 
-const StackedBarChart = ({ data, series, xAxisKey, height = 300, showLegend = true, showGrid = true }: Props) => {
+const StackedBarChart = ({ data, series, xAxisKey, height = '100%', showLegend = true, showGrid = true }: Props) => {
   return (
     <ResponsiveContainer width="100%" height={height}>
       <ReBarChart data={data} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>

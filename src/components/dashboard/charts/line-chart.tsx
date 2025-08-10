@@ -25,7 +25,7 @@ interface LineChartProps {
   yAxisLabel?: string;
   showGrid?: boolean;
   showLegend?: boolean;
-  height?: number;
+  height?: number | string;
   disableTooltip?: boolean;
 }
 
@@ -53,7 +53,7 @@ export function LineChart({
   yAxisLabel,
   showGrid = true,
   showLegend = true,
-  height = 300,
+  height = '100%',
   disableTooltip = false
 }: LineChartProps) {
   const formatXAxis = (value: any) => {

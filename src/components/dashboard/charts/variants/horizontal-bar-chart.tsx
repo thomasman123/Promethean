@@ -18,7 +18,7 @@ interface Props {
   color?: string;
   showLegend?: boolean;
   showGrid?: boolean;
-  height?: number;
+  height?: number | string;
 }
 
 const HorizontalBarChart = ({
@@ -28,7 +28,7 @@ const HorizontalBarChart = ({
   color = 'hsl(var(--primary))',
   showLegend = false,
   showGrid = true,
-  height = 300,
+  height = '100%',
 }: Props) => {
   return (
     <ResponsiveContainer width="100%" height={height}>

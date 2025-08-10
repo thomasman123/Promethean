@@ -18,7 +18,7 @@ interface PieChartProps {
   innerRadius?: number; // 0 for pie, > 0 for donut
   showLegend?: boolean;
   showLabels?: boolean;
-  height?: number;
+  height?: number | string;
   disableTooltip?: boolean;
 }
 
@@ -79,7 +79,7 @@ export function PieChart({
   innerRadius = 0,
   showLegend = true,
   showLabels = true,
-  height = 300,
+  height = '100%',
   disableTooltip = false
 }: PieChartProps) {
   // Calculate total for percentage calculation
@@ -95,7 +95,7 @@ export function PieChart({
           cy="50%"
           labelLine={false}
           label={showLabels ? renderCustomLabel : false}
-          outerRadius={80}
+          outerRadius="80%"
           innerRadius={innerRadius}
           fill="#8884d8"
           dataKey="value"

@@ -23,7 +23,7 @@ interface BarChartProps {
   stacked?: boolean;
   showGrid?: boolean;
   showLegend?: boolean;
-  height?: number;
+  height?: number | string;
   barSize?: number;
   disableTooltip?: boolean;
 }
@@ -52,7 +52,7 @@ export function BarChart({
   stacked = false,
   showGrid = true,
   showLegend = true,
-  height = 300,
+  height = '100%',
   barSize,
   disableTooltip = false
 }: BarChartProps) {

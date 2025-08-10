@@ -608,7 +608,7 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
             </div>
           </div>
         ) : (
-          <div key={`widget-content-${widget.id}`}>
+          <div key={`widget-content-${widget.id}`} className="h-full">
             {renderChart()}
           </div>
         )}
