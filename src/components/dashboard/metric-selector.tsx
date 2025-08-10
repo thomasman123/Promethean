@@ -210,7 +210,7 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[96vw] max-w-[1600px] h-[94vh] flex flex-col p-0 overflow-hidden">
+      <DialogContent className="w-[96vw] h-[94vh] max-w-none sm:w-[96vw] sm:h-[94vh] sm:max-w-[96vw] md:max-w-[96vw] lg:max-w-[96vw] xl:max-w-[96vw] 2xl:max-w-[1600px] flex flex-col p-0 overflow-hidden rounded-xl">
         <div className="border-b px-6 py-5 bg-gradient-to-br from-background to-muted/40">
           <DialogHeader className="space-y-1">
             <DialogTitle className="text-xl">Add Metric Widget</DialogTitle>
