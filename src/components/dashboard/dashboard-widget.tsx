@@ -171,6 +171,7 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | undefined>(undefined);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [wasRecentlyDragging, setWasRecentlyDragging] = useState(false);
   
   const { 
     filters, 
@@ -184,6 +185,19 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
   } = useDashboardStore();
   
   const metricDefinition = metricsRegistry.find(m => m.name === widget.metricName);
+  
+  // Track drag state changes to prevent accidental clicks after drag
+  useEffect(() => {
+    if (isDragging) {
+      setWasRecentlyDragging(true);
+    } else if (wasRecentlyDragging) {
+      // Small delay to prevent click events immediately after drag stops
+      const timeout = setTimeout(() => {
+        setWasRecentlyDragging(false);
+      }, 150);
+      return () => clearTimeout(timeout);
+    }
+  }, [isDragging, wasRecentlyDragging]);
   
   // Special handling for compare mode widgets
   if (widget.vizType === 'compareMatrix' || widget.vizType === 'compareTable') {
@@ -202,31 +216,20 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
   
   useEffect(() => {
     const fetchData = async () => {
+      setIsLoading(true);
+      setError(undefined);
+      
       try {
-        setIsLoading(true);
+                 // Generate mock data based on widget configuration
+         const mockData = generateMockData(widget, relevantEntities);
         
-        // TODO: Replace with actual API call
-        // const supabase = createClient();
-        // const response = await fetch('/api/metrics', {
-        //   method: 'POST',
-        //   headers: { 'Content-Type': 'application/json' },
-        //   body: JSON.stringify({
-        //     metricName: widget.metricName,
-        //     breakdown: widget.breakdown,
-        //     filters,
-        //     compareMode,
-        //     compareEntities: relevantEntities
-        //   })
-        // });
+        // Simulate API delay
+        await new Promise(resolve => setTimeout(resolve, 300));
         
-        // Mock data for now
-        await new Promise(resolve => setTimeout(resolve, 500));
-        const mockData = generateMockData(widget, relevantEntities);
         setData(mockData);
-        setError(undefined);
       } catch (err) {
-        setError('Failed to load metric data');
-        console.error(err);
+        console.error('Error fetching widget data:', err);
+        setError('Failed to load data');
       } finally {
         setIsLoading(false);
       }
@@ -237,13 +240,29 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
   
   // Memoize chart rendering to prevent unnecessary re-renders during drag
   const renderChart = useCallback(() => {
-    if (!data) return null;
+    if (!data) {
+      console.log('No data available for widget:', widget.id, widget.metricName, widget.vizType, widget.breakdown);
+      return null;
+    }
+    
+    console.log('Rendering chart for widget:', {
+      id: widget.id,
+      metricName: widget.metricName,
+      vizType: widget.vizType,
+      breakdown: widget.breakdown,
+      data: data
+    });
     
     // Create a stable key for chart components to prevent unnecessary remounting
     const chartKey = `chart-${widget.id}-${widget.vizType}-${isDragging ? 'dragging' : 'static'}`;
     
     switch (widget.vizType) {
       case 'kpi':
+        console.log('KPI data structure:', {
+          'data.data': data.data,
+          'data.data.value': data.data.value,
+          'data.data.comparison': data.data.comparison
+        });
         return (
           <KPIChart
             key={chartKey}
@@ -462,7 +481,15 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
     <>
       <div 
         className="cursor-pointer"
-        onClick={() => setShowDetailModal(true)}
+        onClick={(e) => {
+          // Prevent modal from opening during or immediately after drag
+          if (isDragging || wasRecentlyDragging) {
+            e.preventDefault();
+            e.stopPropagation();
+            return;
+          }
+          setShowDetailModal(true);
+        }}
       >
         <ChartWrapper
           title={widget.settings?.title || metricDefinition?.displayName || widget.metricName}
