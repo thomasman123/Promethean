@@ -26,7 +26,7 @@ export function DashboardGrid({ className }: DashboardGridProps) {
       w: widget.size.w,
       h: widget.size.h,
       minW: 2,
-      minH: 2,
+      minH: 3,
       maxW: 12,
       static: widget.pinned
     }))
@@ -98,7 +98,7 @@ export function DashboardGrid({ className }: DashboardGridProps) {
         preventCollision={false}
       >
         {widgets.map(widget => (
-          <div key={widget.id} className="h-full overflow-hidden">
+          <div key={widget.id} className="h-full min-h-0 overflow-hidden">
             <DashboardWidget widget={widget} isDragging={isDragging} />
           </div>
         ))}

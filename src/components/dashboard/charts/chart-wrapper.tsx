@@ -59,7 +59,7 @@ export function ChartWrapper({
   children
 }: ChartWrapperProps) {
   return (
-    <Card className={cn("h-full flex flex-col", pinned && "ring-2 ring-primary", className)}>
+    <Card className={cn("h-full min-h-0 flex flex-col", pinned && "ring-2 ring-primary", className)}>
       <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-3">
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-1">
@@ -160,7 +160,7 @@ export function ChartWrapper({
         </div>
       </CardHeader>
       
-      <CardContent className="flex-1 pb-4">
+      <CardContent className="flex-1 min-h-0 pb-4">
         {isLoading ? (
           <div className="h-full flex items-center justify-center">
             <Skeleton className="w-full h-full" />
@@ -172,7 +172,7 @@ export function ChartWrapper({
             </p>
           </div>
         ) : (
-          <div className="h-full relative overflow-hidden">
+          <div className="h-full min-h-0 relative overflow-hidden">
             {children}
           </div>
         )}
