@@ -1,15 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { createServerClient } from '@supabase/ssr'
+import type { Database } from '@/lib/database.types'
 import { metricsEngine } from '@/lib/metrics/engine'
 import { MetricRequest } from '@/lib/metrics/types'
 import { getAllMetricNames } from '@/lib/metrics/registry'
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ 
-      cookies: async () => await cookies() 
-    })
+    const supabase = createServerClient<Database>(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return request.cookies.get(name)?.value
+          },
+          set() {},
+          remove() {},
+        },
+      }
+    )
     
     // Check authentication
     console.log('🐛 DEBUG - Metrics API: Checking authentication...')
@@ -77,9 +87,19 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ 
-      cookies: async () => await cookies() 
-    })
+    const supabase = createServerClient<Database>(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return request.cookies.get(name)?.value
+          },
+          set() {},
+          remove() {},
+        },
+      }
+    )
     
     // Check authentication
     const { data: { session }, error: authError } = await supabase.auth.getSession()
