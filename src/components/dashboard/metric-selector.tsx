@@ -77,7 +77,7 @@ const FAVORITES_KEY = "promethean.metric.favorites";
 const RECENTS_KEY = "promethean.metric.recents";
 
 export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
-  const { metricsRegistry, addWidget } = useDashboardStore();
+  const { metricsRegistry, addWidget, globalWidgetSettings } = useDashboardStore();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedMetric, setSelectedMetric] = useState<MetricDefinition | null>(null);
   const [selectedViz, setSelectedViz] = useState<VizType | null>(null);
@@ -165,6 +165,7 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
       breakdown: selectedBreakdown,
       vizType: selectedViz,
       settings: {
+        ...globalWidgetSettings,
         title: customTitle || selectedMetric.displayName,
         yAxisScale,
         showRollingAvg,
