@@ -210,7 +210,7 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl max-h-[90vh] flex flex-col p-0 overflow-hidden">
+      <DialogContent className="w-[96vw] max-w-[1600px] h-[94vh] flex flex-col p-0 overflow-hidden">
         <div className="border-b px-6 py-5 bg-gradient-to-br from-background to-muted/40">
           <DialogHeader className="space-y-1">
             <DialogTitle className="text-xl">Add Metric Widget</DialogTitle>
@@ -220,9 +220,9 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
 
         <div className="flex-1 grid grid-cols-12 gap-0 overflow-hidden">
           {/* Left: Metric Browser */}
-          <div className="col-span-7 border-r flex flex-col bg-background">
-            <div className="px-4 pt-4 pb-3">
-              <Command shouldFilter={false} className="rounded-lg border">
+          <div className="col-span-7 border-r flex flex-col bg-background min-h-0">
+            <div className="px-4 pt-4 pb-3 flex-1 min-h-0 flex flex-col">
+              <Command shouldFilter={false} className="rounded-lg border flex-1 min-h-0">
                 <div className="flex items-center px-2">
                   <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
                   <CommandInput placeholder="Search metrics..." value={searchQuery} onValueChange={setSearchQuery} />
@@ -240,7 +240,7 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
                   </Button>
                 </div>
                 <CommandSeparator />
-                <CommandList className="max-h-[52vh]">
+                <CommandList className="flex-1 overflow-auto">
                   <CommandEmpty>No metrics found.</CommandEmpty>
                   {Object.entries(filteredGroupedMetrics).map(([category, metrics]) => (
                     <CommandGroup
