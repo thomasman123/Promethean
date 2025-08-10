@@ -193,15 +193,28 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
     return <CompareWidget widgetId={widget.id} />;
   }
   
-  // Filter entities based on widget breakdown type
-  const relevantEntities = compareMode 
-    ? compareEntities.filter(e => {
-        if (widget.breakdown === 'rep') return e.type === 'rep';
-        if (widget.breakdown === 'setter') return e.type === 'setter';
-        if (widget.breakdown === 'link') return true; // Both types
-        return false;
-      })
-    : [];
+  // Memoize relevant entities to prevent useEffect infinite loop
+  const relevantEntities = useMemo(() => {
+    if (!compareMode) return [];
+    
+    return compareEntities.filter(e => {
+      if (widget.breakdown === 'rep') return e.type === 'rep';
+      if (widget.breakdown === 'setter') return e.type === 'setter';
+      if (widget.breakdown === 'link') return true; // Both types
+      return false;
+    });
+  }, [compareMode, compareEntities, widget.breakdown]);
+  
+  // Memoize widget key properties to prevent unnecessary re-fetches
+  const widgetKey = useMemo(() => ({
+    id: widget.id,
+    metricName: widget.metricName,
+    breakdown: widget.breakdown,
+    vizType: widget.vizType
+  }), [widget.id, widget.metricName, widget.breakdown, widget.vizType]);
+  
+  // Memoize filters to prevent reference instability
+  const stableFilters = useMemo(() => JSON.stringify(filters), [filters]);
   
   useEffect(() => {
     const fetchData = async () => {
@@ -247,7 +260,7 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
           return dashboardMetricName;
         };
 
-        const engineMetricName = getEngineMetricName(widget.metricName, widget.breakdown);
+        const engineMetricName = getEngineMetricName(widgetKey.metricName, widgetKey.breakdown);
         
         // Call the metrics API
         const response = await fetch('/api/metrics', {
@@ -274,7 +287,7 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
         // Transform API result to dashboard format
         const transformResult = (result: any): MetricData => {
           if (!result.result) {
-            return { metricName: widget.metricName, breakdown: widget.breakdown, data: {} };
+            return { metricName: widgetKey.metricName, breakdown: widgetKey.breakdown, data: {} };
           }
 
           const { type, data } = result.result;
@@ -282,8 +295,8 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
           switch (type) {
             case 'total':
               return {
-                metricName: widget.metricName,
-                breakdown: widget.breakdown,
+                metricName: widgetKey.metricName,
+                breakdown: widgetKey.breakdown,
                 data: {
                   value: data.value || 0,
                   comparison: {
@@ -296,8 +309,8 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
             case 'rep':
             case 'setter':
               return {
-                metricName: widget.metricName,
-                breakdown: widget.breakdown,
+                metricName: widgetKey.metricName,
+                breakdown: widgetKey.breakdown,
                 data: data.map((item: any) => ({
                   name: item.repName || item.setterName || item.name || 'Unknown',
                   value: item.value || 0
@@ -306,8 +319,8 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
               
             case 'link':
               return {
-                metricName: widget.metricName,
-                breakdown: widget.breakdown,
+                metricName: widgetKey.metricName,
+                breakdown: widgetKey.breakdown,
                 data: data.map((item: any) => ({
                   setterId: item.setterId,
                   setterName: item.setterName,
@@ -318,7 +331,7 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
               };
               
             default:
-              return { metricName: widget.metricName, breakdown: widget.breakdown, data: {} };
+              return { metricName: widgetKey.metricName, breakdown: widgetKey.breakdown, data: {} };
           }
         };
 
@@ -338,7 +351,7 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
     };
     
     fetchData();
-  }, [widget, filters, compareMode, relevantEntities, selectedAccountId]);
+  }, [widgetKey, stableFilters, selectedAccountId, relevantEntities.length, compareMode]);
   
   // Memoize chart rendering to prevent unnecessary re-renders during drag
   const renderChart = useCallback(() => {
@@ -561,7 +574,7 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
       default:
         return <div>Unsupported visualization type: {widget.vizType}</div>;
     }
-  }, [data, widget.id, widget.vizType, widget.settings, metricDefinition, isDragging, compareMode, relevantEntities]);
+  }, [data, widgetKey, widget.settings, metricDefinition, isDragging, compareMode, relevantEntities]);
   
   return (
     <>
