@@ -81,7 +81,7 @@ export default function LoginPage() {
           </div>
           <h1 className="text-2xl font-bold tracking-tight">Welcome back</h1>
           <p className="text-muted-foreground">
-            Sign in to your account to continue
+            Access your analytics dashboard and insights
           </p>
         </div>
 

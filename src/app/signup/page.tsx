@@ -86,7 +86,7 @@ export default function SignupPage() {
           </div>
           <h1 className="text-2xl font-bold tracking-tight">Create your account</h1>
           <p className="text-muted-foreground">
-            Get started with your business management platform
+            Start transforming your call data into actionable insights
           </p>
         </div>
 
