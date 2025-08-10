@@ -45,14 +45,14 @@ export function KPIChart({
   };
 
   return (
-    <div className={cn("flex flex-col items-center justify-center h-full", className)}>
+    <div className={cn("flex flex-col items-center justify-center h-full p-2", className)}>
       <div className="text-center">
         <div className="flex items-baseline justify-center gap-1">
-          <span className="text-4xl font-bold tracking-tight">
+          <span className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight">
             {formattedValue}
           </span>
           {unit && (
-            <span className="text-xl text-muted-foreground ml-1">
+            <span className="text-lg sm:text-xl text-muted-foreground ml-1">
               {unit}
             </span>
           )}
@@ -60,15 +60,15 @@ export function KPIChart({
         
         {comparison && (
           <div className={cn(
-            "flex items-center justify-center gap-1 mt-2",
+            "flex items-center justify-center gap-1 mt-1 sm:mt-2",
             getComparisonColor(comparison.value)
           )}>
             {getComparisonIcon(comparison.value)}
-            <span className="text-sm font-medium">
+            <span className="text-xs sm:text-sm font-medium">
               {formatComparison(comparison)}
             </span>
-            <span className="text-sm text-muted-foreground">
-              vs previous period
+            <span className="text-xs sm:text-sm text-muted-foreground">
+              vs previous
             </span>
           </div>
         )}

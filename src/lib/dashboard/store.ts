@@ -374,8 +374,8 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
   
   // Widget actions
   addWidget: (widget) => {
-    const MIN_W = 3;
-    const MIN_H = 3;
+    const MIN_W = 4; // Standard width for 3 widgets per row (12/3 = 4)
+    const MIN_H = 4; // Standard height for better aspect ratio
     const newWidget = {
       ...widget,
       size: {
@@ -411,8 +411,8 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
     const widget = get().widgets.find(w => w.id === widgetId);
     if (!widget) return;
     
-    const MIN_W = 3;
-    const MIN_H = 3;
+    const MIN_W = 4; // Standard width for 3 widgets per row (12/3 = 4)
+    const MIN_H = 4; // Standard height for better aspect ratio
     const newWidget = {
       ...widget,
       id: `widget-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,

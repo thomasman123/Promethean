@@ -12,41 +12,42 @@ interface DashboardGridProps {
   className?: string;
 }
 
+// Standardized widget dimensions for 3 widgets per row
+const STANDARD_WIDGET_CONFIG = {
+  cols: 12,
+  widgetCols: 4, // 12/3 = 4 columns per widget for 3 per row
+  minWidgetHeight: 4, // Grid units
+  maxWidgetHeight: 8, // Grid units
+  aspectRatio: 1.2, // Slightly landscape (width/height)
+  baseRowHeight: 80, // Fixed base height in pixels
+};
+
 export function DashboardGrid({ className }: DashboardGridProps) {
   const { widgets, updateWidgetLayout } = useDashboardStore();
   const [isDragging, setIsDragging] = useState(false);
-  const [rowHeight, setRowHeight] = useState<number>(60);
+  const [rowHeight] = useState<number>(STANDARD_WIDGET_CONFIG.baseRowHeight);
   const dragTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
-  // Convert widgets to grid layout format
+  // Convert widgets to grid layout format with standardized sizing
   const layouts = {
     lg: widgets.map(widget => ({
       i: widget.id,
       x: widget.position.x,
       y: widget.position.y,
-      w: widget.size.w,
-      h: widget.size.h,
-      minW: 3,
-      minH: 3,
-      maxW: 12,
+      w: Math.min(Math.max(widget.size.w, STANDARD_WIDGET_CONFIG.widgetCols), STANDARD_WIDGET_CONFIG.cols),
+      h: Math.min(Math.max(widget.size.h, STANDARD_WIDGET_CONFIG.minWidgetHeight), STANDARD_WIDGET_CONFIG.maxWidgetHeight),
+      minW: STANDARD_WIDGET_CONFIG.widgetCols,
+      minH: STANDARD_WIDGET_CONFIG.minWidgetHeight,
+      maxW: STANDARD_WIDGET_CONFIG.cols,
+      maxH: STANDARD_WIDGET_CONFIG.maxWidgetHeight,
       static: widget.pinned
     }))
   };
-  
-  const computeRowHeight = useCallback((width: number, cols: number, marginX: number, containerPaddingX: number) => {
-    const colWidth = (width - (cols - 1) * marginX - 2 * containerPaddingX) / cols;
-    return Math.max(40, Math.floor(colWidth));
-  }, []);
 
   const handleLayoutChange = useCallback((layout: GridLayout[]) => {
     // No-op during active drag/resize to avoid excessive re-renders
     // Layout updates are handled in drag/resize stop events
   }, []);
-
-  const handleWidthChange = useCallback((width: number, margin: [number, number], cols: number) => {
-    const next = computeRowHeight(width, cols, margin[0], 16);
-    setRowHeight(next);
-  }, [computeRowHeight]);
 
   const handleDragStart = useCallback(() => {
     // Clear any existing timeout
@@ -107,7 +108,6 @@ export function DashboardGrid({ className }: DashboardGridProps) {
       <ResponsiveGridLayout
         className="layout"
         layouts={layouts}
-        onWidthChange={handleWidthChange}
         onLayoutChange={handleLayoutChange}
         onDragStart={handleDragStart}
         onDragStop={handleDragStop}
@@ -115,12 +115,12 @@ export function DashboardGrid({ className }: DashboardGridProps) {
         onResize={handleResize}
         onResizeStop={handleResizeStop}
         breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
-        cols={{ lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 }}
+        cols={{ lg: 12, md: 9, sm: 6, xs: 3, xxs: 3 }}
         rowHeight={rowHeight}
         isDraggable={true}
         isResizable={true}
-        containerPadding={[16, 16]}
-        margin={[16, 16]}
+        containerPadding={[12, 12]}
+        margin={[12, 12]}
         compactType="vertical"
         preventCollision={false}
       >

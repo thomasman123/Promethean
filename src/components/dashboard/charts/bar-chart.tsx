@@ -71,29 +71,31 @@ export function BarChart({
       ];
   return (
     <ChartContainer config={chartConfig} className="w-full h-full min-h-[200px]">
-      <RechartsBarChart data={safeData} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
+      <RechartsBarChart data={safeData} margin={{ top: 10, right: 10, left: 10, bottom: 20 }}>
         {showGrid && (
           <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
         )}
         <XAxis 
           dataKey={xAxisKey}
           className="text-xs"
-          tick={{ fill: 'hsl(var(--muted-foreground))' }}
+          tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+          height={30}
         />
         <YAxis 
           label={yAxisLabel ? { 
             value: yAxisLabel, 
             angle: -90, 
             position: 'insideLeft',
-            style: { fill: 'hsl(var(--muted-foreground))', fontSize: 12 }
+            style: { fill: 'hsl(var(--muted-foreground))', fontSize: 10 }
           } : undefined}
           className="text-xs"
-          tick={{ fill: 'hsl(var(--muted-foreground))' }}
+          tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+          width={40}
         />
         {!disableTooltip && <Tooltip content={<CustomTooltip />} />}
         {showLegend && (
           <Legend 
-            wrapperStyle={{ fontSize: '12px' }}
+            wrapperStyle={{ fontSize: '10px', paddingTop: '8px' }}
           />
         )}
         {bars.map((bar, index) => (

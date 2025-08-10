@@ -4,10 +4,26 @@ import {
   PieChart as RechartsPieChart, 
   Pie, 
   Cell,
-  Tooltip as RechartsTooltip, 
+  Tooltip, 
   Legend
 } from 'recharts';
 import { ChartContainer, ChartConfig } from '@/components/ui/chart';
+
+// Custom tooltip
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload) return null;
+
+  return (
+    <div className="bg-background border rounded-lg shadow-lg p-3">
+      <p className="text-sm font-medium mb-1">{label}</p>
+      {payload.map((entry: any, index: number) => (
+        <p key={index} className="text-sm" style={{ color: entry.color }}>
+          {entry.name}: {entry.value}
+        </p>
+      ))}
+    </div>
+  );
+};
 
 interface PieChartProps {
   data: Array<{
@@ -33,23 +49,6 @@ const DEFAULT_COLORS = [
   'hsl(20, 70%, 50%)',
   'hsl(170, 70%, 50%)',
 ];
-
-// Custom tooltip
-const CustomTooltip = ({ active, payload }: any) => {
-  if (!active || !payload || !payload[0]) return null;
-
-  return (
-    <div className="bg-background border rounded-lg shadow-lg p-3">
-      <p className="text-sm font-medium">{payload[0].name}</p>
-      <p className="text-sm" style={{ color: payload[0].payload.fill }}>
-        Value: {payload[0].value}
-      </p>
-      <p className="text-xs text-muted-foreground">
-        {((payload[0].value / payload[0].payload.total) * 100).toFixed(1)}%
-      </p>
-    </div>
-  );
-};
 
 // Custom label
 const renderCustomLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }: any) => {
@@ -96,21 +95,49 @@ export function PieChart({
 
   return (
     <ChartContainer config={chartConfig} className="w-full h-full min-h-[200px]">
-      <RechartsPieChart>
+      <RechartsPieChart margin={{ top: 10, right: 10, left: 10, bottom: 10 }}>
         <Pie
           data={safeData}
-          dataKey="value"
-          nameKey="name"
-          innerRadius={innerRadius}
+          cx="50%"
+          cy="50%"
           outerRadius="80%"
-          label={showLabels}
+          innerRadius={innerRadius}
+          fill="#8884d8"
+          dataKey="value"
+          label={showLabels ? ({
+            cx, cy, midAngle, innerRadius, outerRadius, percent
+          }) => {
+            const RADIAN = Math.PI / 180;
+            const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+            const x = cx + radius * Math.cos(-midAngle * RADIAN);
+            const y = cy + radius * Math.sin(-midAngle * RADIAN);
+
+            return (
+              <text 
+                x={x} 
+                y={y} 
+                fill="white" 
+                textAnchor={x > cx ? 'start' : 'end'} 
+                dominantBaseline="central"
+                fontSize="10"
+                fontWeight="500"
+              >
+                {`${(percent * 100).toFixed(0)}%`}
+              </text>
+            );
+          } : false}
         >
-          {safeData.map((entry: any, index: number) => (
-            <Cell key={`cell-${index}`} fill={entry.color || colors[index % colors.length]} />
+          {safeData.map((entry, index) => (
+            <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
           ))}
         </Pie>
-        {!disableTooltip && <RechartsTooltip />}
-        {showLegend && <Legend />}
+        {!disableTooltip && <Tooltip content={<CustomTooltip />} />}
+        {showLegend && (
+          <Legend 
+            wrapperStyle={{ fontSize: '10px', paddingTop: '8px' }}
+            iconSize={8}
+          />
+        )}
       </RechartsPieChart>
     </ChartContainer>
   );

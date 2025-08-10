@@ -81,42 +81,64 @@ export function AreaChart({
 
   return (
     <ChartContainer config={chartConfig} className="w-full h-full min-h-[200px]">
-      <RechartsAreaChart data={safeData} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
+      <RechartsAreaChart data={safeData} margin={{ top: 10, right: 10, left: 10, bottom: 20 }}>
         {showGrid && (
           <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
         )}
         <XAxis 
           dataKey={xAxisKey}
-          tickFormatter={formatXAxis}
+          type={xAxisType === 'date' ? 'number' : 'category'}
+          scale={xAxisType === 'date' ? 'time' : undefined}
+          domain={xAxisType === 'date' ? ['dataMin', 'dataMax'] : undefined}
           className="text-xs"
-          tick={{ fill: 'hsl(var(--muted-foreground))' }}
+          tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+          height={30}
+          tickFormatter={xAxisType === 'date' 
+            ? (value) => new Date(value).toLocaleDateString()
+            : undefined
+          }
         />
         <YAxis 
           label={yAxisLabel ? { 
             value: yAxisLabel, 
             angle: -90, 
             position: 'insideLeft',
-            style: { fill: 'hsl(var(--muted-foreground))', fontSize: 12 }
+            style: { fill: 'hsl(var(--muted-foreground))', fontSize: 10 }
           } : undefined}
           className="text-xs"
-          tick={{ fill: 'hsl(var(--muted-foreground))' }}
+          tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+          width={40}
         />
         {!disableTooltip && <Tooltip content={<CustomTooltip />} />}
         {showLegend && (
           <Legend 
-            wrapperStyle={{ fontSize: '12px' }}
+            wrapperStyle={{ fontSize: '10px', paddingTop: '8px' }}
           />
         )}
-        {areas.map((area) => (
+        <defs>
+          {areas.map((area, index) => (
+            <linearGradient
+              key={`gradient-${area.dataKey}`}
+              id={`fill-${area.dataKey}`}
+              x1="0"
+              y1="0"
+              x2="0"
+              y2="1"
+            >
+              <stop offset="5%" stopColor={area.color} stopOpacity={0.8} />
+              <stop offset="95%" stopColor={area.color} stopOpacity={0.1} />
+            </linearGradient>
+          ))}
+        </defs>
+        {areas.map((area, index) => (
           <Area
             key={area.dataKey}
             type="monotone"
             dataKey={area.dataKey}
-            name={area.name}
             stroke={area.color}
-            fill={area.color}
-            fillOpacity={area.fillOpacity || 0.6}
-            stackId={stacked ? "stack" : undefined}
+            fill={`url(#fill-${area.dataKey})`}
+            name={area.name}
+            strokeWidth={2}
           />
         ))}
       </RechartsAreaChart>
