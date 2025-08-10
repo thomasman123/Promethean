@@ -237,12 +237,12 @@ export function WidgetDetailModal({ widget, data, open, onOpenChange }: WidgetDe
           </DialogTitle>
           <DialogDescription>
             {metricDefinition?.description}
-            {metricDefinition?.formula && (
-              <div className="mt-2 font-mono text-xs bg-muted p-2 rounded">
-                Formula: {metricDefinition.formula}
-              </div>
-            )}
           </DialogDescription>
+          {metricDefinition?.formula && (
+            <div className="mt-2 font-mono text-xs bg-muted p-2 rounded">
+              Formula: {metricDefinition.formula}
+            </div>
+          )}
         </DialogHeader>
 
         <Tabs defaultValue="visualization" className="mt-6">
