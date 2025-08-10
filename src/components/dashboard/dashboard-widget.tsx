@@ -816,7 +816,7 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
   
   return (
     <>
-      <div>
+      <div className="h-full">
         <ChartWrapper
           title={widget.settings?.title || metricDefinition?.displayName || widget.metricName}
           description={metricDefinition?.description}

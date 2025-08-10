@@ -98,7 +98,7 @@ export function DashboardGrid({ className }: DashboardGridProps) {
         preventCollision={false}
       >
         {widgets.map(widget => (
-          <div key={widget.id}>
+          <div key={widget.id} className="h-full overflow-hidden">
             <DashboardWidget widget={widget} isDragging={isDragging} />
           </div>
         ))}
