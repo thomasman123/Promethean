@@ -86,6 +86,12 @@ interface DashboardState {
 }
 
 export const useDashboardStore = create<DashboardState>((set, get) => ({
+  // Grid minimums used across the app
+  // Keep these in sync with `DashboardGrid` minW/minH
+  // If changed there, update here too
+  // Alternatively, these could be moved to a shared config
+  // but keeping local for now to avoid extra imports
+  
   // Initial state
   currentView: null,
   views: [],
@@ -368,8 +374,14 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
   
   // Widget actions
   addWidget: (widget) => {
+    const MIN_W = 3;
+    const MIN_H = 6;
     const newWidget = {
       ...widget,
+      size: {
+        w: Math.max(widget.size?.w ?? MIN_W, MIN_W),
+        h: Math.max(widget.size?.h ?? MIN_H, MIN_H),
+      },
       id: `widget-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
     };
     set((state) => ({
@@ -399,12 +411,18 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
     const widget = get().widgets.find(w => w.id === widgetId);
     if (!widget) return;
     
+    const MIN_W = 3;
+    const MIN_H = 6;
     const newWidget = {
       ...widget,
       id: `widget-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       position: {
         x: (widget.position.x + widget.size.w) % 12,
         y: widget.position.y
+      },
+      size: {
+        w: Math.max(widget.size?.w ?? MIN_W, MIN_W),
+        h: Math.max(widget.size?.h ?? MIN_H, MIN_H),
       }
     };
     

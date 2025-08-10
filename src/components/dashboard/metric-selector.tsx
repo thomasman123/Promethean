@@ -214,7 +214,7 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
         previousPeriodType,
       },
       position: { x: 0, y: 0 },
-      size: { w: 4, h: 4 },
+      size: { w: 3, h: 6 },
     });
 
     // Update recents
