@@ -358,7 +358,43 @@ export function DashboardWidget({ widget }: DashboardWidgetProps) {
             showLabels={true}
           />
         );
-        
+
+      case 'horizontalBar':
+        return (
+          <BarChart
+            data={data.data}
+            bars={[{ dataKey: 'value', name: widget.settings?.title || widget.metricName, color: 'hsl(var(--primary))' }]}
+            xAxisKey="name"
+            showLegend={false}
+          />
+        );
+
+      case 'stackedBar':
+        // Derive a simple two-series mock for now if not present
+        return (
+          <BarChart
+            data={data.data}
+            bars={[
+              { dataKey: 'value', name: 'A', color: 'hsl(var(--primary))' },
+              { dataKey: 'value2', name: 'B', color: 'hsl(215 70% 50%)' },
+            ]}
+            xAxisKey="name"
+            showLegend={true}
+            stacked={true}
+          />
+        );
+
+      case 'sparkline':
+        return (
+          <AreaChart
+            data={Array.isArray(data.data) ? data.data.map((d: any) => ({ date: d.date || d.name, value: d.value })) : []}
+            areas={[{ dataKey: 'value', name: 'Value', color: 'hsl(var(--primary))' }]}
+            xAxisKey="date"
+            xAxisType="category"
+            showLegend={false}
+          />
+        );
+ 
       case 'table':
         const columns = [
           { key: 'name', label: 'Name' },

@@ -1,4 +1,21 @@
-export type VizType = 'kpi' | 'line' | 'bar' | 'area' | 'pie' | 'donut' | 'table' | 'funnel' | 'compareMatrix' | 'compareTable';
+export type VizType =
+  | 'kpi'
+  | 'line'
+  | 'bar'
+  | 'area'
+  | 'pie'
+  | 'donut'
+  | 'table'
+  | 'funnel'
+  | 'compareMatrix'
+  | 'compareTable'
+  // new visualizations
+  | 'horizontalBar'
+  | 'stackedBar'
+  | 'scatter'
+  | 'radar'
+  | 'radialBar'
+  | 'sparkline';
 export type BreakdownType = 'total' | 'rep' | 'setter' | 'link' | 'time';
 export type ViewScope = 'private' | 'team' | 'global';
 

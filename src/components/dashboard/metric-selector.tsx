@@ -71,6 +71,12 @@ const vizTypeLabels: Record<VizType, string> = {
   funnel: "Funnel",
   compareMatrix: "Comparison Matrix",
   compareTable: "Comparison Table",
+  horizontalBar: "Horizontal Bar",
+  stackedBar: "Stacked Bar",
+  scatter: "Scatter Plot",
+  radar: "Radar Chart",
+  radialBar: "Radial Bar",
+  sparkline: "Sparkline",
 };
 
 const FAVORITES_KEY = "promethean.metric.favorites";
