@@ -12,6 +12,14 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import {
   Command,
   CommandEmpty,
@@ -78,6 +86,13 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
   const [filterMode, setFilterMode] = useState<"all" | "favorites" | "recent">("all");
   const [favoriteMetricNames, setFavoriteMetricNames] = useState<string[]>([]);
   const [recentMetricNames, setRecentMetricNames] = useState<string[]>([]);
+
+  // Advanced display options
+  const [yAxisScale, setYAxisScale] = useState<"linear" | "log">("linear");
+  const [showRollingAvg, setShowRollingAvg] = useState(false);
+  const [rollingAvgDays, setRollingAvgDays] = useState(7);
+  const [compareVsPrevious, setCompareVsPrevious] = useState(false);
+  const [previousPeriodType, setPreviousPeriodType] = useState<"day" | "week" | "month" | "year">("week");
 
   // Load favorites/recents from localStorage
   useEffect(() => {
@@ -151,9 +166,14 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
       vizType: selectedViz,
       settings: {
         title: customTitle || selectedMetric.displayName,
+        yAxisScale,
+        showRollingAvg,
+        rollingAvgDays,
+        compareVsPrevious,
+        previousPeriodType,
       },
-      position: { x: 0, y: 0 }, // Will be auto-positioned
-      size: { w: 4, h: 4 }, // Default size
+      position: { x: 0, y: 0 },
+      size: { w: 4, h: 4 },
     });
 
     // Update recents
@@ -186,134 +206,106 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedMetric, selectedViz, selectedBreakdown, customTitle]);
+  }, [selectedMetric, selectedViz, selectedBreakdown, customTitle, yAxisScale, showRollingAvg, rollingAvgDays, compareVsPrevious, previousPeriodType]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl max-h-[85vh] flex flex-col p-0">
-        <div className="border-b px-6 py-5">
+      <DialogContent className="max-w-6xl max-h-[90vh] flex flex-col p-0 overflow-hidden">
+        <div className="border-b px-6 py-5 bg-gradient-to-br from-background to-muted/40">
           <DialogHeader className="space-y-1">
             <DialogTitle className="text-xl">Add Metric Widget</DialogTitle>
-            <DialogDescription>Select a metric, then configure how it appears.</DialogDescription>
+            <DialogDescription className="text-muted-foreground">Select a metric, then configure how it appears.</DialogDescription>
           </DialogHeader>
         </div>
 
         <div className="flex-1 grid grid-cols-12 gap-0 overflow-hidden">
           {/* Left: Metric Browser */}
-          <div className="col-span-7 border-r flex flex-col">
-            <div className="px-4 pt-4 pb-2 flex items-center gap-2">
-              <div className="flex-1">
-                <Command shouldFilter={false} className="rounded-lg border">
-                  <div className="flex items-center px-2">
-                    <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
-                    <CommandInput
-                      placeholder="Search metrics..."
-                      value={searchQuery}
-                      onValueChange={setSearchQuery}
-                    />
-                  </div>
-                  <CommandSeparator />
-                  <div className="px-3 py-2 flex gap-2 flex-wrap">
-                    <Button
-                      size="sm"
-                      variant={filterMode === "all" ? "default" : "outline"}
-                      onClick={() => setFilterMode("all")}
+          <div className="col-span-7 border-r flex flex-col bg-background">
+            <div className="px-4 pt-4 pb-3">
+              <Command shouldFilter={false} className="rounded-lg border">
+                <div className="flex items-center px-2">
+                  <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+                  <CommandInput placeholder="Search metrics..." value={searchQuery} onValueChange={setSearchQuery} />
+                </div>
+                <CommandSeparator />
+                <div className="px-3 py-2 flex gap-2 flex-wrap">
+                  <Button size="sm" variant={filterMode === "all" ? "default" : "outline"} onClick={() => setFilterMode("all")}>
+                    All
+                  </Button>
+                  <Button size="sm" variant={filterMode === "favorites" ? "default" : "outline"} onClick={() => setFilterMode("favorites")} className="gap-1">
+                    <Star className="h-3 w-3" /> Favorites
+                  </Button>
+                  <Button size="sm" variant={filterMode === "recent" ? "default" : "outline"} onClick={() => setFilterMode("recent")}>
+                    Recent
+                  </Button>
+                </div>
+                <CommandSeparator />
+                <CommandList className="max-h-[52vh]">
+                  <CommandEmpty>No metrics found.</CommandEmpty>
+                  {Object.entries(filteredGroupedMetrics).map(([category, metrics]) => (
+                    <CommandGroup
+                      key={category}
+                      heading={
+                        <div className="flex items-center gap-2 text-sm">
+                          {categoryIcons[category]}
+                          <span>{category}</span>
+                        </div>
+                      }
                     >
-                      All
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant={filterMode === "favorites" ? "default" : "outline"}
-                      onClick={() => setFilterMode("favorites")}
-                      className="gap-1"
-                    >
-                      <Star className="h-3 w-3" /> Favorites
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant={filterMode === "recent" ? "default" : "outline"}
-                      onClick={() => setFilterMode("recent")}
-                    >
-                      Recent
-                    </Button>
-                  </div>
-                  <CommandSeparator />
-                  <CommandList className="max-h-[48vh]">
-                    <CommandEmpty>No metrics found.</CommandEmpty>
-                    {Object.entries(filteredGroupedMetrics).map(([category, metrics]) => (
-                      <CommandGroup
-                        key={category}
-                        heading={
-                          <div className="flex items-center gap-2 text-sm">
-                            {categoryIcons[category]}
-                            <span>{category}</span>
-                          </div>
-                        }
-                      >
-                        {metrics.map((metric) => {
-                          const isActive = selectedMetric?.name === metric.name;
-                          const isFav = favoriteMetricNames.includes(metric.name);
-                          return (
-                            <CommandItem
-                              key={metric.name}
-                              value={`${metric.displayName} ${metric.description}`}
-                              onSelect={() => handleMetricSelect(metric)}
-                              className={cn(
-                                "flex items-start justify-between gap-3 px-3 py-3",
-                                isActive && "bg-primary/5"
-                              )}
-                            >
-                              <div className="flex-1 text-left">
-                                <div className="flex items-center gap-2">
-                                  <div className="text-sm font-medium leading-none">{metric.displayName}</div>
-                                  {isActive && <Check className="h-3.5 w-3.5 text-primary" />}
-                                </div>
-                                <div className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                                  {metric.description}
-                                </div>
-                                {metric.formula && (
-                                  <div className="text-[11px] font-mono text-muted-foreground mt-2">
-                                    {metric.formula}
-                                  </div>
-                                )}
-                                <div className="mt-2 flex flex-wrap gap-1">
-                                  {metric.supportedBreakdowns.map((b) => (
-                                    <Badge key={b} variant="secondary" className="text-[10px]">
-                                      {b}
-                                    </Badge>
-                                  ))}
-                                </div>
+                      {metrics.map((metric) => {
+                        const isActive = selectedMetric?.name === metric.name;
+                        const isFav = favoriteMetricNames.includes(metric.name);
+                        return (
+                          <CommandItem
+                            key={metric.name}
+                            value={`${metric.displayName} ${metric.description}`}
+                            onSelect={() => handleMetricSelect(metric)}
+                            className={cn("flex items-start justify-between gap-3 px-3 py-3 rounded-md", isActive && "bg-primary/5")}
+                          >
+                            <div className="flex-1 text-left">
+                              <div className="flex items-center gap-2">
+                                <div className="text-sm font-medium leading-none">{metric.displayName}</div>
+                                {isActive && <Check className="h-3.5 w-3.5 text-primary" />}
                               </div>
-                              <Button
-                                type="button"
-                                variant={isFav ? "default" : "ghost"}
-                                size="icon"
-                                className={cn("h-7 w-7 shrink-0", isFav ? "" : "text-muted-foreground")}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  toggleFavorite(metric.name);
-                                }}
-                                aria-label={isFav ? "Remove from favorites" : "Add to favorites"}
-                              >
-                                <Star className={cn("h-4 w-4", isFav && "fill-current")} />
-                              </Button>
-                            </CommandItem>
-                          );
-                        })}
-                      </CommandGroup>
-                    ))}
-                  </CommandList>
-                </Command>
-              </div>
+                              <div className="text-xs text-muted-foreground mt-1 line-clamp-2">{metric.description}</div>
+                              {metric.formula && <div className="text-[11px] font-mono text-muted-foreground mt-2">{metric.formula}</div>}
+                              <div className="mt-2 flex flex-wrap gap-1">
+                                {metric.supportedBreakdowns.map((b) => (
+                                  <Badge key={b} variant="secondary" className="text-[10px]">
+                                    {b}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                            <Button
+                              type="button"
+                              variant={isFav ? "default" : "ghost"}
+                              size="icon"
+                              className={cn("h-7 w-7 shrink-0", isFav ? "" : "text-muted-foreground")}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleFavorite(metric.name);
+                              }}
+                              aria-label={isFav ? "Remove from favorites" : "Add to favorites"}
+                            >
+                              <Star className={cn("h-4 w-4", isFav && "fill-current")} />
+                            </Button>
+                          </CommandItem>
+                        );
+                      })}
+                    </CommandGroup>
+                  ))}
+                </CommandList>
+              </Command>
             </div>
           </div>
 
           {/* Right: Configuration & Preview */}
-          <div className="col-span-5 flex flex-col">
+          <div className="col-span-5 flex flex-col bg-background">
             {!selectedMetric ? (
               <div className="h-full flex items-center justify-center text-center p-8">
                 <div>
-                  <div className="mx-auto mb-3 h-9 w-9 rounded-full bg-muted flex items-center justify-center">
+                  <div className="mx-auto mb-3 h-10 w-10 rounded-full bg-muted flex items-center justify-center shadow-sm">
                     <Plus className="h-5 w-5 text-muted-foreground" />
                   </div>
                   <div className="font-medium">Pick a metric to configure</div>
@@ -322,19 +314,19 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
               </div>
             ) : (
               <div className="h-full flex flex-col">
-                <div className="px-6 pt-5 pb-4 border-b">
+                <div className="px-6 pt-5 pb-4 border-b bg-gradient-to-br from-background to-muted/30">
                   <div className="text-sm text-muted-foreground">Configuring</div>
                   <div className="text-lg font-semibold leading-tight">{selectedMetric.displayName}</div>
-                  {selectedMetric.unit && (
-                    <div className="text-xs text-muted-foreground mt-1">Unit: {selectedMetric.unit}</div>
-                  )}
                 </div>
 
                 <ScrollArea className="flex-1">
-                  <div className="px-6 py-4 space-y-5">
-                    {/* Visualization Type - segmented buttons */}
-                    <div>
-                      <div className="text-sm font-medium mb-2">Visualization</div>
+                  <div className="px-6 py-5 space-y-6">
+                    {/* Section: Visualization */}
+                    <div className="rounded-lg border bg-card p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="text-sm font-medium">Visualization</div>
+                        <Badge variant="secondary" className="text-xs">Recommended</Badge>
+                      </div>
                       <div className="flex flex-wrap gap-2">
                         {selectedMetric.recommendedVisualizations.map((viz) => (
                           <Button
@@ -342,6 +334,7 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
                             type="button"
                             variant={selectedViz === viz ? "default" : "outline"}
                             size="sm"
+                            className="rounded-md"
                             onClick={() => setSelectedViz(viz)}
                           >
                             {vizTypeLabels[viz]}
@@ -350,9 +343,9 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
                       </div>
                     </div>
 
-                    {/* Breakdown Type - chip select */}
-                    <div>
-                      <div className="text-sm font-medium mb-2">Breakdown</div>
+                    {/* Section: Breakdown */}
+                    <div className="rounded-lg border bg-card p-4">
+                      <div className="text-sm font-medium mb-3">Breakdown</div>
                       <div className="flex flex-wrap gap-2">
                         {selectedMetric.supportedBreakdowns.map((b) => (
                           <Button
@@ -360,6 +353,7 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
                             type="button"
                             variant={selectedBreakdown === b ? "default" : "outline"}
                             size="sm"
+                            className="rounded-md"
                             onClick={() => setSelectedBreakdown(b)}
                           >
                             {b.charAt(0).toUpperCase() + b.slice(1)}
@@ -368,25 +362,89 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
                       </div>
                     </div>
 
-                    {/* Custom Title */}
-                    <div>
-                      <div className="text-sm font-medium mb-2">Custom Title (optional)</div>
-                      <Input
-                        value={customTitle}
-                        onChange={(e) => setCustomTitle(e.target.value)}
-                        placeholder={selectedMetric.displayName}
-                      />
+                    {/* Section: Title */}
+                    <div className="rounded-lg border bg-card p-4">
+                      <Label htmlFor="title" className="text-sm font-medium mb-2 block">Custom Title (optional)</Label>
+                      <Input id="title" value={customTitle} onChange={(e) => setCustomTitle(e.target.value)} placeholder={selectedMetric.displayName} />
                     </div>
 
-                    {/* Lightweight Preview */}
-                    <div>
+                    {/* Section: Advanced options */}
+                    <div className="rounded-lg border bg-card">
+                      <Collapsible>
+                        <div className="flex items-center justify-between px-4 py-3">
+                          <div className="text-sm font-medium">Advanced display options</div>
+                          <CollapsibleTrigger asChild>
+                            <Button variant="ghost" size="sm">Toggle</Button>
+                          </CollapsibleTrigger>
+                        </div>
+                        <Separator />
+                        <CollapsibleContent>
+                          <div className="p-4 grid grid-cols-1 gap-4">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <div className="text-sm font-medium">Logarithmic y-axis</div>
+                                <div className="text-xs text-muted-foreground">Switch to log scale for wide ranges</div>
+                              </div>
+                              <Switch checked={yAxisScale === "log"} onCheckedChange={(v) => setYAxisScale(v ? "log" : "linear")} />
+                            </div>
+                            <Separator />
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <div className="text-sm font-medium">Show rolling average</div>
+                                <div className="text-xs text-muted-foreground">Smooth line and bar charts over time</div>
+                              </div>
+                              <Switch checked={showRollingAvg} onCheckedChange={setShowRollingAvg} />
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <Label htmlFor="ra-days" className="text-xs">Rolling avg days</Label>
+                                <Input
+                                  id="ra-days"
+                                  type="number"
+                                  min={3}
+                                  max={60}
+                                  value={rollingAvgDays}
+                                  onChange={(e) => setRollingAvgDays(Number(e.target.value) || 7)}
+                                />
+                              </div>
+                              <div>
+                                <Label htmlFor="prev-type" className="text-xs">Previous period</Label>
+                                <div className="flex gap-2 mt-1">
+                                  {(["day", "week", "month", "year"] as const).map((p) => (
+                                    <Button
+                                      key={p}
+                                      type="button"
+                                      size="sm"
+                                      variant={previousPeriodType === p ? "default" : "outline"}
+                                      onClick={() => setPreviousPeriodType(p)}
+                                    >
+                                      {p}
+                                    </Button>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <div className="text-sm font-medium">Compare vs previous period</div>
+                                <div className="text-xs text-muted-foreground">Display delta vs selected previous period</div>
+                              </div>
+                              <Switch checked={compareVsPrevious} onCheckedChange={setCompareVsPrevious} />
+                            </div>
+                          </div>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    </div>
+
+                    {/* Section: Preview */}
+                    <div className="rounded-lg border bg-card p-4">
                       <div className="text-sm font-medium mb-2">Preview</div>
                       <div className="rounded-md border bg-muted/30 p-4">
                         <div className="text-sm font-medium mb-1">{customTitle || selectedMetric.displayName}</div>
                         <div className="text-xs text-muted-foreground mb-3">
                           {vizTypeLabels[selectedViz as VizType]} · {selectedBreakdown}
                         </div>
-                        <div className="h-28 rounded bg-gradient-to-br from-muted to-muted/60 flex items-center justify-center text-xs text-muted-foreground">
+                        <div className="h-32 rounded bg-gradient-to-br from-muted to-muted/60 flex items-center justify-center text-xs text-muted-foreground">
                           Preview placeholder
                         </div>
                       </div>
@@ -394,7 +452,7 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
                   </div>
                 </ScrollArea>
 
-                <div className="px-6 py-4 border-t mt-auto flex items-center justify-between gap-3">
+                <div className="px-6 py-4 border-t mt-auto flex items-center justify-between gap-3 bg-background/60 backdrop-blur supports-[backdrop-filter]:bg-background/50">
                   <div className="text-xs text-muted-foreground">Press Enter to add quickly</div>
                   <div className="flex items-center gap-2">
                     <Button
@@ -405,14 +463,16 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
                         setSelectedViz(null);
                         setSelectedBreakdown(null);
                         setCustomTitle("");
+                        setYAxisScale("linear");
+                        setShowRollingAvg(false);
+                        setRollingAvgDays(7);
+                        setCompareVsPrevious(false);
+                        setPreviousPeriodType("week");
                       }}
                     >
                       Clear
                     </Button>
-                    <Button
-                      onClick={handleAddWidget}
-                      disabled={!selectedViz || !selectedBreakdown}
-                    >
+                    <Button onClick={handleAddWidget} disabled={!selectedViz || !selectedBreakdown}>
                       Add Widget
                     </Button>
                   </div>
