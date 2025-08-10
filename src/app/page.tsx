@@ -32,9 +32,8 @@ export default function HomePage() {
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        // Temporarily commented out to test homepage display
-        // router.replace('/dashboard');
-        // return;
+        router.replace('/dashboard');
+        return;
       }
       setIsLoading(false);
     };
