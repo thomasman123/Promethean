@@ -15,6 +15,7 @@ interface DashboardGridProps {
 export function DashboardGrid({ className }: DashboardGridProps) {
   const { widgets, updateWidgetLayout } = useDashboardStore();
   const [isDragging, setIsDragging] = useState(false);
+  const [rowHeight, setRowHeight] = useState<number>(60);
   const dragTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   // Convert widgets to grid layout format
@@ -26,16 +27,26 @@ export function DashboardGrid({ className }: DashboardGridProps) {
       w: widget.size.w,
       h: widget.size.h,
       minW: 3,
-      minH: 6,
+      minH: 3,
       maxW: 12,
       static: widget.pinned
     }))
   };
   
+  const computeRowHeight = useCallback((width: number, cols: number, marginX: number, containerPaddingX: number) => {
+    const colWidth = (width - (cols - 1) * marginX - 2 * containerPaddingX) / cols;
+    return Math.max(40, Math.floor(colWidth));
+  }, []);
+
   const handleLayoutChange = useCallback((layout: GridLayout[]) => {
     // No-op during active drag/resize to avoid excessive re-renders
     // Layout updates are handled in drag/resize stop events
   }, []);
+
+  const handleWidthChange = useCallback((width: number, margin: [number, number], cols: number) => {
+    const next = computeRowHeight(width, cols, margin[0], 16);
+    setRowHeight(next);
+  }, [computeRowHeight]);
 
   const handleDragStart = useCallback(() => {
     // Clear any existing timeout
@@ -96,6 +107,7 @@ export function DashboardGrid({ className }: DashboardGridProps) {
       <ResponsiveGridLayout
         className="layout"
         layouts={layouts}
+        onWidthChange={handleWidthChange}
         onLayoutChange={handleLayoutChange}
         onDragStart={handleDragStart}
         onDragStop={handleDragStop}
@@ -104,7 +116,7 @@ export function DashboardGrid({ className }: DashboardGridProps) {
         onResizeStop={handleResizeStop}
         breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
         cols={{ lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 }}
-        rowHeight={60}
+        rowHeight={rowHeight}
         isDraggable={true}
         isResizable={true}
         containerPadding={[16, 16]}
