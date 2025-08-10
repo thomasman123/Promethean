@@ -1,7 +1,7 @@
 "use client";
 
 import { Responsive, WidthProvider } from "react-grid-layout";
-import { useState } from "react";
+import { useState, useCallback, useRef } from "react";
 import { DashboardWidget } from "./dashboard-widget";
 import { useDashboardStore } from "@/lib/dashboard/store";
 import { GridLayout } from "@/lib/dashboard/types";
@@ -15,6 +15,7 @@ interface DashboardGridProps {
 export function DashboardGrid({ className }: DashboardGridProps) {
   const { widgets, updateWidgetLayout } = useDashboardStore();
   const [isDragging, setIsDragging] = useState(false);
+  const dragTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   // Convert widgets to grid layout format
   const layouts = {
@@ -31,27 +32,50 @@ export function DashboardGrid({ className }: DashboardGridProps) {
     }))
   };
   
-  const handleLayoutChange = (layout: GridLayout[]) => {
+  const handleLayoutChange = useCallback((layout: GridLayout[]) => {
     // No-op during active drag/resize to avoid excessive re-renders
-  };
+    // Layout updates are handled in drag/resize stop events
+  }, []);
 
-  const handleDragStart = () => {
+  const handleDragStart = useCallback(() => {
+    // Clear any existing timeout
+    if (dragTimeoutRef.current) {
+      clearTimeout(dragTimeoutRef.current);
+    }
     setIsDragging(true);
-  };
+  }, []);
 
-  const handleDragStop = (layout: GridLayout[]) => {
-    setIsDragging(false);
-    updateWidgetLayout(layout);
-  };
+  const handleDragStop = useCallback((layout: GridLayout[]) => {
+    // Debounce the drag stop to prevent rapid state changes
+    if (dragTimeoutRef.current) {
+      clearTimeout(dragTimeoutRef.current);
+    }
+    
+    dragTimeoutRef.current = setTimeout(() => {
+      setIsDragging(false);
+      updateWidgetLayout(layout);
+    }, 100); // Small delay to ensure smooth transition
+  }, [updateWidgetLayout]);
 
-  const handleResizeStart = () => {
+  const handleResizeStart = useCallback(() => {
+    // Clear any existing timeout
+    if (dragTimeoutRef.current) {
+      clearTimeout(dragTimeoutRef.current);
+    }
     setIsDragging(true);
-  };
+  }, []);
 
-  const handleResizeStop = (layout: GridLayout[]) => {
-    setIsDragging(false);
-    updateWidgetLayout(layout);
-  };
+  const handleResizeStop = useCallback((layout: GridLayout[]) => {
+    // Debounce the resize stop to prevent rapid state changes
+    if (dragTimeoutRef.current) {
+      clearTimeout(dragTimeoutRef.current);
+    }
+    
+    dragTimeoutRef.current = setTimeout(() => {
+      setIsDragging(false);
+      updateWidgetLayout(layout);
+    }, 100); // Small delay to ensure smooth transition
+  }, [updateWidgetLayout]);
   
   return (
     <div className={className}>

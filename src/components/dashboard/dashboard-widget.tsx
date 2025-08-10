@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { ChartWrapper, KPIChart, LineChart, BarChart, AreaChart, PieChart, DonutChart, TableChart } from "./charts";
 import { CompareWidget } from "./compare-widget";
 import { WidgetDetailModal } from "./widget-detail-modal";
@@ -16,11 +16,12 @@ interface DashboardWidgetProps {
 // Generate colors for compare mode
 const COMPARE_COLORS = [
   'hsl(var(--primary))',
-  'hsl(346, 84%, 61%)', // Red
-  'hsl(142, 71%, 45%)', // Green  
-  'hsl(215, 70%, 50%)', // Blue
-  'hsl(47, 85%, 63%)',  // Yellow
-  'hsl(280, 70%, 50%)', // Purple
+  'hsl(var(--secondary))',
+  '#0ea5e9', // sky-500
+  '#f59e0b', // amber-500
+  '#ef4444', // red-500
+  '#10b981', // emerald-500
+  '#8b5cf6', // violet-500
 ];
 
 // Mock data generator for demo
@@ -234,13 +235,18 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
     fetchData();
   }, [widget, filters, compareMode, relevantEntities]);
   
-  const renderChart = () => {
+  // Memoize chart rendering to prevent unnecessary re-renders during drag
+  const renderChart = useCallback(() => {
     if (!data) return null;
+    
+    // Create a stable key for chart components to prevent unnecessary remounting
+    const chartKey = `chart-${widget.id}-${widget.vizType}-${isDragging ? 'dragging' : 'static'}`;
     
     switch (widget.vizType) {
       case 'kpi':
         return (
           <KPIChart
+            key={chartKey}
             value={data.data.value}
             unit={metricDefinition?.unit}
             comparison={data.data.comparison}
@@ -258,6 +264,7 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
           
           return (
             <LineChart
+              key={chartKey}
               data={data.data}
               lines={lines}
               xAxisKey="date"
@@ -271,6 +278,7 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
         // Single series
         return (
           <LineChart
+            key={chartKey}
             data={data.data}
             lines={[{
               dataKey: 'value',
@@ -289,6 +297,7 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
         if (compareMode && relevantEntities.length > 0) {
           return (
             <BarChart
+              key={chartKey}
               data={data.data}
               bars={[{
                 dataKey: 'value',
@@ -304,6 +313,7 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
         
         return (
           <BarChart
+            key={chartKey}
             data={data.data}
             bars={[{
               dataKey: 'value',
@@ -327,6 +337,7 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
           
           return (
             <AreaChart
+              key={chartKey}
               data={data.data}
               areas={areas}
               xAxisKey="date"
@@ -341,6 +352,7 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
         // Single series
         return (
           <AreaChart
+            key={chartKey}
             data={data.data}
             areas={[{
               dataKey: 'value',
@@ -357,6 +369,7 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
       case 'pie':
         return (
           <PieChart
+            key={chartKey}
             data={data.data}
             showLegend={true}
             showLabels={true}
@@ -367,6 +380,7 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
       case 'donut':
         return (
           <DonutChart
+            key={chartKey}
             data={data.data}
             showLegend={true}
             showLabels={true}
@@ -377,6 +391,7 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
       case 'horizontalBar':
         return (
           <BarChart
+            key={chartKey}
             data={data.data}
             bars={[{ dataKey: 'value', name: widget.settings?.title || widget.metricName, color: 'hsl(var(--primary))' }]}
             xAxisKey="name"
@@ -389,6 +404,7 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
         // Derive a simple two-series mock for now if not present
         return (
           <BarChart
+            key={chartKey}
             data={data.data}
             bars={[
               { dataKey: 'value', name: 'A', color: 'hsl(var(--primary))' },
@@ -404,6 +420,7 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
       case 'sparkline':
         return (
           <AreaChart
+            key={chartKey}
             data={Array.isArray(data.data) ? data.data.map((d: any) => ({ date: d.date || d.name, value: d.value })) : []}
             areas={[{ dataKey: 'value', name: 'Value', color: 'hsl(var(--primary))' }]}
             xAxisKey="date"
@@ -427,6 +444,7 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
         
         return (
           <TableChart
+            key={chartKey}
             data={data.data}
             columns={columns}
             showRowNumbers={true}
@@ -438,7 +456,7 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
       default:
         return <div>Unsupported visualization type: {widget.vizType}</div>;
     }
-  };
+  }, [data, widget.id, widget.vizType, widget.settings, metricDefinition, isDragging, compareMode, relevantEntities]);
   
   return (
     <>
@@ -465,7 +483,9 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
               <div className="text-sm text-muted-foreground">Moving...</div>
             </div>
           ) : (
-            renderChart()
+            <div key={`widget-content-${widget.id}`}>
+              {renderChart()}
+            </div>
           )}
         </ChartWrapper>
       </div>
