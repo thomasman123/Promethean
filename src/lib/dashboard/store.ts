@@ -73,6 +73,7 @@ interface DashboardState {
   
   // Registry actions
   setMetricsRegistry: (metrics: MetricDefinition[]) => void;
+  setLoadingRegistry: (loading: boolean) => void;
   
   // UI actions
   setAddWidgetModalOpen: (isOpen: boolean) => void;
@@ -477,6 +478,10 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
   // Registry actions
   setMetricsRegistry: (metrics) => {
     set({ metricsRegistry: metrics });
+  },
+  
+  setLoadingRegistry: (loading) => {
+    set({ isLoadingRegistry: loading });
   },
   
   // UI actions

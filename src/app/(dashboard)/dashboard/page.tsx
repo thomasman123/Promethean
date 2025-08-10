@@ -8,96 +8,63 @@ import { DashboardGrid } from "@/components/dashboard/dashboard-grid";
 import { MetricSelector } from "@/components/dashboard/metric-selector";
 import { ViewsManager } from "@/components/dashboard/views-manager";
 import { useDashboardStore } from "@/lib/dashboard/store";
-import { MetricDefinition } from "@/lib/dashboard/types";
+import { MetricDefinition, BreakdownType, VizType } from "@/lib/dashboard/types";
 import { useAuth } from "@/hooks/useAuth";
+import { getAllMetricNames, getMetric } from "@/lib/metrics/registry";
 
-// Mock metrics registry for demo
-const mockMetricsRegistry: MetricDefinition[] = [
-  // Compare Mode Metrics
-  {
-    name: "setter_rep_performance",
-    displayName: "Setter × Rep Performance",
-    description: "Compare performance across setter-rep combinations",
-    category: "Compare Mode",
-    supportedBreakdowns: ["link"],
-    recommendedVisualizations: ["compareMatrix", "compareTable"],
-    formula: "Aggregated metrics by setter-rep pairs"
-  },
-  {
-    name: "revenue_total",
-    displayName: "Total Revenue",
-    description: "Total revenue across all sources",
-    category: "Revenue",
-    supportedBreakdowns: ["total", "time", "rep", "setter"],
-    recommendedVisualizations: ["kpi", "line", "bar", "area"],
-    formula: "SUM(appointment_value)",
-    unit: "$"
-  },
-  {
-    name: "appointments_total",
-    displayName: "Total Appointments",
-    description: "Total number of appointments",
-    category: "Appointments",
-    supportedBreakdowns: ["total", "time", "rep", "setter"],
-    recommendedVisualizations: ["kpi", "line", "bar"],
-    formula: "COUNT(appointments)"
-  },
-  {
-    name: "show_rate",
-    displayName: "Show Rate",
-    description: "Percentage of scheduled appointments that showed",
-    category: "Quality",
-    supportedBreakdowns: ["total", "rep", "setter"],
-    recommendedVisualizations: ["kpi", "bar"],
-    formula: "COUNT(showed) / COUNT(scheduled) * 100",
-    unit: "%"
-  },
-  {
-    name: "close_rate",
-    displayName: "Close Rate",
-    description: "Percentage of appointments that resulted in a sale",
-    category: "Quality",
-    supportedBreakdowns: ["total", "rep", "setter", "link"],
-    recommendedVisualizations: ["kpi", "bar", "funnel"],
-    formula: "COUNT(closed) / COUNT(showed) * 100",
-    unit: "%"
-  },
-  {
-    name: "revenue_per_appointment",
-    displayName: "Revenue per Appointment",
-    description: "Average revenue generated per appointment",
-    category: "Revenue",
-    supportedBreakdowns: ["total", "rep", "setter"],
-    recommendedVisualizations: ["kpi", "bar", "table"],
-    formula: "SUM(revenue) / COUNT(appointments)",
-    unit: "$"
-  },
-  {
-    name: "revenue_by_source",
-    displayName: "Revenue by Source",
-    description: "Revenue breakdown by acquisition source",
-    category: "Revenue",
-    supportedBreakdowns: ["rep", "setter"],
-    recommendedVisualizations: ["pie", "donut", "bar"],
-    formula: "GROUP BY source, SUM(revenue)",
-    unit: "$"
-  },
-  {
-    name: "appointments_by_status",
-    displayName: "Appointments by Status",
-    description: "Breakdown of appointments by their current status",
-    category: "Appointments",
-    supportedBreakdowns: ["rep", "setter"],
-    recommendedVisualizations: ["pie", "donut", "bar"],
-    formula: "GROUP BY status, COUNT(appointments)"
-  }
-];
+// Map metrics engine metrics to dashboard format
+const mapEngineMetricToDashboard = (engineMetricName: string): MetricDefinition | null => {
+  const engineMetric = getMetric(engineMetricName);
+  if (!engineMetric) return null;
+
+  // Map breakdown types
+  const getBreakdowns = (breakdownType: string): BreakdownType[] => {
+    switch (breakdownType) {
+      case 'total': return ['total'];
+      case 'rep': return ['rep'];
+      case 'setter': return ['setter'];
+      case 'link': return ['link'];
+      default: return ['total'];
+    }
+  };
+
+  // Map to recommended visualizations based on breakdown type
+  const getRecommendedViz = (breakdownType: string): VizType[] => {
+    switch (breakdownType) {
+      case 'total': return ['kpi'];
+      case 'rep': 
+      case 'setter': return ['bar', 'pie', 'table'];
+      case 'link': return ['compareMatrix', 'compareTable'];
+      default: return ['kpi'];
+    }
+  };
+
+  // Categorize metrics
+  const getCategory = (name: string) => {
+    if (name.includes('appointment')) return 'Appointments';
+    if (name.includes('show') || name.includes('rate')) return 'Quality';
+    if (name.includes('revenue') || name.includes('deal')) return 'Revenue';
+    return 'General';
+  };
+
+  return {
+    name: engineMetricName,
+    displayName: engineMetric.name,
+    description: engineMetric.description,
+    category: getCategory(engineMetricName),
+    supportedBreakdowns: getBreakdowns(engineMetric.breakdownType),
+    recommendedVisualizations: getRecommendedViz(engineMetric.breakdownType),
+    formula: `${engineMetric.breakdownType} breakdown query`
+  };
+};
 
 export default function DashboardPage() {
   const { 
     isAddWidgetModalOpen, 
     setAddWidgetModalOpen,
     setMetricsRegistry,
+    isLoadingRegistry,
+    setLoadingRegistry,
     widgets,
     isDirty,
     saveCurrentView,
@@ -106,10 +73,41 @@ export default function DashboardPage() {
 
   const { selectedAccountId, accountChangeTimestamp } = useAuth();
   
-  // Initialize metrics registry
+  // Load real metrics registry
   useEffect(() => {
-    setMetricsRegistry(mockMetricsRegistry);
-  }, [setMetricsRegistry]);
+    const loadMetricsRegistry = async () => {
+      setLoadingRegistry(true);
+      try {
+        // Get all metric names from the registry
+        const metricNames = getAllMetricNames();
+        
+        // Map to dashboard format
+        const dashboardMetrics: MetricDefinition[] = metricNames
+          .map(mapEngineMetricToDashboard)
+          .filter((metric): metric is MetricDefinition => metric !== null);
+
+        setMetricsRegistry(dashboardMetrics);
+      } catch (error) {
+        console.error('Failed to load metrics registry:', error);
+        // Fallback to minimal metrics if loading fails
+        setMetricsRegistry([
+          {
+            name: "total_appointments",
+            displayName: "Total Appointments", 
+            description: "Total number of appointments",
+            category: "Appointments",
+            supportedBreakdowns: ["total"],
+            recommendedVisualizations: ["kpi"],
+            formula: "COUNT(appointments)"
+          }
+        ]);
+      } finally {
+        setLoadingRegistry(false);
+      }
+    };
+
+    loadMetricsRegistry();
+  }, [setMetricsRegistry, setLoadingRegistry]);
 
   // Load views for current account and refresh upon account change
   useEffect(() => {

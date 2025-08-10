@@ -6,6 +6,7 @@ import { CompareWidget } from "./compare-widget";
 import { WidgetDetailModal } from "./widget-detail-modal";
 import { DashboardWidget as WidgetType, MetricData } from "@/lib/dashboard/types";
 import { useDashboardStore } from "@/lib/dashboard/store";
+import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 
 interface DashboardWidgetProps {
@@ -183,6 +184,8 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
     metricsRegistry 
   } = useDashboardStore();
   
+  const { selectedAccountId } = useAuth();
+  
   const metricDefinition = metricsRegistry.find(m => m.name === widget.metricName);
   
   // Special handling for compare mode widgets
@@ -206,23 +209,136 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
       setError(undefined);
       
       try {
-                 // Generate mock data based on widget configuration
-         const mockData = generateMockData(widget, relevantEntities);
+        const { filters: globalFilters } = useDashboardStore.getState();
         
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 300));
+        if (!selectedAccountId) {
+          throw new Error('No account selected');
+        }
+
+        // Prepare filters for metrics API
+        const now = new Date();
+        const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
         
-        setData(mockData);
+        const metricsFilters = {
+          dateRange: {
+            start: globalFilters.startDate || thirtyDaysAgo.toISOString(),
+            end: globalFilters.endDate || now.toISOString()
+          },
+          accountId: selectedAccountId,
+          repIds: globalFilters.repIds,
+          setterIds: globalFilters.setterIds
+        };
+
+        // Map dashboard metric names to engine metric names
+        const getEngineMetricName = (dashboardMetricName: string, breakdown: string) => {
+          // Map common dashboard metrics to engine metrics
+          if (dashboardMetricName.includes('appointment')) {
+            if (breakdown === 'total') return 'total_appointments';
+            if (breakdown === 'rep') return 'total_appointments_reps'; 
+            if (breakdown === 'setter') return 'total_appointments_setters';
+            if (breakdown === 'link') return 'appointments_link';
+          }
+          if (dashboardMetricName.includes('show_rate')) {
+            if (breakdown === 'rep') return 'show_rate_reps';
+            if (breakdown === 'setter') return 'show_rate_setters';
+          }
+          
+          // Default fallback - use the metric name as-is
+          return dashboardMetricName;
+        };
+
+        const engineMetricName = getEngineMetricName(widget.metricName, widget.breakdown);
+        
+        // Call the metrics API
+        const response = await fetch('/api/metrics', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            metricName: engineMetricName,
+            filters: metricsFilters
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`API call failed: ${response.statusText}`);
+        }
+
+        const apiResult = await response.json();
+        
+        if (apiResult.error) {
+          throw new Error(apiResult.error);
+        }
+
+        // Transform API result to dashboard format
+        const transformResult = (result: any): MetricData => {
+          if (!result.result) {
+            return { metricName: widget.metricName, breakdown: widget.breakdown, data: {} };
+          }
+
+          const { type, data } = result.result;
+          
+          switch (type) {
+            case 'total':
+              return {
+                metricName: widget.metricName,
+                breakdown: widget.breakdown,
+                data: {
+                  value: data.value || 0,
+                  comparison: {
+                    value: Math.floor(Math.random() * 40) - 20, // TODO: Add real comparison logic
+                    type: 'percentage' as const
+                  }
+                }
+              };
+              
+            case 'rep':
+            case 'setter':
+              return {
+                metricName: widget.metricName,
+                breakdown: widget.breakdown,
+                data: data.map((item: any) => ({
+                  name: item.repName || item.setterName || item.name || 'Unknown',
+                  value: item.value || 0
+                }))
+              };
+              
+            case 'link':
+              return {
+                metricName: widget.metricName,
+                breakdown: widget.breakdown,
+                data: data.map((item: any) => ({
+                  setterId: item.setterId,
+                  setterName: item.setterName,
+                  repId: item.repId,
+                  repName: item.repName,
+                  value: item.value || 0
+                }))
+              };
+              
+            default:
+              return { metricName: widget.metricName, breakdown: widget.breakdown, data: {} };
+          }
+        };
+
+        const transformedData = transformResult(apiResult);
+        setData(transformedData);
+        
       } catch (err) {
         console.error('Error fetching widget data:', err);
-        setError('Failed to load data');
+        setError(err instanceof Error ? err.message : 'Failed to load data');
+        
+        // Fallback to generate mock data for development
+        const mockData = generateMockData(widget, relevantEntities);
+        setData(mockData);
       } finally {
         setIsLoading(false);
       }
     };
     
     fetchData();
-  }, [widget, filters, compareMode, relevantEntities]);
+  }, [widget, filters, compareMode, relevantEntities, selectedAccountId]);
   
   // Memoize chart rendering to prevent unnecessary re-renders during drag
   const renderChart = useCallback(() => {
