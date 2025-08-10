@@ -30,6 +30,14 @@ export function DashboardGrid({ className }: DashboardGridProps) {
   };
   
   const handleLayoutChange = (layout: GridLayout[]) => {
+    // No-op during active drag/resize to avoid excessive re-renders
+  };
+
+  const handleDragStop = (layout: GridLayout[]) => {
+    updateWidgetLayout(layout);
+  };
+
+  const handleResizeStop = (layout: GridLayout[]) => {
     updateWidgetLayout(layout);
   };
   
@@ -39,6 +47,8 @@ export function DashboardGrid({ className }: DashboardGridProps) {
         className="layout"
         layouts={layouts}
         onLayoutChange={handleLayoutChange}
+        onDragStop={handleDragStop}
+        onResizeStop={handleResizeStop}
         breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
         cols={{ lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 }}
         rowHeight={60}
