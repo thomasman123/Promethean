@@ -54,6 +54,10 @@ export function DashboardGrid({ className }: DashboardGridProps) {
     dragTimeoutRef.current = setTimeout(() => {
       setIsDragging(false);
       updateWidgetLayout(layout);
+      // Nudge chart libraries that listen to window resize
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('resize'));
+      }
     }, 100); // Small delay to ensure smooth transition
   }, [updateWidgetLayout]);
 
@@ -65,6 +69,13 @@ export function DashboardGrid({ className }: DashboardGridProps) {
     setIsDragging(true);
   }, []);
 
+  const handleResize = useCallback(() => {
+    // Continuously notify while resizing so responsive charts re-measure
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('resize'));
+    }
+  }, []);
+
   const handleResizeStop = useCallback((layout: GridLayout[]) => {
     // Debounce the resize stop to prevent rapid state changes
     if (dragTimeoutRef.current) {
@@ -74,6 +85,9 @@ export function DashboardGrid({ className }: DashboardGridProps) {
     dragTimeoutRef.current = setTimeout(() => {
       setIsDragging(false);
       updateWidgetLayout(layout);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('resize'));
+      }
     }, 100); // Small delay to ensure smooth transition
   }, [updateWidgetLayout]);
   
@@ -86,6 +100,7 @@ export function DashboardGrid({ className }: DashboardGridProps) {
         onDragStart={handleDragStart}
         onDragStop={handleDragStop}
         onResizeStart={handleResizeStart}
+        onResize={handleResize}
         onResizeStop={handleResizeStop}
         breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
         cols={{ lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 }}

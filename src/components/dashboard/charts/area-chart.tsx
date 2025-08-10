@@ -7,9 +7,9 @@ import {
   YAxis, 
   CartesianGrid, 
   Tooltip, 
-  Legend,
-  ResponsiveContainer 
+  Legend
 } from 'recharts';
+import { ChartContainer, ChartConfig } from '@/components/ui/chart';
 import { format } from 'date-fns';
 
 interface AreaChartProps {
@@ -58,6 +58,10 @@ export function AreaChart({
   height = '100%',
   disableTooltip = false
 }: AreaChartProps) {
+  const chartConfig: ChartConfig = areas.reduce((acc, a) => {
+    acc[a.dataKey] = { label: a.name, color: a.color };
+    return acc;
+  }, {} as ChartConfig);
   const formatXAxis = (value: any) => {
     if (xAxisType === 'date' && value) {
       return format(new Date(value), 'MMM dd');
@@ -76,7 +80,7 @@ export function AreaChart({
       ];
 
   return (
-    <ResponsiveContainer width="100%" height={height}>
+    <ChartContainer config={chartConfig} className="w-full h-full min-h-[200px]">
       <RechartsAreaChart data={safeData} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
         {showGrid && (
           <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
@@ -116,6 +120,6 @@ export function AreaChart({
           />
         ))}
       </RechartsAreaChart>
-    </ResponsiveContainer>
+    </ChartContainer>
   );
 } 

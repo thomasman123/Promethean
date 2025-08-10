@@ -375,7 +375,7 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
     if (!data) return null;
     
     // Create a stable key for chart components to prevent unnecessary remounting
-    const chartKey = `chart-${widget.id}-${widget.vizType}-${isDragging ? 'dragging' : 'static'}`;
+    const chartKey = `chart-${widget.id}-${widget.vizType}-${widget.size.w}x${widget.size.h}-${isDragging ? 'dragging' : 'static'}`;
     
     switch (widget.vizType) {
       case 'kpi':

@@ -4,10 +4,10 @@ import {
   PieChart as RechartsPieChart, 
   Pie, 
   Cell,
-  Tooltip, 
-  Legend,
-  ResponsiveContainer 
+  Tooltip as RechartsTooltip, 
+  Legend
 } from 'recharts';
+import { ChartContainer, ChartConfig } from '@/components/ui/chart';
 
 interface PieChartProps {
   data: Array<{
@@ -82,47 +82,41 @@ export function PieChart({
   height = '100%',
   disableTooltip = false
 }: PieChartProps) {
-  // Calculate total for percentage calculation
-  const hasData = Array.isArray(data) && data.length > 0;
-  const fallback = [{ name: 'No data', value: 0, color: undefined as string | undefined }];
-  const source = hasData ? data : fallback;
-  const total = source.reduce((sum, entry) => sum + entry.value, 0);
-  const dataWithTotal = (source as Array<{ name: string; value: number; color?: string }>).map(item => ({ ...item, total }));
+  const chartConfig: ChartConfig = (Array.isArray(data) ? data : []).reduce((acc, d: any) => {
+    acc[d.name] = { label: d.name, color: d.color };
+    return acc;
+  }, {} as ChartConfig);
+  const colors = [
+    '#8884d8', '#82ca9d', '#ffc658', '#ff8042', '#0088FE', '#00C49F', '#FFBB28', '#FF8042'
+  ];
+
+  const safeData = Array.isArray(data) && data.length > 0
+    ? data
+    : [{ name: 'No data', value: 0 }];
 
   return (
-    <ResponsiveContainer width="100%" height={height}>
+    <ChartContainer config={chartConfig} className="w-full h-full min-h-[200px]">
       <RechartsPieChart>
         <Pie
-          data={dataWithTotal}
-          cx="50%"
-          cy="50%"
-          labelLine={false}
-          label={showLabels ? renderCustomLabel : false}
-          outerRadius="80%"
-          innerRadius={innerRadius}
-          fill="#8884d8"
+          data={safeData}
           dataKey="value"
+          nameKey="name"
+          innerRadius={innerRadius}
+          outerRadius="80%"
+          label={showLabels}
         >
-          {dataWithTotal.map((entry, index) => (
-            <Cell 
-              key={`cell-${index}`} 
-              fill={entry.color || DEFAULT_COLORS[index % DEFAULT_COLORS.length]} 
-            />
+          {safeData.map((entry: any, index: number) => (
+            <Cell key={`cell-${index}`} fill={entry.color || colors[index % colors.length]} />
           ))}
         </Pie>
-        {!disableTooltip && <Tooltip content={<CustomTooltip />} />}
-        {showLegend && (
-          <Legend 
-            wrapperStyle={{ fontSize: '12px' }}
-            verticalAlign="bottom"
-          />
-        )}
+        {!disableTooltip && <RechartsTooltip />}
+        {showLegend && <Legend />}
       </RechartsPieChart>
-    </ResponsiveContainer>
+    </ChartContainer>
   );
 }
 
 // Donut chart is just a pie chart with inner radius
 export function DonutChart(props: PieChartProps) {
-  return <PieChart {...props} innerRadius={props.innerRadius || 40} />;
+  return <PieChart {...props} innerRadius={60} />;
 } 

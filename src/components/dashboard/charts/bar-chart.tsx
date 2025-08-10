@@ -7,9 +7,9 @@ import {
   YAxis, 
   CartesianGrid, 
   Tooltip, 
-  Legend,
-  ResponsiveContainer 
+  Legend
 } from 'recharts';
+import { ChartContainer, ChartConfig } from '@/components/ui/chart';
 
 interface BarChartProps {
   data: Array<Record<string, any>>;
@@ -56,6 +56,10 @@ export function BarChart({
   barSize,
   disableTooltip = false
 }: BarChartProps) {
+  const chartConfig: ChartConfig = bars.reduce((acc, b) => {
+    acc[b.dataKey] = { label: b.name, color: b.color };
+    return acc;
+  }, {} as ChartConfig);
   const safeData = Array.isArray(data) && data.length > 0
     ? data
     : [
@@ -66,7 +70,7 @@ export function BarChart({
         }, {} as Record<string, any>)
       ];
   return (
-    <ResponsiveContainer width="100%" height={height}>
+    <ChartContainer config={chartConfig} className="w-full h-full min-h-[200px]">
       <RechartsBarChart data={safeData} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
         {showGrid && (
           <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
@@ -103,6 +107,6 @@ export function BarChart({
           />
         ))}
       </RechartsBarChart>
-    </ResponsiveContainer>
+    </ChartContainer>
   );
 } 
