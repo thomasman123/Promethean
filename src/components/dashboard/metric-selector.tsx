@@ -94,6 +94,22 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
   const [compareVsPrevious, setCompareVsPrevious] = useState(false);
   const [previousPeriodType, setPreviousPeriodType] = useState<"day" | "week" | "month" | "year">("week");
 
+  // Map viz to default breakdown
+  const getDefaultBreakdownForViz = (viz: VizType): BreakdownType => {
+    switch (viz) {
+      case 'kpi':
+        return 'total';
+      case 'line':
+      case 'area':
+        return 'time';
+      case 'compareMatrix':
+      case 'compareTable':
+        return 'link';
+      default:
+        return 'rep';
+    }
+  };
+
   // Load favorites/recents from localStorage
   useEffect(() => {
     try {
@@ -153,8 +169,14 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
 
   const handleMetricSelect = (metric: MetricDefinition) => {
     setSelectedMetric(metric);
-    setSelectedViz(metric.recommendedVisualizations[0] || "kpi");
-    setSelectedBreakdown(metric.supportedBreakdowns[0] || "total");
+    const initialViz = metric.recommendedVisualizations[0] || 'kpi';
+    setSelectedViz(initialViz);
+    setSelectedBreakdown(getDefaultBreakdownForViz(initialViz));
+  };
+
+  const handleVizChange = (viz: VizType) => {
+    setSelectedViz(viz);
+    setSelectedBreakdown(getDefaultBreakdownForViz(viz));
   };
 
   const handleAddWidget = () => {
@@ -335,28 +357,9 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
                             variant={selectedViz === viz ? "default" : "outline"}
                             size="sm"
                             className="rounded-md"
-                            onClick={() => setSelectedViz(viz)}
+                            onClick={() => handleVizChange(viz)}
                           >
                             {vizTypeLabels[viz]}
-                          </Button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Section: Breakdown */}
-                    <div className="rounded-lg border bg-card p-4">
-                      <div className="text-sm font-medium mb-3">Breakdown</div>
-                      <div className="flex flex-wrap gap-2">
-                        {selectedMetric.supportedBreakdowns.map((b) => (
-                          <Button
-                            key={b}
-                            type="button"
-                            variant={selectedBreakdown === b ? "default" : "outline"}
-                            size="sm"
-                            className="rounded-md"
-                            onClick={() => setSelectedBreakdown(b)}
-                          >
-                            {b.charAt(0).toUpperCase() + b.slice(1)}
                           </Button>
                         ))}
                       </div>
@@ -442,7 +445,7 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
                       <div className="rounded-md border bg-muted/30 p-4">
                         <div className="text-sm font-medium mb-1">{customTitle || selectedMetric.displayName}</div>
                         <div className="text-xs text-muted-foreground mb-3">
-                          {vizTypeLabels[selectedViz as VizType]} · {selectedBreakdown}
+                          {vizTypeLabels[selectedViz as VizType]}
                         </div>
                         <div className="h-32 rounded bg-gradient-to-br from-muted to-muted/60 flex items-center justify-center text-xs text-muted-foreground">
                           Preview placeholder
