@@ -385,6 +385,41 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
                           </Button>
                         ))}
                       </div>
+
+                      {/* All Visualizations */}
+                      <Separator className="my-4" />
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="text-sm font-medium">All visualizations</div>
+                        <Badge variant="outline" className="text-xs">Full list</Badge>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {([
+                          'kpi',
+                          'line',
+                          'area',
+                          'bar',
+                          'horizontalBar',
+                          'stackedBar',
+                          'pie',
+                          'donut',
+                          'radar',
+                          'radialBar',
+                          'scatter',
+                          'sparkline',
+                          'table',
+                        ] as VizType[]).map((viz) => (
+                          <Button
+                            key={`all-${viz}`}
+                            type="button"
+                            variant={selectedViz === viz ? "default" : "outline"}
+                            size="sm"
+                            className="rounded-md"
+                            onClick={() => handleVizChange(viz)}
+                          >
+                            {vizTypeLabels[viz]}
+                          </Button>
+                        ))}
+                      </div>
                     </div>
 
                     {/* Section: Title */}
