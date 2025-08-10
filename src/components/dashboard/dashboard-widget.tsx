@@ -10,6 +10,7 @@ import { supabase } from "@/lib/supabase";
 
 interface DashboardWidgetProps {
   widget: WidgetType;
+  isDragging?: boolean;
 }
 
 // Generate colors for compare mode
@@ -164,7 +165,7 @@ const generateMockData = (widget: WidgetType, compareEntities?: any[]): MetricDa
   return { metricName, breakdown, data: {} };
 };
 
-export function DashboardWidget({ widget }: DashboardWidgetProps) {
+export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
   const [data, setData] = useState<MetricData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | undefined>(undefined);
@@ -262,6 +263,7 @@ export function DashboardWidget({ widget }: DashboardWidgetProps) {
               xAxisKey="date"
               xAxisType="date"
               showLegend={true}
+              disableTooltip={isDragging}
             />
           );
         }
@@ -278,6 +280,7 @@ export function DashboardWidget({ widget }: DashboardWidgetProps) {
             xAxisKey="date"
             xAxisType="date"
             showLegend={false}
+            disableTooltip={isDragging}
           />
         );
         
@@ -294,6 +297,7 @@ export function DashboardWidget({ widget }: DashboardWidgetProps) {
               }]}
               xAxisKey="name"
               showLegend={false}
+              disableTooltip={isDragging}
             />
           );
         }
@@ -308,6 +312,7 @@ export function DashboardWidget({ widget }: DashboardWidgetProps) {
             }]}
             xAxisKey="name"
             showLegend={false}
+            disableTooltip={isDragging}
           />
         );
         
@@ -328,6 +333,7 @@ export function DashboardWidget({ widget }: DashboardWidgetProps) {
               xAxisType="date"
               showLegend={true}
               stacked={true}
+              disableTooltip={isDragging}
             />
           );
         }
@@ -344,6 +350,7 @@ export function DashboardWidget({ widget }: DashboardWidgetProps) {
             xAxisKey="date"
             xAxisType="date"
             showLegend={false}
+            disableTooltip={isDragging}
           />
         );
         
@@ -353,6 +360,7 @@ export function DashboardWidget({ widget }: DashboardWidgetProps) {
             data={data.data}
             showLegend={true}
             showLabels={true}
+            disableTooltip={isDragging}
           />
         );
         
@@ -362,6 +370,7 @@ export function DashboardWidget({ widget }: DashboardWidgetProps) {
             data={data.data}
             showLegend={true}
             showLabels={true}
+            disableTooltip={isDragging}
           />
         );
 
@@ -372,6 +381,7 @@ export function DashboardWidget({ widget }: DashboardWidgetProps) {
             bars={[{ dataKey: 'value', name: widget.settings?.title || widget.metricName, color: 'hsl(var(--primary))' }]}
             xAxisKey="name"
             showLegend={false}
+            disableTooltip={isDragging}
           />
         );
 
@@ -387,6 +397,7 @@ export function DashboardWidget({ widget }: DashboardWidgetProps) {
             xAxisKey="name"
             showLegend={true}
             stacked={true}
+            disableTooltip={isDragging}
           />
         );
 
@@ -398,6 +409,7 @@ export function DashboardWidget({ widget }: DashboardWidgetProps) {
             xAxisKey="date"
             xAxisType="category"
             showLegend={false}
+            disableTooltip={isDragging}
           />
         );
  

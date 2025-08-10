@@ -19,6 +19,7 @@ interface PieChartProps {
   showLegend?: boolean;
   showLabels?: boolean;
   height?: number;
+  disableTooltip?: boolean;
 }
 
 // Default color palette
@@ -78,7 +79,8 @@ export function PieChart({
   innerRadius = 0,
   showLegend = true,
   showLabels = true,
-  height = 300
+  height = 300,
+  disableTooltip = false
 }: PieChartProps) {
   // Calculate total for percentage calculation
   const total = data.reduce((sum, entry) => sum + entry.value, 0);
@@ -105,7 +107,7 @@ export function PieChart({
             />
           ))}
         </Pie>
-        <Tooltip content={<CustomTooltip />} />
+        {!disableTooltip && <Tooltip content={<CustomTooltip />} />}
         {showLegend && (
           <Legend 
             wrapperStyle={{ fontSize: '12px' }}

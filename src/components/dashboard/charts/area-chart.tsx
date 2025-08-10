@@ -27,6 +27,7 @@ interface AreaChartProps {
   showGrid?: boolean;
   showLegend?: boolean;
   height?: number;
+  disableTooltip?: boolean;
 }
 
 // Custom tooltip
@@ -54,7 +55,8 @@ export function AreaChart({
   stacked = false,
   showGrid = true,
   showLegend = true,
-  height = 300
+  height = 300,
+  disableTooltip = false
 }: AreaChartProps) {
   const formatXAxis = (value: any) => {
     if (xAxisType === 'date' && value) {
@@ -85,7 +87,7 @@ export function AreaChart({
           className="text-xs"
           tick={{ fill: 'hsl(var(--muted-foreground))' }}
         />
-        <Tooltip content={<CustomTooltip />} />
+        {!disableTooltip && <Tooltip content={<CustomTooltip />} />}
         {showLegend && (
           <Legend 
             wrapperStyle={{ fontSize: '12px' }}

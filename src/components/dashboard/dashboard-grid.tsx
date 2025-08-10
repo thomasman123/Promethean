@@ -1,6 +1,7 @@
 "use client";
 
 import { Responsive, WidthProvider } from "react-grid-layout";
+import { useState } from "react";
 import { DashboardWidget } from "./dashboard-widget";
 import { useDashboardStore } from "@/lib/dashboard/store";
 import { GridLayout } from "@/lib/dashboard/types";
@@ -13,6 +14,7 @@ interface DashboardGridProps {
 
 export function DashboardGrid({ className }: DashboardGridProps) {
   const { widgets, updateWidgetLayout } = useDashboardStore();
+  const [isDragging, setIsDragging] = useState(false);
   
   // Convert widgets to grid layout format
   const layouts = {
@@ -33,11 +35,21 @@ export function DashboardGrid({ className }: DashboardGridProps) {
     // No-op during active drag/resize to avoid excessive re-renders
   };
 
+  const handleDragStart = () => {
+    setIsDragging(true);
+  };
+
   const handleDragStop = (layout: GridLayout[]) => {
+    setIsDragging(false);
     updateWidgetLayout(layout);
   };
 
+  const handleResizeStart = () => {
+    setIsDragging(true);
+  };
+
   const handleResizeStop = (layout: GridLayout[]) => {
+    setIsDragging(false);
     updateWidgetLayout(layout);
   };
   
@@ -47,7 +59,9 @@ export function DashboardGrid({ className }: DashboardGridProps) {
         className="layout"
         layouts={layouts}
         onLayoutChange={handleLayoutChange}
+        onDragStart={handleDragStart}
         onDragStop={handleDragStop}
+        onResizeStart={handleResizeStart}
         onResizeStop={handleResizeStop}
         breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
         cols={{ lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 }}
@@ -61,7 +75,7 @@ export function DashboardGrid({ className }: DashboardGridProps) {
       >
         {widgets.map(widget => (
           <div key={widget.id}>
-            <DashboardWidget widget={widget} />
+            <DashboardWidget widget={widget} isDragging={isDragging} />
           </div>
         ))}
       </ResponsiveGridLayout>

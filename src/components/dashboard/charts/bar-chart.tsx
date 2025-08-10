@@ -25,6 +25,7 @@ interface BarChartProps {
   showLegend?: boolean;
   height?: number;
   barSize?: number;
+  disableTooltip?: boolean;
 }
 
 // Custom tooltip
@@ -52,7 +53,8 @@ export function BarChart({
   showGrid = true,
   showLegend = true,
   height = 300,
-  barSize
+  barSize,
+  disableTooltip = false
 }: BarChartProps) {
   return (
     <ResponsiveContainer width="100%" height={height}>
@@ -75,7 +77,7 @@ export function BarChart({
           className="text-xs"
           tick={{ fill: 'hsl(var(--muted-foreground))' }}
         />
-        <Tooltip content={<CustomTooltip />} />
+        {!disableTooltip && <Tooltip content={<CustomTooltip />} />}
         {showLegend && (
           <Legend 
             wrapperStyle={{ fontSize: '12px' }}

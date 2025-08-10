@@ -26,6 +26,7 @@ interface LineChartProps {
   showGrid?: boolean;
   showLegend?: boolean;
   height?: number;
+  disableTooltip?: boolean;
 }
 
 // Custom tooltip
@@ -52,7 +53,8 @@ export function LineChart({
   yAxisLabel,
   showGrid = true,
   showLegend = true,
-  height = 300
+  height = 300,
+  disableTooltip = false
 }: LineChartProps) {
   const formatXAxis = (value: any) => {
     if (xAxisType === 'date' && value) {
@@ -83,7 +85,7 @@ export function LineChart({
           className="text-xs"
           tick={{ fill: 'hsl(var(--muted-foreground))' }}
         />
-        <Tooltip content={<CustomTooltip />} />
+        {!disableTooltip && <Tooltip content={<CustomTooltip />} />}
         {showLegend && (
           <Legend 
             wrapperStyle={{ fontSize: '12px' }}
