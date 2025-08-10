@@ -10,6 +10,8 @@ import { useDashboardStore } from "@/lib/dashboard/store";
 import { DateRange } from "react-day-picker";
 import { CompareModeControls } from "./compare-mode-controls";
 import { cn } from "@/lib/utils";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useState } from "react";
 
 interface GlobalFiltersProps {
   className?: string;
@@ -39,6 +41,7 @@ export function GlobalFilters({ className }: GlobalFiltersProps) {
     toggleCompareMode,
     
   } = useDashboardStore();
+  const [isCompareModalOpen, setIsCompareModalOpen] = useState(false);
   
   const handleDateChange = (dateRange: DateRange | undefined) => {
     setFilters({
@@ -58,6 +61,13 @@ export function GlobalFilters({ className }: GlobalFiltersProps) {
   const activeFilterCount = Object.values(filters).filter(v => 
     v !== undefined && v !== null && (Array.isArray(v) ? v.length > 0 : true)
   ).length;
+
+  const openCompareModal = () => {
+    if (!compareMode) {
+      toggleCompareMode();
+    }
+    setIsCompareModalOpen(true);
+  };
 
   return (
     <div className={cn("flex flex-col gap-4 p-4 border-b", className)}>
@@ -94,22 +104,22 @@ export function GlobalFilters({ className }: GlobalFiltersProps) {
         
         <Separator orientation="vertical" className="h-6" />
         
-        {/* Compare Mode Toggle */}
+        {/* Compare Mode Button opens modal */}
         <Button
           variant={compareMode ? "default" : "outline"}
           size="sm"
-          onClick={toggleCompareMode}
+          onClick={openCompareModal}
           className="gap-2"
         >
           {compareMode ? (
             <>
               <ToggleRight className="h-4 w-4" />
-              Compare On
+              Compare Settings
             </>
           ) : (
             <>
               <ToggleLeft className="h-4 w-4" />
-              Compare Off
+              Open Compare
             </>
           )}
         </Button>
@@ -136,14 +146,27 @@ export function GlobalFilters({ className }: GlobalFiltersProps) {
         )}
       </div>
       
-      {/* Compare Mode Controls */}
-      {compareMode && (
-        <CompareModeControls 
-          reps={mockReps}
-          setters={mockSetters}
-          className="mt-2"
-        />
-      )}
+      {/* Compare Mode Modal */}
+      <Dialog open={isCompareModalOpen} onOpenChange={setIsCompareModalOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Compare Mode</DialogTitle>
+          </DialogHeader>
+          <CompareModeControls 
+            reps={mockReps}
+            setters={mockSetters}
+            className="mt-2"
+          />
+          <div className="flex justify-end gap-2 pt-2">
+            {compareMode && (
+              <Button variant="ghost" onClick={() => { toggleCompareMode(); setIsCompareModalOpen(false); }}>
+                Disable compare
+              </Button>
+            )}
+            <Button onClick={() => setIsCompareModalOpen(false)}>Done</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 } 
