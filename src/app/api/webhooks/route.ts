@@ -319,8 +319,33 @@ async function fetchGhlConnectionByLocation(locationId?: string, logger?: Logger
     .eq('ghl_location_id', locationId)
     .eq('is_connected', true)
     .single()
-  if (error) logger?.log('fetchGhlConnectionByLocation error', { code: error.code, message: error.message })
-  logger?.log('fetchGhlConnectionByLocation result', { hasConnection: !!data })
+  
+  if (error) {
+    logger?.log('fetchGhlConnectionByLocation error', { code: error.code, message: error.message })
+    return null
+  }
+  
+  if (!data) {
+    logger?.log('fetchGhlConnectionByLocation: no connection found', { locationId })
+    return null
+  }
+  
+  // Check if token is expired
+  if (data.token_expires_at && new Date(data.token_expires_at) <= new Date()) {
+    logger?.log('fetchGhlConnectionByLocation: token expired', { 
+      locationId, 
+      expiresAt: data.token_expires_at,
+      now: new Date().toISOString() 
+    })
+    return null
+  }
+  
+  logger?.log('fetchGhlConnectionByLocation result', { 
+    hasConnection: !!data,
+    hasAccessToken: !!data.access_token,
+    expiresAt: data.token_expires_at,
+    isExpired: data.token_expires_at ? new Date(data.token_expires_at) <= new Date() : false
+  })
   return data
 }
 
