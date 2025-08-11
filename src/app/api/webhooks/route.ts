@@ -33,7 +33,15 @@ function detectKind(payload: any, logger?: Logger): 'appointment' | 'dial' | 'in
   const eventType = payload?.type || payload?.event || ''
   const eventStr = eventType.toString().toLowerCase()
   
-  const kind = eventStr.includes('appointmentcreate') || eventStr.includes('appointment')
+  // Enhanced detection for appointment events
+  const isAppointment = eventStr.includes('appointmentcreate') || 
+                       eventStr.includes('appointment') ||
+                       eventStr === 'appointmentcreate' ||
+                       eventStr === 'appointmentcreated' ||
+                       payload?.appointment || 
+                       payload?.calendarId
+  
+  const kind = isAppointment
     ? 'appointment'
     : eventStr.includes('inboundmessage') || eventStr.includes('outboundmessage')
     ? 'inboundMessage'
@@ -41,7 +49,14 @@ function detectKind(payload: any, logger?: Logger): 'appointment' | 'dial' | 'in
     ? 'dial'
     : 'unknown'
     
-  if (logger) logger.log('detectKind', { eventType, resolved: kind, payloadKeys: Object.keys(payload || {}) })
+  if (logger) logger.log('detectKind', { 
+    eventType, 
+    resolved: kind, 
+    payloadKeys: Object.keys(payload || {}),
+    hasAppointmentField: !!payload?.appointment,
+    hasCalendarId: !!payload?.calendarId,
+    fullPayloadForDebugging: payload
+  })
   return kind
 }
 
@@ -68,7 +83,7 @@ async function handleAppointment(payload: any, logger: Logger) {
   if (mapErr) logger.log('handleAppointment: mapping query error', { code: mapErr.code, message: mapErr.message })
 
   const mapping = mappings && mappings.length > 0 ? mappings[0] : null
-  
+
   if (!mapping) {
     logger.log('handleAppointment: no mapping found, skipping', { 
       calendarId: appointmentData.calendarId,
@@ -309,6 +324,16 @@ async function handleDial(payload: any, logger: Logger, opts?: { accountId?: str
   }
   logger.log('handleDial: success')
   return { status: 200, body: { success: true, message: 'Dial saved' } }
+}
+
+async function handleInstallWebhook(payload: any, logger: Logger) {
+  logger.log('handleInstallWebhook: processing INSTALL webhook', { 
+    appId: payload.appId,
+    locationId: payload.locationId,
+    companyId: payload.companyId 
+  })
+
+  return { status: 200, body: { success: true, message: 'App installed successfully' } }
 }
 
 async function fetchGhlConnectionByLocation(locationId?: string, logger?: Logger) {
@@ -557,6 +582,12 @@ export async function POST(request: NextRequest) {
       appointmentId: payload.id || payload.appointmentId,
       keys: Object.keys(payload || {}) 
     })
+
+    // Handle INSTALL webhooks
+    if (payload.type === 'INSTALL') {
+      const res = await handleInstallWebhook(payload, logger)
+      return NextResponse.json(res.body, { status: res.status })
+    }
 
     const kind = detectKind(payload, logger)
     if (kind === 'appointment') {
