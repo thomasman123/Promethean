@@ -1,8 +1,10 @@
 -- Fix OAuth implementation to match working version
 -- Add OAuth 2.0 fields to accounts table (like the working implementation)
 
--- First, add the missing OAuth fields to accounts table
+-- First, add all the missing GHL fields to accounts table
 ALTER TABLE accounts 
+ADD COLUMN IF NOT EXISTS ghl_api_key text,
+ADD COLUMN IF NOT EXISTS ghl_location_id text,
 ADD COLUMN IF NOT EXISTS ghl_refresh_token text,
 ADD COLUMN IF NOT EXISTS ghl_auth_type text DEFAULT 'api_key' CHECK (ghl_auth_type IN ('api_key', 'oauth2')),
 ADD COLUMN IF NOT EXISTS ghl_token_expires_at timestamp with time zone,
@@ -16,6 +18,8 @@ CREATE INDEX IF NOT EXISTS idx_accounts_ghl_auth_type ON accounts(ghl_auth_type)
 CREATE INDEX IF NOT EXISTS idx_accounts_ghl_location_id ON accounts(ghl_location_id);
 
 -- Add comments for documentation
+COMMENT ON COLUMN accounts.ghl_api_key IS 'GHL API access token (OAuth access token)';
+COMMENT ON COLUMN accounts.ghl_location_id IS 'GHL location ID for API calls';
 COMMENT ON COLUMN accounts.ghl_refresh_token IS 'OAuth 2.0 refresh token for GHL API access';
 COMMENT ON COLUMN accounts.ghl_auth_type IS 'Authentication type: api_key or oauth2';
 COMMENT ON COLUMN accounts.ghl_token_expires_at IS 'When the OAuth access token expires';
