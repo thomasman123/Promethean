@@ -109,6 +109,11 @@ export default function CRMConnectionPage() {
       if (error) {
         console.error('Error fetching account:', error)
       } else {
+        console.log('🔄 Updated connection data:', {
+          ghl_auth_type: data.ghl_auth_type,
+          has_ghl_api_key: !!data.ghl_api_key,
+          ghl_location_id: data.ghl_location_id
+        })
         setConnection(data)
       }
     } catch (error) {
@@ -203,8 +208,14 @@ export default function CRMConnectionPage() {
       }
 
       console.log('✅ GHL disconnected successfully')
-      setShowUninstallDialog(true) // Show completion dialog
+      
+      // Force UI refresh
       await fetchConnection()
+      
+      // Give it a moment to update then show completion dialog
+      setTimeout(() => {
+        setShowUninstallDialog(true)
+      }, 100)
     } catch (error) {
       console.error('❌ Error disconnecting GHL:', error)
       alert('An error occurred while disconnecting GHL. Please try again.')
