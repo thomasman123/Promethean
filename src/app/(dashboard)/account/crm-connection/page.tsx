@@ -210,19 +210,32 @@ export default function CRMConnectionPage() {
     if (!selectedAccountId || !connection) return
 
     try {
-      await supabase
-        .from('ghl_connections')
-        .update({
-          access_token: null,
-          refresh_token: null,
-          token_expires_at: null,
-          ghl_location_id: null,
-          ghl_company_id: null,
-          is_connected: false,
-          connection_status: 'disconnected',
-          error_message: null
-        })
-        .eq('account_id', selectedAccountId)
+      // Call server-side cleanup to remove mappings and reset connection
+      const { error: rpcError } = await supabase.rpc('admin_clean_account_ghl_data', {
+        target_account_id: selectedAccountId,
+      })
+
+      if (rpcError) {
+        console.error('Cleanup RPC failed, falling back to local update:', rpcError)
+        await supabase
+          .from('ghl_connections')
+          .update({
+            access_token: null,
+            refresh_token: null,
+            token_expires_at: null,
+            ghl_location_id: null,
+            ghl_company_id: null,
+            is_connected: false,
+            connection_status: 'disconnected',
+            error_message: null
+          })
+          .eq('account_id', selectedAccountId)
+        // Also try to delete mappings client-side if possible
+        await supabase
+          .from('calendar_mappings')
+          .delete()
+          .eq('account_id', selectedAccountId)
+      }
 
       await fetchConnection()
     } catch (error) {
