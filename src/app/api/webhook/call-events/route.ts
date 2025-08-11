@@ -180,7 +180,17 @@ async function processPhoneCallWebhook(payload: any) {
       .single();
     
     if (accountError || !account) {
-      console.error('Account not found for location ID:', payload.locationId);
+      console.warn('⚠️ Phone call webhook received for unknown location ID:', payload.locationId);
+      
+      // Try to find and update an account that might match this location
+      const recoveredAccount = await tryRecoverLocationId(supabase, payload.locationId);
+      if (recoveredAccount) {
+        console.log('✅ Successfully recovered location ID for phone call, processing...');
+        // Recursively call this function now that we have the location ID set
+        return await processPhoneCallWebhook(payload);
+      }
+      
+      console.error('❌ Phone call webhook failed - no matching account found for location:', payload.locationId);
       return;
     }
     
@@ -339,12 +349,37 @@ async function processAppointmentWebhook(payload: any) {
     // Find account by GHL location ID
     const { data: account, error: accountError } = await supabase
       .from('accounts')
-      .select('id, name, ghl_location_id, ghl_api_key')
+      .select('id, name, ghl_location_id, ghl_api_key, ghl_refresh_token')
       .eq('ghl_location_id', payload.locationId)
       .single();
     
     if (accountError || !account) {
       console.warn('⚠️ Webhook received for unknown location ID:', payload.locationId);
+      
+      // Try to find and update an account that might match this location
+      const recoveredAccount = await tryRecoverLocationId(supabase, payload.locationId);
+      if (recoveredAccount) {
+        console.log('✅ Successfully recovered and updated location ID for account:', recoveredAccount.name);
+        // Recursively call this function now that we have the location ID set
+        return await processAppointmentWebhook(payload);
+      }
+      
+      // Log helpful debugging info
+      const { data: allAccounts } = await supabase
+        .from('accounts')
+        .select('id, name, ghl_location_id, ghl_auth_type')
+        .eq('ghl_auth_type', 'oauth2');
+      
+      console.error('🚨 Location ID Recovery Failed', {
+        webhookLocationId: payload.locationId,
+        availableAccounts: allAccounts?.map(a => ({
+          name: a.name,
+          id: a.id,
+          storedLocationId: a.ghl_location_id || 'none'
+        })) || [],
+        solution: 'Please reconnect GHL OAuth in Account → CRM Connection'
+      });
+      
       return;
     }
     
@@ -459,6 +494,75 @@ function isTimestampValid(timestamp: string): boolean {
   } catch {
     return false;
   }
+}
+
+/**
+ * Attempts to recover a missing location ID by finding an OAuth account 
+ * and checking if the webhook location ID matches any of their accessible locations
+ */
+async function tryRecoverLocationId(supabase: any, webhookLocationId: string): Promise<any> {
+  console.log('🔍 Attempting location ID recovery for:', webhookLocationId);
+  
+  // Find accounts with OAuth but missing/incorrect location ID
+  const { data: oauthAccounts, error } = await supabase
+    .from('accounts')
+    .select('id, name, ghl_api_key, ghl_location_id')
+    .eq('ghl_auth_type', 'oauth2')
+    .not('ghl_api_key', 'is', null);
+  
+  if (error || !oauthAccounts?.length) {
+    console.log('❌ No OAuth accounts found for location recovery');
+    return null;
+  }
+  
+  // Try each OAuth account to see if they have access to this location
+  for (const account of oauthAccounts) {
+    try {
+      console.log(`🔎 Checking if account "${account.name}" has access to location ${webhookLocationId}`);
+      
+      const headers = {
+        'Authorization': `Bearer ${account.ghl_api_key}`,
+        'Version': '2021-07-28',
+        'Accept': 'application/json'
+      };
+      
+      // Fetch accessible locations for this account
+      const locationsResp = await fetch('https://services.leadconnectorhq.com/locations', { headers });
+      
+      if (locationsResp.ok) {
+        const locData = await locationsResp.json();
+        const locations = locData.locations || [];
+        
+        // Check if webhook location ID is in their accessible locations
+        const matchingLocation = locations.find((loc: any) => loc.id === webhookLocationId);
+        
+        if (matchingLocation) {
+          console.log(`✅ Found matching location! Updating account "${account.name}" with location ID: ${webhookLocationId}`);
+          
+          // Update the account with the correct location ID
+          const { error: updateError } = await supabase
+            .from('accounts')
+            .update({ ghl_location_id: webhookLocationId })
+            .eq('id', account.id);
+          
+          if (updateError) {
+            console.error('❌ Failed to update location ID:', updateError);
+            continue;
+          }
+          
+          return { ...account, ghl_location_id: webhookLocationId };
+        }
+      } else {
+        console.warn(`⚠️ Failed to fetch locations for account "${account.name}":`, locationsResp.status);
+      }
+    } catch (err) {
+      console.error(`❌ Error checking account "${account.name}":`, err);
+      continue;
+    }
+  }
+  
+  console.log('❌ Location ID recovery failed - no matching account found');
+  return null;
 }
 
 // Handle GET requests for webhook verification

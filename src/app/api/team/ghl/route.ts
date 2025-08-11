@@ -22,24 +22,28 @@ export async function GET(request: NextRequest) {
     const accountId = searchParams.get('accountId')
     if (!accountId) return NextResponse.json({ error: 'accountId required' }, { status: 400 })
 
-    // Get connection
-    const { data: connection, error: connectionError } = await supabase
-      .from('ghl_connections')
+    // Get account with OAuth connection
+    const { data: account, error: accountError } = await supabase
+      .from('accounts')
       .select('*')
-      .eq('account_id', accountId)
-      .eq('is_connected', true)
+      .eq('id', accountId)
+      .eq('ghl_auth_type', 'oauth2')
       .single()
 
-    if (connectionError || !connection) {
-      return NextResponse.json({ error: 'No active GHL connection for this account' }, { status: 404 })
+    if (accountError || !account) {
+      return NextResponse.json({ error: 'No active GHL OAuth connection for this account' }, { status: 404 })
     }
 
-    if (connection.token_expires_at && new Date(connection.token_expires_at) <= new Date()) {
+    if (account.ghl_token_expires_at && new Date(account.ghl_token_expires_at) <= new Date()) {
       return NextResponse.json({ error: 'GHL token expired' }, { status: 401 })
     }
 
+    if (!account.ghl_api_key) {
+      return NextResponse.json({ error: 'No GHL access token found' }, { status: 401 })
+    }
+
     const baseHeaders: Record<string, string> = {
-      Authorization: `Bearer ${connection.access_token}`,
+      Authorization: `Bearer ${account.ghl_api_key}`,
       Version: '2021-07-28',
       Accept: 'application/json',
     }
@@ -70,7 +74,7 @@ export async function GET(request: NextRequest) {
       return resp
     }
 
-    let locationId = connection.ghl_location_id || ''
+    let locationId = account.ghl_location_id || ''
     let usersResp = await fetchUsers(locationId || undefined)
 
     if (!usersResp.ok && (usersResp.status === 403 || usersResp.status === 422)) {
@@ -84,7 +88,7 @@ export async function GET(request: NextRequest) {
           if (tryResp.ok) {
             // Update stored location for next time
             if (loc.id !== locationId) {
-              await supabase.from('ghl_connections').update({ ghl_location_id: loc.id }).eq('account_id', accountId)
+              await supabase.from('accounts').update({ ghl_location_id: loc.id }).eq('id', accountId)
             }
             usersResp = tryResp
             break
