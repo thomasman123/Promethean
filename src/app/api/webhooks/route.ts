@@ -200,7 +200,15 @@ export async function POST(request: NextRequest) {
   
   try {
     const debug = (new URL(request.url)).searchParams.get('debug') === '1' || process.env.WEBHOOK_DEBUG === '1'
-    const headersToLog = ['user-agent', 'x-forwarded-for', 'x-real-ip', 'x-vercel-ip-country']
+    
+    // Enhanced logging for debugging
+    const allHeaders: Record<string, string> = {}
+    request.headers.forEach((value, key) => {
+      allHeaders[key] = value
+    })
+    logger.log('FULL REQUEST HEADERS', allHeaders)
+    
+    const headersToLog = ['user-agent', 'x-forwarded-for', 'x-real-ip', 'x-vercel-ip-country', 'content-type', 'authorization', 'x-ghl-signature']
     const headerMeta: Record<string, string> = {}
     headersToLog.forEach(h => {
       const v = request.headers.get(h)
@@ -210,14 +218,17 @@ export async function POST(request: NextRequest) {
 
     // Read raw body for GHL marketplace webhooks
     const rawBody = await request.text()
-    logger.log('raw body length', { length: rawBody.length })
+    logger.log('raw body received', { length: rawBody.length, preview: rawBody.substring(0, 200) })
     
     // Parse JSON after reading raw body
     const payload = JSON.parse(rawBody)
-    logger.log('request payload', { 
+    logger.log('parsed payload FULL', payload)
+    logger.log('request payload summary', { 
       event: payload.event, 
       type: payload.type, 
       locationId: payload.locationId,
+      calendarId: payload.calendarId,
+      appointmentId: payload.id || payload.appointmentId,
       keys: Object.keys(payload || {}) 
     })
 
