@@ -517,10 +517,14 @@ async function handleInboundMessage(payload: any, logger: Logger) {
 }
 
 export async function POST(request: NextRequest) {
+  // IMMEDIATE logging - this should show in Vercel logs for ANY request
+  console.log('🚨 WEBHOOK HIT!', new Date().toISOString(), 'URL:', request.url)
+  
   const requestId = (globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`)
   const logger = createLogger({ requestId })
   
   try {
+    console.log('🔍 Processing webhook request:', requestId)
     const debug = (new URL(request.url)).searchParams.get('debug') === '1' || process.env.WEBHOOK_DEBUG === '1'
     
     // Enhanced logging for debugging
@@ -577,9 +581,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(body, { status: 200 })
     
   } catch (error: any) {
+    console.log('🚨 WEBHOOK ERROR!', new Date().toISOString(), 'Error:', error?.message || String(error))
     logger.log('POST /api/webhooks exception', { message: error?.message || String(error) })
     const body = { success: false, error: 'Invalid JSON or server error', logs: logger.dump() }
     return NextResponse.json(body, { status: 500 })
+  } finally {
+    console.log('🏁 WEBHOOK COMPLETE!', new Date().toISOString())
   }
 }
 
