@@ -177,15 +177,33 @@ async function handleAppointment(payload: any, logger: Logger) {
     phone: contactPhone,
     date_booked: new Date().toISOString(),
     date_booked_for: appointmentData.startTime,
-    setter: setterName,
-    sales_rep: salesRep,
+  }
+
+  // Handle field semantics differently based on target table
+  if (mapping.target_table === 'discoveries') {
+    // For discoveries: setter = booked_user (who conducted the discovery)
+    // sales_rep will be determined later when linked to appointments
+    appointmentRow.setter = setterName  // This is the "booked_user" - who conducted the discovery
+    appointmentRow.sales_rep = null     // Will be populated later from linked appointment's assigned user
+    logger.log('handleAppointment: discoveries - booked_user set', { booked_user: setterName })
+  } else {
+    // For appointments: setter = who booked it (often same as discovery booked_user)
+    // sales_rep = assigned user from GHL
+    appointmentRow.setter = setterName  // Who booked the appointment
+    appointmentRow.sales_rep = salesRep // Assigned user from GHL
+    logger.log('handleAppointment: appointments - setter and sales_rep set', { setter: setterName, sales_rep: salesRep })
   }
   
   // Add metadata if we have it
   if (appointmentMetadata) {
     appointmentRow.metadata = appointmentMetadata
   }
-  logger.log('handleAppointment: prepared row', appointmentRow)
+  logger.log('handleAppointment: prepared row', { 
+    target_table: mapping.target_table,
+    contact_name: appointmentRow.contact_name,
+    setter: appointmentRow.setter,
+    sales_rep: appointmentRow.sales_rep
+  })
 
   if (mapping.target_table === 'appointments') {
     const { error } = await supabaseService.from('appointments').insert({
@@ -207,7 +225,7 @@ async function handleAppointment(payload: any, logger: Logger) {
     const { error } = await supabaseService.from('discoveries').insert({
       ...appointmentRow,
       call_outcome: null,
-      show_outcome: null,
+      show_outcome: null, // Will be 'booked' or 'not booked' - set manually later
     })
     if (error) {
       logger.log('handleAppointment: insert discoveries failed', { code: error.code, message: error.message, details: error.details })
@@ -215,8 +233,25 @@ async function handleAppointment(payload: any, logger: Logger) {
     }
   }
 
-  logger.log('handleAppointment: success', { target: mapping.target_table, setter: setterName })
-  return { status: 200, body: { success: true, message: `Appointment synced to ${mapping.target_table}`, setter: setterName } }
+  const logMessage = mapping.target_table === 'discoveries' 
+    ? `Discovery call synced - booked_user: ${appointmentRow.setter}` 
+    : `Appointment synced - setter: ${appointmentRow.setter}, sales_rep: ${appointmentRow.sales_rep}`
+  
+  logger.log('handleAppointment: success', { 
+    target: mapping.target_table, 
+    setter_or_booked_user: appointmentRow.setter,
+    sales_rep: appointmentRow.sales_rep 
+  })
+  return { 
+    status: 200, 
+    body: { 
+      success: true, 
+      message: logMessage,
+      target_table: mapping.target_table,
+      setter: appointmentRow.setter,
+      sales_rep: appointmentRow.sales_rep
+    } 
+  }
 }
 
 async function handleDial(payload: any, logger: Logger, opts?: { accountId?: string; defaultSetter?: string }) {
