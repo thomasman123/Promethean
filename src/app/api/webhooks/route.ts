@@ -88,6 +88,7 @@ async function handleAppointment(payload: any, logger: Logger) {
   let contactEmail = null
   let contactPhone = null
   let salesRep = null
+  let appointmentMetadata = null
 
   // Fetch appointment details to get the real setter
   if (connection?.access_token && appointmentData.id) {
@@ -119,8 +120,9 @@ async function handleAppointment(payload: any, logger: Logger) {
     }
 
     // Fetch contact details
+    let contact = null
     if (appointmentDetails?.contactId) {
-      const contact = await fetchContactDetails(appointmentDetails.contactId, connection.access_token, logger)
+      contact = await fetchContactDetails(appointmentDetails.contactId, connection.access_token, logger)
       if (contact) {
         contactName = contact.name || contact.firstName + ' ' + contact.lastName || contactName
         contactEmail = contact.email
@@ -141,9 +143,34 @@ async function handleAppointment(payload: any, logger: Logger) {
         contactName = appointmentDetails.title
       }
     }
+
+    // Create metadata object with all additional data
+    appointmentMetadata = {
+      end_time: appointmentDetails.endTime,
+      status: appointmentDetails.appointmentStatus,
+      notes: appointmentDetails.notes,
+      source: appointmentDetails.source || appointmentData.source,
+      address: appointmentDetails.address,
+      is_recurring: appointmentDetails.isRecurring,
+      date_added: appointmentDetails.dateAdded,
+      date_updated: appointmentDetails.dateUpdated,
+      ghl_appointment_id: appointmentDetails.id,
+      // Add contact metadata if available
+      contact_source: contact?.source || null,
+      contact_tags: contact?.tags || null,
+      contact_assigned_to: contact?.assignedTo || null,
+      contact_last_activity: contact?.lastActivity || null
+    }
+    
+    logger.log('handleAppointment: created metadata', { 
+      endTime: appointmentMetadata.end_time,
+      status: appointmentMetadata.status,
+      source: appointmentMetadata.source,
+      contactTags: appointmentMetadata.contact_tags
+    })
   }
 
-  const appointmentRow = {
+  const appointmentRow: any = {
     account_id: mapping.account_id,
     contact_name: contactName,
     email: contactEmail,
@@ -152,6 +179,11 @@ async function handleAppointment(payload: any, logger: Logger) {
     date_booked_for: appointmentData.startTime,
     setter: setterName,
     sales_rep: salesRep,
+  }
+  
+  // Add metadata if we have it
+  if (appointmentMetadata) {
+    appointmentRow.metadata = appointmentMetadata
   }
   logger.log('handleAppointment: prepared row', appointmentRow)
 
