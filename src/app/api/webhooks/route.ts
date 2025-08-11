@@ -85,6 +85,9 @@ async function handleAppointment(payload: any, logger: Logger) {
 
   let setterName = 'Webhook' // fallback
   let contactName = appointmentData.contactName || appointmentData.title || 'Unknown Contact'
+  let contactEmail = null
+  let contactPhone = null
+  let salesRep = null
 
   // Fetch appointment details to get the real setter
   if (connection?.access_token && appointmentData.id) {
@@ -103,21 +106,52 @@ async function handleAppointment(payload: any, logger: Logger) {
       logger.log('handleAppointment: no createdBy.userId in appointment details')
     }
 
+    // Get sales rep from assigned user
+    if (appointmentDetails?.assignedUserId) {
+      const assignedUser = await fetchUserDetails(appointmentDetails.assignedUserId, connection.access_token, logger)
+      if (assignedUser?.name) {
+        salesRep = assignedUser.name
+        logger.log('handleAppointment: found sales rep', { salesRep, assignedUserId: appointmentDetails.assignedUserId })
+      } else {
+        logger.log('handleAppointment: could not fetch assigned user details, using userId as sales rep', { assignedUserId: appointmentDetails.assignedUserId })
+        salesRep = appointmentDetails.assignedUserId
+      }
+    }
+
+    // Fetch contact details
+    if (appointmentDetails?.contactId) {
+      const contact = await fetchContactDetails(appointmentDetails.contactId, connection.access_token, logger)
+      if (contact) {
+        contactName = contact.name || contact.firstName + ' ' + contact.lastName || contactName
+        contactEmail = contact.email
+        contactPhone = contact.phone
+        logger.log('handleAppointment: found contact details', { 
+          contactName, 
+          contactEmail, 
+          contactPhone, 
+          contactId: appointmentDetails.contactId 
+        })
+      }
+    }
+
     // Also get better contact name from appointment details if available
     if (appointmentDetails?.title) {
-      contactName = appointmentDetails.title
+      // Only use title if we didn't get a good contact name
+      if (!contactName || contactName === 'Unknown Contact') {
+        contactName = appointmentDetails.title
+      }
     }
   }
 
   const appointmentRow = {
     account_id: mapping.account_id,
     contact_name: contactName,
-    email: null, // Will need to fetch from contact API if needed
-    phone: null, // Will need to fetch from contact API if needed
+    email: contactEmail,
+    phone: contactPhone,
     date_booked: new Date().toISOString(),
     date_booked_for: appointmentData.startTime,
     setter: setterName,
-    sales_rep: null,
+    sales_rep: salesRep,
   }
   logger.log('handleAppointment: prepared row', appointmentRow)
 
@@ -225,6 +259,30 @@ async function fetchAppointmentDetails(appointmentId: string, accessToken: strin
     return data.event
   } catch (error) {
     logger.log('fetchAppointmentDetails: error', { error: error instanceof Error ? error.message : String(error) })
+    return null
+  }
+}
+
+async function fetchContactDetails(contactId: string, accessToken: string, logger: Logger) {
+  try {
+    const response = await fetch(`https://services.leadconnectorhq.com/contacts/${contactId}`, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Version': '2021-07-28',
+        'Accept': 'application/json'
+      }
+    })
+
+    if (!response.ok) {
+      logger.log('fetchContactDetails: API error', { status: response.status, statusText: response.statusText })
+      return null
+    }
+
+    const data = await response.json()
+    logger.log('fetchContactDetails: success', { contactId, hasContact: !!data.contact })
+    return data.contact
+  } catch (error) {
+    logger.log('fetchContactDetails: error', { error: error instanceof Error ? error.message : String(error) })
     return null
   }
 }
