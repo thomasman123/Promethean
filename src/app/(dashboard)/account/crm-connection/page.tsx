@@ -443,38 +443,46 @@ export default function CRMConnectionPage() {
           </div>
         </div>
 
-      {/* Manual Uninstall Dialog */}
+             {/* Enhanced Disconnect Confirmation Dialog */}
       <Dialog open={showUninstallDialog} onOpenChange={setShowUninstallDialog}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-orange-500" />
-              Complete the Disconnection
+              <AlertTriangle className="h-5 w-5 text-red-500" />
+              Complete Data Cleanup & Disconnection
             </DialogTitle>
             <DialogDescription>
-              To prevent webhook conflicts when reconnecting, please also uninstall the app from your GHL sub-account.
+              All account data has been permanently removed from this system.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3 py-4">
+          <div className="space-y-4 py-4">
+            <Alert className="border-red-200 bg-red-50">
+              <AlertTriangle className="h-4 w-4 text-red-500" />
+              <AlertDescription className="text-red-700">
+                <strong>Data Deleted:</strong> All appointments, discoveries, dials, calendar mappings, and webhook logs for this account have been permanently removed.
+              </AlertDescription>
+            </Alert>
+            
             <div className="space-y-2 text-sm">
-              <p className="font-medium">Steps to complete:</p>
+              <p className="font-medium">To complete the disconnection:</p>
               <ol className="list-decimal list-inside space-y-1 ml-4">
                 <li>Go to your GHL sub-account dashboard</li>
                 <li>Navigate to Settings → Integrations/Apps</li>
                 <li>Find the Promethean app and uninstall it</li>
-                <li>This prevents webhook conflicts when reconnecting</li>
+                <li>This ensures clean reconnection in the future</li>
               </ol>
             </div>
+            
             <Alert>
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                Your connection has been disconnected in this system. Manual GHL app removal is required for clean reconnection.
+                Manual GHL app removal prevents webhook conflicts when reconnecting with fresh data.
               </AlertDescription>
             </Alert>
           </div>
           <DialogFooter>
-            <Button onClick={() => setShowUninstallDialog(false)}>
-              Got it
+            <Button onClick={() => setShowUninstallDialog(false)} className="bg-red-600 hover:bg-red-700 text-white">
+              Understood - Data Deleted
             </Button>
           </DialogFooter>
         </DialogContent>
