@@ -26,18 +26,17 @@ import { Zap, CheckCircle, XCircle, Clock, AlertCircle, AlertTriangle, ExternalL
 
 interface GHLConnection {
   id: string
-  account_id: string
-  access_token: string | null
-  refresh_token: string | null
-  token_expires_at: string | null
+  name: string
+  ghl_api_key: string | null
+  ghl_refresh_token: string | null
+  ghl_token_expires_at: string | null
   ghl_location_id: string | null
-  ghl_company_id: string | null
-  is_connected: boolean
-  connection_status: 'disconnected' | 'connecting' | 'connected' | 'error'
-  last_sync_at: string | null
-  error_message: string | null
+  ghl_auth_type: 'api_key' | 'oauth2' | null
+  ghl_webhook_id: string | null
+  future_sync_enabled: boolean
+  future_sync_started_at: string | null
+  last_future_sync_at: string | null
   created_at: string
-  updated_at: string
 }
 
 export default function CRMConnectionPage() {
@@ -86,33 +85,34 @@ export default function CRMConnectionPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // While UI shows "connecting", poll the connection row so it updates automatically
+  // Refresh connection when account changes
   useEffect(() => {
     if (!selectedAccountId) return
-    if (connection?.connection_status !== 'connecting') return
-    const interval = setInterval(() => {
-      fetchConnection()
-    }, 3000)
-    return () => clearInterval(interval)
-  }, [connection?.connection_status, selectedAccountId])
+    if (connecting) {
+      const interval = setInterval(() => {
+        fetchConnection()
+      }, 3000)
+      return () => clearInterval(interval)
+    }
+  }, [connecting, selectedAccountId])
 
   const fetchConnection = async () => {
     if (!selectedAccountId) return
 
     try {
       const { data, error } = await supabase
-        .from('ghl_connections')
+        .from('accounts')
         .select('*')
-        .eq('account_id', selectedAccountId)
+        .eq('id', selectedAccountId)
         .single()
 
-      if (error && error.code !== 'PGRST116') { // PGRST116 is "not found"
-        console.error('Error fetching GHL connection:', error)
+      if (error) {
+        console.error('Error fetching account:', error)
       } else {
         setConnection(data)
       }
     } catch (error) {
-      console.error('Error fetching GHL connection:', error)
+      console.error('Error fetching account:', error)
     } finally {
       setLoading(false)
     }
@@ -124,35 +124,6 @@ export default function CRMConnectionPage() {
     setConnecting(true)
 
     try {
-      // First, create or update the connection record with 'connecting' status
-      const { data: existingConnection } = await supabase
-        .from('ghl_connections')
-        .select('*')
-        .eq('account_id', selectedAccountId)
-        .single()
-
-      if (existingConnection) {
-        // Update existing connection
-        await supabase
-          .from('ghl_connections')
-          .update({
-            connection_status: 'connecting',
-            error_message: null
-          })
-          .eq('account_id', selectedAccountId)
-      } else {
-        // Create new connection record
-        await supabase
-          .from('ghl_connections')
-          .insert({
-            account_id: selectedAccountId,
-            connection_status: 'connecting'
-          })
-      }
-
-      // Refresh the connection state
-      await fetchConnection()
-
       // Build the OAuth URL with proper scopes for GHL marketplace app
       const ghlClientId = process.env.NEXT_PUBLIC_GHL_CLIENT_ID || 'your-ghl-client-id'
       const redirectUri = `${window.location.origin}/api/auth/callback`
@@ -160,7 +131,9 @@ export default function CRMConnectionPage() {
         'contacts.readonly', 'contacts.write',
         'opportunities.readonly', 'opportunities.write', 
         'calendars.readonly', 'calendars.write',
+        'calendars/events.readonly', 'calendars/events.write',
         'conversations.readonly', 'conversations.write',
+        'conversations/message.readonly',
         'locations.readonly',
         'businesses.readonly',
         'users.readonly'
@@ -173,17 +146,6 @@ export default function CRMConnectionPage() {
 
     } catch (error) {
       console.error('Error initiating GHL connection:', error)
-      // Update connection status to error
-      if (selectedAccountId) {
-        await supabase
-          .from('ghl_connections')
-          .update({
-            connection_status: 'error',
-            error_message: 'Failed to initiate connection'
-          })
-          .eq('account_id', selectedAccountId)
-        await fetchConnection()
-      }
     } finally {
       setConnecting(false)
     }
@@ -191,21 +153,7 @@ export default function CRMConnectionPage() {
 
   const cancelGHLConnection = async () => {
     if (!selectedAccountId) return
-    try {
-      await supabase
-        .from('ghl_connections')
-        .update({
-          connection_status: 'disconnected',
-          is_connected: false,
-          error_message: 'User cancelled OAuth'
-        })
-        .eq('account_id', selectedAccountId)
-      await fetchConnection()
-    } catch (e) {
-      console.error('Error cancelling GHL connection:', e)
-    } finally {
-      setConnecting(false)
-    }
+    setConnecting(false)
   }
 
   const disconnectGHL = async () => {
@@ -220,18 +168,17 @@ export default function CRMConnectionPage() {
       if (rpcError) {
         console.error('Cleanup RPC failed, falling back to local update:', rpcError)
         await supabase
-          .from('ghl_connections')
+          .from('accounts')
           .update({
-            access_token: null,
-            refresh_token: null,
-            token_expires_at: null,
+            ghl_api_key: null,
+            ghl_refresh_token: null,
+            ghl_token_expires_at: null,
             ghl_location_id: null,
-            ghl_company_id: null,
-            is_connected: false,
-            connection_status: 'disconnected',
-            error_message: null
+            ghl_auth_type: 'api_key',
+            ghl_webhook_id: null,
+            future_sync_enabled: false
           })
-          .eq('account_id', selectedAccountId)
+          .eq('id', selectedAccountId)
         // Also try to delete mappings client-side if possible
         await supabase
           .from('calendar_mappings')
@@ -239,8 +186,7 @@ export default function CRMConnectionPage() {
           .eq('account_id', selectedAccountId)
       }
 
-      // Show dialog with manual uninstall instructions
-      setShowUninstallDialog(true)
+      setShowUninstallDialog(false)
       await fetchConnection()
     } catch (error) {
       console.error('Error disconnecting GHL:', error)
@@ -317,18 +263,11 @@ export default function CRMConnectionPage() {
                           </CardDescription>
                         </div>
                       </div>
-                      {connection && getStatusBadge(connection.connection_status)}
+                      {connection && getStatusBadge(connection.ghl_auth_type === 'oauth2' && connection.ghl_api_key ? 'connected' : 'disconnected')}
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    {connection?.error_message && (
-                      <Alert variant="destructive">
-                        <AlertCircle className="h-4 w-4" />
-                        <AlertDescription>{connection.error_message}</AlertDescription>
-                      </Alert>
-                    )}
-
-                    {connection?.is_connected && connection.ghl_location_id && (
+                    {connection?.ghl_auth_type === 'oauth2' && connection.ghl_location_id && (
                       <div className="bg-muted p-4 rounded-lg space-y-2">
                         <h4 className="font-medium">Connection Details</h4>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
@@ -336,16 +275,20 @@ export default function CRMConnectionPage() {
                             <span className="text-muted-foreground">Location ID:</span>
                             <span className="ml-2 font-mono">{connection.ghl_location_id}</span>
                           </div>
-                          {connection.ghl_company_id && (
+                          <div>
+                            <span className="text-muted-foreground">Auth Type:</span>
+                            <span className="ml-2">OAuth 2.0</span>
+                          </div>
+                          {connection.ghl_webhook_id && (
                             <div>
-                              <span className="text-muted-foreground">Company ID:</span>
-                              <span className="ml-2 font-mono">{connection.ghl_company_id}</span>
+                              <span className="text-muted-foreground">Webhook ID:</span>
+                              <span className="ml-2 font-mono">{connection.ghl_webhook_id}</span>
                             </div>
                           )}
-                          {connection.last_sync_at && (
+                          {connection.last_future_sync_at && (
                             <div>
                               <span className="text-muted-foreground">Last Sync:</span>
-                              <span className="ml-2">{new Date(connection.last_sync_at).toLocaleString()}</span>
+                              <span className="ml-2">{new Date(connection.last_future_sync_at).toLocaleString()}</span>
                             </div>
                           )}
                         </div>
@@ -353,14 +296,14 @@ export default function CRMConnectionPage() {
                     )}
 
                     <div className="flex gap-2 items-center">
-                      {!connection?.is_connected ? (
+                      {!(connection?.ghl_auth_type === 'oauth2' && connection?.ghl_api_key) ? (
                         <>
                           <Button
                             onClick={initiateGHLConnection}
-                            disabled={connecting || connection?.connection_status === 'connecting'}
+                            disabled={connecting}
                             className="bg-orange-600 hover:bg-orange-700"
                           >
-                            {connecting || connection?.connection_status === 'connecting' ? (
+                            {connecting ? (
                               <>
                                 <Clock className="w-4 h-4 mr-2 animate-spin" />
                                 Connecting...
@@ -372,7 +315,7 @@ export default function CRMConnectionPage() {
                               </>
                             )}
                           </Button>
-                          {(connecting || connection?.connection_status === 'connecting') && (
+                          {connecting && (
                             <Button variant="outline" onClick={cancelGHLConnection}>
                               Cancel
                             </Button>

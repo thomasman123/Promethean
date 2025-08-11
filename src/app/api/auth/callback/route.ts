@@ -1,304 +1,161 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 
 export async function GET(request: NextRequest) {
-  try {
-    const searchParams = request.nextUrl.searchParams
-    const code = searchParams.get('code')
-    const state = searchParams.get('state') // GHL may pass account context in state
-    const error = searchParams.get('error')
-
-    if (error) {
-      console.error('GHL OAuth error:', error)
-      return NextResponse.redirect(
-        new URL(`/account/crm-connection?error=${encodeURIComponent(error)}`, request.url)
-      )
-    }
-
-    if (!code) {
-      console.error('No authorization code received from GHL')
-      return NextResponse.redirect(
-        new URL('/account/crm-connection?error=no_code', request.url)
-      )
-    }
-
-    // Exchange the authorization code for an access token
-    const tokenResponse = await exchangeCodeForToken(code)
-    
-    if (!tokenResponse.success) {
-      console.error('Failed to exchange code for token:', tokenResponse.error)
-      return NextResponse.redirect(
-        new URL(`/account/crm-connection?error=${encodeURIComponent(tokenResponse.error || 'unknown_error')}`, request.url)
-      )
-    }
-
-    // Get location info from GHL (optional - don't fail if this doesn't work)
-    const locationInfo = await getLocationInfo(tokenResponse.access_token)
-    
-    if (!locationInfo.success) {
-      console.warn('Failed to get location info, continuing without it:', locationInfo.error)
-      // Continue without location info - we'll still save the connection
-    }
-
-    // Get the account ID from state parameter
-    const accountId = state
-    
-    if (!accountId) {
-      console.error('No account ID in state parameter')
-      return NextResponse.redirect(
-        new URL('/account/crm-connection?error=no_account_id', request.url)
-      )
-    }
-
-    // Save the connection to the database
-    const saveResult = await saveConnection({
-      accountId,
-      accessToken: tokenResponse.access_token,
-      refreshToken: tokenResponse.refresh_token,
-      expiresIn: tokenResponse.expires_in,
-      locationId: tokenResponse.location_id,
-      companyId: tokenResponse.company_id,
-      locations: locationInfo.success ? locationInfo.locations : []
-    })
-
-    if (!saveResult.success) {
-      console.error('Failed to save connection:', saveResult.error)
-      return NextResponse.redirect(
-        new URL('/account/crm-connection?error=save_failed', request.url)
-      )
-    }
-
-    console.log('✅ GHL OAuth connection completed successfully')
-    
-    // Now that connection is saved, subscribe to appointment webhooks
-    await subscribeToAppointmentWebhooks({
-      locationId: tokenResponse.location_id,
-      accessToken: tokenResponse.access_token
-    })
-
-    console.log('📝 Webhook subscription completed')
-
-    // Redirect back to CRM connection page with success
-    return NextResponse.redirect(
-      new URL('/account/crm-connection?success=true', request.url)
-    )
-
-  } catch (error) {
-    console.error('OAuth callback error:', error)
-    return NextResponse.redirect(
-      new URL('/account/crm-connection?error=callback_failed', request.url)
-    )
+  const searchParams = request.nextUrl.searchParams;
+  const code = searchParams.get('code');
+  const state = searchParams.get('state'); // This is our accountId
+  const error = searchParams.get('error');
+  
+  // Get the base URL for absolute redirects
+  const baseUrl = request.nextUrl.origin;
+  
+  if (error) {
+    return NextResponse.redirect(`${baseUrl}/account/crm-connection?error=${error}`);
   }
-}
-
-async function exchangeCodeForToken(code: string) {
+  
+  if (!code || !state) {
+    return NextResponse.redirect(`${baseUrl}/account/crm-connection?error=missing_parameters`);
+  }
+  
+  const clientId = process.env.GHL_CLIENT_ID;
+  const clientSecret = process.env.GHL_CLIENT_SECRET;
+  const redirectUri = process.env.GHL_REDIRECT_URI || `${baseUrl}/api/auth/callback`;
+  
+  if (!clientId || !clientSecret) {
+    return NextResponse.redirect(`${baseUrl}/account/crm-connection?error=configuration_error`);
+  }
+  
   try {
-    const clientId = process.env.GHL_CLIENT_ID
-    const clientSecret = process.env.GHL_CLIENT_SECRET
-    const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback`
-
-    if (!clientId || !clientSecret) {
-      return { success: false, error: 'Missing GHL credentials' }
-    }
-
-    const tokenEndpoint = 'https://services.leadconnectorhq.com/oauth/token'
-    
-    const response = await fetch(tokenEndpoint, {
+    // Exchange authorization code for access token
+    const tokenResponse = await fetch('https://services.leadconnectorhq.com/oauth/token', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
       body: new URLSearchParams({
-        grant_type: 'authorization_code',
-        code,
         client_id: clientId,
         client_secret: clientSecret,
+        grant_type: 'authorization_code',
+        code,
         redirect_uri: redirectUri,
       }),
-    })
-
-    if (!response.ok) {
-      const errorText = await response.text()
-      console.error('Token exchange failed:', response.status, errorText)
-      return { success: false, error: `Token exchange failed: ${response.status}` }
-    }
-
-    const tokenData = await response.json()
+    });
     
-    return {
-      success: true,
-      access_token: tokenData.access_token,
-      refresh_token: tokenData.refresh_token,
-      expires_in: tokenData.expires_in,
-      scope: tokenData.scope,
-      location_id: tokenData.locationId, // GHL may include this
-      company_id: tokenData.companyId, // GHL may include this
+    if (!tokenResponse.ok) {
+      const errorData = await tokenResponse.json();
+      console.error('Token exchange failed:', errorData);
+      return NextResponse.redirect(`${baseUrl}/account/crm-connection?error=token_exchange_failed`);
     }
-  } catch (error) {
-    console.error('Error exchanging code for token:', error)
-    return { success: false, error: 'Network error during token exchange' }
-  }
-}
-
-async function getLocationInfo(accessToken: string) {
-  try {
-    // Get location information from GHL API
-    const response = await fetch('https://services.leadconnectorhq.com/locations', {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Version': '2021-07-28',
-      },
-    })
-
-    if (!response.ok) {
-      const errorText = await response.text()
-      console.error('Failed to get location info:', response.status, errorText)
-      return { success: false, error: `Location info failed: ${response.status}` }
-    }
-
-    const locationData = await response.json()
     
-    return {
-      success: true,
-      locations: locationData.locations || [],
-    }
-  } catch (error) {
-    console.error('Error getting location info:', error)
-    return { success: false, error: 'Network error getting location info' }
-  }
-}
-
-interface GHLLocation {
-  id: string
-  name?: string
-}
-
-async function subscribeToAppointmentWebhooks(params: {
-  locationId: string
-  accessToken: string
-}) {
-  try {
-    const { locationId, accessToken } = params
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://promethean-three.vercel.app'
-    const webhookUrl = `${appUrl.replace(/\/$/, '')}/api/webhooks`
+    const tokenData = await tokenResponse.json();
+    console.log('Token exchange successful:', {
+      locationId: tokenData.locationId,
+      hasAccessToken: !!tokenData.access_token,
+      hasRefreshToken: !!tokenData.refresh_token,
+      expiresIn: tokenData.expires_in
+    });
     
-    console.log(`📡 Subscribing to appointment webhooks for location: ${locationId}`)
-
-    // Try multiple webhook subscription endpoints
-    const webhookAttempts = [
-      {
-        name: 'V2 webhooks with locationId',
-        url: 'https://services.leadconnectorhq.com/v2/webhooks',
-        body: { locationId, url: webhookUrl, events: ['AppointmentCreate', 'AppointmentUpdate', 'AppointmentDelete'] }
-      },
-      {
-        name: 'Location-based endpoint',
-        url: `https://services.leadconnectorhq.com/locations/${locationId}/webhooks`,
-        body: { url: webhookUrl, events: ['AppointmentCreate', 'AppointmentUpdate', 'AppointmentDelete'] }
-      }
-    ]
-
-    let subscriptionSuccess = false
-
-    for (const attempt of webhookAttempts) {
-      try {
-        console.log(`🔄 Trying webhook subscription: ${attempt.name}`)
-        
-        const subscribeResponse = await fetch(attempt.url, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(attempt.body)
-        })
-
-        const responseText = await subscribeResponse.text()
-        
-        if (subscribeResponse.ok) {
-          console.log(`✅ Webhook subscription successful: ${attempt.name}`, {
-            status: subscribeResponse.status,
-            response: responseText
-          })
-          subscriptionSuccess = true
-          break
-        } else {
-          console.log(`❌ Webhook subscription failed: ${attempt.name}`, {
-            status: subscribeResponse.status,
-            error: responseText 
-          })
+    // Auto-subscribe to webhooks for phone call and appointment capture
+    let webhookId = null;
+    try {
+      const webhookUrl = `${baseUrl}/api/webhooks`;
+      
+      console.log(`📡 Auto-subscribing webhook for location ${tokenData.locationId}: ${webhookUrl}`);
+      
+      // Try multiple webhook API approaches
+      let webhookResponse = null;
+      let webhookSuccess = false;
+      
+      const webhookAttempts = [
+        {
+          name: 'Location-based endpoint',
+          url: `https://services.leadconnectorhq.com/locations/${tokenData.locationId}/webhooks`,
+          body: { url: webhookUrl, events: ['OutboundMessage', 'AppointmentCreate', 'AppointmentUpdate', 'AppointmentDelete'] }
+        },
+        {
+          name: 'V2 webhooks with locationId',
+          url: 'https://services.leadconnectorhq.com/v2/webhooks',
+          body: { locationId: tokenData.locationId, url: webhookUrl, events: ['OutboundMessage', 'AppointmentCreate', 'AppointmentUpdate', 'AppointmentDelete'] }
+        },
+        {
+          name: 'V1 webhooks endpoint', 
+          url: 'https://services.leadconnectorhq.com/webhooks',
+          body: { locationId: tokenData.locationId, url: webhookUrl, events: ['OutboundMessage', 'AppointmentCreate', 'AppointmentUpdate', 'AppointmentDelete'] }
         }
-      } catch (error) {
-        console.error(`💥 Webhook subscription error: ${attempt.name}`, error)
+      ];
+      
+      for (const attempt of webhookAttempts) {
+        console.log(`🧪 Trying webhook approach: ${attempt.name}`);
+        
+        try {
+          webhookResponse = await fetch(attempt.url, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${tokenData.access_token}`,
+              'Version': '2021-04-15',
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(attempt.body),
+          });
+          
+          console.log(`📞 ${attempt.name} response status: ${webhookResponse.status}`);
+          
+          if (webhookResponse.ok) {
+            console.log(`✅ Webhook subscription successful with: ${attempt.name}`);
+            webhookSuccess = true;
+            break;
+          } else {
+            const errorText = await webhookResponse.text();
+            console.log(`❌ ${attempt.name} failed: ${errorText}`);
+          }
+        } catch (error) {
+          console.log(`❌ ${attempt.name} error:`, error);
+        }
       }
-    }
-
-    if (!subscriptionSuccess) {
-      console.error('❌ All webhook subscription attempts failed')
-    }
-
-    return subscriptionSuccess
-  } catch (error) {
-    console.error('💥 Error during webhook subscription setup:', error)
-    return false
-  }
-}
-
-async function saveConnection(params: {
-  accountId: string
-  accessToken: string
-  refreshToken: string
-  expiresIn: number
-  locationId?: string
-  companyId?: string
-  locations: GHLLocation[]
-}) {
-  try {
-    const { accountId, accessToken, refreshToken, expiresIn, locationId, companyId, locations } = params
-    
-    // Create a service client that bypasses RLS for OAuth operations
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-    
-    if (!supabaseUrl || !supabaseServiceKey) {
-      console.error('Missing Supabase configuration')
-      return { success: false, error: 'Missing configuration' }
+      
+      if (webhookSuccess && webhookResponse) {
+        const webhookData = await webhookResponse.json();
+        webhookId = webhookData.id;
+        console.log(`✅ Webhook subscribed successfully:`, webhookId);
+      } else {
+        console.error(`❌ All webhook subscription attempts failed`);
+      }
+    } catch (webhookError) {
+      console.error(`⚠️ Webhook subscription exception:`, webhookError);
+      // Don't fail the OAuth flow if webhook subscription fails
     }
     
-    const supabaseService = createClient(supabaseUrl, supabaseServiceKey)
+    // Store the OAuth tokens in the accounts table
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+    const supabase = createClient(supabaseUrl, serviceKey);
     
-    // Calculate token expiration time
-    const expiresAt = new Date(Date.now() + (expiresIn * 1000)).toISOString()
+    console.log('Updating account:', state, 'with OAuth tokens');
     
-    // Use the first location if no specific location ID is provided
-    const ghlLocationId = locationId || (locations.length > 0 ? locations[0].id : null)
-    
-    // Upsert the connection using service role
-    const { error } = await supabaseService
-      .from('ghl_connections')
-      .upsert({
-        account_id: accountId,
-        access_token: accessToken,
-        refresh_token: refreshToken,
-        token_expires_at: expiresAt,
-        ghl_location_id: ghlLocationId,
-        ghl_company_id: companyId,
-        is_connected: true,
-        connection_status: 'connected',
-        last_sync_at: new Date().toISOString(),
-        error_message: null,
-      }, {
-        onConflict: 'account_id'
+    const { error: updateError } = await supabase
+      .from('accounts')
+      .update({
+        ghl_api_key: tokenData.access_token, // Store access token
+        ghl_refresh_token: tokenData.refresh_token, // Store refresh token
+        ghl_location_id: tokenData.locationId, // Store the location ID
+        ghl_auth_type: 'oauth2', // Mark as OAuth
+        ghl_token_expires_at: new Date(Date.now() + tokenData.expires_in * 1000).toISOString(),
+        ghl_webhook_id: webhookId, // Store webhook ID for tracking
+        future_sync_enabled: true, // Automatically enable future sync
+        future_sync_started_at: new Date().toISOString(), // Record when sync started
       })
-
-    if (error) {
-      console.error('Database error saving connection:', error)
-      return { success: false, error: 'Database error' }
+      .eq('id', state); // state contains the accountId
+    
+    if (updateError) {
+      console.error('Database update error:', updateError);
+      return NextResponse.redirect(`${baseUrl}/account/crm-connection?error=database_error&detail=${encodeURIComponent(updateError.message)}`);
     }
-
-    return { success: true }
+    
+    console.log('✅ Account updated successfully with webhook ID:', webhookId);
+    return NextResponse.redirect(`${baseUrl}/account/crm-connection?success=true&webhook=${webhookId ? 'active' : 'failed'}`);
   } catch (error) {
-    console.error('Error saving connection:', error)
-    return { success: false, error: 'Save error' }
+    console.error('❌ OAuth callback error:', error);
+    return NextResponse.redirect(`${baseUrl}/account/crm-connection?error=unknown_error`);
   }
 } 
