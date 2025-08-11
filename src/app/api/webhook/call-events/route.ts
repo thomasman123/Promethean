@@ -544,6 +544,12 @@ async function processAppointmentWebhook(payload: any) {
         
         // 3. Get setter (createdBy.userId) details
         const setterId = fullAppointmentData?.createdBy?.userId;
+        console.log('🔍 Setter ID extraction debug:', {
+          fullAppointmentData: !!fullAppointmentData,
+          createdBy: fullAppointmentData?.createdBy,
+          setterId: setterId
+        });
+        
         if (setterId) {
           console.log('👨‍🎯 Fetching setter details for ID:', setterId);
           
@@ -695,10 +701,20 @@ async function processAppointmentWebhook(payload: any) {
     };
 
     const getSetterName = () => {
+      console.log('🔍 getSetterName debug:', {
+        setterData: setterData,
+        hasSetterData: !!setterData,
+        setterName: setterData?.name,
+        setterFirstName: setterData?.firstName,
+        setterLastName: setterData?.lastName
+      });
+      
       if (setterData?.name) return setterData.name;
       if (setterData?.firstName || setterData?.lastName) {
         return `${setterData.firstName || ''} ${setterData.lastName || ''}`.trim();
       }
+      
+      console.log('⚠️ No setter data available, falling back to Webhook');
       return 'Webhook';
     };
 
