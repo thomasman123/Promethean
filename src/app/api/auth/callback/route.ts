@@ -248,29 +248,56 @@ async function ensureGhlWebhooks(params: {
   }
   if (locationId) headers['Location'] = locationId
 
-  // Helper to subscribe to one event type
-  const subscribe = async (eventType: string) => {
-    const body: any = { target, eventType }
-    // Some tenants expect Location header only; keep body minimal
-    const resp = await fetch('https://services.leadconnectorhq.com/webhooks/subscribe/', {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(body),
+  const events = ['OutboundMessage', 'AppointmentCreate']
+
+  type Attempt = { name: string; url: string; body: any }
+  const attempts: Attempt[] = []
+
+  if (locationId) {
+    attempts.push({
+      name: 'Locations-scoped webhooks',
+      url: `https://services.leadconnectorhq.com/locations/${encodeURIComponent(locationId)}/webhooks`,
+      body: { url: target, events },
     })
-    if (!resp.ok) {
-      const txt = await resp.text().catch(() => '')
-      console.warn('Webhook subscribe failed', { eventType, status: resp.status, body: txt })
-    } else {
-      console.log('Webhook subscribed', { eventType, target })
+  }
+
+  attempts.push(
+    {
+      name: 'V2 webhooks',
+      url: 'https://services.leadconnectorhq.com/v2/webhooks',
+      body: locationId ? { locationId, url: target, events } : { url: target, events },
+    },
+    {
+      name: 'Legacy webhooks',
+      url: 'https://services.leadconnectorhq.com/webhooks',
+      body: locationId ? { locationId, url: target, events } : { url: target, events },
+    }
+  )
+
+  let success = false
+  let lastErrorStatus: number | null = null
+  for (const attempt of attempts) {
+    try {
+      const resp = await fetch(attempt.url, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(attempt.body),
+      })
+      if (resp.ok) {
+        console.log('Webhook subscribed', { attempt: attempt.name, target })
+        success = true
+        break
+      } else {
+        lastErrorStatus = resp.status
+        const txt = await resp.text().catch(() => '')
+        console.warn('Webhook subscribe failed', { attempt: attempt.name, status: resp.status, body: txt })
+      }
+    } catch (err) {
+      console.warn('Webhook subscribe exception', { attempt: attempt.name, message: (err as any)?.message })
     }
   }
 
-  // Try a broader set of known event names across GHL variants
-  const eventsToTry = [
-    'appointment.created',
-    'message.created',
-    'conversation.message.created',
-  ]
-
-  await Promise.allSettled(eventsToTry.map(subscribe))
+  if (!success) {
+    throw new Error(`All webhook subscription attempts failed (last status ${lastErrorStatus ?? 'n/a'})`)
+  }
 } 

@@ -5,7 +5,6 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => ({}))
     const accountId: string | undefined = body.accountId
-    const events: string[] | undefined = Array.isArray(body.events) ? body.events : undefined
 
     if (!accountId) {
       return NextResponse.json({ success: false, error: 'accountId is required' }, { status: 400 })
@@ -45,25 +44,46 @@ export async function POST(request: NextRequest) {
     }
     if (locationId) headers['Location'] = locationId
 
-    const subscribe = async (eventType: string) => {
-      const payload: any = { target, eventType }
-      const resp = await fetch('https://services.leadconnectorhq.com/webhooks/subscribe/', {
+    const events = ['OutboundMessage', 'AppointmentCreate']
+
+    const attempts: Array<{ name: string; url: string; body: any }> = []
+    if (locationId) {
+      attempts.push({
+        name: 'Locations-scoped webhooks',
+        url: `https://services.leadconnectorhq.com/locations/${encodeURIComponent(locationId)}/webhooks`,
+        body: { url: target, events },
+      })
+    }
+    attempts.push(
+      {
+        name: 'V2 webhooks',
+        url: 'https://services.leadconnectorhq.com/v2/webhooks',
+        body: locationId ? { locationId, url: target, events } : { url: target, events },
+      },
+      {
+        name: 'Legacy webhooks',
+        url: 'https://services.leadconnectorhq.com/webhooks',
+        body: locationId ? { locationId, url: target, events } : { url: target, events },
+      }
+    )
+
+    const results: Array<{ attempt: string; ok: boolean; status: number; body: string }> = []
+    let success = false
+    for (const attempt of attempts) {
+      const resp = await fetch(attempt.url, {
         method: 'POST',
         headers,
-        body: JSON.stringify(payload),
+        body: JSON.stringify(attempt.body),
       })
       const text = await resp.text().catch(() => '')
-      return { eventType, ok: resp.ok, status: resp.status, body: text }
+      results.push({ attempt: attempt.name, ok: resp.ok, status: resp.status, body: text })
+      if (resp.ok) {
+        success = true
+        break
+      }
     }
 
-    const eventList = events && events.length > 0 ? events : [
-      'appointment.created',
-      'message.created',
-      'conversation.message.created',
-    ]
-    const results = await Promise.all(eventList.map(subscribe))
-
-    return NextResponse.json({ success: true, target, results, usedLocationHeader: Boolean(locationId) })
+    return NextResponse.json({ success, target, results })
   } catch (e: any) {
     return NextResponse.json({ success: false, error: e?.message || 'Server error' }, { status: 500 })
   }

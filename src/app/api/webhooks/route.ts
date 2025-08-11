@@ -29,7 +29,9 @@ function safeStringify(value: any) {
 }
 
 async function handleAppointment(payload: any, logger: Logger) {
-  const data = payload.appointment ? payload : { type: payload.type || 'appointment.created', appointment: payload }
+  // Accept both GHL marketplace style and legacy appointment payloads
+  const isAppointmentCreate = (payload?.type || '').toString().toLowerCase().includes('appointmentcreate')
+  const data = payload.appointment || isAppointmentCreate ? { type: 'appointment.created', appointment: (payload.appointment || payload) } : (payload)
   logger.log('handleAppointment: normalized payload', { hasAppointment: !!data.appointment, type: data.type })
   if (data.type !== 'appointment.created') {
     return { status: 200, body: { success: true, message: 'Event type not handled' } }
@@ -130,9 +132,9 @@ async function handleDial(payload: any, logger: Logger, opts?: { accountId?: str
 
 function detectKind(payload: any, logger?: Logger): 'appointment' | 'dial' | 'inboundMessage' | 'unknown' {
   const type = (payload?.type || '').toString().toLowerCase()
-  const kind = payload?.appointment || type.startsWith('appointment')
+  const kind = payload?.appointment || type.startsWith('appointment') || type.includes('appointmentcreate')
     ? 'appointment'
-    : (payload?.dial || (payload?.contactName && payload?.phone) || type.includes('dial'))
+    : (payload?.dial || (payload?.contactName && payload?.phone) || type.includes('dial') || type.includes('outboundmessage'))
     ? 'dial'
     : (type.includes('inboundmessage') || type.includes('message.created') || (payload?.message && payload?.direction === 'inbound'))
     ? 'inboundMessage'
