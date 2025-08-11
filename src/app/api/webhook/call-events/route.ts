@@ -489,7 +489,7 @@ async function processAppointmentWebhook(payload: any) {
           const appointmentApiData = await appointmentResponse.json();
           console.log('🔍 Raw appointment API response:', JSON.stringify(appointmentApiData, null, 2));
           
-          fullAppointmentData = appointmentApiData.event; // API returns data under 'event' key
+          fullAppointmentData = appointmentApiData.appointment; // API returns data under 'appointment' key
           console.log('📅 Full appointment data retrieved:', {
             id: fullAppointmentData?.id,
             title: fullAppointmentData?.title,
