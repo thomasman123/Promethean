@@ -29,8 +29,8 @@ function safeStringify(value: any) {
 }
 
 function detectKind(payload: any, logger?: Logger): 'appointment' | 'dial' | 'inboundMessage' | 'unknown' {
-  // GHL Marketplace webhooks use 'event' field for event type
-  const eventType = payload?.event || payload?.type || ''
+  // Official GHL webhook format uses 'type' field
+  const eventType = payload?.type || payload?.event || ''
   const eventStr = eventType.toString().toLowerCase()
   
   const kind = eventStr.includes('appointmentcreate') || eventStr.includes('appointment')
@@ -41,43 +41,48 @@ function detectKind(payload: any, logger?: Logger): 'appointment' | 'dial' | 'in
     ? 'inboundMessage'
     : 'unknown'
     
-  if (logger) logger.log('detectKind', { eventType, resolved: kind })
+  if (logger) logger.log('detectKind', { eventType, resolved: kind, payloadKeys: Object.keys(payload || {}) })
   return kind
 }
 
 async function handleAppointment(payload: any, logger: Logger) {
-  // GHL Marketplace format: payload is the appointment data directly
-  logger.log('handleAppointment: processing GHL marketplace appointment', { 
-    appointmentId: payload.id, 
-    calendarId: payload.calendarId,
-    locationId: payload.locationId 
+  // Handle both formats: direct fields and nested appointment object
+  const appointmentData = payload.appointment || payload
+  const locationId = payload.locationId || appointmentData.locationId
+  
+  logger.log('handleAppointment: processing GHL appointment webhook', { 
+    type: payload.type,
+    appointmentId: appointmentData.id, 
+    calendarId: appointmentData.calendarId,
+    locationId: locationId,
+    hasNestedAppointment: !!payload.appointment
   })
 
   const { data: mapping, error: mapErr } = await supabaseService
     .from('calendar_mappings')
     .select('*')
-    .eq('ghl_calendar_id', payload.calendarId)
+    .eq('ghl_calendar_id', appointmentData.calendarId)
     .eq('is_enabled', true)
     .single()
   if (mapErr) logger.log('handleAppointment: mapping query error', { code: mapErr.code, message: mapErr.message })
 
   if (!mapping) {
-    logger.log('handleAppointment: no mapping found, skipping')
+    logger.log('handleAppointment: no mapping found, skipping', { calendarId: appointmentData.calendarId })
     return { status: 200, body: { success: true, message: 'No active mapping for this calendar' } }
   }
 
-  // Extract contact info from GHL marketplace payload
-  const contactName = payload.contactName || 
-    `${payload.contactFirstName || ''} ${payload.contactLastName || ''}`.trim() || 
-    'Unknown'
+  // Extract contact info - need to fetch from GHL API using contactId
+  const contactName = appointmentData.contactName || 
+    appointmentData.title || 
+    'Unknown Contact'
 
   const appointmentRow = {
     account_id: mapping.account_id,
     contact_name: contactName,
-    email: payload.contactEmail || null,
-    phone: payload.contactPhone || null,
+    email: null, // Will need to fetch from contact API
+    phone: null, // Will need to fetch from contact API
     date_booked: new Date().toISOString(),
-    date_booked_for: payload.startTime || payload.appointmentStartTime,
+    date_booked_for: appointmentData.startTime,
     setter: 'Webhook',
     sales_rep: null,
   }
