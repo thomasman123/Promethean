@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
 
     const supabase = createClient(supabaseUrl, serviceKey)
     
-    // Get account instead of ghl_connections
+    // Get account with GHL data (migrated from old ghl_connections table)
     const { data: account, error: accountError } = await supabase
       .from('accounts')
       .select('*')

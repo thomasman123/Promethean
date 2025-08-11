@@ -318,62 +318,6 @@ export type Database = {
           },
         ]
       }
-      ghl_connections: {
-        Row: {
-          id: string
-          account_id: string
-          access_token: string | null
-          refresh_token: string | null
-          token_expires_at: string | null
-          ghl_location_id: string | null
-          ghl_company_id: string | null
-          is_connected: boolean
-          connection_status: 'disconnected' | 'connecting' | 'connected' | 'error'
-          last_sync_at: string | null
-          error_message: string | null
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          account_id: string
-          access_token?: string | null
-          refresh_token?: string | null
-          token_expires_at?: string | null
-          ghl_location_id?: string | null
-          ghl_company_id?: string | null
-          is_connected?: boolean
-          connection_status?: 'disconnected' | 'connecting' | 'connected' | 'error'
-          last_sync_at?: string | null
-          error_message?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          account_id?: string
-          access_token?: string | null
-          refresh_token?: string | null
-          token_expires_at?: string | null
-          ghl_location_id?: string | null
-          ghl_company_id?: string | null
-          is_connected?: boolean
-          connection_status?: 'disconnected' | 'connecting' | 'connected' | 'error'
-          last_sync_at?: string | null
-          error_message?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "ghl_connections_account_id_fkey"
-            columns: ["account_id"]
-            isOneToOne: false
-            referencedRelation: "accounts"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       profiles: {
         Row: {
           avatar_url: string | null

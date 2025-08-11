@@ -53,8 +53,8 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 Run the database migration to create the GHL connections table:
 
 ```bash
-# Apply the migration in your Supabase SQL editor
-cat supabase/migrations/20250111000001_create_ghl_connections_table.sql
+# GHL integration now uses accounts.* columns instead of separate ghl_connections table
+# All migrations have been updated to use accounts table for GHL data
 ```
 
 ## How the Integration Works
