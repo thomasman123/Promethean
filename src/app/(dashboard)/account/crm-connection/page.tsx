@@ -172,44 +172,51 @@ export default function CRMConnectionPage() {
       const { error: rpcError } = await supabase.rpc('admin_clean_account_ghl_data', {
         target_account_id: selectedAccountId,
       })
-
       if (rpcError) {
-        console.error('Cleanup RPC failed, falling back to local update:', rpcError)
+        console.warn('Cleanup RPC returned an error, proceeding with client-side cleanup:', rpcError)
+      }
+
+      // Always perform client-side cleanup to ensure state is cleared
+      const { error: updateError } = await supabase
+        .from('accounts')
+        .update({
+          ghl_api_key: null,
+          ghl_refresh_token: null,
+          ghl_token_expires_at: null,
+          ghl_location_id: null,
+          ghl_auth_type: 'api_key',
+          ghl_webhook_id: null,
+          future_sync_enabled: false
+        })
+        .eq('id', selectedAccountId)
+      
+      if (updateError) {
+        console.error('❌ Failed to update account during disconnect:', updateError)
+        alert('Failed to disconnect GHL. Please try again.')
+        return
+      }
+
+      // Also try to delete mappings client-side if possible
+      const { error: mappingError } = await supabase
+        .from('calendar_mappings')
+        .delete()
+        .eq('account_id', selectedAccountId)
         
-        // Fallback: Manual cleanup
-        const { error: updateError } = await supabase
-          .from('accounts')
-          .update({
-            ghl_api_key: null,
-            ghl_refresh_token: null,
-            ghl_token_expires_at: null,
-            ghl_location_id: null,
-            ghl_auth_type: 'api_key',
-            ghl_webhook_id: null,
-            future_sync_enabled: false
-          })
-          .eq('id', selectedAccountId)
-          
-        if (updateError) {
-          console.error('❌ Failed to update account during disconnect:', updateError)
-          alert('Failed to disconnect GHL. Please try again.')
-          return
-        }
-        
-        // Also try to delete mappings client-side if possible
-        const { error: mappingError } = await supabase
-          .from('calendar_mappings')
-          .delete()
-          .eq('account_id', selectedAccountId)
-          
-        if (mappingError) {
-          console.warn('⚠️ Failed to delete calendar mappings:', mappingError)
-        }
+      if (mappingError) {
+        console.warn('⚠️ Failed to delete calendar mappings:', mappingError)
       }
 
       console.log('✅ GHL disconnected successfully')
       
-      // Force UI refresh with multiple approaches
+      // Verify the account row was actually cleared
+      const { data: verify, error: verifyErr } = await supabase
+        .from('accounts')
+        .select('ghl_auth_type, ghl_api_key, ghl_location_id')
+        .eq('id', selectedAccountId)
+        .single()
+      console.log('🔎 Post-disconnect verify:', verify, verifyErr)
+
+      // Force UI refresh
       await fetchConnection()
       
       // Force a re-render by temporarily clearing connection state
