@@ -58,16 +58,22 @@ async function handleAppointment(payload: any, logger: Logger) {
     hasNestedAppointment: !!payload.appointment
   })
 
-  const { data: mapping, error: mapErr } = await supabaseService
+  const { data: mappings, error: mapErr } = await supabaseService
     .from('calendar_mappings')
     .select('*')
     .eq('ghl_calendar_id', appointmentData.calendarId)
     .eq('is_enabled', true)
-    .single()
+    .limit(1)
+  
   if (mapErr) logger.log('handleAppointment: mapping query error', { code: mapErr.code, message: mapErr.message })
 
+  const mapping = mappings && mappings.length > 0 ? mappings[0] : null
+  
   if (!mapping) {
-    logger.log('handleAppointment: no mapping found, skipping', { calendarId: appointmentData.calendarId })
+    logger.log('handleAppointment: no mapping found, skipping', { 
+      calendarId: appointmentData.calendarId,
+      mappingsFound: mappings?.length || 0 
+    })
     return { status: 200, body: { success: true, message: 'No active mapping for this calendar' } }
   }
 
