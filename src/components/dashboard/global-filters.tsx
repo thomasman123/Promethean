@@ -11,26 +11,14 @@ import { DateRange } from "react-day-picker";
 import { CompareModeControls } from "./compare-mode-controls";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
 
 interface GlobalFiltersProps {
   className?: string;
 }
 
-// Mock data for demo - replace with actual API calls
-const mockReps: MultiSelectOption[] = [
-  { value: "rep1", label: "John Doe", group: "Sales Reps" },
-  { value: "rep2", label: "Jane Smith", group: "Sales Reps" },
-  { value: "rep3", label: "Bob Johnson", group: "Sales Reps" },
-  { value: "rep4", label: "Alice Williams", group: "Sales Reps" },
-];
-
-const mockSetters: MultiSelectOption[] = [
-  { value: "setter1", label: "Charlie Brown", group: "Setters" },
-  { value: "setter2", label: "David Lee", group: "Setters" },
-  { value: "setter3", label: "Emma Wilson", group: "Setters" },
-  { value: "setter4", label: "Frank Miller", group: "Setters" },
-];
+type Candidate = { id: string; name: string | null; invited: boolean }
 
 export function GlobalFilters({ className }: GlobalFiltersProps) {
   const { 
@@ -39,9 +27,35 @@ export function GlobalFilters({ className }: GlobalFiltersProps) {
     clearFilters,
     compareMode,
     toggleCompareMode,
-    
   } = useDashboardStore();
   const [isCompareModalOpen, setIsCompareModalOpen] = useState(false);
+  const [repOptions, setRepOptions] = useState<MultiSelectOption[]>([])
+  const [setterOptions, setSetterOptions] = useState<MultiSelectOption[]>([])
+  const { selectedAccountId } = useAuth()
+
+  useEffect(() => {
+    const loadCandidates = async () => {
+      if (!selectedAccountId) return
+      try {
+        const res = await fetch(`/api/team/candidates?accountId=${encodeURIComponent(selectedAccountId)}`)
+        const json = await res.json()
+        const toOption = (c: Candidate, groupLabel: string): MultiSelectOption => ({
+          value: c.id,
+          label: `${c.name || 'Unknown'}${c.invited ? '' : ' (uninvited)'}`,
+          group: groupLabel,
+        })
+        setRepOptions([
+          ...(json.reps || []).map((c: Candidate) => toOption(c, c.invited ? 'Reps' : 'Reps • Uninvited')),
+        ])
+        setSetterOptions([
+          ...(json.setters || []).map((c: Candidate) => toOption(c, c.invited ? 'Setters' : 'Setters • Uninvited')),
+        ])
+      } catch (e) {
+        console.warn('Failed to load candidates', e)
+      }
+    }
+    loadCandidates()
+  }, [selectedAccountId])
   
   const handleDateChange = (dateRange: DateRange | undefined) => {
     setFilters({
@@ -58,9 +72,11 @@ export function GlobalFilters({ className }: GlobalFiltersProps) {
     setFilters({ setterIds });
   };
   
-  const activeFilterCount = Object.values(filters).filter(v => 
-    v !== undefined && v !== null && (Array.isArray(v) ? v.length > 0 : true)
-  ).length;
+  const activeFilterCount = useMemo(() => (
+    Object.values(filters).filter(v => 
+      v !== undefined && v !== null && (Array.isArray(v) ? v.length > 0 : true)
+    ).length
+  ), [filters])
 
   const openCompareModal = () => {
     if (!compareMode) {
@@ -86,20 +102,20 @@ export function GlobalFilters({ className }: GlobalFiltersProps) {
         
         {/* Rep Selector */}
         <MultiSelect
-          options={mockReps}
+          options={repOptions}
           selected={filters.repIds || []}
           onChange={handleRepChange}
           placeholder="Select reps"
-          className="w-[200px]"
+          className="w-[220px]"
         />
         
         {/* Setter Selector */}
         <MultiSelect
-          options={mockSetters}
+          options={setterOptions}
           selected={filters.setterIds || []}
           onChange={handleSetterChange}
           placeholder="Select setters"
-          className="w-[200px]"
+          className="w-[220px]"
         />
         
         <Separator orientation="vertical" className="h-6" />
@@ -153,8 +169,8 @@ export function GlobalFilters({ className }: GlobalFiltersProps) {
             <DialogTitle>Compare Mode</DialogTitle>
           </DialogHeader>
           <CompareModeControls 
-            reps={mockReps}
-            setters={mockSetters}
+            reps={repOptions}
+            setters={setterOptions}
             className="mt-2"
           />
           <div className="flex justify-end gap-2 pt-2">
