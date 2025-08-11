@@ -68,6 +68,17 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    // Try to subscribe webhooks (best-effort; do not block UX)
+    try {
+      await ensureGhlWebhooks({
+        accessToken: tokenResponse.access_token,
+        locationId: tokenResponse.location_id || (locationInfo.success ? locationInfo.locations?.[0]?.id : undefined),
+        targetBaseUrl: process.env.NEXT_PUBLIC_APP_URL || new URL(request.url).origin,
+      })
+    } catch (subErr) {
+      console.warn('Non-fatal: failed to ensure GHL webhooks:', subErr)
+    }
+
     // Redirect back to CRM connection page with success
     return NextResponse.redirect(
       new URL('/account/crm-connection?success=true', request.url)
@@ -220,4 +231,44 @@ async function saveConnection(params: {
     console.error('Error saving connection:', error)
     return { success: false, error: 'Save error' }
   }
+}
+
+// Subscribe to required GHL webhooks for the app
+async function ensureGhlWebhooks(params: {
+  accessToken: string
+  locationId?: string | null
+  targetBaseUrl: string
+}) {
+  const { accessToken, locationId, targetBaseUrl } = params
+  const target = `${targetBaseUrl.replace(/\/$/, '')}/api/webhooks`
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${accessToken}`,
+    Version: '2021-07-28',
+    'Content-Type': 'application/json',
+  }
+
+  // Helper to subscribe to one event type
+  const subscribe = async (eventType: string) => {
+    const body: any = { target, eventType }
+    if (locationId) body.locationId = locationId
+    const resp = await fetch('https://services.leadconnectorhq.com/webhooks/subscribe/', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body),
+    })
+    if (!resp.ok) {
+      const txt = await resp.text().catch(() => '')
+      console.warn('Webhook subscribe failed', { eventType, status: resp.status, body: txt })
+    } else {
+      console.log('Webhook subscribed', { eventType, target })
+    }
+  }
+
+  // Best-effort subscriptions we rely on
+  // - appointment.created: to sync bookings via calendar mappings
+  // - message.created: to derive inbound calls/messages as dials
+  await Promise.allSettled([
+    subscribe('appointment.created'),
+    subscribe('message.created'),
+  ])
 } 

@@ -296,5 +296,19 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
-  return NextResponse.json({ message: 'Unified Webhook Endpoint' })
+  // Support GHL's subscription verification via returning the raw challenge
+  const { searchParams } = new URL(request.url)
+  const challenge = searchParams.get('challenge')
+  if (challenge) {
+    return new Response(challenge)
+  }
+  const debug = searchParams.get('debug') === '1'
+  const meta = {
+    message: 'Unified Webhook Endpoint',
+    ...(debug ? { env: {
+      hasSupabaseUrl: Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL),
+      hasServiceRoleKey: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
+    }} : {}),
+  }
+  return NextResponse.json(meta)
 } 
