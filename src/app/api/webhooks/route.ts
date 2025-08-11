@@ -91,82 +91,100 @@ async function handleAppointment(payload: any, logger: Logger) {
   let appointmentMetadata = null
 
   // Fetch appointment details to get the real setter
-  if (connection?.access_token && appointmentData.id) {
-    const appointmentDetails = await fetchAppointmentDetails(appointmentData.id, connection.access_token, logger)
-    
-    if (appointmentDetails?.createdBy?.userId) {
-      const userDetails = await fetchUserDetails(appointmentDetails.createdBy.userId, connection.access_token, logger)
-      if (userDetails?.name) {
-        setterName = userDetails.name
-        logger.log('handleAppointment: found setter', { setterName, userId: appointmentDetails.createdBy.userId })
+  if (connection && connection.access_token && appointmentData.id) {
+    try {
+      const appointmentDetails = await fetchAppointmentDetails(appointmentData.id, connection.access_token, logger)
+      
+      if (appointmentDetails?.createdBy?.userId) {
+        const userDetails = await fetchUserDetails(appointmentDetails.createdBy.userId, connection.access_token, logger)
+        if (userDetails?.name) {
+          setterName = userDetails.name
+          logger.log('handleAppointment: found setter', { setterName, userId: appointmentDetails.createdBy.userId })
+        } else {
+          logger.log('handleAppointment: could not fetch user details, using userId as setter', { userId: appointmentDetails.createdBy.userId })
+          setterName = appointmentDetails.createdBy.userId
+        }
       } else {
-        logger.log('handleAppointment: could not fetch user details, using userId as setter', { userId: appointmentDetails.createdBy.userId })
-        setterName = appointmentDetails.createdBy.userId
+        logger.log('handleAppointment: no createdBy.userId in appointment details')
       }
-    } else {
-      logger.log('handleAppointment: no createdBy.userId in appointment details')
-    }
 
-    // Get sales rep from assigned user
-    if (appointmentDetails?.assignedUserId) {
-      const assignedUser = await fetchUserDetails(appointmentDetails.assignedUserId, connection.access_token, logger)
-      if (assignedUser?.name) {
-        salesRep = assignedUser.name
-        logger.log('handleAppointment: found sales rep', { salesRep, assignedUserId: appointmentDetails.assignedUserId })
-      } else {
-        logger.log('handleAppointment: could not fetch assigned user details, using userId as sales rep', { assignedUserId: appointmentDetails.assignedUserId })
-        salesRep = appointmentDetails.assignedUserId
+      // Get sales rep from assigned user
+      if (appointmentDetails?.assignedUserId) {
+        const assignedUser = await fetchUserDetails(appointmentDetails.assignedUserId, connection.access_token, logger)
+        if (assignedUser?.name) {
+          salesRep = assignedUser.name
+          logger.log('handleAppointment: found sales rep', { salesRep, assignedUserId: appointmentDetails.assignedUserId })
+        } else {
+          logger.log('handleAppointment: could not fetch assigned user details, using userId as sales rep', { assignedUserId: appointmentDetails.assignedUserId })
+          salesRep = appointmentDetails.assignedUserId
+        }
       }
-    }
 
-    // Fetch contact details
-    let contact = null
-    if (appointmentDetails?.contactId) {
-      contact = await fetchContactDetails(appointmentDetails.contactId, connection.access_token, logger)
-      if (contact) {
-        contactName = contact.name || contact.firstName + ' ' + contact.lastName || contactName
-        contactEmail = contact.email
-        contactPhone = contact.phone
-        logger.log('handleAppointment: found contact details', { 
-          contactName, 
-          contactEmail, 
-          contactPhone, 
-          contactId: appointmentDetails.contactId 
+      // Fetch contact details
+      let contact = null
+      if (appointmentDetails?.contactId) {
+        contact = await fetchContactDetails(appointmentDetails.contactId, connection.access_token, logger)
+        if (contact) {
+          contactName = contact.name || contact.firstName + ' ' + contact.lastName || contactName
+          contactEmail = contact.email
+          contactPhone = contact.phone
+          logger.log('handleAppointment: found contact details', { 
+            contactName, 
+            contactEmail, 
+            contactPhone, 
+            contactId: appointmentDetails.contactId 
+          })
+        }
+      }
+
+      // Also get better contact name from appointment details if available
+      if (appointmentDetails?.title) {
+        // Only use title if we didn't get a good contact name
+        if (!contactName || contactName === 'Unknown Contact') {
+          contactName = appointmentDetails.title
+        }
+      }
+
+      // Create metadata object with all additional data
+      if (appointmentDetails) {
+        appointmentMetadata = {
+          end_time: appointmentDetails.endTime,
+          status: appointmentDetails.appointmentStatus,
+          notes: appointmentDetails.notes,
+          source: appointmentDetails.source || appointmentData.source,
+          address: appointmentDetails.address,
+          is_recurring: appointmentDetails.isRecurring,
+          date_added: appointmentDetails.dateAdded,
+          date_updated: appointmentDetails.dateUpdated,
+          ghl_appointment_id: appointmentDetails.id,
+          // Add contact metadata if available
+          contact_source: contact?.source || null,
+          contact_tags: contact?.tags || null,
+          contact_assigned_to: contact?.assignedTo || null,
+          contact_last_activity: contact?.lastActivity || null
+        }
+        
+        logger.log('handleAppointment: created metadata', { 
+          endTime: appointmentMetadata.end_time,
+          status: appointmentMetadata.status,
+          source: appointmentMetadata.source,
+          contactTags: appointmentMetadata.contact_tags
         })
       }
+    } catch (apiError) {
+      logger.log('handleAppointment: API enrichment failed, continuing with basic data', { 
+        error: apiError instanceof Error ? apiError.message : String(apiError),
+        appointmentId: appointmentData.id,
+        hasConnection: !!connection,
+        hasAccessToken: !!connection?.access_token
+      })
+      // Continue processing with basic webhook data
     }
-
-    // Also get better contact name from appointment details if available
-    if (appointmentDetails?.title) {
-      // Only use title if we didn't get a good contact name
-      if (!contactName || contactName === 'Unknown Contact') {
-        contactName = appointmentDetails.title
-      }
-    }
-
-    // Create metadata object with all additional data
-    appointmentMetadata = {
-      end_time: appointmentDetails.endTime,
-      status: appointmentDetails.appointmentStatus,
-      notes: appointmentDetails.notes,
-      source: appointmentDetails.source || appointmentData.source,
-      address: appointmentDetails.address,
-      is_recurring: appointmentDetails.isRecurring,
-      date_added: appointmentDetails.dateAdded,
-      date_updated: appointmentDetails.dateUpdated,
-      ghl_appointment_id: appointmentDetails.id,
-      // Add contact metadata if available
-      contact_source: contact?.source || null,
-      contact_tags: contact?.tags || null,
-      contact_assigned_to: contact?.assignedTo || null,
-      contact_last_activity: contact?.lastActivity || null
-    }
-    
-    logger.log('handleAppointment: created metadata', { 
-      endTime: appointmentMetadata.end_time,
-      status: appointmentMetadata.status,
-      source: appointmentMetadata.source,
-      contactTags: appointmentMetadata.contact_tags
+  } else {
+    logger.log('handleAppointment: skipping API enrichment', { 
+      hasConnection: !!connection,
+      hasAccessToken: !!connection?.access_token,
+      hasAppointmentId: !!appointmentData.id
     })
   }
 
@@ -308,7 +326,10 @@ async function fetchGhlConnectionByLocation(locationId?: string, logger?: Logger
 
 async function fetchAppointmentDetails(appointmentId: string, accessToken: string, logger: Logger) {
   try {
-    const response = await fetch(`https://services.leadconnectorhq.com/calendars/events/appointments/${appointmentId}`, {
+    const url = `https://services.leadconnectorhq.com/calendars/events/appointments/${appointmentId}`
+    logger.log('fetchAppointmentDetails: making API call', { url, appointmentId })
+    
+    const response = await fetch(url, {
       headers: {
         'Authorization': `Bearer ${accessToken}`,
         'Version': '2021-04-15',
@@ -317,7 +338,13 @@ async function fetchAppointmentDetails(appointmentId: string, accessToken: strin
     })
 
     if (!response.ok) {
-      logger.log('fetchAppointmentDetails: API error', { status: response.status, statusText: response.statusText })
+      const errorText = await response.text()
+      logger.log('fetchAppointmentDetails: API error', { 
+        status: response.status, 
+        statusText: response.statusText,
+        errorText: errorText,
+        url: url
+      })
       return null
     }
 
@@ -332,7 +359,10 @@ async function fetchAppointmentDetails(appointmentId: string, accessToken: strin
 
 async function fetchContactDetails(contactId: string, accessToken: string, logger: Logger) {
   try {
-    const response = await fetch(`https://services.leadconnectorhq.com/contacts/${contactId}`, {
+    const url = `https://services.leadconnectorhq.com/contacts/${contactId}`
+    logger.log('fetchContactDetails: making API call', { url, contactId })
+    
+    const response = await fetch(url, {
       headers: {
         'Authorization': `Bearer ${accessToken}`,
         'Version': '2021-07-28',
@@ -341,7 +371,13 @@ async function fetchContactDetails(contactId: string, accessToken: string, logge
     })
 
     if (!response.ok) {
-      logger.log('fetchContactDetails: API error', { status: response.status, statusText: response.statusText })
+      const errorText = await response.text()
+      logger.log('fetchContactDetails: API error', { 
+        status: response.status, 
+        statusText: response.statusText,
+        errorText: errorText,
+        url: url
+      })
       return null
     }
 
@@ -356,7 +392,10 @@ async function fetchContactDetails(contactId: string, accessToken: string, logge
 
 async function fetchUserDetails(userId: string, accessToken: string, logger: Logger) {
   try {
-    const response = await fetch(`https://services.leadconnectorhq.com/users/${userId}`, {
+    const url = `https://services.leadconnectorhq.com/users/${userId}`
+    logger.log('fetchUserDetails: making API call', { url, userId })
+    
+    const response = await fetch(url, {
       headers: {
         'Authorization': `Bearer ${accessToken}`,
         'Version': '2021-07-28',
@@ -365,7 +404,13 @@ async function fetchUserDetails(userId: string, accessToken: string, logger: Log
     })
 
     if (!response.ok) {
-      logger.log('fetchUserDetails: API error', { status: response.status, statusText: response.statusText })
+      const errorText = await response.text()
+      logger.log('fetchUserDetails: API error', { 
+        status: response.status, 
+        statusText: response.statusText,
+        errorText: errorText,
+        url: url
+      })
       return null
     }
 
