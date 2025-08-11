@@ -28,21 +28,35 @@ function safeStringify(value: any) {
   try { return JSON.stringify(value) } catch { return String(value) }
 }
 
-async function handleAppointment(payload: any, logger: Logger) {
-  // Accept both GHL marketplace style and legacy appointment payloads
-  const isAppointmentCreate = (payload?.type || '').toString().toLowerCase().includes('appointmentcreate')
-  const data = payload.appointment || isAppointmentCreate ? { type: 'appointment.created', appointment: (payload.appointment || payload) } : (payload)
-  logger.log('handleAppointment: normalized payload', { hasAppointment: !!data.appointment, type: data.type })
-  if (data.type !== 'appointment.created') {
-    return { status: 200, body: { success: true, message: 'Event type not handled' } }
-  }
+function detectKind(payload: any, logger?: Logger): 'appointment' | 'dial' | 'inboundMessage' | 'unknown' {
+  // GHL Marketplace webhooks use 'event' field for event type
+  const eventType = payload?.event || payload?.type || ''
+  const eventStr = eventType.toString().toLowerCase()
+  
+  const kind = eventStr.includes('appointmentcreate') || eventStr.includes('appointment')
+    ? 'appointment'
+    : eventStr.includes('outboundmessage') || eventStr.includes('dial')
+    ? 'dial'
+    : eventStr.includes('inboundmessage') || eventStr.includes('message')
+    ? 'inboundMessage'
+    : 'unknown'
+    
+  if (logger) logger.log('detectKind', { eventType, resolved: kind })
+  return kind
+}
 
-  const appt = data.appointment
-  logger.log('handleAppointment: appointment core fields', { calendarId: appt?.calendarId, startTime: appt?.startTime })
+async function handleAppointment(payload: any, logger: Logger) {
+  // GHL Marketplace format: payload is the appointment data directly
+  logger.log('handleAppointment: processing GHL marketplace appointment', { 
+    appointmentId: payload.id, 
+    calendarId: payload.calendarId,
+    locationId: payload.locationId 
+  })
+
   const { data: mapping, error: mapErr } = await supabaseService
     .from('calendar_mappings')
     .select('*')
-    .eq('ghl_calendar_id', appt.calendarId)
+    .eq('ghl_calendar_id', payload.calendarId)
     .eq('is_enabled', true)
     .single()
   if (mapErr) logger.log('handleAppointment: mapping query error', { code: mapErr.code, message: mapErr.message })
@@ -52,16 +66,18 @@ async function handleAppointment(payload: any, logger: Logger) {
     return { status: 200, body: { success: true, message: 'No active mapping for this calendar' } }
   }
 
-  const contact = appt.contact
-  const contactName = contact?.name || `${contact?.firstName || ''} ${contact?.lastName || ''}`.trim() || 'Unknown'
+  // Extract contact info from GHL marketplace payload
+  const contactName = payload.contactName || 
+    `${payload.contactFirstName || ''} ${payload.contactLastName || ''}`.trim() || 
+    'Unknown'
 
   const appointmentRow = {
     account_id: mapping.account_id,
     contact_name: contactName,
-    email: contact?.email || null,
-    phone: contact?.phone || null,
+    email: payload.contactEmail || null,
+    phone: payload.contactPhone || null,
     date_booked: new Date().toISOString(),
-    date_booked_for: appt.startTime,
+    date_booked_for: payload.startTime || payload.appointmentStartTime,
     setter: 'Webhook',
     sales_rep: null,
   }
@@ -100,23 +116,28 @@ async function handleAppointment(payload: any, logger: Logger) {
 }
 
 async function handleDial(payload: any, logger: Logger, opts?: { accountId?: string; defaultSetter?: string }) {
-  const dial = payload.dial || payload
-  logger.log('handleDial: normalized payload', { hasDial: !!payload.dial })
-  if (!dial?.contactName || !dial?.phone) {
-    logger.log('handleDial: missing required fields', { contactName: !!dial?.contactName, phone: !!dial?.phone })
-    return { status: 400, body: { success: false, error: 'Missing required fields for dial: contactName, phone' } }
-  }
+  logger.log('handleDial: processing GHL marketplace call', { 
+    messageId: payload.messageId,
+    contactId: payload.contactId,
+    direction: payload.direction 
+  })
+  
+  // Extract dial info from GHL marketplace payload
+  const contactName = payload.contactName || 
+    `${payload.contactFirstName || ''} ${payload.contactLastName || ''}`.trim() || 
+    'Unknown'
+  const phone = payload.contactPhone || payload.phone || 'Unknown'
 
   const insert: any = {
-    contact_name: dial.contactName,
-    phone: dial.phone,
-    email: dial.email || null,
-    setter: dial.setter || opts?.defaultSetter || 'Webhook',
-    duration: typeof dial.duration === 'number' ? dial.duration : 0,
-    answered: Boolean(dial.answered) || false,
-    meaningful_conversation: Boolean(dial.meaningful_conversation) || false,
-    call_recording_link: dial.call_recording_link || null,
-    date_called: dial.date_called || new Date().toISOString(),
+    contact_name: contactName,
+    phone: phone,
+    email: payload.contactEmail || null,
+    setter: payload.setterName || opts?.defaultSetter || 'Webhook',
+    duration: typeof payload.callDuration === 'number' ? payload.callDuration : 0,
+    answered: Boolean(payload.answered) || false,
+    meaningful_conversation: Boolean(payload.meaningful_conversation) || false,
+    call_recording_link: payload.recordingUrl || null,
+    date_called: payload.dateCreated || payload.timestamp || new Date().toISOString(),
   }
   if (opts?.accountId) insert.account_id = opts.accountId
   logger.log('handleDial: prepared row', insert)
@@ -128,19 +149,6 @@ async function handleDial(payload: any, logger: Logger, opts?: { accountId?: str
   }
   logger.log('handleDial: success')
   return { status: 200, body: { success: true, message: 'Dial saved' } }
-}
-
-function detectKind(payload: any, logger?: Logger): 'appointment' | 'dial' | 'inboundMessage' | 'unknown' {
-  const type = (payload?.type || '').toString().toLowerCase()
-  const kind = payload?.appointment || type.startsWith('appointment') || type.includes('appointmentcreate')
-    ? 'appointment'
-    : (payload?.dial || (payload?.contactName && payload?.phone) || type.includes('dial') || type.includes('outboundmessage'))
-    ? 'dial'
-    : (type.includes('inboundmessage') || type.includes('message.created') || (payload?.message && payload?.direction === 'inbound'))
-    ? 'inboundMessage'
-    : 'unknown'
-  if (logger) logger.log('detectKind', { type, resolved: kind })
-  return kind
 }
 
 async function fetchGhlConnectionByLocation(locationId?: string, logger?: Logger) {
@@ -156,45 +164,11 @@ async function fetchGhlConnectionByLocation(locationId?: string, logger?: Logger
   return data
 }
 
-async function fetchGhlContact(headers: Record<string, string>, contactId: string, locationId?: string, logger?: Logger) {
-  const pathUrl = `https://services.leadconnectorhq.com/contacts/${encodeURIComponent(contactId)}`
-  const hdrs = { ...headers }
-  if (locationId) hdrs['Location'] = locationId
-  let resp = await fetch(pathUrl, { headers: hdrs })
-  logger?.log('fetchGhlContact path attempt', { status: resp.status })
-  if (!resp.ok) {
-    const urlWithQuery = new URL('https://services.leadconnectorhq.com/contacts/')
-    urlWithQuery.searchParams.set('id', contactId)
-    resp = await fetch(urlWithQuery.toString(), { headers: hdrs })
-    logger?.log('fetchGhlContact query attempt', { status: resp.status })
-  }
-  if (!resp.ok) return null
-  const data = await resp.json().catch(() => null)
-  return data?.contact || data
-}
-
-async function fetchGhlUsers(headers: Record<string, string>, locationId?: string, logger?: Logger) {
-  const hdrs = { ...headers }
-  if (locationId) hdrs['Location'] = locationId
-  let resp = await fetch('https://services.leadconnectorhq.com/users/', { headers: hdrs })
-  logger?.log('fetchGhlUsers base attempt', { status: resp.status })
-  if (!resp.ok && locationId && (resp.status === 403 || resp.status === 422)) {
-    const urlWithQuery = new URL('https://services.leadconnectorhq.com/users/')
-    urlWithQuery.searchParams.set('locationId', locationId)
-    resp = await fetch(urlWithQuery.toString(), { headers: headers })
-    logger?.log('fetchGhlUsers query attempt', { status: resp.status })
-  }
-  if (!resp.ok) return []
-  const data = await resp.json().catch(() => ({}))
-  return data.users || []
-}
-
 async function handleInboundMessage(payload: any, logger: Logger) {
-  const locationId: string | undefined = payload.locationId || payload.location_id
-  const contactId: string | undefined = payload.contactId || payload.contact_id
-  const userId: string | undefined = payload.userId || payload.user_id
+  const locationId: string | undefined = payload.locationId
+  const contactId: string | undefined = payload.contactId
 
-  logger.log('handleInboundMessage: core fields', { locationId, contactId, userId })
+  logger.log('handleInboundMessage: core fields', { locationId, contactId })
   if (!locationId || !contactId) {
     return { status: 400, body: { success: false, error: 'Missing locationId or contactId' } }
   }
@@ -205,41 +179,25 @@ async function handleInboundMessage(payload: any, logger: Logger) {
     return { status: 404, body: { success: false, error: 'No GHL connection for this location' } }
   }
 
-  const baseHeaders: Record<string, string> = {
-    Authorization: `Bearer ${connection.access_token}`,
-    Version: '2021-07-28',
-    Accept: 'application/json',
-  }
-
-  const contact = await fetchGhlContact(baseHeaders, contactId, locationId, logger)
-  const contactName = contact?.name || `${contact?.firstName || ''} ${contact?.lastName || ''}`.trim() || 'Unknown'
-  const phone = contact?.phone || contact?.phoneNumber || null
-  const email = contact?.email || null
-
-  let setterName: string | undefined = undefined
-  if (userId) {
-    const users = await fetchGhlUsers(baseHeaders, locationId, logger)
-    const u = Array.isArray(users) ? users.find((x: any) => x.id === userId) : undefined
-    setterName = u?.name || u?.fullName || u?.email || undefined
-  }
-
+  // Create dial entry for inbound message
   const dialPayload = {
-    contactName,
-    phone: phone || 'UNKNOWN',
-    email,
-    setter: setterName || 'Inbound Message',
+    contactName: payload.contactName || 'Unknown',
+    phone: payload.contactPhone || 'UNKNOWN',
+    email: payload.contactEmail || null,
+    setter: 'Inbound Message',
     answered: true,
     meaningful_conversation: true,
-    date_called: new Date().toISOString(),
+    date_called: payload.dateCreated || new Date().toISOString(),
   }
   logger.log('handleInboundMessage: derived dial', dialPayload)
 
-  return handleDial({ dial: dialPayload }, logger, { accountId: connection.account_id, defaultSetter: 'Inbound Message' })
+  return handleDial(dialPayload, logger, { accountId: connection.account_id, defaultSetter: 'Inbound Message' })
 }
 
 export async function POST(request: NextRequest) {
   const requestId = (globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`)
   const logger = createLogger({ requestId })
+  
   try {
     const debug = (new URL(request.url)).searchParams.get('debug') === '1' || process.env.WEBHOOK_DEBUG === '1'
     const headersToLog = ['user-agent', 'x-forwarded-for', 'x-real-ip', 'x-vercel-ip-country']
@@ -250,26 +208,18 @@ export async function POST(request: NextRequest) {
     })
     logger.log('POST /api/webhooks received', headerMeta)
 
-    const payload = await request.json()
-    logger.log('request payload', { isArray: Array.isArray(payload), keys: Object.keys(payload || {}) })
-
-    if (Array.isArray(payload)) {
-      const results = [] as Array<{ kind: string; status: number; body: any }>
-      for (const item of payload) {
-        const kind = detectKind(item, logger)
-        if (kind === 'appointment') {
-          results.push({ kind, ...(await handleAppointment(item, logger)) })
-        } else if (kind === 'dial') {
-          results.push({ kind, ...(await handleDial(item, logger)) })
-        } else if (kind === 'inboundMessage') {
-          results.push({ kind, ...(await handleInboundMessage(item, logger)) })
-        } else {
-          results.push({ kind: 'unknown', status: 400, body: { success: false, error: 'Unknown payload' } })
-        }
-      }
-      const body = { success: true, results, ...(debug ? { logs: logger.dump() } : {}) }
-      return NextResponse.json(body)
-    }
+    // Read raw body for GHL marketplace webhooks
+    const rawBody = await request.text()
+    logger.log('raw body length', { length: rawBody.length })
+    
+    // Parse JSON after reading raw body
+    const payload = JSON.parse(rawBody)
+    logger.log('request payload', { 
+      event: payload.event, 
+      type: payload.type, 
+      locationId: payload.locationId,
+      keys: Object.keys(payload || {}) 
+    })
 
     const kind = detectKind(payload, logger)
     if (kind === 'appointment') {
@@ -288,8 +238,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(body, { status: res.status })
     }
 
-    const body = { success: false, error: 'Unknown payload', ...(debug ? { logs: logger.dump() } : {}) }
-    return NextResponse.json(body, { status: 400 })
+    // Log unknown events for debugging
+    logger.log('Unknown webhook event', { event: payload.event, type: payload.type })
+    const body = { success: true, message: 'Event received but not handled', ...(debug ? { logs: logger.dump() } : {}) }
+    return NextResponse.json(body, { status: 200 })
+    
   } catch (error: any) {
     logger.log('POST /api/webhooks exception', { message: error?.message || String(error) })
     const body = { success: false, error: 'Invalid JSON or server error', logs: logger.dump() }
@@ -306,7 +259,7 @@ export async function GET(request: NextRequest) {
   }
   const debug = searchParams.get('debug') === '1'
   const meta = {
-    message: 'Unified Webhook Endpoint',
+    message: 'Unified Webhook Endpoint - GHL Marketplace Ready',
     ...(debug ? { env: {
       hasSupabaseUrl: Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL),
       hasServiceRoleKey: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),

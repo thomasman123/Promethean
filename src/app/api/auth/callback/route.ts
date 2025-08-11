@@ -68,16 +68,8 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Try to subscribe webhooks (best-effort; do not block UX)
-    try {
-      await ensureGhlWebhooks({
-        accessToken: tokenResponse.access_token,
-        locationId: tokenResponse.location_id || (locationInfo.success ? locationInfo.locations?.[0]?.id : undefined),
-        targetBaseUrl: process.env.NEXT_PUBLIC_APP_URL || new URL(request.url).origin,
-      })
-    } catch (subErr) {
-      console.warn('Non-fatal: failed to ensure GHL webhooks:', subErr)
-    }
+    console.log('✅ GHL OAuth connection completed successfully')
+    console.log('📝 Note: Webhooks are configured at app level in GHL Developer Portal, not programmatically')
 
     // Redirect back to CRM connection page with success
     return NextResponse.redirect(
@@ -230,96 +222,5 @@ async function saveConnection(params: {
   } catch (error) {
     console.error('Error saving connection:', error)
     return { success: false, error: 'Save error' }
-  }
-}
-
-// Subscribe to required GHL webhooks for the app
-async function ensureGhlWebhooks(params: {
-  accessToken: string
-  locationId?: string | null
-  targetBaseUrl: string
-}) {
-  const { accessToken, locationId, targetBaseUrl } = params
-  const target = `${targetBaseUrl.replace(/\/$/, '')}/api/webhooks`
-  
-  if (!locationId) {
-    console.warn('No locationId provided, skipping webhook subscription')
-    return
-  }
-
-  console.log(`📡 Auto-subscribing webhook for location ${locationId}: ${target}`)
-  console.log(`🔑 Using access token: ${accessToken.substring(0, 20)}...`)
-
-  // Try multiple webhook API approaches
-  let webhookResponse = null
-  let webhookSuccess = false
-
-  const webhookAttempts = [
-    {
-      name: 'Location-based endpoint',
-      url: `https://services.leadconnectorhq.com/locations/${locationId}/webhooks`,
-      body: { url: target, events: ['OutboundMessage', 'AppointmentCreate'] }
-    },
-    {
-      name: 'V2 webhooks with locationId',
-      url: 'https://services.leadconnectorhq.com/v2/webhooks',
-      body: { locationId, url: target, events: ['OutboundMessage', 'AppointmentCreate'] }
-    },
-    {
-      name: 'V1 webhooks endpoint', 
-      url: 'https://services.leadconnectorhq.com/webhooks',
-      body: { locationId, url: target, events: ['OutboundMessage', 'AppointmentCreate'] }
-    }
-  ]
-
-  for (const attempt of webhookAttempts) {
-    console.log(`🧪 Trying webhook approach: ${attempt.name}`)
-    console.log(`🔗 URL: ${attempt.url}`)
-    
-    try {
-      webhookResponse = await fetch(attempt.url, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Version': '2021-04-15',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(attempt.body),
-      })
-      
-      console.log(`📞 ${attempt.name} response status: ${webhookResponse.status}`)
-      
-      if (webhookResponse.ok) {
-        console.log(`✅ Webhook subscription successful with: ${attempt.name}`)
-        webhookSuccess = true
-        break
-      } else {
-        const errorText = await webhookResponse.text()
-        console.log(`❌ ${attempt.name} failed: ${errorText}`)
-      }
-    } catch (error) {
-      console.log(`❌ ${attempt.name} error:`, error)
-    }
-  }
-
-  if (webhookSuccess && webhookResponse) {
-    console.log(`📞 Final webhook API response status: ${webhookResponse.status}`)
-    const webhookData = await webhookResponse.json()
-    const webhookId = webhookData.id
-    console.log(`✅ Webhook subscribed successfully:`, webhookId)
-    console.log(`📋 Full webhook response:`, JSON.stringify(webhookData))
-  } else {
-    console.error(`❌ All webhook subscription attempts failed`)
-    if (webhookResponse) {
-      console.error('📋 Last response details:', {
-        status: webhookResponse.status,
-        statusText: webhookResponse.statusText,
-        url: webhookResponse.url
-      })
-    }
-    
-    // Log summary of all attempts for debugging
-    console.error('📤 All webhook attempts failed. Check GHL API documentation or configure manually in GHL dashboard.')
-    throw new Error(`All webhook subscription attempts failed`)
   }
 } 
