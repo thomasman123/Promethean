@@ -65,18 +65,33 @@ async function handleAppointment(payload: any, logger: Logger) {
   const appointmentData = payload.appointment || payload
   const locationId = payload.locationId || appointmentData.locationId
   
+  // Get calendarId from multiple possible locations in payload
+  const calendarId = appointmentData.calendarId || payload.calendarId
+  
   logger.log('handleAppointment: processing GHL appointment webhook', { 
     type: payload.type,
     appointmentId: appointmentData.id, 
-    calendarId: appointmentData.calendarId,
+    calendarId: calendarId,
     locationId: locationId,
-    hasNestedAppointment: !!payload.appointment
+    hasNestedAppointment: !!payload.appointment,
+    rawCalendarIdSources: {
+      appointmentDataCalendarId: appointmentData.calendarId,
+      payloadCalendarId: payload.calendarId
+    }
   })
+
+  if (!calendarId) {
+    logger.log('handleAppointment: no calendarId found in payload', { 
+      appointmentData: appointmentData,
+      payload: payload
+    })
+    return { status: 200, body: { success: true, message: 'No calendarId found in webhook payload' } }
+  }
 
   const { data: mappings, error: mapErr } = await supabaseService
     .from('calendar_mappings')
     .select('*')
-    .eq('ghl_calendar_id', appointmentData.calendarId)
+    .eq('ghl_calendar_id', calendarId)
     .eq('is_enabled', true)
     .limit(1)
   
@@ -86,7 +101,7 @@ async function handleAppointment(payload: any, logger: Logger) {
 
   if (!mapping) {
     logger.log('handleAppointment: no mapping found, skipping', { 
-      calendarId: appointmentData.calendarId,
+      calendarId: calendarId,
       mappingsFound: mappings?.length || 0 
     })
     return { status: 200, body: { success: true, message: 'No active mapping for this calendar' } }
