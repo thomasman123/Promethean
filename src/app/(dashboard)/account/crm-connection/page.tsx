@@ -19,9 +19,10 @@ import {
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { useAuth } from "@/hooks/useAuth"
 import { supabase } from "@/lib/supabase"
-import { Zap, CheckCircle, XCircle, Clock, AlertCircle, ExternalLink } from "lucide-react"
+import { Zap, CheckCircle, XCircle, Clock, AlertCircle, AlertTriangle, ExternalLink } from "lucide-react"
 
 interface GHLConnection {
   id: string
@@ -45,6 +46,7 @@ export default function CRMConnectionPage() {
   const [connection, setConnection] = useState<GHLConnection | null>(null)
   const [loading, setLoading] = useState(true)
   const [connecting, setConnecting] = useState(false)
+  const [showUninstallDialog, setShowUninstallDialog] = useState(false)
 
   useEffect(() => {
     if (selectedAccountId) {
@@ -237,6 +239,8 @@ export default function CRMConnectionPage() {
           .eq('account_id', selectedAccountId)
       }
 
+      // Show dialog with manual uninstall instructions
+      setShowUninstallDialog(true)
       await fetchConnection()
     } catch (error) {
       console.error('Error disconnecting GHL:', error)
@@ -438,6 +442,43 @@ export default function CRMConnectionPage() {
             )}
           </div>
         </div>
+
+      {/* Manual Uninstall Dialog */}
+      <Dialog open={showUninstallDialog} onOpenChange={setShowUninstallDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-orange-500" />
+              Complete the Disconnection
+            </DialogTitle>
+            <DialogDescription>
+              To prevent webhook conflicts when reconnecting, please also uninstall the app from your GHL sub-account.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-4">
+            <div className="space-y-2 text-sm">
+              <p className="font-medium">Steps to complete:</p>
+              <ol className="list-decimal list-inside space-y-1 ml-4">
+                <li>Go to your GHL sub-account dashboard</li>
+                <li>Navigate to Settings → Integrations/Apps</li>
+                <li>Find the Promethean app and uninstall it</li>
+                <li>This prevents webhook conflicts when reconnecting</li>
+              </ol>
+            </div>
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                Your connection has been disconnected in this system. Manual GHL app removal is required for clean reconnection.
+              </AlertDescription>
+            </Alert>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setShowUninstallDialog(false)}>
+              Got it
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </SidebarInset>
   )
 } 
