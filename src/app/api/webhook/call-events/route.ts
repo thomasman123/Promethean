@@ -445,52 +445,6 @@ async function processAppointmentWebhook(payload: any) {
     
     console.log('📍 Found account:', account.name, '(', account.id, ')');
     
-    // TEST MIDDLEWARE: Verify appointment ID mapping
-    if (payload.appointment?.id && account.ghl_api_key) {
-      try {
-        console.log(`[APPOINTMENT TEST] Starting ID verification for appointment: ${payload.appointment.id}`);
-        
-        const apiUrl = `https://services.leadconnectorhq.com/calendars/events/appointments/${payload.appointment.id}`;
-        console.log(`[APPOINTMENT TEST] Calling API: ${apiUrl}`);
-
-        const response = await fetch(apiUrl, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${account.ghl_api_key}`,
-            'Version': '2021-07-28',
-            'Content-Type': 'application/json'
-          }
-        });
-
-        console.log(`[APPOINTMENT TEST] API Response Status: ${response.status} ${response.statusText}`);
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error(`[APPOINTMENT TEST] API Error Response: ${errorText}`);
-        } else {
-          const apiData = await response.json();
-          console.log('[APPOINTMENT TEST] Full API Response:', JSON.stringify(apiData, null, 2));
-
-          // Compare IDs
-          const apiEventId = apiData.appointment?.id || apiData.eventId || apiData.id;
-          console.log(`[APPOINTMENT TEST] ID Comparison:`);
-          console.log(`  Webhook appointment.id: ${payload.appointment.id}`);
-          console.log(`  API appointment.id: ${apiEventId}`);
-          console.log(`  IDs Match: ${payload.appointment.id === apiEventId}`);
-
-          // Log any other relevant fields
-          if (apiData.calendarId) {
-            console.log(`  API calendarId: ${apiData.calendarId}`);
-          }
-          if (apiData.appointmentStatus) {
-            console.log(`  API appointmentStatus: ${apiData.appointmentStatus}`);
-          }
-        }
-      } catch (error) {
-        console.error('[APPOINTMENT TEST] Exception during ID verification:', error);
-      }
-    }
-    
     // Check if this appointment's calendar is mapped
     const { data: calendarMapping, error: mappingError } = await supabase
       .from('calendar_mappings')
@@ -513,49 +467,166 @@ async function processAppointmentWebhook(payload: any) {
       calendarName: calendarMapping.ghl_calendar_name
     });
     
-    // Enrich with contact data if contactId exists
+    // Enhanced API enrichment for appointments table only
+    let fullAppointmentData = null;
     let contactData = null;
-    if (payload.appointment?.contactId && account.ghl_api_key) {
-      try {
-        console.log('🔍 Fetching contact details for ID:', payload.appointment.contactId);
-        
-        const contactResponse = await fetch(`https://services.leadconnectorhq.com/contacts/${payload.appointment.contactId}`, {
-          headers: {
-            'Authorization': `Bearer ${account.ghl_api_key}`,
-            'Version': '2021-07-28',
-          },
-        });
-        
-        if (contactResponse.ok) {
-          contactData = await contactResponse.json();
-          console.log('👤 Contact data:', contactData ? 
-            { name: contactData.name, email: contactData.email, phone: contactData.phone } : 'not found');
-        }
-      } catch (error) {
-        console.error('Failed to fetch contact data:', error);
-      }
-    }
-    
-    // Enrich with assigned user (sales rep) data
     let salesRepData = null;
-    if (payload.appointment?.assignedUserId && account.ghl_api_key) {
+    let setterData = null;
+    
+    if (calendarMapping.target_table === 'appointments' && payload.appointment?.id && account.ghl_api_key) {
       try {
-        console.log('🔍 Fetching sales rep details for ID:', payload.appointment.assignedUserId);
+        // 1. Get full appointment details from API
+        console.log('📅 Fetching full appointment details for ID:', payload.appointment.id);
         
-        const userResponse = await fetch(`https://services.leadconnectorhq.com/users/${payload.appointment.assignedUserId}`, {
+        const appointmentResponse = await fetch(`https://services.leadconnectorhq.com/calendars/events/appointments/${payload.appointment.id}`, {
           headers: {
             'Authorization': `Bearer ${account.ghl_api_key}`,
             'Version': '2021-07-28',
           },
         });
         
-        if (userResponse.ok) {
-          salesRepData = await userResponse.json();
-          console.log('👨‍💼 Sales rep data:', salesRepData ? 
-            { name: salesRepData.name, email: salesRepData.email } : 'not found');
+        if (appointmentResponse.ok) {
+          const appointmentApiData = await appointmentResponse.json();
+          fullAppointmentData = appointmentApiData.appointment;
+          console.log('📅 Full appointment data retrieved:', {
+            id: fullAppointmentData?.id,
+            title: fullAppointmentData?.title,
+            status: fullAppointmentData?.appointmentStatus,
+            startTime: fullAppointmentData?.startTime,
+            contactId: fullAppointmentData?.contactId,
+            assignedUserId: fullAppointmentData?.assignedUserId,
+            createdBy: fullAppointmentData?.createdBy
+          });
+        } else {
+          console.error('Failed to fetch appointment details:', appointmentResponse.status);
         }
+        
+        // 2. Get contact details if contactId exists
+        const contactId = fullAppointmentData?.contactId || payload.appointment?.contactId;
+        if (contactId) {
+          console.log('👤 Fetching contact details for ID:', contactId);
+          
+          const contactResponse = await fetch(`https://services.leadconnectorhq.com/contacts/${contactId}`, {
+            headers: {
+              'Authorization': `Bearer ${account.ghl_api_key}`,
+              'Version': '2021-07-28',
+            },
+          });
+          
+          if (contactResponse.ok) {
+            const contactApiData = await contactResponse.json();
+            contactData = contactApiData.contact;
+            console.log('👤 Contact data retrieved:', {
+              name: contactData?.name,
+              firstName: contactData?.firstName,
+              lastName: contactData?.lastName,
+              email: contactData?.email,
+              phone: contactData?.phone,
+              companyName: contactData?.companyName,
+              tags: contactData?.tags
+            });
+          } else {
+            console.error('Failed to fetch contact details:', contactResponse.status);
+          }
+        }
+        
+        // 3. Get setter (createdBy.userId) details
+        const setterId = fullAppointmentData?.createdBy?.userId;
+        if (setterId) {
+          console.log('👨‍🎯 Fetching setter details for ID:', setterId);
+          
+          const setterResponse = await fetch(`https://services.leadconnectorhq.com/users/${setterId}`, {
+            headers: {
+              'Authorization': `Bearer ${account.ghl_api_key}`,
+              'Version': '2021-07-28',
+            },
+          });
+          
+          if (setterResponse.ok) {
+            setterData = await setterResponse.json();
+            console.log('👨‍🎯 Setter data retrieved:', {
+              name: setterData?.name,
+              email: setterData?.email,
+              firstName: setterData?.firstName,
+              lastName: setterData?.lastName
+            });
+          } else {
+            console.error('Failed to fetch setter details:', setterResponse.status);
+          }
+        }
+        
+        // 4. Get sales rep (assignedUserId) details
+        const salesRepId = fullAppointmentData?.assignedUserId || payload.appointment?.assignedUserId;
+        if (salesRepId) {
+          console.log('👨‍💼 Fetching sales rep details for ID:', salesRepId);
+          
+          const salesRepResponse = await fetch(`https://services.leadconnectorhq.com/users/${salesRepId}`, {
+            headers: {
+              'Authorization': `Bearer ${account.ghl_api_key}`,
+              'Version': '2021-07-28',
+            },
+          });
+          
+          if (salesRepResponse.ok) {
+            salesRepData = await salesRepResponse.json();
+            console.log('👨‍💼 Sales rep data retrieved:', {
+              name: salesRepData?.name,
+              email: salesRepData?.email,
+              firstName: salesRepData?.firstName,
+              lastName: salesRepData?.lastName
+            });
+          } else {
+            console.error('Failed to fetch sales rep details:', salesRepResponse.status);
+          }
+        }
+        
       } catch (error) {
-        console.error('Failed to fetch sales rep data:', error);
+        console.error('Error during appointment enrichment:', error);
+      }
+    } else if (calendarMapping.target_table !== 'appointments') {
+      // Fallback to basic enrichment for non-appointments tables
+      // Enrich with contact data if contactId exists
+      if (payload.appointment?.contactId && account.ghl_api_key) {
+        try {
+          console.log('🔍 Fetching contact details for ID:', payload.appointment.contactId);
+          
+          const contactResponse = await fetch(`https://services.leadconnectorhq.com/contacts/${payload.appointment.contactId}`, {
+            headers: {
+              'Authorization': `Bearer ${account.ghl_api_key}`,
+              'Version': '2021-07-28',
+            },
+          });
+          
+          if (contactResponse.ok) {
+            contactData = await contactResponse.json();
+            console.log('👤 Contact data:', contactData ? 
+              { name: contactData.name, email: contactData.email, phone: contactData.phone } : 'not found');
+          }
+        } catch (error) {
+          console.error('Failed to fetch contact data:', error);
+        }
+      }
+      
+      // Enrich with assigned user (sales rep) data
+      if (payload.appointment?.assignedUserId && account.ghl_api_key) {
+        try {
+          console.log('🔍 Fetching sales rep details for ID:', payload.appointment.assignedUserId);
+          
+          const userResponse = await fetch(`https://services.leadconnectorhq.com/users/${payload.appointment.assignedUserId}`, {
+            headers: {
+              'Authorization': `Bearer ${account.ghl_api_key}`,
+              'Version': '2021-07-28',
+            },
+          });
+          
+          if (userResponse.ok) {
+            salesRepData = await userResponse.json();
+            console.log('👨‍💼 Sales rep data:', salesRepData ? 
+              { name: salesRepData.name, email: salesRepData.email } : 'not found');
+          }
+        } catch (error) {
+          console.error('Failed to fetch sales rep data:', error);
+        }
       }
     }
 
@@ -632,17 +703,38 @@ async function processAppointmentWebhook(payload: any) {
       }
     };
     
-    // Create base appointment data
+    // Create base appointment data with enhanced mapping
+    const getContactName = () => {
+      if (contactData?.name) return contactData.name;
+      if (contactData?.firstName || contactData?.lastName) {
+        return `${contactData.firstName || ''} ${contactData.lastName || ''}`.trim();
+      }
+      return fullAppointmentData?.title || payload.appointment?.title || 'Unknown Contact';
+    };
+
+    const getSetterName = () => {
+      if (setterData?.name) return setterData.name;
+      if (setterData?.firstName || setterData?.lastName) {
+        return `${setterData.firstName || ''} ${setterData.lastName || ''}`.trim();
+      }
+      return setterName || 'Webhook';
+    };
+
+    const getSalesRepName = () => {
+      if (salesRepData?.name) return salesRepData.name;
+      if (salesRepData?.firstName || salesRepData?.lastName) {
+        return `${salesRepData.firstName || ''} ${salesRepData.lastName || ''}`.trim();
+      }
+      return null;
+    };
+
     const baseData = {
       account_id: account.id,
-      contact_name: contactData?.name || 
-        (contactData?.firstName && contactData?.lastName ? 
-          `${contactData.firstName} ${contactData.lastName}`.trim() : 
-          payload.appointment?.title || null),
+      contact_name: getContactName(),
       email: contactData?.email || null,
       phone: contactData?.phone || null,
-      setter: setterName || 'Webhook',
-      sales_rep: salesRepData?.name || null,
+      setter: getSetterName(),
+      sales_rep: getSalesRepName(),
       call_outcome: null,
       show_outcome: null,
       pitched: null,
@@ -653,12 +745,75 @@ async function processAppointmentWebhook(payload: any) {
     
     // Save to appropriate table based on mapping
     if (calendarMapping.target_table === 'appointments') {
+      // Enhanced data mapping for appointments table
+      const appointmentStartTime = fullAppointmentData?.startTime || payload.appointment?.startTime;
+      const webhookTimestamp = new Date().toISOString(); // When webhook was received
+      
+      // Create comprehensive metadata
+      const metadata = {
+        webhook_received_at: webhookTimestamp,
+        appointment_api_data: fullAppointmentData ? {
+          id: fullAppointmentData.id,
+          title: fullAppointmentData.title,
+          appointmentStatus: fullAppointmentData.appointmentStatus,
+          address: fullAppointmentData.address,
+          notes: fullAppointmentData.notes,
+          groupId: fullAppointmentData.groupId,
+          isRecurring: fullAppointmentData.isRecurring,
+          dateAdded: fullAppointmentData.dateAdded,
+          dateUpdated: fullAppointmentData.dateUpdated,
+          endTime: fullAppointmentData.endTime,
+          source: fullAppointmentData.source,
+          createdBy: fullAppointmentData.createdBy
+        } : null,
+        contact_enriched_data: contactData ? {
+          id: contactData.id,
+          firstName: contactData.firstName,
+          lastName: contactData.lastName,
+          companyName: contactData.companyName,
+          timezone: contactData.timezone,
+          tags: contactData.tags,
+          website: contactData.website,
+          address: {
+            address1: contactData.address1,
+            city: contactData.city,
+            state: contactData.state,
+            country: contactData.country,
+            postalCode: contactData.postalCode
+          },
+          attribution: contactData.attributionSource,
+          lastActivity: contactData.lastActivity,
+          customFields: contactData.customFields
+        } : null,
+        setter_data: setterData ? {
+          id: setterData.id,
+          name: setterData.name,
+          email: setterData.email,
+          firstName: setterData.firstName,
+          lastName: setterData.lastName
+        } : null,
+        sales_rep_data: salesRepData ? {
+          id: salesRepData.id,
+          name: salesRepData.name,
+          email: salesRepData.email,
+          firstName: salesRepData.firstName,
+          lastName: salesRepData.lastName
+        } : null,
+        original_webhook_payload: {
+          type: payload.type,
+          locationId: payload.locationId,
+          appointment: payload.appointment
+        }
+      };
+
       const appointmentData = {
         ...baseData,
-        date_booked_for: payload.appointment?.startTime ? 
-          new Date(payload.appointment.startTime).toISOString() : null,
+        date_booked: webhookTimestamp, // When appointment was booked (webhook received)
+        date_booked_for: appointmentStartTime ? 
+          new Date(appointmentStartTime).toISOString() : null, // When appointment is scheduled
         cash_collected: null,
         total_sales_value: null,
+        metadata: JSON.stringify(metadata)
       };
       
       // Check for existing appointment to prevent duplicates
