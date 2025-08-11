@@ -77,19 +77,46 @@ async function handleAppointment(payload: any, logger: Logger) {
     return { status: 200, body: { success: true, message: 'No active mapping for this calendar' } }
   }
 
-  // Extract contact info - need to fetch from GHL API using contactId
-  const contactName = appointmentData.contactName || 
-    appointmentData.title || 
-    'Unknown Contact'
+  // Get GHL connection to fetch appointment details
+  const connection = await fetchGhlConnectionByLocation(locationId, logger)
+  if (!connection || !connection.access_token) {
+    logger.log('handleAppointment: no GHL connection, using fallback setter')
+  }
+
+  let setterName = 'Webhook' // fallback
+  let contactName = appointmentData.contactName || appointmentData.title || 'Unknown Contact'
+
+  // Fetch appointment details to get the real setter
+  if (connection?.access_token && appointmentData.id) {
+    const appointmentDetails = await fetchAppointmentDetails(appointmentData.id, connection.access_token, logger)
+    
+    if (appointmentDetails?.createdBy?.userId) {
+      const userDetails = await fetchUserDetails(appointmentDetails.createdBy.userId, connection.access_token, logger)
+      if (userDetails?.name) {
+        setterName = userDetails.name
+        logger.log('handleAppointment: found setter', { setterName, userId: appointmentDetails.createdBy.userId })
+      } else {
+        logger.log('handleAppointment: could not fetch user details, using userId as setter', { userId: appointmentDetails.createdBy.userId })
+        setterName = appointmentDetails.createdBy.userId
+      }
+    } else {
+      logger.log('handleAppointment: no createdBy.userId in appointment details')
+    }
+
+    // Also get better contact name from appointment details if available
+    if (appointmentDetails?.title) {
+      contactName = appointmentDetails.title
+    }
+  }
 
   const appointmentRow = {
     account_id: mapping.account_id,
     contact_name: contactName,
-    email: null, // Will need to fetch from contact API
-    phone: null, // Will need to fetch from contact API
+    email: null, // Will need to fetch from contact API if needed
+    phone: null, // Will need to fetch from contact API if needed
     date_booked: new Date().toISOString(),
     date_booked_for: appointmentData.startTime,
-    setter: 'Webhook',
+    setter: setterName,
     sales_rep: null,
   }
   logger.log('handleAppointment: prepared row', appointmentRow)
@@ -122,8 +149,8 @@ async function handleAppointment(payload: any, logger: Logger) {
     }
   }
 
-  logger.log('handleAppointment: success', { target: mapping.target_table })
-  return { status: 200, body: { success: true, message: `Appointment synced to ${mapping.target_table}` } }
+  logger.log('handleAppointment: success', { target: mapping.target_table, setter: setterName })
+  return { status: 200, body: { success: true, message: `Appointment synced to ${mapping.target_table}`, setter: setterName } }
 }
 
 async function handleDial(payload: any, logger: Logger, opts?: { accountId?: string; defaultSetter?: string }) {
@@ -176,6 +203,54 @@ async function fetchGhlConnectionByLocation(locationId?: string, logger?: Logger
   if (error) logger?.log('fetchGhlConnectionByLocation error', { code: error.code, message: error.message })
   logger?.log('fetchGhlConnectionByLocation result', { hasConnection: !!data })
   return data
+}
+
+async function fetchAppointmentDetails(appointmentId: string, accessToken: string, logger: Logger) {
+  try {
+    const response = await fetch(`https://services.leadconnectorhq.com/calendars/events/appointments/${appointmentId}`, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Version': '2021-04-15',
+        'Accept': 'application/json'
+      }
+    })
+
+    if (!response.ok) {
+      logger.log('fetchAppointmentDetails: API error', { status: response.status, statusText: response.statusText })
+      return null
+    }
+
+    const data = await response.json()
+    logger.log('fetchAppointmentDetails: success', { appointmentId, hasEvent: !!data.event })
+    return data.event
+  } catch (error) {
+    logger.log('fetchAppointmentDetails: error', { error: error instanceof Error ? error.message : String(error) })
+    return null
+  }
+}
+
+async function fetchUserDetails(userId: string, accessToken: string, logger: Logger) {
+  try {
+    const response = await fetch(`https://services.leadconnectorhq.com/users/${userId}`, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Version': '2021-07-28',
+        'Accept': 'application/json'
+      }
+    })
+
+    if (!response.ok) {
+      logger.log('fetchUserDetails: API error', { status: response.status, statusText: response.statusText })
+      return null
+    }
+
+    const data = await response.json()
+    logger.log('fetchUserDetails: success', { userId, hasUser: !!data.name })
+    return data
+  } catch (error) {
+    logger.log('fetchUserDetails: error', { error: error instanceof Error ? error.message : String(error) })
+    return null
+  }
 }
 
 async function handleInboundMessage(payload: any, logger: Logger) {
