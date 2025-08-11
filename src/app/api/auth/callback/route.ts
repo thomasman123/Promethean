@@ -69,7 +69,14 @@ export async function GET(request: NextRequest) {
     }
 
     console.log('✅ GHL OAuth connection completed successfully')
-    console.log('📝 Note: Webhooks are configured at app level in GHL Developer Portal, not programmatically')
+    
+    // Now that connection is saved, subscribe to appointment webhooks
+    await subscribeToAppointmentWebhooks({
+      locationId: tokenResponse.location_id,
+      accessToken: tokenResponse.access_token
+    })
+
+    console.log('📝 Webhook subscription completed')
 
     // Redirect back to CRM connection page with success
     return NextResponse.redirect(
@@ -164,6 +171,77 @@ async function getLocationInfo(accessToken: string) {
 interface GHLLocation {
   id: string
   name?: string
+}
+
+async function subscribeToAppointmentWebhooks(params: {
+  locationId: string
+  accessToken: string
+}) {
+  try {
+    const { locationId, accessToken } = params
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://promethean-three.vercel.app'
+    const webhookUrl = `${appUrl.replace(/\/$/, '')}/api/webhooks`
+    
+    console.log(`📡 Subscribing to appointment webhooks for location: ${locationId}`)
+
+    // Try multiple webhook subscription endpoints
+    const webhookAttempts = [
+      {
+        name: 'V2 webhooks with locationId',
+        url: 'https://services.leadconnectorhq.com/v2/webhooks',
+        body: { locationId, url: webhookUrl, events: ['AppointmentCreate', 'AppointmentUpdate', 'AppointmentDelete'] }
+      },
+      {
+        name: 'Location-based endpoint',
+        url: `https://services.leadconnectorhq.com/locations/${locationId}/webhooks`,
+        body: { url: webhookUrl, events: ['AppointmentCreate', 'AppointmentUpdate', 'AppointmentDelete'] }
+      }
+    ]
+
+    let subscriptionSuccess = false
+
+    for (const attempt of webhookAttempts) {
+      try {
+        console.log(`🔄 Trying webhook subscription: ${attempt.name}`)
+        
+        const subscribeResponse = await fetch(attempt.url, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(attempt.body)
+        })
+
+        const responseText = await subscribeResponse.text()
+        
+        if (subscribeResponse.ok) {
+          console.log(`✅ Webhook subscription successful: ${attempt.name}`, {
+            status: subscribeResponse.status,
+            response: responseText
+          })
+          subscriptionSuccess = true
+          break
+        } else {
+          console.log(`❌ Webhook subscription failed: ${attempt.name}`, {
+            status: subscribeResponse.status,
+            error: responseText 
+          })
+        }
+      } catch (error) {
+        console.error(`💥 Webhook subscription error: ${attempt.name}`, error)
+      }
+    }
+
+    if (!subscriptionSuccess) {
+      console.error('❌ All webhook subscription attempts failed')
+    }
+
+    return subscriptionSuccess
+  } catch (error) {
+    console.error('💥 Error during webhook subscription setup:', error)
+    return false
+  }
 }
 
 async function saveConnection(params: {
