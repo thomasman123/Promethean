@@ -20,15 +20,8 @@ export default function ForgotPasswordPage() {
 
   // Check if user is already logged in and redirect
   useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (session) {
-        router.replace('/dashboard')
-      }
-    }
-    
-    checkAuth()
-  }, [router])
+    // Intentionally do not redirect here to allow users in odd states to recover passwords
+  }, [])
 
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault()

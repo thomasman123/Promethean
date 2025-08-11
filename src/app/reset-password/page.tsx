@@ -15,6 +15,7 @@ function ResetPasswordInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [loading, setLoading] = useState(false)
+  const [parsing, setParsing] = useState(true)
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -22,35 +23,40 @@ function ResetPasswordInner() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
-  // Extract tokens either from query or hash (if user navigated directly)
   const queryAccessToken = searchParams?.get('access_token')
   const queryRefreshToken = searchParams?.get('refresh_token')
+  const queryType = searchParams?.get('type')
   const [accessToken, setAccessToken] = useState<string | null>(queryAccessToken)
   const [refreshToken, setRefreshToken] = useState<string | null>(queryRefreshToken)
+  const [linkType, setLinkType] = useState<string | null>(queryType)
 
   useEffect(() => {
-    if (!accessToken && typeof window !== 'undefined') {
+    if (typeof window === 'undefined') return
+    // If tokens are not in query, attempt to parse from hash
+    if (!accessToken) {
       const hash = window.location.hash
       if (hash && hash.includes('access_token')) {
         const params = new URLSearchParams(hash.replace(/^#/, ''))
         setAccessToken(params.get('access_token'))
         setRefreshToken(params.get('refresh_token'))
+        setLinkType(params.get('type'))
         // Normalize URL to query params for consistency
         const qs = params.toString()
         router.replace(`/reset-password?${qs}`)
       }
     }
+    setParsing(false)
   }, [accessToken, router])
 
   useEffect(() => {
-    // If we have tokens, set them in the session
-    if (accessToken && refreshToken) {
+    // Only set a session if this is an actual recovery flow
+    if (accessToken && refreshToken && linkType === 'recovery') {
       supabase.auth.setSession({
         access_token: accessToken,
         refresh_token: refreshToken
       })
     }
-  }, [accessToken, refreshToken])
+  }, [accessToken, refreshToken, linkType])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -94,7 +100,19 @@ function ResetPasswordInner() {
     }
   }
 
-  if (!accessToken) {
+  const handleRequestNewLink = async () => {
+    // Ensure any temporary recovery session is cleared so we don't auto-redirect
+    await supabase.auth.signOut()
+    router.push('/forgot-password')
+  }
+
+  if (parsing) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">Loading...</div>
+    )
+  }
+
+  if (!accessToken || linkType !== 'recovery') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="w-full max-w-md">
@@ -106,11 +124,9 @@ function ResetPasswordInner() {
           </CardHeader>
           <CardContent>
             <div className="text-center">
-              <Link href="/forgot-password">
-                <Button variant="outline" className="w-full">
-                  Request New Reset Link
-                </Button>
-              </Link>
+              <Button variant="outline" className="w-full" onClick={handleRequestNewLink}>
+                Request New Reset Link
+              </Button>
             </div>
           </CardContent>
         </Card>
