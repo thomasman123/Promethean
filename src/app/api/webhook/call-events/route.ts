@@ -445,6 +445,52 @@ async function processAppointmentWebhook(payload: any) {
     
     console.log('📍 Found account:', account.name, '(', account.id, ')');
     
+    // TEST MIDDLEWARE: Verify appointment ID mapping
+    if (payload.appointment?.id && account.ghl_api_key) {
+      try {
+        console.log(`[APPOINTMENT TEST] Starting ID verification for appointment: ${payload.appointment.id}`);
+        
+        const apiUrl = `https://services.leadconnectorhq.com/calendars/events/appointments/${payload.appointment.id}`;
+        console.log(`[APPOINTMENT TEST] Calling API: ${apiUrl}`);
+
+        const response = await fetch(apiUrl, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${account.ghl_api_key}`,
+            'Version': '2021-07-28',
+            'Content-Type': 'application/json'
+          }
+        });
+
+        console.log(`[APPOINTMENT TEST] API Response Status: ${response.status} ${response.statusText}`);
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`[APPOINTMENT TEST] API Error Response: ${errorText}`);
+        } else {
+          const apiData = await response.json();
+          console.log('[APPOINTMENT TEST] Full API Response:', JSON.stringify(apiData, null, 2));
+
+          // Compare IDs
+          const apiEventId = apiData.eventId || apiData.id;
+          console.log(`[APPOINTMENT TEST] ID Comparison:`);
+          console.log(`  Webhook appointment.id: ${payload.appointment.id}`);
+          console.log(`  API eventId/id: ${apiEventId}`);
+          console.log(`  IDs Match: ${payload.appointment.id === apiEventId}`);
+
+          // Log any other relevant fields
+          if (apiData.calendarId) {
+            console.log(`  API calendarId: ${apiData.calendarId}`);
+          }
+          if (apiData.appointmentStatus) {
+            console.log(`  API appointmentStatus: ${apiData.appointmentStatus}`);
+          }
+        }
+      } catch (error) {
+        console.error('[APPOINTMENT TEST] Exception during ID verification:', error);
+      }
+    }
+    
     // Check if this appointment's calendar is mapped
     const { data: calendarMapping, error: mappingError } = await supabase
       .from('calendar_mappings')
