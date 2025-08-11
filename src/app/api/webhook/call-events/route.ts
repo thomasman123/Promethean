@@ -430,7 +430,7 @@ async function processAppointmentWebhook(payload: any) {
     if (calendarMapping.target_table === 'appointments') {
       const appointmentData = {
         ...baseData,
-        appointment_time: payload.appointment?.startTime ? 
+        date_booked_for: payload.appointment?.startTime ? 
           new Date(payload.appointment.startTime).toISOString() : null,
         cash_collected: null,
         total_value: null,

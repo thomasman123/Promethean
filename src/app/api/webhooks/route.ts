@@ -497,17 +497,14 @@ async function processAppointmentWebhook(payload: any) {
     // Create base appointment data
     const baseData = {
       account_id: account.id,
-      ghl_appointment_id: payload.appointment?.id,
       contact_name: contactData?.name || 
         (contactData?.firstName && contactData?.lastName ? 
           `${contactData.firstName} ${contactData.lastName}`.trim() : 
           payload.appointment?.title || null),
-      contact_email: contactData?.email || null,
-      contact_phone: contactData?.phone || null,
-      setter_name: setterName,
-      setter_id: setterId,
-      sales_rep_name: salesRepData?.name || null,
-      sales_rep_id: salesRepId,
+      email: contactData?.email || null,
+      phone: contactData?.phone || null,
+      setter: setterName || 'Webhook',
+      sales_rep: salesRepData?.name || null,
       call_outcome: null,
       show_outcome: null,
       pitched: null,
@@ -520,10 +517,10 @@ async function processAppointmentWebhook(payload: any) {
     if (calendarMapping.target_table === 'appointments') {
       const appointmentData = {
         ...baseData,
-        appointment_time: payload.appointment?.startTime ? 
+        date_booked_for: payload.appointment?.startTime ? 
           convertToUTC(payload.appointment.startTime) : null,
         cash_collected: null,
-        total_value: null,
+        total_sales_value: null,
       };
       
       const { data: savedAppointment, error: saveError } = await supabase
@@ -548,7 +545,7 @@ async function processAppointmentWebhook(payload: any) {
     } else if (calendarMapping.target_table === 'discoveries') {
       const discoveryData = {
         ...baseData,
-        discovery_time: payload.appointment?.startTime ? 
+        date_booked_for: payload.appointment?.startTime ? 
           convertToUTC(payload.appointment.startTime) : null,
       };
       
@@ -595,7 +592,7 @@ async function linkAppointmentToDial(
       appointmentId: appointmentOrDiscovery.id,
       contactEmail: contactData.email,
       contactPhone: contactData.phone,
-      scheduledTime: appointmentOrDiscovery.appointment_time || appointmentOrDiscovery.discovery_time
+      scheduledTime: appointmentOrDiscovery.date_booked_for
     });
 
     // Build query to find the most recent dial that could have led to this appointment
@@ -669,14 +666,12 @@ async function linkAppointmentToDial(
     });
 
     // Update the appointment/discovery with setter information from the dial
-    if (relevantDial.setter_name && !appointmentOrDiscovery.setter_name) {
-      const tableName = appointmentOrDiscovery.appointment_time ? 'appointments' : 'discoveries';
+    if (relevantDial.setter_name && !appointmentOrDiscovery.setter) {
+      const tableName = appointmentOrDiscovery.total_sales_value !== undefined ? 'appointments' : 'discoveries';
       const { error: setterUpdateError } = await supabase
         .from(tableName)
         .update({ 
-          setter_name: relevantDial.setter_name,
-          setter_email: relevantDial.setter_email,
-          setter_id: relevantDial.setter_id
+          setter: relevantDial.setter_name
         })
         .eq('id', appointmentOrDiscovery.id);
 
