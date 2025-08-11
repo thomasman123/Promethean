@@ -576,16 +576,29 @@ export async function POST(request: NextRequest) {
   
   const requestId = (globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`)
   const logger = createLogger({ requestId })
+  const startTime = Date.now()
+  
+  // Capture ALL headers immediately
+  const allHeaders: Record<string, string> = {}
+  request.headers.forEach((value, key) => {
+    allHeaders[key] = value
+  })
+  
+  // Extract IP and user agent immediately
+  const userAgent = request.headers.get('user-agent') || ''
+  const ipAddress = request.headers.get('x-forwarded-for') || 
+                   request.headers.get('x-real-ip') || 
+                   request.headers.get('x-vercel-ip') || 
+                   'unknown'
+  
+  let webhookLogId: string | null = null
+  let rawBody = ''
+  let parsedPayload: any = null
   
   try {
     console.log('🔍 Processing webhook request:', requestId)
     const debug = (new URL(request.url)).searchParams.get('debug') === '1' || process.env.WEBHOOK_DEBUG === '1'
     
-    // Enhanced logging for debugging
-    const allHeaders: Record<string, string> = {}
-    request.headers.forEach((value, key) => {
-      allHeaders[key] = value
-    })
     logger.log('FULL REQUEST HEADERS', allHeaders)
     
     const headersToLog = ['user-agent', 'x-forwarded-for', 'x-real-ip', 'x-vercel-ip-country', 'content-type', 'authorization', 'x-ghl-signature']
@@ -597,46 +610,90 @@ export async function POST(request: NextRequest) {
     logger.log('POST /api/webhooks received', headerMeta)
 
     // Read raw body for GHL marketplace webhooks
-    const rawBody = await request.text()
+    rawBody = await request.text()
     logger.log('raw body received', { length: rawBody.length, preview: rawBody.substring(0, 200) })
     
-    // Parse JSON after reading raw body
-    const payload = JSON.parse(rawBody)
-    logger.log('parsed payload FULL', payload)
+    // Try to parse JSON
+    try {
+      parsedPayload = JSON.parse(rawBody)
+    } catch (parseError) {
+      // Not valid JSON - that's fine, we'll log it anyway
+      logger.log('Failed to parse JSON body', { error: parseError instanceof Error ? parseError.message : String(parseError) })
+    }
+    
+    // IMMEDIATELY LOG TO DATABASE - BEFORE ANY PROCESSING
+    const webhookLogData = {
+      timestamp: new Date().toISOString(),
+      method: request.method,
+      url: request.url,
+      user_agent: userAgent,
+      ip_address: ipAddress,
+      headers: allHeaders,
+      raw_body: rawBody,
+      parsed_body: parsedPayload,
+      body_length: rawBody.length,
+      request_id: requestId,
+      processing_status: 'received',
+      webhook_type: parsedPayload?.type || null,
+      location_id: parsedPayload?.locationId || null,
+      metadata: {
+        hasValidJson: !!parsedPayload,
+        contentType: request.headers.get('content-type'),
+        userAgent: userAgent,
+        ipAddress: ipAddress
+      }
+    }
+    
+         // Insert webhook log (fire and forget - don't let this block processing)
+     supabaseService.from('webhook_logs').insert(webhookLogData).then(({ data, error }) => {
+       if (error) {
+         console.error('Failed to log webhook:', error)
+       } else {
+         console.log('✅ Webhook logged to database')
+       }
+     })
+    
+    // Continue with existing processing if we have valid JSON
+    if (!parsedPayload) {
+      logger.log('No valid JSON payload - ending processing')
+      return NextResponse.json({ success: false, error: 'Invalid JSON payload' }, { status: 400 })
+    }
+    
+         logger.log('parsed payload FULL', parsedPayload)
     logger.log('request payload summary', { 
-      event: payload.event, 
-      type: payload.type, 
-      locationId: payload.locationId,
-      calendarId: payload.calendarId,
-      appointmentId: payload.id || payload.appointmentId,
-      keys: Object.keys(payload || {}) 
+      event: parsedPayload.event, 
+      type: parsedPayload.type, 
+      locationId: parsedPayload.locationId,
+      calendarId: parsedPayload.calendarId,
+      appointmentId: parsedPayload.id || parsedPayload.appointmentId,
+      keys: Object.keys(parsedPayload || {}) 
     })
 
     // Handle INSTALL webhooks
-    if (payload.type === 'INSTALL') {
-      const res = await handleInstallWebhook(payload, logger)
+    if (parsedPayload.type === 'INSTALL') {
+      const res = await handleInstallWebhook(parsedPayload, logger)
       return NextResponse.json(res.body, { status: res.status })
     }
 
-    const kind = detectKind(payload, logger)
+    const kind = detectKind(parsedPayload, logger)
     if (kind === 'appointment') {
-      const res = await handleAppointment(payload, logger)
+      const res = await handleAppointment(parsedPayload, logger)
       const body = { ...res.body, ...(debug ? { logs: logger.dump() } : {}) }
       return NextResponse.json(body, { status: res.status })
     }
     if (kind === 'dial') {
-      const res = await handleDial(payload, logger)
+      const res = await handleDial(parsedPayload, logger)
       const body = { ...res.body, ...(debug ? { logs: logger.dump() } : {}) }
       return NextResponse.json(body, { status: res.status })
     }
     if (kind === 'inboundMessage') {
-      const res = await handleInboundMessage(payload, logger)
+      const res = await handleInboundMessage(parsedPayload, logger)
       const body = { ...res.body, ...(debug ? { logs: logger.dump() } : {}) }
       return NextResponse.json(body, { status: res.status })
     }
 
     // Log unknown events for debugging
-    logger.log('Unknown webhook event', { event: payload.event, type: payload.type })
+    logger.log('Unknown webhook event', { event: parsedPayload.event, type: parsedPayload.type })
     const body = { success: true, message: 'Event received but not handled', ...(debug ? { logs: logger.dump() } : {}) }
     return NextResponse.json(body, { status: 200 })
     
