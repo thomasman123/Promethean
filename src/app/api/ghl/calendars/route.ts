@@ -28,56 +28,40 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Account ID is required' }, { status: 400 })
     }
 
-    // First, let's check what connections exist for debugging
-    const { data: allConnections, error: allConnectionsError } = await supabase
-      .from('ghl_connections')
+    // Get the account with GHL OAuth data
+    const { data: account, error: accountError } = await supabase
+      .from('accounts')
       .select('*')
-
-    console.log('🐛 DEBUG - All GHL connections visible to requester:', {
-      count: allConnections?.length || 0,
-      connections: allConnections?.map((c) => ({
-        id: c.id,
-        account_id: c.account_id,
-        is_connected: c.is_connected,
-        connection_status: c.connection_status,
-      })) || [],
-      error: allConnectionsError?.message || null,
-    })
-
-    // Get the GHL connection for this account
-    const { data: connection, error: connectionError } = await supabase
-      .from('ghl_connections')
-      .select('*')
-      .eq('account_id', accountId)
-      .eq('is_connected', true)
+      .eq('id', accountId)
+      .eq('ghl_auth_type', 'oauth2')
       .single()
 
-    console.log('🐛 DEBUG - Connection query result:', {
+    console.log('🐛 DEBUG - Account query result:', {
       accountId,
-      connection: connection
+      account: account
         ? {
-            id: connection.id,
-            account_id: connection.account_id,
-            is_connected: connection.is_connected,
-            connection_status: connection.connection_status,
-            has_access_token: !!connection.access_token,
-            has_location_id: !!connection.ghl_location_id,
+            id: account.id,
+            name: account.name,
+            ghl_auth_type: account.ghl_auth_type,
+            has_access_token: !!account.ghl_api_key,
+            has_location_id: !!account.ghl_location_id,
+            token_expires_at: account.ghl_token_expires_at,
           }
         : null,
-      error: connectionError?.message || null,
+      error: accountError?.message || null,
     })
 
-    if (connectionError || !connection) {
+    if (accountError || !account) {
       return NextResponse.json(
         {
-          error: 'No active GHL connection found for this account',
+          error: 'No active GHL OAuth connection found for this account',
         },
         { status: 404 }
       )
     }
 
     // Check if token is expired
-    if (connection.token_expires_at && new Date(connection.token_expires_at) <= new Date()) {
+    if (account.ghl_token_expires_at && new Date(account.ghl_token_expires_at) <= new Date()) {
       return NextResponse.json(
         {
           error: 'GHL token expired. Please reconnect your GoHighLevel account.',
@@ -86,8 +70,17 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    if (!account.ghl_api_key) {
+      return NextResponse.json(
+        {
+          error: 'No GHL access token found. Please reconnect your GoHighLevel account.',
+        },
+        { status: 401 }
+      )
+    }
+
     const baseHeaders: Record<string, string> = {
-      Authorization: `Bearer ${connection.access_token}`,
+      Authorization: `Bearer ${account.ghl_api_key}`,
       Version: '2021-07-28',
       Accept: 'application/json',
     }
@@ -108,7 +101,7 @@ export async function GET(request: NextRequest) {
       return resp
     }
 
-    let locationId = connection.ghl_location_id || ''
+    let locationId = account.ghl_location_id || ''
     console.log('🐛 DEBUG - Attempting calendars fetch with location:', locationId || '(none)')
 
     // First attempt using stored location (or none)
@@ -136,12 +129,12 @@ export async function GET(request: NextRequest) {
           if (tryResp.ok) {
             const calendarsData = await tryResp.json()
 
-            // If we used a different location than stored, try to update it for next time
+            // If we used a different location than stored, update it for next time
             if (loc.id !== locationId) {
               const { error: updErr } = await supabase
-                .from('ghl_connections')
+                .from('accounts')
                 .update({ ghl_location_id: loc.id })
-                .eq('account_id', accountId)
+                .eq('id', accountId)
               if (updErr) {
                 console.warn('Failed to update ghl_location_id after discovery:', updErr.message)
               } else {
