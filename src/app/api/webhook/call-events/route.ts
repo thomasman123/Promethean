@@ -551,7 +551,13 @@ async function processAppointmentWebhook(payload: any) {
               lastName: setterData?.lastName
             });
           } else {
-            console.error('Failed to fetch setter details:', setterResponse.status);
+            const errorText = await setterResponse.text();
+            console.error('Failed to fetch setter details:', {
+              status: setterResponse.status,
+              statusText: setterResponse.statusText,
+              error: errorText,
+              userId: setterId
+            });
           }
         }
         
@@ -576,7 +582,13 @@ async function processAppointmentWebhook(payload: any) {
               lastName: salesRepData?.lastName
             });
           } else {
-            console.error('Failed to fetch sales rep details:', salesRepResponse.status);
+            const errorText = await salesRepResponse.text();
+            console.error('Failed to fetch sales rep details:', {
+              status: salesRepResponse.status,
+              statusText: salesRepResponse.statusText,
+              error: errorText,
+              userId: salesRepId
+            });
           }
         }
         
