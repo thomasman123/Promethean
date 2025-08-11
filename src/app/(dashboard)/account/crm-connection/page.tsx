@@ -55,23 +55,44 @@ export default function CRMConnectionPage() {
 
   useEffect(() => {
     // Handle OAuth callback results
-    const urlParams = new URLSearchParams(window.location.search)
-    const success = urlParams.get('success')
-    const error = urlParams.get('error')
+    const url = new URL(window.location.href)
+    const success = url.searchParams.get('success')
+    const error = url.searchParams.get('error')
+
+    const cleanupUrl = () => window.history.replaceState({}, '', window.location.pathname)
+
+    const applyError = async (message: string) => {
+      try {
+        if (!selectedAccountId) return
+        await supabase
+          .from('ghl_connections')
+          .update({ connection_status: 'error', error_message: message })
+          .eq('account_id', selectedAccountId)
+      } catch {}
+      await fetchConnection()
+    }
 
     if (success === 'true') {
       // OAuth success - refresh connection status
       fetchConnection()
-      // Clean up URL
-      window.history.replaceState({}, '', window.location.pathname)
+      cleanupUrl()
     } else if (error) {
-      // Handle OAuth errors - just log, don't throw
-      console.warn('OAuth error:', error)
-      // Clean up URL
-      window.history.replaceState({}, '', window.location.pathname)
+      // Persist error status so UI leaves "connecting" state
+      applyError(decodeURIComponent(error))
+      cleanupUrl()
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // While UI shows "connecting", poll the connection row so it updates automatically
+  useEffect(() => {
+    if (!selectedAccountId) return
+    if (connection?.connection_status !== 'connecting') return
+    const interval = setInterval(() => {
+      fetchConnection()
+    }, 3000)
+    return () => clearInterval(interval)
+  }, [connection?.connection_status, selectedAccountId])
 
   const fetchConnection = async () => {
     if (!selectedAccountId) return
@@ -133,21 +154,16 @@ export default function CRMConnectionPage() {
       // Build the OAuth URL with proper scopes for GHL marketplace app
       const ghlClientId = process.env.NEXT_PUBLIC_GHL_CLIENT_ID || 'your-ghl-client-id'
       const redirectUri = `${window.location.origin}/api/auth/callback`
-      
-             // Use comprehensive scopes - these can be managed in the GHL marketplace app settings
-       const scopes = [
-         'contacts.readonly', 'contacts.write',
-         'opportunities.readonly', 'opportunities.write', 
-         'calendars.readonly', 'calendars.write',
-         'conversations.readonly', 'conversations.write',
-         'locations.readonly',
-         'businesses.readonly',
-         'users.readonly'
-       ].join(' ')
-      
-      // Add state parameter to track the account this connection is for
+      const scopes = [
+        'contacts.readonly', 'contacts.write',
+        'opportunities.readonly', 'opportunities.write', 
+        'calendars.readonly', 'calendars.write',
+        'conversations.readonly', 'conversations.write',
+        'locations.readonly',
+        'businesses.readonly',
+        'users.readonly'
+      ].join(' ')
       const state = selectedAccountId
-      
       const authUrl = `https://marketplace.gohighlevel.com/oauth/chooselocation?response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&client_id=${ghlClientId}&scope=${encodeURIComponent(scopes)}&state=${encodeURIComponent(state)}`
       
       // Redirect to GHL OAuth
@@ -155,7 +171,6 @@ export default function CRMConnectionPage() {
 
     } catch (error) {
       console.error('Error initiating GHL connection:', error)
-      
       // Update connection status to error
       if (selectedAccountId) {
         await supabase
@@ -165,9 +180,27 @@ export default function CRMConnectionPage() {
             error_message: 'Failed to initiate connection'
           })
           .eq('account_id', selectedAccountId)
-        
         await fetchConnection()
       }
+    } finally {
+      setConnecting(false)
+    }
+  }
+
+  const cancelGHLConnection = async () => {
+    if (!selectedAccountId) return
+    try {
+      await supabase
+        .from('ghl_connections')
+        .update({
+          connection_status: 'disconnected',
+          is_connected: false,
+          error_message: 'User cancelled OAuth'
+        })
+        .eq('account_id', selectedAccountId)
+      await fetchConnection()
+    } catch (e) {
+      console.error('Error cancelling GHL connection:', e)
     } finally {
       setConnecting(false)
     }
@@ -302,25 +335,32 @@ export default function CRMConnectionPage() {
                       </div>
                     )}
 
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 items-center">
                       {!connection?.is_connected ? (
-                        <Button
-                          onClick={initiateGHLConnection}
-                          disabled={connecting || connection?.connection_status === 'connecting'}
-                          className="bg-orange-600 hover:bg-orange-700"
-                        >
-                          {connecting || connection?.connection_status === 'connecting' ? (
-                            <>
-                              <Clock className="w-4 h-4 mr-2 animate-spin" />
-                              Connecting...
-                            </>
-                          ) : (
-                            <>
-                              <Zap className="w-4 h-4 mr-2" />
-                              Connect to GoHighLevel
-                            </>
+                        <>
+                          <Button
+                            onClick={initiateGHLConnection}
+                            disabled={connecting || connection?.connection_status === 'connecting'}
+                            className="bg-orange-600 hover:bg-orange-700"
+                          >
+                            {connecting || connection?.connection_status === 'connecting' ? (
+                              <>
+                                <Clock className="w-4 h-4 mr-2 animate-spin" />
+                                Connecting...
+                              </>
+                            ) : (
+                              <>
+                                <Zap className="w-4 h-4 mr-2" />
+                                Connect to GoHighLevel
+                              </>
+                            )}
+                          </Button>
+                          {(connecting || connection?.connection_status === 'connecting') && (
+                            <Button variant="outline" onClick={cancelGHLConnection}>
+                              Cancel
+                            </Button>
                           )}
-                        </Button>
+                        </>
                       ) : (
                         <div className="flex gap-2">
                           <Button variant="outline" onClick={disconnectGHL}>
