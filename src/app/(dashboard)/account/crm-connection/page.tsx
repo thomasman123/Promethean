@@ -159,7 +159,10 @@ export default function CRMConnectionPage() {
   const disconnectGHL = async () => {
     if (!selectedAccountId || !connection) return
 
+    setLoading(true)
     try {
+      console.log('🔄 Disconnecting GHL for account:', selectedAccountId)
+      
       // Call server-side cleanup to remove mappings and reset connection
       const { error: rpcError } = await supabase.rpc('admin_clean_account_ghl_data', {
         target_account_id: selectedAccountId,
@@ -167,7 +170,9 @@ export default function CRMConnectionPage() {
 
       if (rpcError) {
         console.error('Cleanup RPC failed, falling back to local update:', rpcError)
-        await supabase
+        
+        // Fallback: Manual cleanup
+        const { error: updateError } = await supabase
           .from('accounts')
           .update({
             ghl_api_key: null,
@@ -179,17 +184,32 @@ export default function CRMConnectionPage() {
             future_sync_enabled: false
           })
           .eq('id', selectedAccountId)
+          
+        if (updateError) {
+          console.error('❌ Failed to update account during disconnect:', updateError)
+          alert('Failed to disconnect GHL. Please try again.')
+          return
+        }
+        
         // Also try to delete mappings client-side if possible
-        await supabase
+        const { error: mappingError } = await supabase
           .from('calendar_mappings')
           .delete()
           .eq('account_id', selectedAccountId)
+          
+        if (mappingError) {
+          console.warn('⚠️ Failed to delete calendar mappings:', mappingError)
+        }
       }
 
-      setShowUninstallDialog(false)
+      console.log('✅ GHL disconnected successfully')
+      setShowUninstallDialog(true) // Show completion dialog
       await fetchConnection()
     } catch (error) {
-      console.error('Error disconnecting GHL:', error)
+      console.error('❌ Error disconnecting GHL:', error)
+      alert('An error occurred while disconnecting GHL. Please try again.')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -323,8 +343,12 @@ export default function CRMConnectionPage() {
                         </>
                       ) : (
                         <div className="flex gap-2">
-                          <Button variant="outline" onClick={disconnectGHL}>
-                            Disconnect
+                          <Button 
+                            variant="outline" 
+                            onClick={disconnectGHL}
+                            disabled={loading}
+                          >
+                            {loading ? 'Disconnecting...' : 'Disconnect'}
                           </Button>
                           <Button variant="outline" asChild>
                             <a
