@@ -246,11 +246,12 @@ async function ensureGhlWebhooks(params: {
     Version: '2021-07-28',
     'Content-Type': 'application/json',
   }
+  if (locationId) headers['Location'] = locationId
 
   // Helper to subscribe to one event type
   const subscribe = async (eventType: string) => {
     const body: any = { target, eventType }
-    if (locationId) body.locationId = locationId
+    // Some tenants expect Location header only; keep body minimal
     const resp = await fetch('https://services.leadconnectorhq.com/webhooks/subscribe/', {
       method: 'POST',
       headers,
@@ -264,11 +265,12 @@ async function ensureGhlWebhooks(params: {
     }
   }
 
-  // Best-effort subscriptions we rely on
-  // - appointment.created: to sync bookings via calendar mappings
-  // - message.created: to derive inbound calls/messages as dials
-  await Promise.allSettled([
-    subscribe('appointment.created'),
-    subscribe('message.created'),
-  ])
+  // Try a broader set of known event names across GHL variants
+  const eventsToTry = [
+    'appointment.created',
+    'message.created',
+    'conversation.message.created',
+  ]
+
+  await Promise.allSettled(eventsToTry.map(subscribe))
 } 

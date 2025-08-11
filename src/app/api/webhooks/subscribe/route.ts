@@ -43,10 +43,10 @@ export async function POST(request: NextRequest) {
       Version: '2021-07-28',
       'Content-Type': 'application/json',
     }
+    if (locationId) headers['Location'] = locationId
 
     const subscribe = async (eventType: string) => {
       const payload: any = { target, eventType }
-      if (locationId) payload.locationId = locationId
       const resp = await fetch('https://services.leadconnectorhq.com/webhooks/subscribe/', {
         method: 'POST',
         headers,
@@ -56,10 +56,14 @@ export async function POST(request: NextRequest) {
       return { eventType, ok: resp.ok, status: resp.status, body: text }
     }
 
-    const eventList = events && events.length > 0 ? events : ['appointment.created', 'message.created']
+    const eventList = events && events.length > 0 ? events : [
+      'appointment.created',
+      'message.created',
+      'conversation.message.created',
+    ]
     const results = await Promise.all(eventList.map(subscribe))
 
-    return NextResponse.json({ success: true, target, results })
+    return NextResponse.json({ success: true, target, results, usedLocationHeader: Boolean(locationId) })
   } catch (e: any) {
     return NextResponse.json({ success: false, error: e?.message || 'Server error' }, { status: 500 })
   }
