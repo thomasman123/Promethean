@@ -362,6 +362,87 @@ async function handleInstallWebhook(payload: any, logger: Logger) {
     companyId: payload.companyId 
   })
 
+  // Automatically subscribe to appointment webhooks after installation
+  try {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://promethean-three.vercel.app'
+    const webhookUrl = `${appUrl.replace(/\/$/, '')}/api/webhooks`
+    
+    logger.log('handleInstallWebhook: attempting to subscribe to appointment webhooks', { 
+      locationId: payload.locationId,
+      webhookUrl 
+    })
+
+    // Try to get access token from GHL connection
+    const connection = await fetchGhlConnectionByLocation(payload.locationId, logger)
+    const accessToken = connection?.access_token
+
+    if (!accessToken) {
+      logger.log('handleInstallWebhook: no access token available for webhook subscription - this is normal for fresh installs')
+    } else {
+      // Try multiple webhook subscription endpoints
+      const webhookAttempts = [
+        {
+          name: 'V2 webhooks with locationId',
+          url: 'https://services.leadconnectorhq.com/v2/webhooks',
+          body: { locationId: payload.locationId, url: webhookUrl, events: ['AppointmentCreate', 'AppointmentUpdate', 'AppointmentDelete'] }
+        },
+        {
+          name: 'Location-based endpoint',
+          url: `https://services.leadconnectorhq.com/locations/${payload.locationId}/webhooks`,
+          body: { url: webhookUrl, events: ['AppointmentCreate', 'AppointmentUpdate', 'AppointmentDelete'] }
+        }
+      ]
+
+      let subscriptionSuccess = false
+
+      for (const attempt of webhookAttempts) {
+        try {
+          logger.log('handleInstallWebhook: trying webhook subscription', { attempt: attempt.name })
+          
+          const subscribeResponse = await fetch(attempt.url, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(attempt.body)
+          })
+
+          const responseText = await subscribeResponse.text()
+          
+          if (subscribeResponse.ok) {
+            logger.log('handleInstallWebhook: webhook subscription successful', { 
+              attempt: attempt.name,
+              status: subscribeResponse.status,
+              response: responseText
+            })
+            subscriptionSuccess = true
+            break
+          } else {
+            logger.log('handleInstallWebhook: webhook subscription failed', { 
+              attempt: attempt.name,
+              status: subscribeResponse.status,
+              error: responseText 
+            })
+          }
+        } catch (error) {
+          logger.log('handleInstallWebhook: webhook subscription error', { 
+            attempt: attempt.name,
+            error: error instanceof Error ? error.message : String(error) 
+          })
+        }
+      }
+
+      if (!subscriptionSuccess) {
+        logger.log('handleInstallWebhook: all webhook subscription attempts failed')
+      }
+    }
+  } catch (error) {
+    logger.log('handleInstallWebhook: error during webhook subscription setup', { 
+      error: error instanceof Error ? error.message : String(error) 
+    })
+  }
+
   return { status: 200, body: { success: true, message: 'App installed successfully' } }
 }
 
@@ -673,6 +754,16 @@ export async function POST(request: NextRequest) {
     if (parsedPayload.type === 'INSTALL') {
       const res = await handleInstallWebhook(parsedPayload, logger)
       return NextResponse.json(res.body, { status: res.status })
+    }
+
+    // Handle UNINSTALL webhooks
+    if (parsedPayload.type === 'UNINSTALL') {
+      logger.log('handleUninstallWebhook: processing UNINSTALL webhook', { 
+        appId: parsedPayload.appId,
+        locationId: parsedPayload.locationId,
+        companyId: parsedPayload.companyId 
+      })
+      return NextResponse.json({ success: true, message: 'App uninstalled successfully' }, { status: 200 })
     }
 
     const kind = detectKind(parsedPayload, logger)
