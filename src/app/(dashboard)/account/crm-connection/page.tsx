@@ -209,13 +209,15 @@ export default function CRMConnectionPage() {
 
       console.log('✅ GHL disconnected successfully')
       
-      // Force UI refresh
+      // Force UI refresh with multiple approaches
       await fetchConnection()
       
-      // Give it a moment to update then show completion dialog
-      setTimeout(() => {
+      // Force a re-render by temporarily clearing connection state
+      setConnection(null)
+      setTimeout(async () => {
+        await fetchConnection()
         setShowUninstallDialog(true)
-      }, 100)
+      }, 200)
     } catch (error) {
       console.error('❌ Error disconnecting GHL:', error)
       alert('An error occurred while disconnecting GHL. Please try again.')
@@ -294,7 +296,16 @@ export default function CRMConnectionPage() {
                           </CardDescription>
                         </div>
                       </div>
-                      {connection && getStatusBadge(connection.ghl_auth_type === 'oauth2' && connection.ghl_api_key ? 'connected' : 'disconnected')}
+                      {connection && (() => {
+                        const isConnected = connection.ghl_auth_type === 'oauth2' && connection.ghl_api_key;
+                        console.log('🔍 Status check:', {
+                          ghl_auth_type: connection.ghl_auth_type,
+                          has_ghl_api_key: !!connection.ghl_api_key,
+                          isConnected,
+                          statusWillBe: isConnected ? 'connected' : 'disconnected'
+                        });
+                        return getStatusBadge(isConnected ? 'connected' : 'disconnected');
+                      })()}
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -327,7 +338,16 @@ export default function CRMConnectionPage() {
                     )}
 
                     <div className="flex gap-2 items-center">
-                      {!(connection?.ghl_auth_type === 'oauth2' && connection?.ghl_api_key) ? (
+                      {(() => {
+                        const isConnected = connection?.ghl_auth_type === 'oauth2' && connection?.ghl_api_key;
+                        console.log('🔘 Button logic:', {
+                          ghl_auth_type: connection?.ghl_auth_type,
+                          has_ghl_api_key: !!connection?.ghl_api_key,
+                          isConnected,
+                          showConnectButton: !isConnected
+                        });
+                        return !isConnected;
+                      })() ? (
                         <>
                           <Button
                             onClick={initiateGHLConnection}
