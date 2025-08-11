@@ -630,50 +630,8 @@ async function processAppointmentWebhook(payload: any) {
       }
     }
 
-    // Determine setter name from most recent dial for this contact
-    let setterName = null;
-    
-    if (contactData && (contactData.email || contactData.phone)) {
-      try {
-        console.log('🔍 Finding setter from most recent dial for contact:', {
-          email: contactData.email,
-          phone: contactData.phone
-        });
-        
-        let dialQuery = supabase
-          .from('dials')
-          .select('setter, email, phone, date_called, id')
-          .eq('account_id', account.id)
-          .order('date_called', { ascending: false })
-          .limit(10); // Check last 10 dials for this contact
-        
-        // Add contact matching conditions (prefer email, fallback to phone)
-        if (contactData.email) {
-          dialQuery = dialQuery.eq('email', contactData.email);
-        } else if (contactData.phone) {
-          dialQuery = dialQuery.eq('phone', contactData.phone);
-        }
-        
-        const { data: recentDials, error: dialError } = await dialQuery;
-        
-        if (!dialError && recentDials && recentDials.length > 0) {
-          // Find the most recent dial with setter information
-          const dialWithSetter = recentDials.find(dial => dial.setter);
-          
-          if (dialWithSetter) {
-            setterName = dialWithSetter.setter;
-            console.log('✅ Setter found from dial:', {
-              name: setterName,
-              email: dialWithSetter.email,
-              dialTime: dialWithSetter.date_called,
-              dialId: dialWithSetter.id
-            });
-          }
-        }
-      } catch (dialError) {
-        console.error('Failed to find setter from dials:', dialError);
-      }
-    }
+    // Setter is determined directly from API createdBy.userId (setterData)
+    // No need to search dials - API provides the actual setter information
      
     // Map sales rep to internal user ID
     let salesRepId = null;
@@ -717,7 +675,7 @@ async function processAppointmentWebhook(payload: any) {
       if (setterData?.firstName || setterData?.lastName) {
         return `${setterData.firstName || ''} ${setterData.lastName || ''}`.trim();
       }
-      return setterName || 'Webhook';
+      return 'Webhook';
     };
 
     const getSalesRepName = () => {
