@@ -247,41 +247,79 @@ async function ensureGhlWebhooks(params: {
     return
   }
 
-  console.log('🔔 Setting up automatic webhooks...')
+  console.log(`📡 Auto-subscribing webhook for location ${locationId}: ${target}`)
+  console.log(`🔑 Using access token: ${accessToken.substring(0, 20)}...`)
 
-  try {
-    const webhookResponse = await fetch(`https://services.leadconnectorhq.com/locations/${locationId}/webhooks`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-        'Version': '2021-07-28'
-      },
-      body: JSON.stringify({
-        url: target,
-        events: ['OutboundMessage', 'AppointmentCreate'],
-        name: 'Promethean Auto Webhook',
-        version: 'v2'
-      })
-    })
+  // Try multiple webhook API approaches
+  let webhookResponse = null
+  let webhookSuccess = false
 
-    if (webhookResponse.ok) {
-      const webhookData = await webhookResponse.json()
-      console.log('✅ Webhook automatically created:', {
-        id: webhookData.id,
-        url: webhookData.url,
-        events: webhookData.events
-      })
-    } else {
-      const errorData = await webhookResponse.text()
-      console.error('❌ Failed to create webhook:', {
-        status: webhookResponse.status,
-        error: errorData
-      })
-      throw new Error(`Webhook creation failed: ${webhookResponse.status} ${errorData}`)
+  const webhookAttempts = [
+    {
+      name: 'Location-based endpoint',
+      url: `https://services.leadconnectorhq.com/locations/${locationId}/webhooks`,
+      body: { url: target, events: ['OutboundMessage', 'AppointmentCreate'] }
+    },
+    {
+      name: 'V2 webhooks with locationId',
+      url: 'https://services.leadconnectorhq.com/v2/webhooks',
+      body: { locationId, url: target, events: ['OutboundMessage', 'AppointmentCreate'] }
+    },
+    {
+      name: 'V1 webhooks endpoint', 
+      url: 'https://services.leadconnectorhq.com/webhooks',
+      body: { locationId, url: target, events: ['OutboundMessage', 'AppointmentCreate'] }
     }
-  } catch (error) {
-    console.error('⚠️ Webhook subscription exception:', error)
-    throw error
+  ]
+
+  for (const attempt of webhookAttempts) {
+    console.log(`🧪 Trying webhook approach: ${attempt.name}`)
+    console.log(`🔗 URL: ${attempt.url}`)
+    
+    try {
+      webhookResponse = await fetch(attempt.url, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Version': '2021-04-15',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(attempt.body),
+      })
+      
+      console.log(`📞 ${attempt.name} response status: ${webhookResponse.status}`)
+      
+      if (webhookResponse.ok) {
+        console.log(`✅ Webhook subscription successful with: ${attempt.name}`)
+        webhookSuccess = true
+        break
+      } else {
+        const errorText = await webhookResponse.text()
+        console.log(`❌ ${attempt.name} failed: ${errorText}`)
+      }
+    } catch (error) {
+      console.log(`❌ ${attempt.name} error:`, error)
+    }
+  }
+
+  if (webhookSuccess && webhookResponse) {
+    console.log(`📞 Final webhook API response status: ${webhookResponse.status}`)
+    const webhookData = await webhookResponse.json()
+    const webhookId = webhookData.id
+    console.log(`✅ Webhook subscribed successfully:`, webhookId)
+    console.log(`📋 Full webhook response:`, JSON.stringify(webhookData))
+  } else {
+    console.error(`❌ All webhook subscription attempts failed`)
+    if (webhookResponse) {
+      console.error('📋 Last response details:', {
+        status: webhookResponse.status,
+        statusText: webhookResponse.statusText,
+        url: webhookResponse.url
+      })
+    }
+    
+    // Log summary of all attempts for debugging
+    console.error('📤 All webhook attempts failed. Check GHL API documentation or configure manually in GHL dashboard.')
+    throw new Error(`All webhook subscription attempts failed`)
   }
 } 

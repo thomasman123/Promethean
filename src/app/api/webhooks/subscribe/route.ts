@@ -43,49 +43,88 @@ export async function POST(request: NextRequest) {
 
     const target = `${appUrl.replace(/\/$/, '')}/api/webhooks`
 
-    console.log('🔔 Manual webhook subscription for account:', accountId)
+    console.log(`📡 Manual webhook subscription for account: ${accountId}, location: ${locationId}`)
 
-    const webhookResponse = await fetch(`https://services.leadconnectorhq.com/locations/${locationId}/webhooks`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-        'Version': '2021-07-28'
+    const webhookAttempts = [
+      {
+        name: 'Location-based endpoint',
+        url: `https://services.leadconnectorhq.com/locations/${locationId}/webhooks`,
+        body: { url: target, events: ['OutboundMessage', 'AppointmentCreate'] }
       },
-      body: JSON.stringify({
-        url: target,
-        events: ['OutboundMessage', 'AppointmentCreate'],
-        name: 'Promethean Manual Webhook',
-        version: 'v2'
-      })
-    })
+      {
+        name: 'V2 webhooks with locationId',
+        url: 'https://services.leadconnectorhq.com/v2/webhooks',
+        body: { locationId, url: target, events: ['OutboundMessage', 'AppointmentCreate'] }
+      },
+      {
+        name: 'V1 webhooks endpoint', 
+        url: 'https://services.leadconnectorhq.com/webhooks',
+        body: { locationId, url: target, events: ['OutboundMessage', 'AppointmentCreate'] }
+      }
+    ]
 
-    const responseText = await webhookResponse.text()
-    let webhookData = null
-    try {
-      webhookData = JSON.parse(responseText)
-    } catch {
-      // Response wasn't JSON
+    const results: Array<{ attempt: string; ok: boolean; status: number; response: string | object }> = []
+    let success = false
+    let finalWebhookData = null
+
+    for (const attempt of webhookAttempts) {
+      console.log(`🧪 Trying webhook approach: ${attempt.name}`)
+      
+      try {
+        const webhookResponse = await fetch(attempt.url, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Version': '2021-04-15',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(attempt.body),
+        })
+
+        const responseText = await webhookResponse.text()
+        let webhookData = null
+        try {
+          webhookData = JSON.parse(responseText)
+        } catch {
+          webhookData = responseText
+        }
+
+        results.push({
+          attempt: attempt.name,
+          ok: webhookResponse.ok,
+          status: webhookResponse.status,
+          response: webhookData
+        })
+
+        console.log(`📞 ${attempt.name} response status: ${webhookResponse.status}`)
+
+        if (webhookResponse.ok) {
+          console.log(`✅ Manual webhook subscription successful with: ${attempt.name}`)
+          success = true
+          finalWebhookData = webhookData
+          break
+        } else {
+          console.log(`❌ ${attempt.name} failed: ${responseText}`)
+        }
+      } catch (error) {
+        console.log(`❌ ${attempt.name} error:`, error)
+        results.push({
+          attempt: attempt.name,
+          ok: false,
+          status: 0,
+          response: (error as any)?.message || 'Network error'
+        })
+      }
     }
 
-    const result = {
-      success: webhookResponse.ok,
+    return NextResponse.json({
+      success,
       target,
-      status: webhookResponse.status,
-      response: webhookData || responseText,
-      locationId
-    }
+      locationId,
+      results,
+      webhookData: finalWebhookData
+    }, { status: success ? 200 : 400 })
 
-    if (webhookResponse.ok) {
-      console.log('✅ Manual webhook created successfully:', webhookData?.id)
-    } else {
-      console.error('❌ Manual webhook creation failed:', {
-        status: webhookResponse.status,
-        error: responseText
-      })
-    }
-
-    return NextResponse.json(result, { status: webhookResponse.ok ? 200 : 400 })
   } catch (e: any) {
     return NextResponse.json({ success: false, error: e?.message || 'Server error' }, { status: 500 })
   }
