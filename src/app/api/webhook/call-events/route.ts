@@ -472,10 +472,10 @@ async function processAppointmentWebhook(payload: any) {
           console.log('[APPOINTMENT TEST] Full API Response:', JSON.stringify(apiData, null, 2));
 
           // Compare IDs
-          const apiEventId = apiData.eventId || apiData.id;
+          const apiEventId = apiData.appointment?.id || apiData.eventId || apiData.id;
           console.log(`[APPOINTMENT TEST] ID Comparison:`);
           console.log(`  Webhook appointment.id: ${payload.appointment.id}`);
-          console.log(`  API eventId/id: ${apiEventId}`);
+          console.log(`  API appointment.id: ${apiEventId}`);
           console.log(`  IDs Match: ${payload.appointment.id === apiEventId}`);
 
           // Log any other relevant fields
