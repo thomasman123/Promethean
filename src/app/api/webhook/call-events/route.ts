@@ -487,7 +487,9 @@ async function processAppointmentWebhook(payload: any) {
         
         if (appointmentResponse.ok) {
           const appointmentApiData = await appointmentResponse.json();
-          fullAppointmentData = appointmentApiData.event; // Fixed: API returns data under 'event' key
+          console.log('🔍 Raw appointment API response:', JSON.stringify(appointmentApiData, null, 2));
+          
+          fullAppointmentData = appointmentApiData.event; // API returns data under 'event' key
           console.log('📅 Full appointment data retrieved:', {
             id: fullAppointmentData?.id,
             title: fullAppointmentData?.title,
