@@ -139,6 +139,66 @@ export async function POST(request: NextRequest) {
           { status: 500 }
         );
       }
+    }
+    // Process AppointmentUpdate webhooks
+    else if (payload.type === 'AppointmentUpdate') {
+      console.log('📝 Processing appointment update webhook');
+      
+      try {
+        await processAppointmentUpdateWebhook(payload);
+        
+        // Add webhook ID to processed set
+        if (webhookId) {
+          processedWebhookIds.add(webhookId);
+          // Clean up old webhook IDs periodically (keep last 1000)
+          if (processedWebhookIds.size > 1000) {
+            const idsArray = Array.from(processedWebhookIds);
+            const toKeep = idsArray.slice(-800); // Keep last 800
+            processedWebhookIds.clear();
+            toKeep.forEach(id => processedWebhookIds.add(id));
+          }
+        }
+        
+        console.log('✅ Appointment update webhook processed successfully');
+        return NextResponse.json({ message: 'Appointment update webhook processed successfully' });
+        
+      } catch (error) {
+        console.error('Failed to process appointment update webhook:', error);
+        return NextResponse.json(
+          { error: 'Failed to process appointment update webhook' },
+          { status: 500 }
+        );
+      }
+    }
+    // Process AppointmentDelete webhooks
+    else if (payload.type === 'AppointmentDelete') {
+      console.log('🗑️ Processing appointment deletion webhook');
+      
+      try {
+        await processAppointmentDeleteWebhook(payload);
+        
+        // Add webhook ID to processed set
+        if (webhookId) {
+          processedWebhookIds.add(webhookId);
+          // Clean up old webhook IDs periodically (keep last 1000)
+          if (processedWebhookIds.size > 1000) {
+            const idsArray = Array.from(processedWebhookIds);
+            const toKeep = idsArray.slice(-800); // Keep last 800
+            processedWebhookIds.clear();
+            toKeep.forEach(id => processedWebhookIds.add(id));
+          }
+        }
+        
+        console.log('✅ Appointment deletion webhook processed successfully');
+        return NextResponse.json({ message: 'Appointment deletion webhook processed successfully' });
+        
+      } catch (error) {
+        console.error('Failed to process appointment deletion webhook:', error);
+        return NextResponse.json(
+          { error: 'Failed to process appointment deletion webhook' },
+          { status: 500 }
+        );
+      }
     } else {
       console.log('📋 Non-supported webhook received:', {
         type: payload.type,
@@ -555,6 +615,24 @@ async function processAppointmentWebhook(payload: any) {
         total_sales_value: null,
       };
       
+      // Check for existing appointment to prevent duplicates
+      const { data: existingAppointment } = await supabase
+        .from('appointments')
+        .select('id')
+        .eq('account_id', account.id)
+        .eq('contact_name', appointmentData.contact_name)
+        .eq('date_booked_for', appointmentData.date_booked_for)
+        .maybeSingle();
+      
+      if (existingAppointment) {
+        console.log('📋 Duplicate appointment detected, skipping:', {
+          existingId: existingAppointment.id,
+          contactName: appointmentData.contact_name,
+          scheduledTime: appointmentData.date_booked_for
+        });
+        return;
+      }
+
       const { data: savedAppointment, error: saveError } = await supabase
         .from('appointments')
         .insert(appointmentData)
@@ -578,6 +656,24 @@ async function processAppointmentWebhook(payload: any) {
           new Date(payload.appointment.startTime).toISOString() : null,
       };
       
+      // Check for existing discovery to prevent duplicates
+      const { data: existingDiscovery } = await supabase
+        .from('discoveries')
+        .select('id')
+        .eq('account_id', account.id)
+        .eq('contact_name', discoveryData.contact_name)
+        .eq('date_booked_for', discoveryData.date_booked_for)
+        .maybeSingle();
+      
+      if (existingDiscovery) {
+        console.log('📋 Duplicate discovery detected, skipping:', {
+          existingId: existingDiscovery.id,
+          contactName: discoveryData.contact_name,
+          scheduledTime: discoveryData.date_booked_for
+        });
+        return;
+      }
+
       const { data: savedDiscovery, error: saveError } = await supabase
         .from('discoveries')
         .insert(discoveryData)
@@ -597,6 +693,125 @@ async function processAppointmentWebhook(payload: any) {
     
   } catch (error) {
     console.error('Error processing appointment webhook:', error);
+    throw error;
+  }
+}
+
+// Helper function to process appointment update webhooks
+async function processAppointmentUpdateWebhook(payload: any) {
+  console.log('🔄 Processing appointment update webhook:', {
+    appointmentId: payload.appointment?.id,
+    locationId: payload.locationId,
+    calendarId: payload.appointment?.calendarId,
+    title: payload.appointment?.title,
+    startTime: payload.appointment?.startTime,
+  });
+  
+  try {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+    const supabase = createClient(supabaseUrl, serviceKey);
+    
+    // Find account by GHL location ID using accounts table
+    const { data: account, error: accountError } = await supabase
+      .from('accounts')
+      .select('id, name, ghl_location_id, ghl_api_key')
+      .eq('ghl_location_id', payload.locationId)
+      .single();
+    
+    if (accountError || !account) {
+      console.warn('⚠️ Webhook received for unknown location ID:', payload.locationId);
+      return;
+    }
+    
+    console.log('📍 Found account:', account.name, '(', account.id, ')');
+    
+    // Check if this appointment's calendar is mapped
+    const { data: calendarMapping, error: mappingError } = await supabase
+      .from('calendar_mappings')
+      .select('*')
+      .eq('account_id', account.id)
+      .eq('ghl_calendar_id', payload.appointment?.calendarId)
+      .single();
+    
+    if (mappingError || !calendarMapping) {
+      console.log('📋 Calendar not mapped for appointment update, skipping:', {
+        calendarId: payload.appointment?.calendarId,
+        appointmentId: payload.appointment?.id
+      });
+      return;
+    }
+    
+    // For updates, we'll try to find and update existing appointment/discovery
+    // Since we don't have a GHL appointment ID in our schema, we'll log for now
+    console.log('📝 Would update appointment in:', calendarMapping.target_table, {
+      appointmentId: payload.appointment?.id,
+      newStartTime: payload.appointment?.startTime,
+      newTitle: payload.appointment?.title
+    });
+    
+    // TODO: Implement proper update logic once we have unique identifiers
+    
+  } catch (error) {
+    console.error('Error processing appointment update webhook:', error);
+    throw error;
+  }
+}
+
+// Helper function to process appointment deletion webhooks
+async function processAppointmentDeleteWebhook(payload: any) {
+  console.log('🗑️ Processing appointment deletion webhook:', {
+    appointmentId: payload.appointment?.id,
+    locationId: payload.locationId,
+    calendarId: payload.appointment?.calendarId,
+  });
+  
+  try {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+    const supabase = createClient(supabaseUrl, serviceKey);
+    
+    // Find account by GHL location ID using accounts table
+    const { data: account, error: accountError } = await supabase
+      .from('accounts')
+      .select('id, name, ghl_location_id, ghl_api_key')
+      .eq('ghl_location_id', payload.locationId)
+      .single();
+    
+    if (accountError || !account) {
+      console.warn('⚠️ Webhook received for unknown location ID:', payload.locationId);
+      return;
+    }
+    
+    console.log('📍 Found account:', account.name, '(', account.id, ')');
+    
+    // Check if this appointment's calendar is mapped
+    const { data: calendarMapping, error: mappingError } = await supabase
+      .from('calendar_mappings')
+      .select('*')
+      .eq('account_id', account.id)
+      .eq('ghl_calendar_id', payload.appointment?.calendarId)
+      .single();
+    
+    if (mappingError || !calendarMapping) {
+      console.log('📋 Calendar not mapped for appointment deletion, skipping:', {
+        calendarId: payload.appointment?.calendarId,
+        appointmentId: payload.appointment?.id
+      });
+      return;
+    }
+    
+    // For deletions, we'll try to find and mark appointment/discovery as cancelled
+    // Since we don't have a GHL appointment ID in our schema, we'll log for now
+    console.log('🗑️ Would mark appointment as cancelled in:', calendarMapping.target_table, {
+      appointmentId: payload.appointment?.id,
+      reason: 'Deleted in GHL'
+    });
+    
+    // TODO: Implement proper deletion/cancellation logic once we have unique identifiers
+    
+  } catch (error) {
+    console.error('Error processing appointment deletion webhook:', error);
     throw error;
   }
 }

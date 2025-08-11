@@ -51,17 +51,17 @@ export async function POST(request: NextRequest) {
       {
         name: 'Location-based endpoint',
         url: `https://services.leadconnectorhq.com/locations/${locationId}/webhooks`,
-        body: { url: target, events: ['OutboundMessage', 'AppointmentCreate'] }
+        body: { url: target, events: ['OutboundMessage', 'AppointmentCreate', 'AppointmentUpdate', 'AppointmentDelete'] }
       },
       {
         name: 'V2 webhooks with locationId',
         url: 'https://services.leadconnectorhq.com/v2/webhooks',
-        body: { locationId, url: target, events: ['OutboundMessage', 'AppointmentCreate'] }
+        body: { locationId, url: target, events: ['OutboundMessage', 'AppointmentCreate', 'AppointmentUpdate', 'AppointmentDelete'] }
       },
       {
         name: 'V1 webhooks endpoint', 
         url: 'https://services.leadconnectorhq.com/webhooks',
-        body: { locationId, url: target, events: ['OutboundMessage', 'AppointmentCreate'] }
+        body: { locationId, url: target, events: ['OutboundMessage', 'AppointmentCreate', 'AppointmentUpdate', 'AppointmentDelete'] }
       }
     ]
 
