@@ -407,14 +407,136 @@ async function processAppointmentWebhook(payload: any) {
       calendarName: calendarMapping.ghl_calendar_name
     });
     
-    // For now, just create basic appointment data - we can enhance later
+    // Enrich with contact data if contactId exists
+    let contactData = null;
+    if (payload.appointment?.contactId && account.ghl_api_key) {
+      try {
+        console.log('🔍 Fetching contact details for ID:', payload.appointment.contactId);
+        
+        const contactResponse = await fetch(`https://services.leadconnectorhq.com/contacts/${payload.appointment.contactId}`, {
+          headers: {
+            'Authorization': `Bearer ${account.ghl_api_key}`,
+            'Version': '2021-07-28',
+          },
+        });
+        
+        if (contactResponse.ok) {
+          contactData = await contactResponse.json();
+          console.log('👤 Contact data:', contactData ? 
+            { name: contactData.name, email: contactData.email, phone: contactData.phone } : 'not found');
+        }
+      } catch (error) {
+        console.error('Failed to fetch contact data:', error);
+      }
+    }
+    
+    // Enrich with assigned user (sales rep) data
+    let salesRepData = null;
+    if (payload.appointment?.assignedUserId && account.ghl_api_key) {
+      try {
+        console.log('🔍 Fetching sales rep details for ID:', payload.appointment.assignedUserId);
+        
+        const userResponse = await fetch(`https://services.leadconnectorhq.com/users/${payload.appointment.assignedUserId}`, {
+          headers: {
+            'Authorization': `Bearer ${account.ghl_api_key}`,
+            'Version': '2021-07-28',
+          },
+        });
+        
+        if (userResponse.ok) {
+          salesRepData = await userResponse.json();
+          console.log('👨‍💼 Sales rep data:', salesRepData ? 
+            { name: salesRepData.name, email: salesRepData.email } : 'not found');
+        }
+      } catch (error) {
+        console.error('Failed to fetch sales rep data:', error);
+      }
+    }
+
+    // Determine setter name from most recent dial for this contact
+    let setterName = null;
+    
+    if (contactData && (contactData.email || contactData.phone)) {
+      try {
+        console.log('🔍 Finding setter from most recent dial for contact:', {
+          email: contactData.email,
+          phone: contactData.phone
+        });
+        
+        let dialQuery = supabase
+          .from('dials')
+          .select('setter, email, phone, date_called, id')
+          .eq('account_id', account.id)
+          .order('date_called', { ascending: false })
+          .limit(10); // Check last 10 dials for this contact
+        
+        // Add contact matching conditions (prefer email, fallback to phone)
+        if (contactData.email) {
+          dialQuery = dialQuery.eq('email', contactData.email);
+        } else if (contactData.phone) {
+          dialQuery = dialQuery.eq('phone', contactData.phone);
+        }
+        
+        const { data: recentDials, error: dialError } = await dialQuery;
+        
+        if (!dialError && recentDials && recentDials.length > 0) {
+          // Find the most recent dial with setter information
+          const dialWithSetter = recentDials.find(dial => dial.setter);
+          
+          if (dialWithSetter) {
+            setterName = dialWithSetter.setter;
+            console.log('✅ Setter found from dial:', {
+              name: setterName,
+              email: dialWithSetter.email,
+              dialTime: dialWithSetter.date_called,
+              dialId: dialWithSetter.id
+            });
+          }
+        }
+      } catch (dialError) {
+        console.error('Failed to find setter from dials:', dialError);
+      }
+    }
+     
+    // Map sales rep to internal user ID
+    let salesRepId = null;
+    if (salesRepData?.email) {
+      const { data: existingSalesRep } = await supabase
+        .from('users')
+        .select('id')
+        .eq('account_id', account.id)
+        .eq('email', salesRepData.email)
+        .single();
+      salesRepId = existingSalesRep?.id || null;
+      
+      if (salesRepId) {
+        console.log('✅ Mapped sales rep to internal user:', salesRepId);
+      } else {
+        console.log('⚠️ Sales rep not found in internal users - they would need to be manually invited');
+      }
+    }
+    
+    // Helper function to convert time to UTC
+    const convertToUTC = (timeString: string): string => {
+      try {
+        return new Date(timeString).toISOString();
+      } catch (error) {
+        console.error('Failed to convert time to UTC:', timeString, error);
+        return new Date().toISOString(); // Fallback to current time
+      }
+    };
+    
+    // Create base appointment data
     const baseData = {
       account_id: account.id,
-      contact_name: payload.appointment?.title || null,
-      email: null,
-      phone: null,
-      setter: 'Webhook',
-      sales_rep: null,
+      contact_name: contactData?.name || 
+        (contactData?.firstName && contactData?.lastName ? 
+          `${contactData.firstName} ${contactData.lastName}`.trim() : 
+          payload.appointment?.title || null),
+      email: contactData?.email || null,
+      phone: contactData?.phone || null,
+      setter: setterName || 'Webhook',
+      sales_rep: salesRepData?.name || null,
       call_outcome: null,
       show_outcome: null,
       pitched: null,
@@ -446,6 +568,9 @@ async function processAppointmentWebhook(payload: any) {
       
       console.log('✅ Appointment saved successfully:', payload.appointment?.id);
       
+      // Link this appointment back to the originating dial
+      await linkAppointmentToDial(supabase, savedAppointment, contactData, account.id);
+      
     } else if (calendarMapping.target_table === 'discoveries') {
       const discoveryData = {
         ...baseData,
@@ -465,11 +590,110 @@ async function processAppointmentWebhook(payload: any) {
       }
       
       console.log('✅ Discovery saved successfully:', payload.appointment?.id);
+      
+      // Link this discovery back to the originating dial  
+      await linkAppointmentToDial(supabase, savedDiscovery, contactData, account.id);
     }
     
   } catch (error) {
     console.error('Error processing appointment webhook:', error);
     throw error;
+  }
+}
+
+// Helper function to link an appointment/discovery back to its originating dial
+async function linkAppointmentToDial(
+  supabase: any,
+  appointmentOrDiscovery: any,
+  contactData: any,
+  accountId: string
+): Promise<void> {
+  try {
+    if (!contactData || (!contactData.email && !contactData.phone)) {
+      console.log('⚠️ No contact data available for dial linking');
+      return;
+    }
+
+    console.log('🔗 Searching for originating dial to link appointment:', {
+      appointmentId: appointmentOrDiscovery.id,
+      contactEmail: contactData.email,
+      contactPhone: contactData.phone,
+      scheduledTime: appointmentOrDiscovery.date_booked_for
+    });
+
+    // Build query to find the most recent dial that could have led to this appointment
+    const webhookReceivedTime = new Date(); 
+    const searchWindowStart = new Date(webhookReceivedTime.getTime() - (24 * 60 * 60 * 1000)); // 24 hours before now
+
+    let dialQuery = supabase
+      .from('dials')
+      .select('id, date_called, email, phone, setter')
+      .eq('account_id', accountId)
+      .gte('date_called', searchWindowStart.toISOString()) // Within last 24 hours
+      .lte('date_called', webhookReceivedTime.toISOString()) // Up to now
+      .order('date_called', { ascending: false })
+      .limit(1); // Get the most recent dial
+
+    // Add contact matching conditions (prefer email, fallback to phone)
+    if (contactData.email) {
+      dialQuery = dialQuery.eq('email', contactData.email);
+    } else if (contactData.phone) {
+      dialQuery = dialQuery.eq('phone', contactData.phone);
+    } else {
+      console.log('⚠️ No email or phone available for contact matching');
+      return;
+    }
+
+    const { data: recentDials, error: dialError } = await dialQuery;
+
+    if (dialError) {
+      console.error('Error searching for dials:', dialError);
+      return;
+    }
+
+    if (!recentDials || recentDials.length === 0) {
+      console.log('ℹ️ No recent dials found within 24 hours of webhook receipt');
+      return;
+    }
+
+    // Use the most recent dial (first in descending order)
+    const relevantDial = recentDials[0];
+    
+    console.log('✅ Found most recent dial for appointment booking:', {
+      dialId: relevantDial.id,
+      dialTime: relevantDial.date_called,
+      appointmentId: appointmentOrDiscovery.id,
+      contact: contactData.email || contactData.phone
+    });
+
+    // Note: Since dials table doesn't have booked_appointment_id column in current schema,
+    // we'll log this for now but not attempt to update the dials table
+    console.log('📝 Would link dial to appointment:', {
+      dialId: relevantDial.id,
+      appointmentId: appointmentOrDiscovery.id,
+      setter: relevantDial.setter
+    });
+
+    // Update the appointment/discovery with setter information from the dial if missing
+    if (relevantDial.setter && !appointmentOrDiscovery.setter) {
+      const tableName = appointmentOrDiscovery.total_sales_value !== undefined ? 'appointments' : 'discoveries';
+      const { error: setterUpdateError } = await supabase
+        .from(tableName)
+        .update({ 
+          setter: relevantDial.setter
+        })
+        .eq('id', appointmentOrDiscovery.id);
+
+      if (setterUpdateError) {
+        console.error('Failed to update setter information from dial:', setterUpdateError);
+      } else {
+        console.log('✅ Updated setter information from linked dial');
+      }
+    }
+
+  } catch (error) {
+    console.error('Error in linkAppointmentToDial:', error);
+    // Don't throw - this shouldn't fail the entire appointment processing
   }
 }
 
