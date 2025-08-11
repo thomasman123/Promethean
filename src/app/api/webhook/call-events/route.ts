@@ -410,14 +410,11 @@ async function processAppointmentWebhook(payload: any) {
     // For now, just create basic appointment data - we can enhance later
     const baseData = {
       account_id: account.id,
-      ghl_appointment_id: payload.appointment?.id,
       contact_name: payload.appointment?.title || null,
-      contact_email: null,
-      contact_phone: null,
-      setter_name: null,
-      setter_id: null,
-      sales_rep_name: null,
-      sales_rep_id: null,
+      email: null,
+      phone: null,
+      setter: 'Webhook',
+      sales_rep: null,
       call_outcome: null,
       show_outcome: null,
       pitched: null,
@@ -433,15 +430,12 @@ async function processAppointmentWebhook(payload: any) {
         date_booked_for: payload.appointment?.startTime ? 
           new Date(payload.appointment.startTime).toISOString() : null,
         cash_collected: null,
-        total_value: null,
+        total_sales_value: null,
       };
       
       const { data: savedAppointment, error: saveError } = await supabase
         .from('appointments')
-        .upsert(appointmentData, {
-          onConflict: 'account_id,ghl_appointment_id',
-          ignoreDuplicates: false
-        })
+        .insert(appointmentData)
         .select()
         .single();
       
@@ -455,16 +449,13 @@ async function processAppointmentWebhook(payload: any) {
     } else if (calendarMapping.target_table === 'discoveries') {
       const discoveryData = {
         ...baseData,
-        discovery_time: payload.appointment?.startTime ? 
+        date_booked_for: payload.appointment?.startTime ? 
           new Date(payload.appointment.startTime).toISOString() : null,
       };
       
       const { data: savedDiscovery, error: saveError } = await supabase
         .from('discoveries')
-        .upsert(discoveryData, {
-          onConflict: 'account_id,ghl_appointment_id',
-          ignoreDuplicates: false
-        })
+        .insert(discoveryData)
         .select()
         .single();
       
