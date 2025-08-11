@@ -487,7 +487,7 @@ async function processAppointmentWebhook(payload: any) {
         
         if (appointmentResponse.ok) {
           const appointmentApiData = await appointmentResponse.json();
-          fullAppointmentData = appointmentApiData.appointment;
+          fullAppointmentData = appointmentApiData.event; // Fixed: API returns data under 'event' key
           console.log('📅 Full appointment data retrieved:', {
             id: fullAppointmentData?.id,
             title: fullAppointmentData?.title,
@@ -498,7 +498,13 @@ async function processAppointmentWebhook(payload: any) {
             createdBy: fullAppointmentData?.createdBy
           });
         } else {
-          console.error('Failed to fetch appointment details:', appointmentResponse.status);
+          const errorText = await appointmentResponse.text();
+          console.error('Failed to fetch appointment details:', {
+            status: appointmentResponse.status,
+            statusText: appointmentResponse.statusText,
+            error: errorText,
+            appointmentId: payload.appointment.id
+          });
         }
         
         // 2. Get contact details if contactId exists
@@ -526,7 +532,13 @@ async function processAppointmentWebhook(payload: any) {
               tags: contactData?.tags
             });
           } else {
-            console.error('Failed to fetch contact details:', contactResponse.status);
+            const errorText = await contactResponse.text();
+            console.error('Failed to fetch contact details:', {
+              status: contactResponse.status,
+              statusText: contactResponse.statusText,
+              error: errorText,
+              contactId: contactId
+            });
           }
         }
         
