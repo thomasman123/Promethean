@@ -19,31 +19,33 @@ export async function POST(request: NextRequest) {
     }
 
     const supabase = createClient(supabaseUrl, serviceKey)
-    const { data: connection, error } = await supabase
-      .from('ghl_connections')
+    
+    // Get account instead of ghl_connections
+    const { data: account, error: accountError } = await supabase
+      .from('accounts')
       .select('*')
-      .eq('account_id', accountId)
-      .eq('is_connected', true)
+      .eq('id', accountId)
+      .eq('ghl_auth_type', 'oauth2')
       .single()
 
-    if (error || !connection) {
-      return NextResponse.json({ success: false, error: 'No active GHL connection for this account' }, { status: 404 })
+    if (accountError || !account) {
+      return NextResponse.json({ success: false, error: 'No active OAuth account found' }, { status: 404 })
     }
 
-    const locationId: string | undefined = connection.ghl_location_id || undefined
-    const accessToken: string | undefined = connection.access_token || undefined
+    const locationId: string | undefined = account.ghl_location_id || undefined
+    const accessToken: string | undefined = account.ghl_api_key || undefined
+
+    const target = `${appUrl.replace(/\/$/, '')}/api/webhook/call-events`
+
+    console.log(`📡 Manual webhook subscription for account: ${accountId}, location: ${locationId}`)
     
     if (!accessToken) {
-      return NextResponse.json({ success: false, error: 'Missing access token for connection' }, { status: 400 })
+      return NextResponse.json({ success: false, error: 'Missing access token for account' }, { status: 400 })
     }
 
     if (!locationId) {
-      return NextResponse.json({ success: false, error: 'Missing location ID for connection' }, { status: 400 })
+      return NextResponse.json({ success: false, error: 'Missing location ID for account' }, { status: 400 })
     }
-
-    const target = `${appUrl.replace(/\/$/, '')}/api/webhooks`
-
-    console.log(`📡 Manual webhook subscription for account: ${accountId}, location: ${locationId}`)
 
     const webhookAttempts = [
       {

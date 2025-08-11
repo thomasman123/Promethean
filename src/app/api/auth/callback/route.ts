@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
     // Auto-subscribe to webhooks for phone call and appointment capture
     let webhookId = null;
     try {
-      const webhookUrl = `${baseUrl}/api/webhooks`;
+      const webhookUrl = `${baseUrl}/api/webhook/call-events`;
       
       console.log(`📡 Auto-subscribing webhook for location ${tokenData.locationId}: ${webhookUrl}`);
       
