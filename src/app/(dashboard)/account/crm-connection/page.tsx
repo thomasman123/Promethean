@@ -66,9 +66,16 @@ export default function CRMConnectionPage() {
       try {
         if (!selectedAccountId) return
         await supabase
-          .from('ghl_connections')
-          .update({ connection_status: 'error', error_message: message })
-          .eq('account_id', selectedAccountId)
+          .from('accounts')
+          .update({
+            ghl_api_key: null,
+            ghl_refresh_token: null,
+            ghl_token_expires_at: null,
+            ghl_location_id: null,
+            ghl_auth_type: 'api_key',
+            ghl_webhook_id: null
+          })
+          .eq('id', selectedAccountId)
       } catch {}
       await fetchConnection()
     }
