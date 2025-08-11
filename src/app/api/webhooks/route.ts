@@ -35,10 +35,10 @@ function detectKind(payload: any, logger?: Logger): 'appointment' | 'dial' | 'in
   
   const kind = eventStr.includes('appointmentcreate') || eventStr.includes('appointment')
     ? 'appointment'
+    : eventStr.includes('inboundmessage') || eventStr.includes('outboundmessage')
+    ? 'inboundMessage'
     : eventStr.includes('outboundmessage') || eventStr.includes('dial')
     ? 'dial'
-    : eventStr.includes('inboundmessage') || eventStr.includes('message')
-    ? 'inboundMessage'
     : 'unknown'
     
   if (logger) logger.log('detectKind', { eventType, resolved: kind, payloadKeys: Object.keys(payload || {}) })
@@ -127,28 +127,31 @@ async function handleAppointment(payload: any, logger: Logger) {
 }
 
 async function handleDial(payload: any, logger: Logger, opts?: { accountId?: string; defaultSetter?: string }) {
-  logger.log('handleDial: processing GHL marketplace call', { 
+  logger.log('handleDial: processing GHL call/message', { 
     messageId: payload.messageId,
     contactId: payload.contactId,
-    direction: payload.direction 
+    direction: payload.direction,
+    messageType: payload.messageType,
+    phone: payload.phone,
+    setter: payload.setter
   })
   
-  // Extract dial info from GHL marketplace payload
+  // Extract contact info - handle both old and new formats
   const contactName = payload.contactName || 
     `${payload.contactFirstName || ''} ${payload.contactLastName || ''}`.trim() || 
-    'Unknown'
+    'Unknown Contact'
   const phone = payload.contactPhone || payload.phone || 'Unknown'
 
   const insert: any = {
     contact_name: contactName,
     phone: phone,
-    email: payload.contactEmail || null,
-    setter: payload.setterName || opts?.defaultSetter || 'Webhook',
-    duration: typeof payload.callDuration === 'number' ? payload.callDuration : 0,
+    email: payload.contactEmail || payload.email || null,
+    setter: payload.setterName || payload.setter || opts?.defaultSetter || 'Webhook',
+    duration: typeof payload.callDuration === 'number' ? payload.callDuration : (payload.duration || 0),
     answered: Boolean(payload.answered) || false,
     meaningful_conversation: Boolean(payload.meaningful_conversation) || false,
-    call_recording_link: payload.recordingUrl || null,
-    date_called: payload.dateCreated || payload.timestamp || new Date().toISOString(),
+    call_recording_link: payload.recordingUrl || payload.call_recording_link || null,
+    date_called: payload.dateCreated || payload.date_called || payload.timestamp || new Date().toISOString(),
   }
   if (opts?.accountId) insert.account_id = opts.accountId
   logger.log('handleDial: prepared row', insert)
@@ -178,9 +181,22 @@ async function fetchGhlConnectionByLocation(locationId?: string, logger?: Logger
 async function handleInboundMessage(payload: any, logger: Logger) {
   const locationId: string | undefined = payload.locationId
   const contactId: string | undefined = payload.contactId
+  const messageType: string = payload.messageType || 'Unknown'
+  const direction: string = payload.direction || 'inbound'
 
-  logger.log('handleInboundMessage: core fields', { locationId, contactId })
+  logger.log('handleInboundMessage: processing GHL message webhook', { 
+    type: payload.type,
+    locationId, 
+    contactId, 
+    messageType,
+    direction,
+    callDuration: payload.callDuration,
+    callStatus: payload.callStatus,
+    status: payload.status
+  })
+  
   if (!locationId || !contactId) {
+    logger.log('handleInboundMessage: missing required fields', { locationId, contactId })
     return { status: 400, body: { success: false, error: 'Missing locationId or contactId' } }
   }
 
@@ -190,19 +206,44 @@ async function handleInboundMessage(payload: any, logger: Logger) {
     return { status: 404, body: { success: false, error: 'No GHL connection for this location' } }
   }
 
-  // Create dial entry for inbound message
+  // Create dial entry for inbound message/call
   const dialPayload = {
-    contactName: payload.contactName || 'Unknown',
-    phone: payload.contactPhone || 'UNKNOWN',
-    email: payload.contactEmail || null,
-    setter: 'Inbound Message',
-    answered: true,
-    meaningful_conversation: true,
-    date_called: payload.dateCreated || new Date().toISOString(),
+    contactId: contactId,
+    messageType: messageType,
+    direction: direction,
+    messageBody: payload.body || '',
+    callDuration: payload.callDuration || 0,
+    callStatus: payload.callStatus || payload.status || 'unknown',
+    recordingUrl: Array.isArray(payload.attachments) && payload.attachments.length > 0 ? payload.attachments[0] : null,
+    dateReceived: payload.dateAdded || new Date().toISOString(),
+    conversationId: payload.conversationId,
+    messageId: payload.messageId
   }
-  logger.log('handleInboundMessage: derived dial', dialPayload)
+  
+  logger.log('handleInboundMessage: prepared dial payload', dialPayload)
 
-  return handleDial(dialPayload, logger, { accountId: connection.account_id, defaultSetter: 'Inbound Message' })
+  // Determine if this should be treated as a meaningful conversation
+  const isMeaningfulConversation = messageType === 'CALL' 
+    ? (payload.callStatus === 'completed' || payload.status === 'completed')
+    : true // SMS, Email, etc. are considered meaningful
+
+  const isAnswered = messageType === 'CALL' 
+    ? (payload.callStatus === 'completed' || payload.status === 'completed')
+    : true // Non-call messages are considered "answered"
+
+  // Create dial entry using existing pattern
+  const dialData = {
+    phone: 'UNKNOWN', // Will need to fetch from contact
+    email: null, // Will need to fetch from contact  
+    setter: `${messageType} ${direction}`,
+    answered: isAnswered,
+    meaningful_conversation: isMeaningfulConversation,
+    duration: payload.callDuration || 0,
+    call_recording_link: dialPayload.recordingUrl,
+    date_called: dialPayload.dateReceived,
+  }
+
+  return handleDial(dialData, logger, { accountId: connection.account_id, defaultSetter: `${messageType} Inbound` })
 }
 
 export async function POST(request: NextRequest) {
