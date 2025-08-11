@@ -1,14 +1,11 @@
 -- Truncate all user tables in the public schema without dropping them
 -- Restarts identities and cascades to dependent tables
--- Note: This runs as a privileged user (e.g., via Supabase CLI local dev). For remote DBs, ensure your role has privileges.
+-- Safe to run in Supabase SQL editor (no superuser-only settings)
 
 DO $$
 DECLARE
   r RECORD;
 BEGIN
-  -- Temporarily relax trigger checks to avoid FK/trigger issues
-  EXECUTE 'SET session_replication_role = replica';
-
   FOR r IN
     SELECT tablename
     FROM pg_tables
@@ -20,7 +17,4 @@ BEGIN
   LOOP
     EXECUTE 'TRUNCATE TABLE public.' || quote_ident(r.tablename) || ' RESTART IDENTITY CASCADE';
   END LOOP;
-
-  -- Restore normal trigger behavior
-  EXECUTE 'SET session_replication_role = DEFAULT';
 END $$; 
