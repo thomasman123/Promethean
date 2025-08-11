@@ -218,13 +218,27 @@ async function handleAppointment(payload: any, logger: Logger) {
     })
   }
 
+  // Get appointment date/time - try multiple fields
+  const appointmentDate = appointmentData.startTime || 
+                         appointmentData.start_time || 
+                         appointmentData.appointmentStartTime ||
+                         appointmentData.date ||
+                         new Date().toISOString() // fallback to current time
+
+  logger.log('handleAppointment: appointment date extraction', { 
+    startTime: appointmentData.startTime,
+    start_time: appointmentData.start_time,
+    appointmentStartTime: appointmentData.appointmentStartTime,
+    selectedDate: appointmentDate
+  })
+
   const appointmentRow: any = {
     account_id: mapping.account_id,
     contact_name: contactName,
     email: contactEmail,
     phone: contactPhone,
     date_booked: new Date().toISOString(),
-    date_booked_for: appointmentData.startTime,
+    date_booked_for: appointmentDate,
   }
 
   // Handle field semantics differently based on target table
