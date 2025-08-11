@@ -32,58 +32,60 @@ export async function POST(request: NextRequest) {
 
     const locationId: string | undefined = connection.ghl_location_id || undefined
     const accessToken: string | undefined = connection.access_token || undefined
+    
     if (!accessToken) {
       return NextResponse.json({ success: false, error: 'Missing access token for connection' }, { status: 400 })
     }
 
+    if (!locationId) {
+      return NextResponse.json({ success: false, error: 'Missing location ID for connection' }, { status: 400 })
+    }
+
     const target = `${appUrl.replace(/\/$/, '')}/api/webhooks`
-    const headers: Record<string, string> = {
-      Authorization: `Bearer ${accessToken}`,
-      Version: '2021-07-28',
-      'Content-Type': 'application/json',
-    }
-    if (locationId) headers['Location'] = locationId
 
-    const events = ['OutboundMessage', 'AppointmentCreate']
+    console.log('🔔 Manual webhook subscription for account:', accountId)
 
-    const attempts: Array<{ name: string; url: string; body: any }> = []
-    if (locationId) {
-      attempts.push({
-        name: 'Locations-scoped webhooks',
-        url: `https://services.leadconnectorhq.com/locations/${encodeURIComponent(locationId)}/webhooks`,
-        body: { url: target, events },
-      })
-    }
-    attempts.push(
-      {
-        name: 'V2 webhooks',
-        url: 'https://services.leadconnectorhq.com/v2/webhooks',
-        body: locationId ? { locationId, url: target, events } : { url: target, events },
+    const webhookResponse = await fetch(`https://services.leadconnectorhq.com/locations/${locationId}/webhooks`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+        'Version': '2021-07-28'
       },
-      {
-        name: 'Legacy webhooks',
-        url: 'https://services.leadconnectorhq.com/webhooks',
-        body: locationId ? { locationId, url: target, events } : { url: target, events },
-      }
-    )
-
-    const results: Array<{ attempt: string; ok: boolean; status: number; body: string }> = []
-    let success = false
-    for (const attempt of attempts) {
-      const resp = await fetch(attempt.url, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(attempt.body),
+      body: JSON.stringify({
+        url: target,
+        events: ['OutboundMessage', 'AppointmentCreate'],
+        name: 'Promethean Manual Webhook',
+        version: 'v2'
       })
-      const text = await resp.text().catch(() => '')
-      results.push({ attempt: attempt.name, ok: resp.ok, status: resp.status, body: text })
-      if (resp.ok) {
-        success = true
-        break
-      }
+    })
+
+    const responseText = await webhookResponse.text()
+    let webhookData = null
+    try {
+      webhookData = JSON.parse(responseText)
+    } catch {
+      // Response wasn't JSON
     }
 
-    return NextResponse.json({ success, target, results })
+    const result = {
+      success: webhookResponse.ok,
+      target,
+      status: webhookResponse.status,
+      response: webhookData || responseText,
+      locationId
+    }
+
+    if (webhookResponse.ok) {
+      console.log('✅ Manual webhook created successfully:', webhookData?.id)
+    } else {
+      console.error('❌ Manual webhook creation failed:', {
+        status: webhookResponse.status,
+        error: responseText
+      })
+    }
+
+    return NextResponse.json(result, { status: webhookResponse.ok ? 200 : 400 })
   } catch (e: any) {
     return NextResponse.json({ success: false, error: e?.message || 'Server error' }, { status: 500 })
   }

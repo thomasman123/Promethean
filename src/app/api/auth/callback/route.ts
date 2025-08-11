@@ -241,63 +241,47 @@ async function ensureGhlWebhooks(params: {
 }) {
   const { accessToken, locationId, targetBaseUrl } = params
   const target = `${targetBaseUrl.replace(/\/$/, '')}/api/webhooks`
-  const headers: Record<string, string> = {
-    Authorization: `Bearer ${accessToken}`,
-    Version: '2021-07-28',
-    'Content-Type': 'application/json',
-  }
-  if (locationId) headers['Location'] = locationId
-
-  const events = ['OutboundMessage', 'AppointmentCreate']
-
-  type Attempt = { name: string; url: string; body: any }
-  const attempts: Attempt[] = []
-
-  if (locationId) {
-    attempts.push({
-      name: 'Locations-scoped webhooks',
-      url: `https://services.leadconnectorhq.com/locations/${encodeURIComponent(locationId)}/webhooks`,
-      body: { url: target, events },
-    })
+  
+  if (!locationId) {
+    console.warn('No locationId provided, skipping webhook subscription')
+    return
   }
 
-  attempts.push(
-    {
-      name: 'V2 webhooks',
-      url: 'https://services.leadconnectorhq.com/v2/webhooks',
-      body: locationId ? { locationId, url: target, events } : { url: target, events },
-    },
-    {
-      name: 'Legacy webhooks',
-      url: 'https://services.leadconnectorhq.com/webhooks',
-      body: locationId ? { locationId, url: target, events } : { url: target, events },
-    }
-  )
+  console.log('🔔 Setting up automatic webhooks...')
 
-  let success = false
-  let lastErrorStatus: number | null = null
-  for (const attempt of attempts) {
-    try {
-      const resp = await fetch(attempt.url, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(attempt.body),
+  try {
+    const webhookResponse = await fetch(`https://services.leadconnectorhq.com/locations/${locationId}/webhooks`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+        'Version': '2021-07-28'
+      },
+      body: JSON.stringify({
+        url: target,
+        events: ['OutboundMessage', 'AppointmentCreate'],
+        name: 'Promethean Auto Webhook',
+        version: 'v2'
       })
-      if (resp.ok) {
-        console.log('Webhook subscribed', { attempt: attempt.name, target })
-        success = true
-        break
-      } else {
-        lastErrorStatus = resp.status
-        const txt = await resp.text().catch(() => '')
-        console.warn('Webhook subscribe failed', { attempt: attempt.name, status: resp.status, body: txt })
-      }
-    } catch (err) {
-      console.warn('Webhook subscribe exception', { attempt: attempt.name, message: (err as any)?.message })
-    }
-  }
+    })
 
-  if (!success) {
-    throw new Error(`All webhook subscription attempts failed (last status ${lastErrorStatus ?? 'n/a'})`)
+    if (webhookResponse.ok) {
+      const webhookData = await webhookResponse.json()
+      console.log('✅ Webhook automatically created:', {
+        id: webhookData.id,
+        url: webhookData.url,
+        events: webhookData.events
+      })
+    } else {
+      const errorData = await webhookResponse.text()
+      console.error('❌ Failed to create webhook:', {
+        status: webhookResponse.status,
+        error: errorData
+      })
+      throw new Error(`Webhook creation failed: ${webhookResponse.status} ${errorData}`)
+    }
+  } catch (error) {
+    console.error('⚠️ Webhook subscription exception:', error)
+    throw error
   }
 } 
