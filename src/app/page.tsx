@@ -27,6 +27,21 @@ export default function HomePage() {
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
+  // Handle Supabase recovery links that arrive at the site root as hash params
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const hash = window.location.hash;
+    if (hash && hash.includes('access_token')) {
+      const params = new URLSearchParams(hash.replace(/^#/, ''));
+      const type = params.get('type');
+      if (type === 'recovery') {
+        // Redirect to our reset-password page with query params (not hash)
+        router.replace(`/reset-password?${params.toString()}`);
+        return;
+      }
+    }
+  }, [router]);
+
   // Check if user is already authenticated
   useEffect(() => {
     const checkAuth = async () => {

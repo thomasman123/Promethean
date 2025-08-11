@@ -56,8 +56,8 @@ export async function middleware(req: NextRequest) {
     console.log('Middleware - Session exists:', !!session, 'Path:', req.nextUrl.pathname)
   }
 
-  // Allow access to landing page (/) for everyone
-  if (req.nextUrl.pathname === '/') {
+  // Allow access to landing page (/) for everyone and to reset-password
+  if (req.nextUrl.pathname === '/' || req.nextUrl.pathname === '/reset-password' || req.nextUrl.pathname === '/forgot-password') {
     return supabaseResponse
   }
 

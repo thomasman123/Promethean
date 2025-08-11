@@ -22,9 +22,25 @@ function ResetPasswordInner() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
-  // Check if we have an access token (required for password reset)
-  const accessToken = searchParams?.get('access_token')
-  const refreshToken = searchParams?.get('refresh_token')
+  // Extract tokens either from query or hash (if user navigated directly)
+  const queryAccessToken = searchParams?.get('access_token')
+  const queryRefreshToken = searchParams?.get('refresh_token')
+  const [accessToken, setAccessToken] = useState<string | null>(queryAccessToken)
+  const [refreshToken, setRefreshToken] = useState<string | null>(queryRefreshToken)
+
+  useEffect(() => {
+    if (!accessToken && typeof window !== 'undefined') {
+      const hash = window.location.hash
+      if (hash && hash.includes('access_token')) {
+        const params = new URLSearchParams(hash.replace(/^#/, ''))
+        setAccessToken(params.get('access_token'))
+        setRefreshToken(params.get('refresh_token'))
+        // Normalize URL to query params for consistency
+        const qs = params.toString()
+        router.replace(`/reset-password?${qs}`)
+      }
+    }
+  }, [accessToken, router])
 
   useEffect(() => {
     // If we have tokens, set them in the session
