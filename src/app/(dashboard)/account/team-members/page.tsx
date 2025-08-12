@@ -7,6 +7,7 @@ import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbP
 import { ThemeToggle } from '@/components/theme-toggle'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -30,6 +31,7 @@ export default function TeamMembersPage() {
   const permissions = getAccountBasedPermissions()
   const [members, setMembers] = useState<TeamMember[]>([])
   const [ghlUsers, setGhlUsers] = useState<Array<{ id: string; email: string | null; name: string | null; role: string | null }>>([])
+  const [dataUserPreviews, setDataUserPreviews] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -48,6 +50,7 @@ export default function TeamMembersPage() {
     setGhlUsers([])
     fetchMembers()
     fetchGhlUsers()
+    fetchDataUserPreviews()
   }, [selectedAccountId, accountChangeTimestamp])
 
   const fetchMembers = async () => {
@@ -75,6 +78,20 @@ export default function TeamMembersPage() {
       setGhlUsers(data.users || [])
     } catch {
       // ignore silently for now
+    }
+  }
+
+  const fetchDataUserPreviews = async () => {
+    if (!selectedAccountId) return
+    try {
+      const ts = Date.now()
+      const res = await fetch(`/api/team/data-users-preview?accountId=${selectedAccountId}&_ts=${ts}`, { cache: 'no-store' })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to fetch data user previews')
+      setDataUserPreviews(data.dataUsers || [])
+    } catch (e) {
+      console.warn('Failed to fetch data user previews:', e)
+      setDataUserPreviews([])
     }
   }
 
@@ -264,6 +281,67 @@ export default function TeamMembersPage() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Data Users Section */}
+            {dataUserPreviews.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    Data-Created Users
+                    <Badge variant="secondary">{dataUserPreviews.length}</Badge>
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    Users automatically created from appointment and call data. Review and invite active users.
+                  </p>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {dataUserPreviews.map((user) => (
+                    <div key={user.user_id} className="flex items-center justify-between p-3 border rounded">
+                      <div className="space-y-1">
+                        <div className="font-medium flex items-center gap-2">
+                          {user.name || 'Unknown'}
+                          <Badge 
+                            variant={user.recommended_action === 'invite' ? 'default' : 
+                                   user.recommended_action === 'verify' ? 'secondary' : 'outline'}
+                          >
+                            {user.recommended_action}
+                          </Badge>
+                          {user.ghl_email_found && (
+                            <Badge variant="outline" className="text-green-600">
+                              ✓ GHL Email
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="text-sm text-muted-foreground">{user.email}</div>
+                        <div className="text-xs text-muted-foreground">
+                          Activity: {user.appointment_count} appointments, {user.discovery_count} discoveries, {user.dial_count} dials
+                          {user.data_sources.length > 0 && ` • Sources: ${user.data_sources.join(', ')}`}
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        {user.recommended_action !== 'ignore' && (
+                          <Button 
+                            variant="default" 
+                            size="sm" 
+                            onClick={() => convertToInvited(user.user_id, user.email, user.name || 'Unknown')}
+                            disabled={convertingUser === user.user_id}
+                          >
+                            {convertingUser === user.user_id ? 'Inviting...' : 'Invite'}
+                          </Button>
+                        )}
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => removeMember(user.user_id)}
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
 
