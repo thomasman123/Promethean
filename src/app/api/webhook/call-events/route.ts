@@ -806,6 +806,27 @@ async function processAppointmentWebhook(payload: any) {
         }
       };
 
+      // Auto-create users for setter and sales rep if they don't exist
+      console.log('👥 Auto-creating users for appointment data:', {
+        setter: baseData.setter,
+        salesRep: baseData.sales_rep
+      });
+
+      const { ensureUsersExistForData } = await import('@/lib/auto-user-creation');
+      const userIds = await ensureUsersExistForData(
+        supabase,
+        account.id,
+        baseData.setter,
+        baseData.sales_rep,
+        account.ghl_api_key || undefined,
+        account.ghl_location_id || undefined
+      );
+
+      console.log('✅ User creation results:', {
+        setterUserId: userIds.setterUserId || 'None',
+        salesRepUserId: userIds.salesRepUserId || 'None'
+      });
+
       const appointmentData = {
         ...baseData,
         date_booked: webhookTimestamp, // When appointment was booked (webhook received)
@@ -813,7 +834,9 @@ async function processAppointmentWebhook(payload: any) {
           new Date(appointmentStartTime).toISOString() : null, // When appointment is scheduled
         cash_collected: null,
         total_sales_value: null,
-        metadata: JSON.stringify(metadata)
+        metadata: JSON.stringify(metadata),
+        setter_user_id: userIds.setterUserId || null,
+        sales_rep_user_id: userIds.salesRepUserId || null
       };
       
       // Check for existing appointment to prevent duplicates
@@ -851,10 +874,33 @@ async function processAppointmentWebhook(payload: any) {
       await linkAppointmentToDial(supabase, savedAppointment, contactData, account.id);
       
     } else if (calendarMapping.target_table === 'discoveries') {
+      // Auto-create users for setter and sales rep if they don't exist
+      console.log('👥 Auto-creating users for discovery data:', {
+        setter: baseData.setter,
+        salesRep: baseData.sales_rep
+      });
+
+      const { ensureUsersExistForData } = await import('@/lib/auto-user-creation');
+      const userIds = await ensureUsersExistForData(
+        supabase,
+        account.id,
+        baseData.setter,
+        baseData.sales_rep,
+        account.ghl_api_key || undefined,
+        account.ghl_location_id || undefined
+      );
+
+      console.log('✅ User creation results for discovery:', {
+        setterUserId: userIds.setterUserId || 'None',
+        salesRepUserId: userIds.salesRepUserId || 'None'
+      });
+
       const discoveryData = {
         ...baseData,
         date_booked_for: payload.appointment?.startTime ? 
           new Date(payload.appointment.startTime).toISOString() : null,
+        setter_user_id: userIds.setterUserId || null,
+        sales_rep_user_id: userIds.salesRepUserId || null
       };
       
       // Check for existing discovery to prevent duplicates
