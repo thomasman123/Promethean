@@ -23,6 +23,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'accountId and userId are required' }, { status: 400 })
     }
 
+    // Verify user authentication and permissions
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { data: access } = await supabase
+      .from('account_access')
+      .select('role')
+      .eq('user_id', user.id)
+      .eq('account_id', accountId)
+      .eq('is_active', true)
+      .single()
+
+    if (!access || !['admin', 'moderator'].includes(access.role)) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
+    }
+
     const { data, error } = await supabase.rpc('revoke_account_access', {
       user_id: userId,
       account_id: accountId,
