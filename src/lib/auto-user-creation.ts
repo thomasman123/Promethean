@@ -1,21 +1,23 @@
 import { createClient } from '@supabase/supabase-js'
 import type { Database } from './database.types'
 
-// Helper function to auto-create users for data linking
+// Helper function to auto-create users for data linking with GHL IDs
 export async function ensureUsersExistForData(
   supabase: ReturnType<typeof createClient<Database>>,
   accountId: string,
   setterName: string | null,
   salesRepName: string | null,
   ghlApiKey?: string,
-  ghlLocationId?: string
+  ghlLocationId?: string,
+  setterGhlId?: string,
+  salesRepGhlId?: string
 ): Promise<{ setterUserId?: string; salesRepUserId?: string }> {
   const result: { setterUserId?: string; salesRepUserId?: string } = {}
   
   try {
     // Process setter
     if (setterName && setterName.trim()) {
-      const setterEmail = await getGHLEmailForUser(setterName, ghlApiKey, ghlLocationId)
+      const setterEmail = await getGHLEmailForUser(setterName, ghlApiKey, ghlLocationId, setterGhlId)
       const { data: setterUserId } = await supabase.rpc(
         'create_data_user_if_not_exists',
         {
@@ -30,7 +32,7 @@ export async function ensureUsersExistForData(
 
     // Process sales rep
     if (salesRepName && salesRepName.trim()) {
-      const salesRepEmail = await getGHLEmailForUser(salesRepName, ghlApiKey, ghlLocationId)
+      const salesRepEmail = await getGHLEmailForUser(salesRepName, ghlApiKey, ghlLocationId, salesRepGhlId)
       const { data: salesRepUserId } = await supabase.rpc(
         'create_data_user_if_not_exists',
         {
@@ -54,12 +56,13 @@ export async function ensureUsersExistForData(
 async function getGHLEmailForUser(
   userName: string,
   ghlApiKey?: string,
-  ghlLocationId?: string
+  ghlLocationId?: string,
+  ghlUserId?: string
 ): Promise<string | null> {
   if (!ghlApiKey) return null
   
   try {
-    console.log(`🔍 Looking up GHL email for user: ${userName}`)
+    console.log(`🔍 Looking up GHL email for user: ${userName}${ghlUserId ? ` (ID: ${ghlUserId})` : ''}`)
     
     const headers = {
       'Authorization': `Bearer ${ghlApiKey}`,
@@ -67,7 +70,23 @@ async function getGHLEmailForUser(
       'Accept': 'application/json',
     }
     
-    // Try different endpoints to find the user
+    // If we have a specific user ID, use the direct endpoint first
+    if (ghlUserId) {
+      try {
+        const directResponse = await fetch(`https://services.leadconnectorhq.com/users/${ghlUserId}`, { headers })
+        if (directResponse.ok) {
+          const userData = await directResponse.json()
+          if (userData.email) {
+            console.log(`✅ Found GHL email via direct lookup for ${userName}: ${userData.email}`)
+            return userData.email
+          }
+        }
+      } catch (directError) {
+        console.warn(`Failed direct user lookup for ${ghlUserId}:`, directError)
+      }
+    }
+    
+    // Fallback to searching through user lists
     const endpoints = [
       `https://services.leadconnectorhq.com/locations/${ghlLocationId}/users/`,
       'https://services.leadconnectorhq.com/users/'
@@ -90,7 +109,7 @@ async function getGHLEmailForUser(
           
           if (user && (user.email || user.userEmail)) {
             const email = user.email || user.userEmail
-            console.log(`✅ Found GHL email for ${userName}: ${email}`)
+            console.log(`✅ Found GHL email via search for ${userName}: ${email}`)
             return email
           }
         }

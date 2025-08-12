@@ -809,7 +809,9 @@ async function processAppointmentWebhook(payload: any) {
       // Auto-create users for setter and sales rep if they don't exist
       console.log('👥 Auto-creating users for appointment data:', {
         setter: baseData.setter,
-        salesRep: baseData.sales_rep
+        salesRep: baseData.sales_rep,
+        setterGhlId: setterData?.id,
+        salesRepGhlId: salesRepData?.id
       });
 
       const { ensureUsersExistForData } = await import('@/lib/auto-user-creation');
@@ -819,7 +821,9 @@ async function processAppointmentWebhook(payload: any) {
         baseData.setter,
         baseData.sales_rep,
         account.ghl_api_key || undefined,
-        account.ghl_location_id || undefined
+        account.ghl_location_id || undefined,
+        setterData?.id,
+        salesRepData?.id
       );
 
       console.log('✅ User creation results:', {
@@ -877,7 +881,9 @@ async function processAppointmentWebhook(payload: any) {
       // Auto-create users for setter and sales rep if they don't exist
       console.log('👥 Auto-creating users for discovery data:', {
         setter: baseData.setter,
-        salesRep: baseData.sales_rep
+        salesRep: baseData.sales_rep,
+        setterGhlId: setterData?.id,
+        salesRepGhlId: salesRepData?.id
       });
 
       const { ensureUsersExistForData } = await import('@/lib/auto-user-creation');
@@ -887,7 +893,9 @@ async function processAppointmentWebhook(payload: any) {
         baseData.setter,
         baseData.sales_rep,
         account.ghl_api_key || undefined,
-        account.ghl_location_id || undefined
+        account.ghl_location_id || undefined,
+        setterData?.id,
+        salesRepData?.id
       );
 
       console.log('✅ User creation results for discovery:', {
