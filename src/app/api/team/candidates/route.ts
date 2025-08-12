@@ -99,7 +99,10 @@ export async function GET(request: NextRequest) {
     }
 
     ;(dialsRes.data || []).forEach((r: any) => {
-      add(r.setter_user_id, r.setter || null, 'setter')
+      // Use user_id if available, otherwise use name as ID
+      if (r.setter_user_id || r.setter) {
+        add(r.setter_user_id || `name:${r.setter}`, r.setter || null, 'setter')
+      }
     })
     ;(discoveriesRes.data || []).forEach((r: any) => {
       // Use user_id if available, otherwise fall back to name-based ID
@@ -111,8 +114,13 @@ export async function GET(request: NextRequest) {
       }
     })
     ;(apptsRes.data || []).forEach((r: any) => {
-      add(r.sales_rep_user_id, r.sales_rep || null, 'rep')
-      add(r.setter_user_id, r.setter || null, 'setter')
+      // Use user_id if available, otherwise use name as ID
+      if (r.sales_rep_user_id || r.sales_rep) {
+        add(r.sales_rep_user_id || `name:${r.sales_rep}`, r.sales_rep || null, 'rep')
+      }
+      if (r.setter_user_id || r.setter) {
+        add(r.setter_user_id || `name:${r.setter}`, r.setter || null, 'setter')
+      }
     })
 
     const invitedRepIds = new Set(invitedReps.map(r => r.id))
