@@ -22,6 +22,7 @@ interface TeamMember {
   role: 'admin' | 'moderator' | 'sales_rep' | 'setter'
   is_active: boolean
   granted_at: string
+  created_for_data?: boolean
 }
 
 export default function TeamMembersPage() {
@@ -37,6 +38,7 @@ export default function TeamMembersPage() {
   const [role, setRole] = useState<TeamMember['role']>('setter')
   const [inviting, setInviting] = useState(false)
   const [openInvite, setOpenInvite] = useState(false)
+  const [convertingUser, setConvertingUser] = useState<string | null>(null)
 
   useEffect(() => {
     if (!selectedAccountId) return
@@ -134,6 +136,40 @@ export default function TeamMembersPage() {
     }
   }
 
+  const convertToInvited = async (userId: string, currentEmail: string, currentName: string) => {
+    if (!selectedAccountId) return
+    setConvertingUser(userId)
+    setError(null)
+    
+    // Prompt for real email
+    const realEmail = prompt(`Enter the real email address for ${currentName}:`, currentEmail.replace('+data@promethean.ai', '@company.com'))
+    if (!realEmail) {
+      setConvertingUser(null)
+      return
+    }
+    
+    try {
+      const res = await fetch('/api/team/convert-data-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          accountId: selectedAccountId, 
+          userId, 
+          realEmail,
+          fullName: currentName 
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to convert user')
+      
+      await fetchMembers()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to convert user')
+    } finally {
+      setConvertingUser(null)
+    }
+  }
+
   if (!permissions.canManageAccount) {
     return (
       <SidebarInset>
@@ -194,13 +230,31 @@ export default function TeamMembersPage() {
                       members.map((m) => (
                         <div key={m.user_id} className="flex items-center justify-between p-3 border rounded">
                           <div className="space-y-1">
-                            <div className="font-medium">{m.full_name || 'Unknown'}</div>
+                            <div className="font-medium flex items-center gap-2">
+                              {m.full_name || 'Unknown'}
+                              {m.created_for_data && (
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                  Data User
+                                </span>
+                              )}
+                            </div>
                             <div className="text-sm text-muted-foreground">{m.email}</div>
                             <div className="text-xs text-muted-foreground">
                               Role: {m.role.replace('_', ' ')} | Status: {m.is_active ? 'Active' : 'Inactive'}
+                              {m.created_for_data && ' | Created for data linking'}
                             </div>
                           </div>
                           <div className="flex gap-2">
+                            {m.created_for_data ? (
+                              <Button 
+                                variant="default" 
+                                size="sm" 
+                                onClick={() => convertToInvited(m.user_id, m.email, m.full_name || 'Unknown')}
+                                disabled={convertingUser === m.user_id}
+                              >
+                                {convertingUser === m.user_id ? 'Converting...' : 'Invite'}
+                              </Button>
+                            ) : null}
                             <Button variant="outline" size="sm" onClick={() => removeMember(m.user_id)}>Remove</Button>
                           </div>
                         </div>
