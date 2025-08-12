@@ -52,9 +52,9 @@ export async function GET(request: NextRequest) {
     const setterNames = new Map<string, string | null>()
 
     const [dialsRes, discoveriesRes, apptsRes] = await Promise.all([
-      supabase.from('dials').select('rep_id, setter_id, rep_name, setter_name').eq('account_id', accountId),
-      supabase.from('discoveries').select('setter_id, setter_name').eq('account_id', accountId),
-      supabase.from('appointments').select('rep_id, setter_id, rep_name, setter_name').eq('account_id', accountId)
+      supabase.from('dials').select('setter_user_id, setter').eq('account_id', accountId),
+      supabase.from('discoveries').select('setter, sales_rep').eq('account_id', accountId),
+      supabase.from('appointments').select('sales_rep_user_id, setter_user_id, sales_rep, setter').eq('account_id', accountId)
     ])
 
     const add = (id: string | null, name: string | null, type: 'rep' | 'setter') => {
@@ -69,13 +69,16 @@ export async function GET(request: NextRequest) {
     }
 
     ;(dialsRes.data || []).forEach((r: any) => {
-      add(r.rep_id, r.rep_name || null, 'rep')
-      add(r.setter_id, r.setter_name || null, 'setter')
+      add(r.setter_user_id, r.setter || null, 'setter')
     })
-    ;(discoveriesRes.data || []).forEach((r: any) => add(r.setter_id, r.setter_name || null, 'setter'))
+    ;(discoveriesRes.data || []).forEach((r: any) => {
+      // For discoveries table, use name as ID since no user_id columns exist
+      if (r.setter) add(`name:${r.setter}`, r.setter, 'setter')
+      if (r.sales_rep) add(`name:${r.sales_rep}`, r.sales_rep, 'rep')
+    })
     ;(apptsRes.data || []).forEach((r: any) => {
-      add(r.rep_id, r.rep_name || null, 'rep')
-      add(r.setter_id, r.setter_name || null, 'setter')
+      add(r.sales_rep_user_id, r.sales_rep || null, 'rep')
+      add(r.setter_user_id, r.setter || null, 'setter')
     })
 
     const invitedRepIds = new Set(invitedReps.map(r => r.id))
