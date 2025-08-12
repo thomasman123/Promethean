@@ -29,8 +29,9 @@ export default function ForgotPasswordPage() {
 
     try {
       const appUrl = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : '')
+      const cleanUrl = appUrl.endsWith('/') ? appUrl.slice(0, -1) : appUrl
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${appUrl}/reset-password`,
+        redirectTo: `${cleanUrl}/reset-password`,
       })
 
       if (error) {
@@ -57,8 +58,9 @@ export default function ForgotPasswordPage() {
     setLoading(true)
     try {
       const appUrl = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : '')
+      const cleanUrl = appUrl.endsWith('/') ? appUrl.slice(0, -1) : appUrl
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${appUrl}/reset-password`,
+        redirectTo: `${cleanUrl}/reset-password`,
       })
 
       if (error) {
