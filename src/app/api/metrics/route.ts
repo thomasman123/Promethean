@@ -72,7 +72,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Execute metric calculation
+    console.log('🐛 DEBUG - API: About to execute metric request:', metricRequest);
     const result = await metricsEngine.execute(metricRequest)
+    console.log('🐛 DEBUG - API: Metric execution result:', result);
 
     return NextResponse.json(result)
 

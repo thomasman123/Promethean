@@ -165,6 +165,10 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
             endDate: globalFilters.endDate,
             startDateType: typeof globalFilters.startDate,
             endDateType: typeof globalFilters.endDate
+          },
+          accountInfo: {
+            selectedAccountId,
+            accountIdInFilters: requestFilters.accountId
           }
         });
 
