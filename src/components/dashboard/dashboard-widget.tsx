@@ -64,6 +64,10 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
   
   const metricDefinition = metricsRegistry.find(m => m.name === widget.metricName);
   
+  // Multi-line compare state for line widgets
+  const [compareData, setCompareData] = useState<Array<Record<string, any>>>([]);
+  const [compareLines, setCompareLines] = useState<Array<{ dataKey: string; name: string }>>([]);
+
   // Special handling for compare mode widgets (no longer applicable since we only have KPI)
   // This is kept for backwards compatibility but won't be used
   
@@ -90,6 +94,106 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
   // Memoize filters to prevent reference instability
   const stableFilters = useMemo(() => JSON.stringify(filters), [filters]);
   
+  // Helper to format dates for API
+  const formatLocalYMD = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+
+  // Map dashboard metric name to engine metric name based on breakdown
+  const getEngineMetricName = (dashboardMetricName: string, breakdown: string) => {
+    // Map common dashboard metrics to engine metrics based on breakdown
+    if (dashboardMetricName.includes('appointment')) {
+      if (breakdown === 'total') return 'total_appointments';
+      if (breakdown === 'rep') return 'total_appointments_reps'; 
+      if (breakdown === 'setter') return 'total_appointments_setters';
+      if (breakdown === 'link') return 'appointments_link';
+    }
+    
+    // Default fallback - use the metric name as-is
+    return dashboardMetricName;
+  };
+
+  // Build multi-series for global compare (line charts)
+  useEffect(() => {
+    const run = async () => {
+      if (!compareMode || !compareEntities || compareEntities.length === 0) {
+        setCompareData([]);
+        setCompareLines([]);
+        return;
+      }
+      if (widget.vizType !== 'line') {
+        setCompareData([]);
+        setCompareLines([]);
+        return;
+      }
+      if (!selectedAccountId) return;
+
+      const now = new Date();
+      const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      const startDate = filters.startDate ? (filters.startDate instanceof Date ? filters.startDate : new Date(filters.startDate)) : thirtyDaysAgo;
+      const endDate = filters.endDate ? (filters.endDate instanceof Date ? filters.endDate : new Date(filters.endDate)) : now;
+
+      const engineMetricName = (() => {
+        const name = widget.metricName;
+        if (name.includes('appointment')) return 'total_appointments';
+        return name;
+      })();
+
+      const entities = compareModeSettings.scope === 'rep'
+        ? compareEntities.filter(e => e.type === 'rep')
+        : compareModeSettings.scope === 'setter'
+          ? compareEntities.filter(e => e.type === 'setter')
+          : compareEntities; // pair: include both; render separate lines
+
+      const baseFilters = {
+        dateRange: { start: formatLocalYMD(startDate), end: formatLocalYMD(endDate) },
+        accountId: selectedAccountId,
+      } as any;
+
+      const seriesByKey: Record<string, { name: string; points: Array<{ date: string; value: number }> }> = {};
+
+      await Promise.all(
+        entities.map(async (ent, idx) => {
+          const reqFilters = { ...baseFilters } as any;
+          if (ent.type === 'rep') reqFilters.repIds = [ent.id];
+          if (ent.type === 'setter') reqFilters.setterIds = [ent.id];
+          const resp = await fetch('/api/metrics', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ metricName: engineMetricName, filters: reqFilters, vizType: 'line', breakdown: 'total' })
+          });
+          if (!resp.ok) return;
+          const json = await resp.json();
+          const ts = (json?.result?.type === 'time' && Array.isArray(json?.result?.data)) ? json.result.data as Array<{ date: string; value: number }> : [];
+          const key = `${ent.type}-${ent.id}`;
+          seriesByKey[key] = { name: ent.name || 'Unknown', points: ts };
+        })
+      );
+
+      const allDates = new Set<string>();
+      Object.values(seriesByKey).forEach(s => s.points.forEach(p => allDates.add(p.date)));
+      const dates = Array.from(allDates);
+
+      const combined = dates.map(date => {
+        const row: Record<string, any> = { date };
+        for (const [key, s] of Object.entries(seriesByKey)) {
+          const found = s.points.find(p => p.date === date);
+          row[key] = found?.value || 0;
+        }
+        return row;
+      });
+
+      const lines = Object.entries(seriesByKey).map(([key, s]) => ({ dataKey: key, name: s.name }));
+      setCompareData(combined);
+      setCompareLines(lines);
+    };
+
+    run();
+  }, [compareMode, JSON.stringify(compareEntities), compareModeSettings.scope, widget.vizType, widget.metricName, selectedAccountId, filters.startDate, filters.endDate]);
+
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
@@ -152,19 +256,6 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
         };
 
         // Map dashboard metric name to engine metric name based on breakdown
-        const getEngineMetricName = (dashboardMetricName: string, breakdown: string) => {
-          // Map common dashboard metrics to engine metrics based on breakdown
-          if (dashboardMetricName.includes('appointment')) {
-            if (breakdown === 'total') return 'total_appointments';
-            if (breakdown === 'rep') return 'total_appointments_reps'; 
-            if (breakdown === 'setter') return 'total_appointments_setters';
-            if (breakdown === 'link') return 'appointments_link';
-          }
-          
-          // Default fallback - use the metric name as-is
-          return dashboardMetricName;
-        };
-
         const engineMetricName = getEngineMetricName(widgetKey.metricName, widgetKey.breakdown);
 
         console.log('🐛 DEBUG - Dashboard Widget API Call:', {
@@ -265,6 +356,22 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
         // For line charts, we need time-series data
         let lineData;
         let xAxisKey;
+
+        // If global compare provides series, use them
+        if (compareMode && compareLines.length > 0 && compareData.length > 0) {
+          return (
+            <LineChart
+              key={chartKey}
+              data={compareData}
+              lines={compareLines.map((l, idx) => ({ dataKey: l.dataKey, name: l.name, color: `var(--chart-${(idx % 10) + 1})` }))}
+              xAxisKey="date"
+              showLegend
+              showGrid
+              disableTooltip={isDragging}
+              className="h-full"
+            />
+          );
+        }
         
         if (Array.isArray(data.data) && data.data.length > 0) {
           // Time-series data from engine
