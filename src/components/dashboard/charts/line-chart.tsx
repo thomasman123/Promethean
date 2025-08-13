@@ -71,17 +71,17 @@ export function LineChart({
             />
           )}
           {showLegend && <Legend />}
-          {lines.map((line) => (
-            <Line
-              key={line.dataKey}
-              type="monotone"
-              dataKey={line.dataKey}
-              stroke={line.color}
-              strokeWidth={2}
-              dot={false}
-              activeDot={{ r: 4 }}
-            />
-          ))}
+                  {lines.map((line) => (
+          <Line
+            key={line.dataKey}
+            type="monotone"
+            dataKey={line.dataKey}
+            stroke={line.color}
+            strokeWidth={2}
+            dot={{ r: 4, fill: line.color }}
+            activeDot={{ r: 6, fill: line.color }}
+          />
+        ))}
         </RechartsLineChart>
       </ResponsiveContainer>
     </ChartContainer>
