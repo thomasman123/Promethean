@@ -250,9 +250,23 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
         
       case 'line':
         // For line charts, we need time-series data
-        const lineData = Array.isArray(data.data) ? data.data : [
-          { name: 'Current', value: data.data.value || 0 }
-        ];
+        let lineData;
+        let xAxisKey;
+        
+        if (Array.isArray(data.data) && data.data.length > 0) {
+          // Time-series data from engine
+          lineData = data.data.map((item: any) => ({
+            date: item.date || item.name,
+            value: item.value || 0
+          }));
+          xAxisKey = 'date';
+        } else {
+          // Fallback for non-time-series data
+          lineData = [
+            { date: 'Current', value: data.data.value || 0 }
+          ];
+          xAxisKey = 'date';
+        }
         
         return (
           <LineChart
@@ -263,7 +277,7 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
               name: widget.settings?.title || metricDefinition?.displayName || widget.metricName,
               color: 'hsl(var(--primary))'
             }]}
-            xAxisKey="name"
+            xAxisKey={xAxisKey}
             showLegend={false}
             showGrid={true}
             disableTooltip={isDragging}

@@ -10,6 +10,21 @@ export const METRICS_REGISTRY: Record<string, MetricDefinition> = {
 			table: 'appointments',
 			select: ['COUNT(*) as value']
 		}
+	},
+	
+	'appointments_over_time': {
+		name: 'Appointments Over Time',
+		description: 'Daily count of appointments over time',
+		breakdownType: 'time',
+		query: {
+			table: 'appointments',
+			select: [
+				'DATE(date_booked_for) as date',
+				'COUNT(*) as value'
+			],
+			groupBy: ['DATE(date_booked_for)'],
+			orderBy: ['date ASC']
+		}
 	}
 }
 

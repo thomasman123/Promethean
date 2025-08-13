@@ -1,6 +1,6 @@
 // Core types for the metrics middleware system
 
-export type BreakdownType = 'total' | 'rep' | 'setter' | 'link'
+export type BreakdownType = 'total' | 'rep' | 'setter' | 'link' | 'time'
 
 export interface MetricFilters {
   dateRange: {
@@ -71,11 +71,17 @@ export interface LinkResult {
   value: number
 }
 
+export interface TimeResult {
+  date: string
+  value: number
+}
+
 export type MetricResult = 
   | { type: 'total'; data: TotalResult }
   | { type: 'rep'; data: RepResult[] }
   | { type: 'setter'; data: SetterResult[] }
   | { type: 'link'; data: LinkResult[] }
+  | { type: 'time'; data: TimeResult[] }
 
 export interface MetricRequest {
   metricName: string

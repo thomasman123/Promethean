@@ -7,7 +7,8 @@ import {
   RepResult,
   SetterResult,
   LinkResult,
-  TotalResult
+  TotalResult,
+  TimeResult
 } from './types'
 import { getMetric } from './registry'
 import { applyStandardFilters, buildWhereClause, flattenParams, validateFilters } from './filters'
@@ -93,7 +94,7 @@ export class MetricsEngine {
     
     // Format results based on breakdown type
     // data is a JSONB array, so we need to parse it
-    const results = Array.isArray(data) ? data : (data ? JSON.parse(data) : [])
+    const results = Array.isArray(data) ? data : (data ? JSON.parse(String(data)) : [])
     return this.formatResults(metric.breakdownType, results)
   }
 
@@ -207,6 +208,17 @@ export class MetricsEngine {
           data: linkResults
         }
       
+      case 'time':
+        const timeResults: TimeResult[] = rawResults.map(row => ({
+          date: row.date || row.time_period || 'Unknown',
+          value: Number(row.value || 0)
+        }))
+        
+        return {
+          type: 'time',
+          data: timeResults
+        }
+      
       default:
         throw new Error(`Unknown breakdown type: ${breakdownType}`)
     }
@@ -227,6 +239,8 @@ export class MetricsEngine {
         return { type: 'setter', data: [] }
       case 'link':
         return { type: 'link', data: [] }
+      case 'time':
+        return { type: 'time', data: [] }
       default:
         return { type: 'total', data: { value: 0 } }
     }
