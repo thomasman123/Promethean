@@ -409,24 +409,14 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
         <ChartWrapper
           title={widget.settings?.title || metricDefinition?.displayName || widget.metricName}
           description={metricDefinition?.description}
-          onEdit={() => setShowDetailModal(true)}
-          onDuplicate={() => duplicateWidget(widget.id)}
-          onDelete={() => removeWidget(widget.id)}
-          isLoading={isLoading}
-          error={error}
+          onFullscreen={() => setShowDetailModal(true)}
         >
-          {data && renderChart()}
+          {renderChart()}
         </ChartWrapper>
       </div>
-      
-      {showDetailModal && data && (
-        <WidgetDetailModal
-          widget={widget}
-          data={data}
-          open={showDetailModal}
-          onOpenChange={setShowDetailModal}
-        />
-      )}
+      {data && (
+        <WidgetDetailModal widget={widget} data={data} open={showDetailModal} onOpenChange={setShowDetailModal} />)
+      }
     </>
   );
 } 
