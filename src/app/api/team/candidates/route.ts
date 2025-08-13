@@ -74,18 +74,20 @@ export async function GET(request: NextRequest) {
     // Split into reps and setters based on their role
     const invitedReps = (team || [])
       .filter(m => m.role && ['sales_rep', 'admin', 'moderator'].includes(m.role))
+      .filter(m => (m as any).full_name && (m as any).full_name.trim().length > 2) // Filter out invalid names
       .map<Candidate>(m => ({ 
         id: (m as any).user_id, 
-        name: (m as any).full_name || null, 
+        name: (m as any).full_name?.trim() || (m as any).email || 'Unknown', 
         role: 'rep', 
         invited: true 
       }))
 
     const invitedSetters = (team || [])
       .filter(m => m.role && ['setter', 'admin', 'moderator'].includes(m.role))
+      .filter(m => (m as any).full_name && (m as any).full_name.trim().length > 2) // Filter out invalid names
       .map<Candidate>(m => ({ 
         id: (m as any).user_id, 
-        name: (m as any).full_name || null, 
+        name: (m as any).full_name?.trim() || (m as any).email || 'Unknown', 
         role: 'setter', 
         invited: true 
       }))

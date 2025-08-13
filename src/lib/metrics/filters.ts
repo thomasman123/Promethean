@@ -13,6 +13,14 @@ export interface AppliedFilters {
 }
 
 /**
+ * Check if a string is a valid UUID format
+ */
+function isValidUUID(str: string): boolean {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+  return uuidRegex.test(str)
+}
+
+/**
  * Applies standard filters to any metric query
  * Returns SQL conditions and parameters for safe execution
  */
@@ -49,43 +57,63 @@ export function applyStandardFilters(filters: MetricFilters): AppliedFilters {
 
   // Rep filter - applied if repIds provided (UUID only)
   if (filters.repIds && filters.repIds.length > 0) {
-    if (filters.repIds.length === 1) {
-      conditions.push({
-        field: 'sales_rep_user_id',
-        operator: '=',
-        value: filters.repIds[0],
-        paramName: 'rep_id'
-      })
-      params.rep_id = filters.repIds[0]
-    } else {
-      conditions.push({
-        field: 'sales_rep_user_id',
-        operator: 'IN',
-        value: filters.repIds,
-        paramName: 'rep_ids'
-      })
-      params.rep_ids = filters.repIds
+    // Validate all IDs are UUIDs
+    const validRepIds = filters.repIds.filter(id => isValidUUID(id))
+    if (validRepIds.length === 0) {
+      console.warn('⚠️ All rep IDs are invalid (non-UUID), skipping rep filter')
+    } else if (validRepIds.length !== filters.repIds.length) {
+      console.warn('⚠️ Some rep IDs are invalid (non-UUID), filtering to valid ones only')
+    }
+    
+    if (validRepIds.length > 0) {
+      if (validRepIds.length === 1) {
+        conditions.push({
+          field: 'sales_rep_user_id',
+          operator: '=',
+          value: validRepIds[0],
+          paramName: 'rep_id'
+        })
+        params.rep_id = validRepIds[0]
+      } else {
+        conditions.push({
+          field: 'sales_rep_user_id',
+          operator: 'IN',
+          value: validRepIds,
+          paramName: 'rep_ids'
+        })
+        params.rep_ids = validRepIds
+      }
     }
   }
 
   // Setter filter - applied if setterIds provided (UUID only)
   if (filters.setterIds && filters.setterIds.length > 0) {
-    if (filters.setterIds.length === 1) {
-      conditions.push({
-        field: 'setter_user_id',
-        operator: '=',
-        value: filters.setterIds[0],
-        paramName: 'setter_id'
-      })
-      params.setter_id = filters.setterIds[0]
-    } else {
-      conditions.push({
-        field: 'setter_user_id',
-        operator: 'IN',
-        value: filters.setterIds,
-        paramName: 'setter_ids'
-      })
-      params.setter_ids = filters.setterIds
+    // Validate all IDs are UUIDs
+    const validSetterIds = filters.setterIds.filter(id => isValidUUID(id))
+    if (validSetterIds.length === 0) {
+      console.warn('⚠️ All setter IDs are invalid (non-UUID), skipping setter filter')
+    } else if (validSetterIds.length !== filters.setterIds.length) {
+      console.warn('⚠️ Some setter IDs are invalid (non-UUID), filtering to valid ones only')
+    }
+    
+    if (validSetterIds.length > 0) {
+      if (validSetterIds.length === 1) {
+        conditions.push({
+          field: 'setter_user_id',
+          operator: '=',
+          value: validSetterIds[0],
+          paramName: 'setter_id'
+        })
+        params.setter_id = validSetterIds[0]
+      } else {
+        conditions.push({
+          field: 'setter_user_id',
+          operator: 'IN',
+          value: validSetterIds,
+          paramName: 'setter_ids'
+        })
+        params.setter_ids = validSetterIds
+      }
     }
   }
 

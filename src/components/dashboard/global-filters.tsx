@@ -50,12 +50,42 @@ export function GlobalFilters({ className }: GlobalFiltersProps) {
         setSetterOptions([
           ...(json.setters || []).map((c: Candidate) => toOption(c, c.invited ? 'Setters' : 'Setters • Uninvited')),
         ])
+
+        // Clean up any invalid IDs (non-UUIDs) from current filters
+        const isValidUUID = (str: string): boolean => {
+          const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+          return uuidRegex.test(str)
+        }
+
+        const validRepIds = json.reps?.map((r: Candidate) => r.id) || []
+        const validSetterIds = json.setters?.map((s: Candidate) => s.id) || []
+
+        // Filter out any invalid IDs from current filters
+        if (filters.repIds) {
+          const cleanRepIds = filters.repIds.filter(id => 
+            isValidUUID(id) && validRepIds.includes(id)
+          )
+          if (cleanRepIds.length !== filters.repIds.length) {
+            console.log('🧹 Cleaned invalid rep IDs from filters')
+            setFilters({ repIds: cleanRepIds.length > 0 ? cleanRepIds : undefined })
+          }
+        }
+
+        if (filters.setterIds) {
+          const cleanSetterIds = filters.setterIds.filter(id => 
+            isValidUUID(id) && validSetterIds.includes(id)
+          )
+          if (cleanSetterIds.length !== filters.setterIds.length) {
+            console.log('🧹 Cleaned invalid setter IDs from filters')
+            setFilters({ setterIds: cleanSetterIds.length > 0 ? cleanSetterIds : undefined })
+          }
+        }
       } catch (e) {
         console.warn('Failed to load candidates', e)
       }
     }
     loadCandidates()
-  }, [selectedAccountId])
+  }, [selectedAccountId, filters.repIds, filters.setterIds, setFilters])
   
   const handleDateChange = (dateRange: DateRange | undefined) => {
     setFilters({
