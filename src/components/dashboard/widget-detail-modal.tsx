@@ -9,7 +9,8 @@ import { Download } from "lucide-react";
 import { KPIChart, BarChart, LineChart, AreaChart, RadarChart } from "./charts";
 import { DashboardWidget as WidgetType, MetricData } from "@/lib/dashboard/types";
 import { useDashboardStore } from "@/lib/dashboard/store";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
 
 interface WidgetDetailModalProps {
   widget: WidgetType;
@@ -21,9 +22,111 @@ interface WidgetDetailModalProps {
 export function WidgetDetailModal({ widget, data, open, onOpenChange }: WidgetDetailModalProps) {
   const { metricsRegistry } = useDashboardStore();
   const metricDefinition = metricsRegistry.find(m => m.name === widget.metricName);
+  const { selectedAccountId } = useAuth();
 
   const [actor, setActor] = useState<'rep' | 'setter'>('rep');
   const [grouped, setGrouped] = useState<Array<{ name: string; value: number }>>([]);
+
+  // State for multi-line chart
+  const [multiData, setMultiData] = useState<Array<Record<string, any>>>([]);
+  const [multiLines, setMultiLines] = useState<Array<{ dataKey: string; name: string }>>([]);
+  const [isLoadingSeries, setIsLoadingSeries] = useState(false);
+
+  const { filters: globalFilters } = useDashboardStore();
+
+  const formatLocalYMD = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+
+  const resolveDates = () => {
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const startDate = globalFilters.startDate ? (globalFilters.startDate instanceof Date ? globalFilters.startDate : new Date(globalFilters.startDate)) : thirtyDaysAgo;
+    const endDate = globalFilters.endDate ? (globalFilters.endDate instanceof Date ? globalFilters.endDate : new Date(globalFilters.endDate)) : now;
+    return { start: formatLocalYMD(startDate), end: formatLocalYMD(endDate) };
+  };
+
+  const getEngineMetricName = (dashboardMetricName: string, breakdown: string) => {
+    if (dashboardMetricName.includes('appointment')) {
+      if (breakdown === 'total') return 'total_appointments';
+      if (breakdown === 'rep') return 'total_appointments_reps';
+      if (breakdown === 'setter') return 'total_appointments_setters';
+      if (breakdown === 'link') return 'appointments_link';
+    }
+    return dashboardMetricName;
+  };
+
+  // Fetch candidates for actor and build multi-series time data for line charts
+  useEffect(() => {
+    const loadMultiSeries = async () => {
+      if (!open || widget.vizType !== 'line') return;
+      if (!selectedAccountId) return;
+
+      setIsLoadingSeries(true);
+      try {
+        // 1) load candidates
+        const candidatesRes = await fetch(`/api/team/candidates?accountId=${encodeURIComponent(selectedAccountId)}`);
+        const candidatesJson = await candidatesRes.json();
+        const list = (actor === 'rep' ? candidatesJson.reps : candidatesJson.setters) || [];
+        const top = list.slice(0, 5); // initial: top 5 (first 5)
+
+        // 2) fetch time series per candidate
+        const { start, end } = resolveDates();
+        const baseFilters = {
+          dateRange: { start, end },
+          accountId: selectedAccountId,
+        } as any;
+
+        const engineMetricName = getEngineMetricName(widget.metricName, 'total');
+
+        const seriesByEntity: Record<string, Array<{ date: string; value: number }>> = {};
+        const lines: Array<{ dataKey: string; name: string }> = [];
+
+        await Promise.all(
+          top.map(async (entity: any) => {
+            const filters = { ...baseFilters } as any;
+            if (actor === 'rep') filters.repIds = [entity.id];
+            if (actor === 'setter') filters.setterIds = [entity.id];
+
+            const resp = await fetch('/api/metrics', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ metricName: engineMetricName, filters, vizType: 'line', breakdown: 'total' })
+            });
+            if (!resp.ok) return;
+            const json = await resp.json();
+            const ts = (json?.result?.type === 'time' && Array.isArray(json?.result?.data)) ? json.result.data as Array<{ date: string; value: number }> : [];
+            seriesByEntity[entity.id] = ts;
+            lines.push({ dataKey: entity.id, name: entity.name || 'Unknown' });
+          })
+        );
+
+        // 3) combine into a single dataset keyed by date
+        const allDates = new Set<string>();
+        Object.values(seriesByEntity).forEach(arr => arr.forEach(p => allDates.add(p.date)));
+        const sortedDates = Array.from(allDates);
+
+        const combined = sortedDates.map(date => {
+          const row: Record<string, any> = { date };
+          for (const [entityId, arr] of Object.entries(seriesByEntity)) {
+            const found = (arr as any[]).find(p => p.date === date);
+            row[entityId] = found?.value || 0;
+          }
+          return row;
+        });
+
+        setMultiLines(lines);
+        setMultiData(combined);
+      } finally {
+        setIsLoadingSeries(false);
+      }
+    };
+
+    loadMultiSeries();
+  }, [open, widget.vizType, widget.metricName, selectedAccountId, actor]);
 
   useEffect(() => {
     if (!open) return;
@@ -198,11 +301,32 @@ export function WidgetDetailModal({ widget, data, open, onOpenChange }: WidgetDe
             <Card className="h-full">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-base">Full Size Chart</CardTitle>
-                <div className="flex gap-2">
+                <div className="flex items-center gap-2">
+                  {widget.vizType === 'line' && (
+                    <>
+                      <Button size="sm" variant={actor === 'rep' ? 'default' : 'outline'} onClick={() => setActor('rep')}>Reps</Button>
+                      <Button size="sm" variant={actor === 'setter' ? 'default' : 'outline'} onClick={() => setActor('setter')}>Setters</Button>
+                    </>
+                  )}
                   <Button variant="outline" size="sm" onClick={handleExport}>Export</Button>
                 </div>
               </CardHeader>
-              <CardContent className="h-[calc(100%-3rem)]">{renderFullChart()}</CardContent>
+              <CardContent className="h-[calc(100%-3rem)]">
+                {widget.vizType === 'line' && multiData.length > 0 ? (
+                  <div className="h-full w-full">
+                    <LineChart
+                      data={multiData}
+                      lines={multiLines.map((l, idx) => ({ dataKey: l.dataKey, name: l.name, color: `var(--chart-${(idx % 5) + 1})` }))}
+                      xAxisKey="date"
+                      showLegend
+                      showGrid
+                      className="h-full w-full"
+                    />
+                  </div>
+                ) : (
+                  renderFullChart()
+                )}
+              </CardContent>
             </Card>
           </TabsContent>
 
