@@ -184,21 +184,47 @@ export class MetricsEngine {
     const whereClause = buildWhereClause(appliedFilters, []);
     const appointmentConditions = whereClause.replace('WHERE ', '').replace(/\bdate_booked_for\b/g, 'appointments.date_booked_for');
     
+    // Determine aggregation level based on date range
+    const aggregationLevel = this.determineTimeAggregation(appliedFilters);
+    
+    let dateSeriesInterval: string;
+    let dateGrouping: string;
+    let dateDisplay: string;
+    
+    switch (aggregationLevel) {
+      case 'month':
+        dateSeriesInterval = "'1 month'::interval";
+        dateGrouping = "DATE_TRUNC('month', appointments.date_booked_for)";
+        dateDisplay = "TO_CHAR(date_series.date, 'YYYY-MM') as date";
+        break;
+      case 'week':
+        dateSeriesInterval = "'1 week'::interval";
+        dateGrouping = "DATE_TRUNC('week', appointments.date_booked_for)";
+        dateDisplay = "TO_CHAR(date_series.date, 'YYYY-\"W\"WW') as date";
+        break;
+      case 'day':
+      default:
+        dateSeriesInterval = "'1 day'::interval";
+        dateGrouping = "DATE(appointments.date_booked_for)";
+        dateDisplay = "date_series.date::text as date";
+        break;
+    }
+    
     // Generate date series and LEFT JOIN with appointments to get all dates including zeros
     const sql = `
       WITH date_series AS (
         SELECT generate_series(
-          :start_date::date,
-          :end_date::date,
-          '1 day'::interval
+          DATE_TRUNC('${aggregationLevel}', :start_date::date),
+          DATE_TRUNC('${aggregationLevel}', :end_date::date),
+          ${dateSeriesInterval}
         )::date as date
       )
       SELECT 
-        date_series.date::text as date,
+        ${dateDisplay},
         COALESCE(COUNT(appointments.id), 0) as value
       FROM date_series
       LEFT JOIN appointments ON (
-        DATE(appointments.date_booked_for) = date_series.date
+        DATE_TRUNC('${aggregationLevel}', appointments.date_booked_for) = date_series.date
         ${appointmentConditions ? ` AND (${appointmentConditions})` : ''}
       )
       GROUP BY date_series.date
@@ -206,6 +232,35 @@ export class MetricsEngine {
     `;
     
     return sql.trim();
+  }
+
+  /**
+   * Determine time aggregation level based on date range
+   */
+  private determineTimeAggregation(appliedFilters: any): 'day' | 'week' | 'month' {
+    const startDate = new Date(appliedFilters.params.start_date);
+    const endDate = new Date(appliedFilters.params.end_date);
+    const diffInDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+    
+    console.log('🐛 DEBUG - Time aggregation calculation:', {
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString(),
+      diffInDays,
+      willUse: diffInDays > 60 ? 'month' : diffInDays > 14 ? 'week' : 'day'
+    });
+    
+    // 2+ months (60+ days) → monthly aggregation
+    if (diffInDays > 60) {
+      return 'month';
+    }
+    
+    // 2+ weeks (14+ days) → weekly aggregation
+    if (diffInDays > 14) {
+      return 'week';
+    }
+    
+    // 1 week or less → daily aggregation
+    return 'day';
   }
 
   /**
