@@ -100,11 +100,30 @@ function AppointmentSheet({ open, onOpenChange, item }: { open: boolean; onOpenC
     setLeadQuality("");
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!canSubmit) return;
-    // TODO: call API to persist; append audit; close
-    onOpenChange(false);
-    reset();
+    const payload = {
+      callOutcome,
+      watchedAssets: watchedAssets === 'true',
+      pitched: pitched === 'true',
+      shownOutcome,
+      cashCollected: cashCollected ? Number(cashCollected) : undefined,
+      totalSalesValue: totalSalesValue ? Number(totalSalesValue) : undefined,
+      objection: objection || undefined,
+      leadQuality: Number(leadQuality),
+    };
+    try {
+      const res = await fetch('/api/appointments/outcome', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ appointmentId: item.id, payload })
+      });
+      if (!res.ok) throw new Error(await res.text());
+      onOpenChange(false);
+      reset();
+    } catch (e) {
+      console.error('Failed to save outcome', e);
+    }
   };
 
   return (

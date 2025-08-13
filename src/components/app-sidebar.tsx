@@ -42,6 +42,7 @@ const staticData = {
         { title: "Appointments", url: "/dashboard/appointments" },
         { title: "Discoveries", url: "/dashboard/discoveries" },
         { title: "Dials", url: "/dashboard/dials" },
+        { title: "Update Data", url: "/dashboard/appointments" },
       ],
     },
     { title: "Ads", url: "/ads", icon: MegaphoneIcon, items: [ { title: "Setup", url: "/ads/setup" }, { title: "Campaigns", url: "/ads/campaigns" } ] },
