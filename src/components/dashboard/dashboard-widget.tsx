@@ -135,7 +135,7 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
           return;
         }
 
-        const { filters: globalFilters } = useDashboardStore.getState();
+        const { filters: globalFilters, getCachedMetric, setCachedMetric } = useDashboardStore.getState();
 
         // Prepare filters for metrics API
         const now = new Date();
@@ -184,25 +184,23 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
           setterIds: globalFilters.setterIds
         };
 
+        // Cache key unique per widget metric, viz, and filters
+        const cacheKey = JSON.stringify({
+          metric: widgetKey.metricName,
+          viz: widget.vizType,
+          breakdown: widgetKey.breakdown,
+          filters: requestFilters,
+        });
+
+        const cached = getCachedMetric(cacheKey);
+        if (cached) {
+          setData(cached as MetricData);
+          setIsLoading(false);
+          return;
+        }
+
         // Map dashboard metric name to engine metric name based on breakdown
         const engineMetricName = getEngineMetricName(widgetKey.metricName, widgetKey.breakdown);
-
-        console.log('🐛 DEBUG - Dashboard Widget API Call:', {
-          originalMetricName: widgetKey.metricName,
-          breakdown: widgetKey.breakdown,
-          engineMetricName,
-          filters: requestFilters,
-          globalFiltersDebug: {
-            startDate: globalFilters.startDate,
-            endDate: globalFilters.endDate,
-            startDateType: typeof globalFilters.startDate,
-            endDateType: typeof globalFilters.endDate
-          },
-          accountInfo: {
-            selectedAccountId,
-            accountIdInFilters: requestFilters.accountId
-          }
-        });
 
         // Call metrics API
         const response = await fetch('/api/metrics', {
@@ -231,7 +229,7 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
         let transformedData: MetricData;
         
         if ((widget.vizType === 'line' || widget.vizType === 'bar' || widget.vizType === 'area' || widget.vizType === 'radar') && engineResult?.type === 'time') {
-          // For line and bar charts, engine dynamically converts to time-series
+          // For line charts, engine dynamically converts to time-series
           transformedData = {
             metricName: widgetKey.metricName,
             breakdown: widgetKey.breakdown,
@@ -246,6 +244,7 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
           };
         }
         
+        setCachedMetric(cacheKey, transformedData);
         setData(transformedData);
         
       } catch (err) {

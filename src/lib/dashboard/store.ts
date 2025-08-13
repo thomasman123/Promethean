@@ -14,6 +14,11 @@ import {
 } from './types';
 import { supabase } from '@/lib/supabase';
 
+interface MetricsCacheEntry {
+  data: any;
+  fetchedAt: number;
+}
+
 interface DashboardState {
   // Current view
   currentView: DashboardView | null;
@@ -41,6 +46,9 @@ interface DashboardState {
   isViewManagerOpen: boolean;
   isDirty: boolean; // Track unsaved changes
  
+  // Simple preloaded metrics cache (resets on refresh)
+  metricsCache: Record<string, MetricsCacheEntry>;
+
   // Actions
   setCurrentView: (view: DashboardView) => void;
   setViews: (views: DashboardView[]) => void;
@@ -50,7 +58,7 @@ interface DashboardState {
   createView: (name: string, scope: ViewScope, notes: string | undefined, accountId: string) => Promise<void>;
   updateView: (viewId: string, updates: Partial<DashboardView>) => Promise<void>;
   deleteView: (viewId: string) => Promise<void>;
-  duplicateView: (viewId: string, newName: string) => Promise<void>;
+  duplicateView: (viewId: string) => Promise<void>;
   loadView: (viewId: string) => Promise<void>;
   
   // Widget actions
@@ -83,6 +91,10 @@ interface DashboardState {
   // Save current
   saveCurrentView: () => Promise<void>;
   resetToSaved: () => void;
+
+  // Cache helpers
+  getCachedMetric: (key: string) => any | undefined;
+  setCachedMetric: (key: string, data: any) => void;
 }
 
 export const useDashboardStore = create<DashboardState>((set, get) => ({
@@ -112,6 +124,7 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
   isAddWidgetModalOpen: false,
   isViewManagerOpen: false,
   isDirty: false,
+  metricsCache: {},
  
   // View actions
   setCurrentView: (view) => set({ 
@@ -541,5 +554,11 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
       compareEntities: currentView.compareEntities,
       isDirty: false
     });
-  }
+  },
+
+  // Cache helpers
+  getCachedMetric: (key: string) => get().metricsCache[key]?.data,
+  setCachedMetric: (key: string, data: any) => set((state) => ({
+    metricsCache: { ...state.metricsCache, [key]: { data, fetchedAt: Date.now() } }
+  })),
 })); 
