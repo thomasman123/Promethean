@@ -54,7 +54,8 @@ import {
   Trash2,
   Shield,
   PhoneCall,
-  TrendingUp
+  TrendingUp,
+  Crown
 } from "lucide-react"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
@@ -64,6 +65,7 @@ interface Account {
   name: string
   description: string | null
   is_active: boolean
+  is_agency?: boolean
   created_at: string
 }
 
@@ -101,6 +103,7 @@ export default function ManageAccountsPage() {
   
   const [createAccountOpen, setCreateAccountOpen] = useState(false)
   const [assignUserOpen, setAssignUserOpen] = useState(false)
+  const [agencyStatusLoading, setAgencyStatusLoading] = useState<string | null>(null)
 
   const roleColors = {
     moderator: "bg-blue-100 text-blue-800 border-blue-200", 
@@ -280,6 +283,31 @@ export default function ManageAccountsPage() {
     }
   }
 
+  const toggleAgencyStatus = async (accountId: string, currentStatus: boolean) => {
+    setAgencyStatusLoading(accountId)
+    try {
+      const response = await fetch('/api/admin/toggle-agency-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          accountId,
+          isAgency: !currentStatus
+        })
+      })
+
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || 'Failed to toggle agency status')
+
+      toast.success(data.message)
+      fetchAccounts() // Refresh accounts to show updated status
+    } catch (error) {
+      console.error('Error toggling agency status:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to toggle agency status')
+    } finally {
+      setAgencyStatusLoading(null)
+    }
+  }
+
   const getRoleIcon = (role: string) => {
     // For account-based roles, we don't show admin (app-wide role)
     if (role === 'admin') return <Shield className="h-3 w-3" />
@@ -390,6 +418,26 @@ export default function ManageAccountsPage() {
                       <Badge variant={account.is_active ? "default" : "secondary"}>
                         {account.is_active ? "Active" : "Inactive"}
                       </Badge>
+                      {account.is_agency && (
+                        <Badge className="bg-purple-100 text-purple-800 border-purple-200">
+                          <Crown className="h-3 w-3 mr-1" />
+                          Agency
+                        </Badge>
+                      )}
+                      <Button
+                        variant={account.is_agency ? "destructive" : "outline"}
+                        size="sm"
+                        onClick={() => toggleAgencyStatus(account.id, account.is_agency || false)}
+                        disabled={agencyStatusLoading === account.id}
+                      >
+                        <Crown className="h-4 w-4 mr-2" />
+                        {agencyStatusLoading === account.id 
+                          ? "Processing..." 
+                          : account.is_agency 
+                            ? "Remove Agency" 
+                            : "Make Agency"
+                        }
+                      </Button>
                       <Dialog open={assignUserOpen && selectedAccount?.id === account.id} onOpenChange={(open) => {
                         setAssignUserOpen(open)
                         if (open) setSelectedAccount(account)
