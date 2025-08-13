@@ -187,40 +187,13 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
         const apiResult = await response.json();
         console.log('🐛 DEBUG - API Success Response:', apiResult);
         
-        // Transform API result to match expected format
-        const transformResult = (result: any): MetricData => {
-          if (!result || !result.data) {
-            return { metricName: widgetKey.metricName, breakdown: widgetKey.breakdown, data: { value: 0 } };
-          }
-          
-          // For all breakdowns, we now only support KPI visualization
-          // so we need a single value
-          switch (widgetKey.breakdown) {
-            case 'total':
-              return {
-                metricName: widgetKey.metricName,
-                breakdown: widgetKey.breakdown,
-                data: result.data
-              };
-              
-            case 'rep':
-            case 'setter':
-            case 'link':
-              // For non-total breakdowns, we'll use the first value or aggregate
-              const arrayData = Array.isArray(result.data) ? result.data : [];
-              const totalValue = arrayData.reduce((sum: number, item: any) => sum + (item.value || 0), 0);
-              return {
-                metricName: widgetKey.metricName,
-                breakdown: widgetKey.breakdown,
-                data: { value: totalValue }
-              };
-              
-            default:
-              return { metricName: widgetKey.metricName, breakdown: widgetKey.breakdown, data: { value: 0 } };
-          }
+        // Transform API result to match expected format (use engine result wrapper)
+        const engineResult = apiResult?.result;
+        const transformedData: MetricData = {
+          metricName: widgetKey.metricName,
+          breakdown: widgetKey.breakdown,
+          data: { value: (engineResult?.data?.value ?? 0) }
         };
-
-        const transformedData = transformResult(apiResult);
         setData(transformedData);
         
       } catch (err) {
