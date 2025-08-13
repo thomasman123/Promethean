@@ -61,7 +61,7 @@ const categoryIcons: Record<string, React.ReactNode> = {
 
 // Visualization type labels
 const vizTypeLabels: Record<VizType, string> = {
-  kpi: "KPI Tile",
+  kpi: "KPI Tile"
 };
 
 // Derive sensible visualization defaults when none are provided by the registry
@@ -92,12 +92,7 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
 
   // Map viz to default breakdown
   const getDefaultBreakdownForViz = (viz: VizType): BreakdownType => {
-    switch (viz) {
-      case 'kpi':
-        return 'total';
-      default:
-        return 'total';
-    }
+    return 'total';
   };
 
   // Load favorites/recents from localStorage
@@ -367,6 +362,18 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
                       <div className="flex flex-wrap gap-2">
                         {([
                           'kpi',
+                          'line',
+                          'area',
+                          'bar',
+                          'horizontalBar',
+                          'stackedBar',
+                          'pie',
+                          'donut',
+                          'radar',
+                          'radialBar',
+                          'scatter',
+                          'sparkline',
+                          'table',
                         ] as VizType[]).map((viz) => (
                           <Button
                             key={`all-${viz}`}

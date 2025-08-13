@@ -30,7 +30,6 @@ const mapEngineMetricToDashboard = (engineMetricName: string): MetricDefinition 
 
   // Map to recommended visualizations based on breakdown type
   const getRecommendedViz = (breakdownType: string): VizType[] => {
-    // Only support KPI visualization now
     return ['kpi'];
   };
 
