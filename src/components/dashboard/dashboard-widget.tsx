@@ -277,7 +277,7 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
             lines={[{
               dataKey: 'value',
               name: widget.settings?.title || metricDefinition?.displayName || widget.metricName,
-              color: 'hsl(var(--primary))'
+              color: 'var(--primary)'
             }]}
             xAxisKey={xAxisKey}
             showLegend={false}
