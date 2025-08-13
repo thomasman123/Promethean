@@ -209,7 +209,7 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
         
         let transformedData: MetricData;
         
-        if ((widget.vizType === 'line' || widget.vizType === 'bar') && engineResult?.type === 'time') {
+        if ((widget.vizType === 'line' || widget.vizType === 'bar' || widget.vizType === 'area') && engineResult?.type === 'time') {
           // For line and bar charts, engine dynamically converts to time-series
           transformedData = {
             metricName: widgetKey.metricName,
