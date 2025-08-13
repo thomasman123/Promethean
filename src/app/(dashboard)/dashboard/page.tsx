@@ -30,13 +30,8 @@ const mapEngineMetricToDashboard = (engineMetricName: string): MetricDefinition 
 
   // Map to recommended visualizations based on breakdown type
   const getRecommendedViz = (breakdownType: string): VizType[] => {
-    switch (breakdownType) {
-      case 'total': return ['kpi'];
-      case 'rep': 
-      case 'setter': return ['bar', 'pie', 'table'];
-      case 'link': return ['compareMatrix', 'compareTable'];
-      default: return ['kpi'];
-    }
+    // Only support KPI visualization now
+    return ['kpi'];
   };
 
   // Categorize metrics
