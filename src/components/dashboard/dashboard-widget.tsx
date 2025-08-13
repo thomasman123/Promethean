@@ -130,10 +130,18 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
           endDate = now;
         }
 
+        // Format as local calendar dates to avoid UTC shifting previous day/month
+        const formatLocalYMD = (d: Date) => {
+          const y = d.getFullYear();
+          const m = String(d.getMonth() + 1).padStart(2, '0');
+          const day = String(d.getDate()).padStart(2, '0');
+          return `${y}-${m}-${day}`;
+        };
+
         const requestFilters = {
           dateRange: {
-            start: startDate.toISOString(),
-            end: endDate.toISOString()
+            start: formatLocalYMD(startDate),
+            end: formatLocalYMD(endDate)
           },
           accountId: selectedAccountId,
           repIds: globalFilters.repIds,
