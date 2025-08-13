@@ -318,7 +318,6 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
         
         return (
           <LineChart
-            key={chartKey}
             data={lineData}
             lines={[{
               dataKey: 'value',
@@ -351,7 +350,6 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
 
         return (
           <BarChart
-            key={chartKey}
             data={barData}
             bars={[{
               dataKey: 'value',
@@ -382,7 +380,6 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
         }
         return (
           <AreaChart
-            key={chartKey}
             data={areaData}
             areas={[{
               dataKey: 'value',

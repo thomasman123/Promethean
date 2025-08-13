@@ -79,6 +79,7 @@ export function LineChart({
 						dot={{ r: 4, fill: `var(--color-${line.dataKey}, var(--primary))` }}
 						activeDot={{ r: 6, stroke: 'var(--background)', strokeWidth: 2 }}
 						connectNulls={true}
+						isAnimationActive={false}
 					/>
 				))}
 			</RechartsLineChart>

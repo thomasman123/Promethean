@@ -67,6 +67,7 @@ export function BarChart({
 						dataKey={bar.dataKey}
 						fill={`var(--color-${bar.dataKey}, var(--primary))`}
 						radius={8}
+						isAnimationActive={false}
 					/>
 				))}
 			</RechartsBarChart>

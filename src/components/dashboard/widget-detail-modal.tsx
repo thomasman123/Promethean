@@ -338,6 +338,9 @@ export function WidgetDetailModal({ widget, data, open, onOpenChange }: WidgetDe
     URL.revokeObjectURL(url);
   };
 
+  const memoLines = useMemo(() => multiLines, [multiLines]);
+  const memoData = useMemo(() => multiData, [multiData]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[92vw] h-[90vh] max-w-[92vw] sm:max-w-[92vw] md:max-w-[92vw] lg:max-w-[92vw]">
@@ -371,33 +374,33 @@ export function WidgetDetailModal({ widget, data, open, onOpenChange }: WidgetDe
                 </div>
               </CardHeader>
               <CardContent className="h-[calc(100%-3rem)]">
-                {widget.vizType === 'line' && multiData.length > 0 ? (
+                {widget.vizType === 'line' && memoData.length > 0 ? (
                   <div className="h-full w-full">
                     <LineChart
-                      data={multiData}
-                      lines={multiLines.map((l, idx) => ({ dataKey: l.dataKey, name: l.name, color: `var(--chart-${(idx % 10) + 1})` }))}
+                      data={memoData}
+                      lines={memoLines.map((l, idx) => ({ dataKey: l.dataKey, name: l.name, color: `var(--chart-${(idx % 10) + 1})` }))}
                       xAxisKey="date"
                       showLegend
                       showGrid
                       className="h-full w-full"
                     />
                   </div>
-                ) : widget.vizType === 'bar' && multiData.length > 0 ? (
+                ) : widget.vizType === 'bar' && memoData.length > 0 ? (
                   <div className="h-full w-full">
                     <BarChart
-                      data={multiData}
-                      bars={multiLines.map((l, idx) => ({ dataKey: l.dataKey, name: l.name, color: `var(--chart-${(idx % 10) + 1})` }))}
+                      data={memoData}
+                      bars={memoLines.map((l, idx) => ({ dataKey: l.dataKey, name: l.name, color: `var(--chart-${(idx % 10) + 1})` }))}
                       xAxisKey="date"
                       showLegend
                       showGrid
                       className="h-full w-full"
                     />
                   </div>
-                ) : widget.vizType === 'area' && multiData.length > 0 ? (
+                ) : widget.vizType === 'area' && memoData.length > 0 ? (
                   <div className="h-full w-full">
                     <AreaChart
-                      data={multiData}
-                      areas={multiLines.map((l, idx) => ({ dataKey: l.dataKey, name: l.name, color: `var(--chart-${(idx % 10) + 1})` }))}
+                      data={memoData}
+                      areas={memoLines.map((l, idx) => ({ dataKey: l.dataKey, name: l.name, color: `var(--chart-${(idx % 10) + 1})` }))}
                       xAxisKey="date"
                       showLegend
                       showGrid

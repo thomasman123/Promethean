@@ -70,6 +70,7 @@ export function AreaChart({
 						fill={`var(--color-${a.dataKey}, var(--primary))`}
 						fillOpacity={0.28}
 						strokeWidth={2}
+						isAnimationActive={false}
 					/>
 				))}
 			</RechartsAreaChart>
