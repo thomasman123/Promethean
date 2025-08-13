@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/hooks/useAuth";
+import { useSearchParams } from "next/navigation";
 
 interface AppointmentItem {
   id: string;
@@ -24,6 +25,7 @@ export default function AppointmentsUpdatesPage() {
   const { selectedAccountId } = useAuth();
   const [items, setItems] = useState<AppointmentItem[]>([]);
   const [openId, setOpenId] = useState<string | null>(null);
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     // TODO: fetch assigned appointments for current user; placeholder data
@@ -32,6 +34,13 @@ export default function AppointmentsUpdatesPage() {
       { id: "a2", leadName: "Globex / Mary", scheduledAt: new Date().toISOString() },
     ]);
   }, [selectedAccountId]);
+
+  useEffect(() => {
+    const shouldOpenFlow = searchParams?.get("flow") === "1";
+    if (shouldOpenFlow && items.length > 0 && !openId) {
+      setOpenId(items[0].id);
+    }
+  }, [searchParams, items, openId]);
 
   return (
     <div className="p-6 space-y-4">

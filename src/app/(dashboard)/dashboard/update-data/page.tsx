@@ -20,7 +20,7 @@ export default function UpdateDataPage() {
 						<CardDescription>Fill Show/No-Show, outcomes, objections and lead quality</CardDescription>
 					</CardHeader>
 					<CardContent>
-						<Link href="/dashboard/appointments">
+						<Link href="/dashboard/appointments?flow=1">
 							<Button className="gap-2">Open My Appointment Updates <ChevronRight className="h-4 w-4" /></Button>
 						</Link>
 					</CardContent>
