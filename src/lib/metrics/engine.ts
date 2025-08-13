@@ -214,8 +214,8 @@ export class MetricsEngine {
     const sql = `
       WITH date_series AS (
         SELECT generate_series(
-          DATE_TRUNC('${aggregationLevel}', :start_date::date),
-          DATE_TRUNC('${aggregationLevel}', :end_date::date),
+          DATE_TRUNC('${aggregationLevel}', $start_date::date),
+          DATE_TRUNC('${aggregationLevel}', $end_date::date),
           ${dateSeriesInterval}
         )::date as date
       )
@@ -238,15 +238,27 @@ export class MetricsEngine {
    * Determine time aggregation level based on date range
    */
   private determineTimeAggregation(appliedFilters: any): 'day' | 'week' | 'month' {
-    const startDate = new Date(appliedFilters.params.start_date);
-    const endDate = new Date(appliedFilters.params.end_date);
+    // Access the date range from the correct location in appliedFilters
+    const startDateStr = appliedFilters.params.start_date;
+    const endDateStr = appliedFilters.params.end_date;
+    
+    if (!startDateStr || !endDateStr) {
+      console.warn('🐛 DEBUG - Missing date parameters, defaulting to daily aggregation');
+      return 'day';
+    }
+    
+    const startDate = new Date(startDateStr);
+    const endDate = new Date(endDateStr);
     const diffInDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
     
     console.log('🐛 DEBUG - Time aggregation calculation:', {
+      startDateStr,
+      endDateStr,
       startDate: startDate.toISOString(),
       endDate: endDate.toISOString(),
       diffInDays,
-      willUse: diffInDays > 60 ? 'month' : diffInDays > 14 ? 'week' : 'day'
+      willUse: diffInDays > 60 ? 'month' : diffInDays > 14 ? 'week' : 'day',
+      appliedFiltersParams: appliedFilters.params
     });
     
     // 2+ months (60+ days) → monthly aggregation
