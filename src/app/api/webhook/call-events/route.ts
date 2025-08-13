@@ -842,25 +842,71 @@ async function processAppointmentWebhook(payload: any) {
         setter_user_id: userIds.setterUserId || null,
         sales_rep_user_id: userIds.salesRepUserId || null,
         setter_ghl_id: setterData?.id || null,
-        sales_rep_ghl_id: salesRepData?.id || null
+        sales_rep_ghl_id: salesRepData?.id || null,
+        ghl_appointment_id: payload.appointment?.id || null
       };
       
       // Check for existing appointment to prevent duplicates
-      const { data: existingAppointment } = await supabase
+      // Use GHL appointment ID as primary unique identifier, with fallback to comprehensive matching
+      const ghlAppointmentId = payload.appointment?.id;
+      
+      let duplicateQuery = supabase
         .from('appointments')
-        .select('id')
+        .select('id, ghl_appointment_id, sales_rep_ghl_id, setter_ghl_id')
+        .eq('account_id', account.id);
+      
+      if (ghlAppointmentId) {
+        // First check: Look for existing appointment with same GHL ID
+        const { data: existingByGhlId } = await supabase
+          .from('appointments')
+          .select('id, ghl_appointment_id')
+          .eq('account_id', account.id)
+          .eq('ghl_appointment_id', ghlAppointmentId)
+          .maybeSingle();
+        
+        if (existingByGhlId) {
+          console.log('📋 Duplicate appointment detected by GHL ID, skipping:', {
+            existingId: existingByGhlId.id,
+            ghlAppointmentId: ghlAppointmentId,
+            contactName: appointmentData.contact_name,
+            scheduledTime: appointmentData.date_booked_for
+          });
+          return;
+        }
+      }
+      
+      // Second check: Comprehensive duplicate detection for appointments without GHL ID
+      // Only consider it a duplicate if contact, time, AND either setter or sales rep match
+      const { data: existingComprehensive } = await supabase
+        .from('appointments')
+        .select('id, sales_rep_ghl_id, setter_ghl_id, ghl_appointment_id')
         .eq('account_id', account.id)
         .eq('contact_name', appointmentData.contact_name)
         .eq('date_booked_for', appointmentData.date_booked_for)
         .maybeSingle();
       
-      if (existingAppointment) {
-        console.log('📋 Duplicate appointment detected, skipping:', {
-          existingId: existingAppointment.id,
-          contactName: appointmentData.contact_name,
-          scheduledTime: appointmentData.date_booked_for
-        });
-        return;
+      if (existingComprehensive) {
+        // Check if this is actually a different appointment with different people
+        const sameRep = existingComprehensive.sales_rep_ghl_id === appointmentData.sales_rep_ghl_id;
+        const sameSetter = existingComprehensive.setter_ghl_id === appointmentData.setter_ghl_id;
+        const hasGhlId = existingComprehensive.ghl_appointment_id;
+        
+        if ((sameRep || sameSetter) && !hasGhlId) {
+          console.log('📋 Duplicate appointment detected by comprehensive matching, skipping:', {
+            existingId: existingComprehensive.id,
+            contactName: appointmentData.contact_name,
+            scheduledTime: appointmentData.date_booked_for,
+            reason: sameRep ? 'same sales rep' : 'same setter'
+          });
+          return;
+        } else {
+          console.log('✅ Same contact/time but different team members - allowing as separate appointment:', {
+            newSalesRep: appointmentData.sales_rep_ghl_id,
+            existingSalesRep: existingComprehensive.sales_rep_ghl_id,
+            newSetter: appointmentData.setter_ghl_id,
+            existingSetter: existingComprehensive.setter_ghl_id
+          });
+        }
       }
 
       const { data: savedAppointment, error: saveError } = await supabase
@@ -907,30 +953,71 @@ async function processAppointmentWebhook(payload: any) {
 
       const discoveryData = {
         ...baseData,
-        date_booked_for: payload.appointment?.startTime ? 
+        date_booked_for: payload.appointment.startTime ? 
           new Date(payload.appointment.startTime).toISOString() : null,
         setter_user_id: userIds.setterUserId || null,
         sales_rep_user_id: userIds.salesRepUserId || null,
         setter_ghl_id: setterData?.id || null,
-        sales_rep_ghl_id: salesRepData?.id || null
+        sales_rep_ghl_id: salesRepData?.id || null,
+        ghl_appointment_id: payload.appointment?.id || null
       };
       
       // Check for existing discovery to prevent duplicates
-      const { data: existingDiscovery } = await supabase
+      // Use GHL appointment ID as primary unique identifier, with fallback to comprehensive matching
+      const ghlAppointmentId = payload.appointment?.id;
+      
+      if (ghlAppointmentId) {
+        // First check: Look for existing discovery with same GHL ID
+        const { data: existingByGhlId } = await supabase
+          .from('discoveries')
+          .select('id, ghl_appointment_id')
+          .eq('account_id', account.id)
+          .eq('ghl_appointment_id', ghlAppointmentId)
+          .maybeSingle();
+        
+        if (existingByGhlId) {
+          console.log('📋 Duplicate discovery detected by GHL ID, skipping:', {
+            existingId: existingByGhlId.id,
+            ghlAppointmentId: ghlAppointmentId,
+            contactName: discoveryData.contact_name,
+            scheduledTime: discoveryData.date_booked_for
+          });
+          return;
+        }
+      }
+      
+      // Second check: Comprehensive duplicate detection for discoveries without GHL ID
+      // Only consider it a duplicate if contact, time, AND either setter or sales rep match
+      const { data: existingComprehensive } = await supabase
         .from('discoveries')
-        .select('id')
+        .select('id, sales_rep_ghl_id, setter_ghl_id, ghl_appointment_id')
         .eq('account_id', account.id)
         .eq('contact_name', discoveryData.contact_name)
         .eq('date_booked_for', discoveryData.date_booked_for)
         .maybeSingle();
       
-      if (existingDiscovery) {
-        console.log('📋 Duplicate discovery detected, skipping:', {
-          existingId: existingDiscovery.id,
-          contactName: discoveryData.contact_name,
-          scheduledTime: discoveryData.date_booked_for
-        });
-        return;
+      if (existingComprehensive) {
+        // Check if this is actually a different discovery with different people
+        const sameRep = existingComprehensive.sales_rep_ghl_id === discoveryData.sales_rep_ghl_id;
+        const sameSetter = existingComprehensive.setter_ghl_id === discoveryData.setter_ghl_id;
+        const hasGhlId = existingComprehensive.ghl_appointment_id;
+        
+        if ((sameRep || sameSetter) && !hasGhlId) {
+          console.log('📋 Duplicate discovery detected by comprehensive matching, skipping:', {
+            existingId: existingComprehensive.id,
+            contactName: discoveryData.contact_name,
+            scheduledTime: discoveryData.date_booked_for,
+            reason: sameRep ? 'same sales rep' : 'same setter'
+          });
+          return;
+        } else {
+          console.log('✅ Same contact/time but different team members - allowing as separate discovery:', {
+            newSalesRep: discoveryData.sales_rep_ghl_id,
+            existingSalesRep: existingComprehensive.sales_rep_ghl_id,
+            newSetter: discoveryData.setter_ghl_id,
+            existingSetter: existingComprehensive.setter_ghl_id
+          });
+        }
       }
 
       const { data: savedDiscovery, error: saveError } = await supabase
