@@ -4,7 +4,8 @@ import { useEffect, useState, useMemo, useCallback } from "react";
 import { 
   ChartWrapper, 
   KPIChart,
-  LineChart
+  LineChart,
+  BarChart
 } from "./charts";
 import { CompareWidget } from "./compare-widget";
 import { WidgetDetailModal } from "./widget-detail-modal";
@@ -294,7 +295,39 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
             className="h-full"
           />
         );
-        
+      case 'bar':
+        // Same data as line chart
+        let barData;
+        let barXAxisKey;
+        if (Array.isArray(data.data) && data.data.length > 0) {
+          barData = data.data.map((item: any) => ({
+            date: item.date || item.name,
+            value: item.value || 0
+          }));
+          barXAxisKey = 'date';
+        } else {
+          barData = [
+            { date: 'Current', value: data.data.value || 0 }
+          ];
+          barXAxisKey = 'date';
+        }
+
+        return (
+          <BarChart
+            key={chartKey}
+            data={barData}
+            bars={[{
+              dataKey: 'value',
+              name: widget.settings?.title || metricDefinition?.displayName || widget.metricName,
+              color: 'var(--primary)'
+            }]}
+            xAxisKey={barXAxisKey}
+            showLegend={false}
+            showGrid={true}
+            disableTooltip={isDragging}
+            className="h-full"
+          />
+        );
       default:
         return (
           <KPIChart

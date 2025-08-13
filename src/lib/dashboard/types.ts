@@ -1,4 +1,4 @@
-export type VizType = 'kpi' | 'line';
+export type VizType = 'kpi' | 'line' | 'bar';
 export type BreakdownType = 'total' | 'rep' | 'setter' | 'link' | 'time';
 export type ViewScope = 'private' | 'team' | 'global';
 
