@@ -40,6 +40,7 @@ export function WidgetDetailModal({ widget, data, open, onOpenChange }: WidgetDe
   const [setterLeaders, setSetterLeaders] = useState<Array<{ id: string; name: string; value: number }>>([]);
 
   const { filters: globalFilters } = useDashboardStore();
+  const { getCachedMetric, setCachedMetric } = useDashboardStore();
 
   const formatLocalYMD = (d: Date) => {
     const y = d.getFullYear();
@@ -103,6 +104,13 @@ export function WidgetDetailModal({ widget, data, open, onOpenChange }: WidgetDe
 
         const seriesByKey: Record<string, { name: string; points: Array<{ date: string; value: number }> }> = {};
         const fetchForEntity = async (entity: any, type: 'rep' | 'setter') => {
+          const safeKey = `${type}-${slugify(entity.name || entity.id)}`;
+          const cacheKey = JSON.stringify({ scope: 'modal-series', metric: engineMetricName, type, id: entity.id, start, end });
+          const cached = getCachedMetric(cacheKey);
+          if (cached) {
+            seriesByKey[safeKey] = { name: `${entity.name || 'Unknown'}`, points: cached as any };
+            return;
+          }
           const filters = { ...baseFilters } as any;
           if (type === 'rep') filters.repIds = [entity.id];
           if (type === 'setter') filters.setterIds = [entity.id];
@@ -114,8 +122,8 @@ export function WidgetDetailModal({ widget, data, open, onOpenChange }: WidgetDe
           if (!resp.ok) return;
           const json = await resp.json();
           const ts = (json?.result?.type === 'time' && Array.isArray(json?.result?.data)) ? json.result.data as Array<{ date: string; value: number }> : [];
-          const safeKey = `${type}-${slugify(entity.name || entity.id)}`;
           seriesByKey[safeKey] = { name: `${entity.name || 'Unknown'}`, points: ts };
+          setCachedMetric(cacheKey, ts);
         };
 
         await Promise.all([

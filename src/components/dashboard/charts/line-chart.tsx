@@ -1,7 +1,7 @@
 "use client";
 
-import { Line, LineChart as RechartsLineChart, XAxis, YAxis, CartesianGrid, Legend } from "recharts";
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { Line, LineChart as RechartsLineChart, XAxis, YAxis, CartesianGrid } from "recharts";
+import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from "@/components/ui/chart";
 import { cn } from "@/lib/utils";
 
 interface LineDefinition {
@@ -67,7 +67,7 @@ export function LineChart({
 				{!disableTooltip && (
 					<ChartTooltip content={<ChartTooltipContent />} />
 				)}
-				{showLegend && <Legend />}
+				{showLegend && <ChartLegend content={<ChartLegendContent />} />}
 				{lines.map((line) => (
 					<Line
 						key={line.dataKey}

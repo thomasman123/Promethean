@@ -1,7 +1,7 @@
 "use client";
 
-import { Bar, BarChart as RechartsBarChart, XAxis, YAxis, CartesianGrid, Legend } from "recharts";
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { Bar, BarChart as RechartsBarChart, XAxis, YAxis, CartesianGrid } from "recharts";
+import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from "@/components/ui/chart";
 import { cn } from "@/lib/utils";
 
 interface BarDefinition {
@@ -60,7 +60,7 @@ export function BarChart({
 				{!disableTooltip && (
 					<ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
 				)}
-				{showLegend && <Legend />}
+				{showLegend && <ChartLegend content={<ChartLegendContent />} />}
 				{bars.map((bar) => (
 					<Bar
 						key={bar.dataKey}

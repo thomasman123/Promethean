@@ -1,7 +1,7 @@
 "use client";
 
-import { Area, AreaChart as RechartsAreaChart, XAxis, YAxis, CartesianGrid, Legend } from "recharts";
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { Area, AreaChart as RechartsAreaChart, XAxis, YAxis, CartesianGrid } from "recharts";
+import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from "@/components/ui/chart";
 import { cn } from "@/lib/utils";
 
 interface AreaDefinition {
@@ -60,7 +60,7 @@ export function AreaChart({
 				{!disableTooltip && (
 					<ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
 				)}
-				{showLegend && <Legend />}
+				{showLegend && <ChartLegend content={<ChartLegendContent />} />}
 				{areas.map((a) => (
 					<Area
 						key={a.dataKey}
