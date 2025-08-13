@@ -5,13 +5,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { Download } from "lucide-react";
-import { KPIChart, BarChart } from "./charts";
+import { KPIChart, BarChart, LineChart, AreaChart, RadarChart } from "./charts";
 import { DashboardWidget as WidgetType, MetricData } from "@/lib/dashboard/types";
 import { useDashboardStore } from "@/lib/dashboard/store";
-import { cn } from "@/lib/utils";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 interface WidgetDetailModalProps {
   widget: WidgetType;
@@ -28,9 +26,7 @@ export function WidgetDetailModal({ widget, data, open, onOpenChange }: WidgetDe
   const [grouped, setGrouped] = useState<Array<{ name: string; value: number }>>([]);
 
   useEffect(() => {
-    // Placeholder grouped data; API wiring will replace this
     if (!open) return;
-    // Create a faux breakdown from the current value or series
     if (Array.isArray((data as any).data)) {
       const series = (data as any).data as Array<{ date: string; value: number }>;
       const total = series.reduce((s, p) => s + (p.value || 0), 0);
@@ -50,22 +46,70 @@ export function WidgetDetailModal({ widget, data, open, onOpenChange }: WidgetDe
   }, [open, actor, data]);
 
   const renderFullChart = () => {
-    return (
-      <div className="h-[400px] flex items-center justify-center">
-        {Array.isArray((data as any).data) ? (
-          <BarChart
-            data={(data as any).data.map((d: any) => ({ date: d.date, value: d.value }))}
-            bars={[{ dataKey: 'value', name: metricDefinition?.displayName || widget.metricName, color: 'var(--primary)' }]}
-            xAxisKey="date"
-            showLegend={false}
-            showGrid
-            className="h-[360px] w-full"
-          />
-        ) : (
-          <KPIChart value={(data as any).data.value} unit={metricDefinition?.unit} comparison={(data as any).data.comparison} />
-        )}
-      </div>
-    );
+    const isSeries = Array.isArray((data as any).data);
+    const series = isSeries ? (data as any).data as Array<{ date: string; value: number }> : [];
+
+    switch (widget.vizType) {
+      case 'line':
+        return (
+          <div className="h-[70vh] w-full">
+            <LineChart
+              data={series.length ? series.map(d => ({ date: d.date, value: d.value })) : [{ date: 'Current', value: (data as any).data.value || 0 }]}
+              lines={[{ dataKey: 'value', name: metricDefinition?.displayName || widget.metricName, color: 'var(--primary)' }]}
+              xAxisKey="date"
+              showLegend={false}
+              showGrid
+              className="h-full w-full"
+            />
+          </div>
+        );
+      case 'bar':
+        return (
+          <div className="h-[70vh] w-full">
+            <BarChart
+              data={series.length ? series.map(d => ({ date: d.date, value: d.value })) : [{ date: 'Current', value: (data as any).data.value || 0 }]}
+              bars={[{ dataKey: 'value', name: metricDefinition?.displayName || widget.metricName, color: 'var(--primary)' }]}
+              xAxisKey="date"
+              showLegend={false}
+              showGrid
+              className="h-full w-full"
+            />
+          </div>
+        );
+      case 'area':
+        return (
+          <div className="h-[70vh] w-full">
+            <AreaChart
+              data={series.length ? series.map(d => ({ date: d.date, value: d.value })) : [{ date: 'Current', value: (data as any).data.value || 0 }]}
+              areas={[{ dataKey: 'value', name: metricDefinition?.displayName || widget.metricName, color: 'var(--primary)' }]}
+              xAxisKey="date"
+              showLegend={false}
+              showGrid
+              className="h-full w-full"
+            />
+          </div>
+        );
+      case 'radar':
+        return (
+          <div className="h-[70vh] w-full">
+            <RadarChart
+              data={series.length ? series.map(d => ({ date: d.date, value: d.value })) : [{ date: 'Current', value: (data as any).data.value || 0 }]}
+              radarSeries={[{ dataKey: 'value', name: metricDefinition?.displayName || widget.metricName, color: 'var(--primary)' }]}
+              angleKey="date"
+              showLegend={false}
+              disableTooltip={false}
+              className="h-full w-full"
+            />
+          </div>
+        );
+      case 'kpi':
+      default:
+        return (
+          <div className="h-[70vh] w-full flex items-center justify-center">
+            <KPIChart value={(data as any).data.value} unit={metricDefinition?.unit} comparison={(data as any).data.comparison} />
+          </div>
+        );
+    }
   };
 
   const renderBreakdown = () => {
@@ -85,7 +129,7 @@ export function WidgetDetailModal({ widget, data, open, onOpenChange }: WidgetDe
           </div>
         </CardHeader>
         <CardContent>
-          <div className="h-[320px]">
+          <div className="h-[50vh]">
             <BarChart
               data={chartData.map(d => ({ date: d.entity, value: d.value }))}
               bars={[{ dataKey: 'value', name: 'Value', color: 'var(--primary)' }]}
@@ -133,7 +177,7 @@ export function WidgetDetailModal({ widget, data, open, onOpenChange }: WidgetDe
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-[96vw] h-[95vh] max-w-none">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {widget.settings?.title || metricDefinition?.displayName || widget.metricName}
@@ -143,22 +187,22 @@ export function WidgetDetailModal({ widget, data, open, onOpenChange }: WidgetDe
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs defaultValue="chart" className="w-full">
+        <Tabs defaultValue="chart" className="w-full h-[calc(95vh-6rem)]">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="chart">Chart</TabsTrigger>
             <TabsTrigger value="breakdown">Breakdown</TabsTrigger>
             <TabsTrigger value="data">Data</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="chart" className="space-y-4">
-            <Card>
+          <TabsContent value="chart" className="space-y-4 h-full">
+            <Card className="h-full">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-base">Full Size Chart</CardTitle>
                 <div className="flex gap-2">
                   <Button variant="outline" size="sm" onClick={handleExport}>Export</Button>
                 </div>
               </CardHeader>
-              <CardContent>{renderFullChart()}</CardContent>
+              <CardContent className="h-[calc(100%-3rem)]">{renderFullChart()}</CardContent>
             </Card>
           </TabsContent>
 
