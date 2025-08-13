@@ -81,20 +81,81 @@ export async function GET(request: NextRequest) {
     const setterIds = new Set<string>()
     const setterNames = new Map<string, string | null>()
 
+    // Get account GHL API details for name lookups
+    const { data: account } = await supabase
+      .from('accounts')
+      .select('ghl_api_key, ghl_location_id')
+      .eq('id', accountId)
+      .single()
+
     const [dialsRes, discoveriesRes, apptsRes] = await Promise.all([
       supabase.from('dials').select('setter_user_id, setter, setter_ghl_id, sales_rep_ghl_id').eq('account_id', accountId),
       supabase.from('discoveries').select('setter_user_id, sales_rep_user_id, setter, sales_rep, setter_ghl_id, sales_rep_ghl_id').eq('account_id', accountId),
       supabase.from('appointments').select('sales_rep_user_id, setter_user_id, sales_rep, setter, setter_ghl_id, sales_rep_ghl_id').eq('account_id', accountId)
     ])
 
+    // Helper function to get name from GHL API
+    const getGHLUserName = async (ghlUserId: string): Promise<string | null> => {
+      if (!account?.ghl_api_key || !ghlUserId) return null
+      
+      try {
+        const response = await fetch(`https://services.leadconnectorhq.com/users/${ghlUserId}`, {
+          headers: {
+            'Authorization': `Bearer ${account.ghl_api_key}`,
+            'Version': '2021-07-28',
+            'Accept': 'application/json',
+          }
+        })
+        
+        if (response.ok) {
+          const userData = await response.json()
+          return userData.name || `${userData.firstName || ''} ${userData.lastName || ''}`.trim() || null
+        }
+      } catch (error) {
+        console.warn(`Failed to fetch GHL user name for ${ghlUserId}:`, error)
+      }
+      
+      return null
+    }
+
+    // Collect all unique GHL IDs for batch lookup
+    const ghlUserIds = new Set<string>()
+    const allData = [...(dialsRes.data || []), ...(discoveriesRes.data || []), ...(apptsRes.data || [])]
+    
+    allData.forEach((r: any) => {
+      if (r.setter_ghl_id) ghlUserIds.add(r.setter_ghl_id)
+      if (r.sales_rep_ghl_id) ghlUserIds.add(r.sales_rep_ghl_id)
+    })
+
+    // Fetch names for all GHL IDs in parallel
+    const ghlNameMap = new Map<string, string | null>()
+    if (account?.ghl_api_key && ghlUserIds.size > 0) {
+      const namePromises = Array.from(ghlUserIds).map(async (ghlId) => {
+        const name = await getGHLUserName(ghlId)
+        return [ghlId, name] as [string, string | null]
+      })
+      
+      const nameResults = await Promise.all(namePromises)
+      nameResults.forEach(([ghlId, name]) => {
+        if (name) ghlNameMap.set(ghlId, name)
+      })
+    }
+
     const add = (id: string | null, name: string | null, type: 'rep' | 'setter', ghlId?: string | null) => {
       if (!id) return
+      
+      // Use GHL name if available, otherwise fall back to provided name
+      let displayName = name
+      if (ghlId && ghlNameMap.has(ghlId)) {
+        displayName = ghlNameMap.get(ghlId) || name
+      }
+      
       if (type === 'rep') {
         repIds.add(id)
-        if (name && !repNames.has(id)) repNames.set(id, name)
+        if (displayName && !repNames.has(id)) repNames.set(id, displayName)
       } else {
         setterIds.add(id)
-        if (name && !setterNames.has(id)) setterNames.set(id, name)
+        if (displayName && !setterNames.has(id)) setterNames.set(id, displayName)
       }
     }
 
@@ -131,11 +192,21 @@ export async function GET(request: NextRequest) {
 
     const uninvitedReps: Candidate[] = Array.from(repIds)
       .filter(id => !invitedRepIds.has(id))
-      .map(id => ({ id, name: repNames.get(id) || null, role: 'rep', invited: false }))
+      .map(id => ({ 
+        id, 
+        name: repNames.get(id) || null, 
+        role: 'rep', 
+        invited: false 
+      }))
 
     const uninvitedSetters: Candidate[] = Array.from(setterIds)
       .filter(id => !invitedSetterIds.has(id))
-      .map(id => ({ id, name: setterNames.get(id) || null, role: 'setter', invited: false }))
+      .map(id => ({ 
+        id, 
+        name: setterNames.get(id) || null, 
+        role: 'setter', 
+        invited: false 
+      }))
 
     return NextResponse.json({
       reps: [...invitedReps, ...uninvitedReps],
