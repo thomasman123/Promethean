@@ -3,7 +3,8 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { 
   ChartWrapper, 
-  KPIChart
+  KPIChart,
+  LineChart
 } from "./charts";
 import { CompareWidget } from "./compare-widget";
 import { WidgetDetailModal } from "./widget-detail-modal";
@@ -193,11 +194,25 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
         
         // Transform API result to match expected format (use engine result wrapper)
         const engineResult = apiResult?.result;
-        const transformedData: MetricData = {
-          metricName: widgetKey.metricName,
-          breakdown: widgetKey.breakdown,
-          data: { value: (engineResult?.data?.value ?? 0) }
-        };
+        
+        let transformedData: MetricData;
+        
+        if (widget.vizType === 'line' && widget.breakdown === 'time') {
+          // For line charts with time breakdown, expect array data
+          transformedData = {
+            metricName: widgetKey.metricName,
+            breakdown: widgetKey.breakdown,
+            data: Array.isArray(engineResult?.data) ? engineResult.data : []
+          };
+        } else {
+          // For KPI and other visualizations, expect single value
+          transformedData = {
+            metricName: widgetKey.metricName,
+            breakdown: widgetKey.breakdown,
+            data: { value: (engineResult?.data?.value ?? 0) }
+          };
+        }
+        
         setData(transformedData);
         
       } catch (err) {
@@ -222,15 +237,50 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
     // Create a stable key for chart components to prevent unnecessary remounting
     const chartKey = `chart-${widget.id}-${widget.vizType}-${widget.size.w}x${widget.size.h}-${isDragging ? 'dragging' : 'static'}`;
     
-    // Only KPI visualization is supported
-    return (
-      <KPIChart
-        key={chartKey}
-        value={data.data.value}
-        unit={metricDefinition?.unit}
-        comparison={data.data.comparison}
-      />
-    );
+    switch (widget.vizType) {
+      case 'kpi':
+        return (
+          <KPIChart
+            key={chartKey}
+            value={data.data.value}
+            unit={metricDefinition?.unit}
+            comparison={data.data.comparison}
+          />
+        );
+        
+      case 'line':
+        // For line charts, we need time-series data
+        const lineData = Array.isArray(data.data) ? data.data : [
+          { name: 'Current', value: data.data.value || 0 }
+        ];
+        
+        return (
+          <LineChart
+            key={chartKey}
+            data={lineData}
+            lines={[{
+              dataKey: 'value',
+              name: widget.settings?.title || metricDefinition?.displayName || widget.metricName,
+              color: 'hsl(var(--primary))'
+            }]}
+            xAxisKey="name"
+            showLegend={false}
+            showGrid={true}
+            disableTooltip={isDragging}
+            className="h-full"
+          />
+        );
+        
+      default:
+        return (
+          <KPIChart
+            key={chartKey}
+            value={data.data.value}
+            unit={metricDefinition?.unit}
+            comparison={data.data.comparison}
+          />
+        );
+    }
   }, [data, widgetKey, widget.settings, metricDefinition, isDragging, compareMode, relevantEntities]);
   
   return (

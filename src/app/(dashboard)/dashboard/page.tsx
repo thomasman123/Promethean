@@ -24,13 +24,18 @@ const mapEngineMetricToDashboard = (engineMetricName: string): MetricDefinition 
       case 'rep': return ['rep'];
       case 'setter': return ['setter'];
       case 'link': return ['link'];
+      case 'time': return ['time'];
       default: return ['total'];
     }
   };
 
   // Map to recommended visualizations based on breakdown type
   const getRecommendedViz = (breakdownType: string): VizType[] => {
-    return ['kpi'];
+    switch (breakdownType) {
+      case 'total': return ['kpi'];
+      case 'time': return ['line', 'kpi'];
+      default: return ['kpi', 'line'];
+    }
   };
 
   // Categorize metrics

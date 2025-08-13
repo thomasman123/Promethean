@@ -61,12 +61,15 @@ const categoryIcons: Record<string, React.ReactNode> = {
 
 // Visualization type labels
 const vizTypeLabels: Record<VizType, string> = {
-  kpi: "KPI Tile"
+  kpi: "KPI Tile",
+  line: "Line Chart"
 };
 
 // Derive sensible visualization defaults when none are provided by the registry
 function getRecommendedVizFromBreakdowns(breakdowns: BreakdownType[]): VizType[] {
-  return ["kpi"];
+  if (breakdowns.includes("time")) return ["line", "kpi"];
+  if (breakdowns.includes("total")) return ["kpi"];
+  return ["line", "kpi"];
 }
 
 const FAVORITES_KEY = "promethean.metric.favorites";
@@ -92,7 +95,14 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
 
   // Map viz to default breakdown
   const getDefaultBreakdownForViz = (viz: VizType): BreakdownType => {
-    return 'total';
+    switch (viz) {
+      case 'kpi':
+        return 'total';
+      case 'line':
+        return 'time';
+      default:
+        return 'total';
+    }
   };
 
   // Load favorites/recents from localStorage

@@ -1,2 +1,3 @@
 export { ChartWrapper } from './chart-wrapper';
-export { KPIChart } from './kpi-chart'; 
+export { KPIChart } from './kpi-chart';
+export { LineChart } from './line-chart'; 
