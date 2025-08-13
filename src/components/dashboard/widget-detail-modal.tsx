@@ -73,8 +73,23 @@ export function WidgetDetailModal({ widget, data, open, onOpenChange }: WidgetDe
       try {
         const candidatesRes = await fetch(`/api/team/candidates?accountId=${encodeURIComponent(selectedAccountId)}`);
         const candidatesJson = await candidatesRes.json();
-        const reps = (candidatesJson.reps || []).slice(0, 4); // show up to 4 of each
-        const setters = (candidatesJson.setters || []).slice(0, 4);
+
+        const selectedRepIds: string[] = (globalFilters as any)?.repIds || [];
+        const selectedSetterIds: string[] = (globalFilters as any)?.setterIds || [];
+
+        const MAX_PER_GROUP = 6;
+        const allReps = candidatesJson.reps || [];
+        const allSetters = candidatesJson.setters || [];
+
+        const reps = (selectedRepIds.length > 0
+          ? allReps.filter((r: any) => selectedRepIds.includes(r.id))
+          : allReps
+        ).slice(0, MAX_PER_GROUP);
+
+        const setters = (selectedSetterIds.length > 0
+          ? allSetters.filter((s: any) => selectedSetterIds.includes(s.id))
+          : allSetters
+        ).slice(0, MAX_PER_GROUP);
 
         const { start, end } = resolveDates();
         const baseFilters = { dateRange: { start, end }, accountId: selectedAccountId } as any;
@@ -125,7 +140,7 @@ export function WidgetDetailModal({ widget, data, open, onOpenChange }: WidgetDe
     };
 
     loadMultiSeries();
-  }, [open, widget.vizType, widget.metricName, selectedAccountId, showReps, showSetters]);
+  }, [open, widget.vizType, widget.metricName, selectedAccountId, showReps, showSetters, (globalFilters as any)?.repIds, (globalFilters as any)?.setterIds]);
 
   useEffect(() => {
     if (!open) return;
