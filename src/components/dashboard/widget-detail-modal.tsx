@@ -7,11 +7,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Download, ExternalLink, TrendingUp, TrendingDown } from "lucide-react";
-import { LineChart, BarChart, AreaChart, PieChart, DonutChart } from "./charts";
+import { KPIChart } from "./charts";
 import { DashboardWidget as WidgetType, MetricData } from "@/lib/dashboard/types";
 import { useDashboardStore } from "@/lib/dashboard/store";
 import { cn } from "@/lib/utils";
-import { Card as UiCard } from "@/components/ui/card";
 
 interface WidgetDetailModalProps {
   widget: WidgetType;
@@ -21,309 +20,200 @@ interface WidgetDetailModalProps {
 }
 
 export function WidgetDetailModal({ widget, data, open, onOpenChange }: WidgetDetailModalProps) {
-  const { compareMode, compareEntities, metricsRegistry } = useDashboardStore();
-  const metricDefinition = metricsRegistry.find(m => m.name === widget.metricName);
+  const { metricsRegistry, compareMode, compareEntities } = useDashboardStore();
   
-  // Get relevant entities for comparison
-  const relevantEntities = compareMode 
-    ? compareEntities.filter(e => {
-        if (widget.breakdown === 'rep') return e.type === 'rep';
-        if (widget.breakdown === 'setter') return e.type === 'setter';
-        if (widget.breakdown === 'link') return true;
-        return false;
-      })
-    : [];
+  const metricDefinition = metricsRegistry.find(m => m.name === widget.metricName);
 
   const renderFullChart = () => {
-    switch (widget.vizType) {
-      case 'line':
-        return (
-          <div className="h-[400px]">
-            <LineChart
-              data={data.data}
-              lines={relevantEntities.length > 0 
-                ? relevantEntities.map((entity, index) => ({
-                    dataKey: entity.id,
-                    name: entity.name,
-                    color: entity.color || `hsl(${index * 60}, 70%, 50%)`
-                  }))
-                : [{
-                    dataKey: 'value',
-                    name: metricDefinition?.displayName || widget.metricName,
-                    color: 'hsl(var(--primary))'
-                  }]
-              }
-              xAxisKey="date"
-              xAxisType="date"
-              showLegend={true}
-              showGrid={true}
-            />
-          </div>
-        );
-        
-      case 'bar':
-        // Show a bar per entity (data should already be entity categories)
-        return (
-          <div className="h-[400px]">
-            <BarChart
-              data={data.data}
-              bars={[{
-                dataKey: 'value',
-                name: metricDefinition?.displayName || widget.metricName,
-                color: 'hsl(var(--primary))'
-              }]}
-              xAxisKey="name"
-              showLegend={false}
-              showGrid={true}
-            />
-          </div>
-        );
-      
-      case 'area':
-        return (
-          <div className="h-[400px]">
-            <AreaChart
-              data={data.data}
-              areas={relevantEntities.length > 0
-                ? relevantEntities.map((entity, index) => ({
-                    dataKey: entity.id,
-                    name: entity.name,
-                    color: entity.color || `hsl(${index * 60}, 70%, 50%)`
-                  }))
-                : [{
-                    dataKey: 'value',
-                    name: metricDefinition?.displayName || widget.metricName,
-                    color: 'hsl(var(--primary))'
-                  }]
-              }
-              xAxisKey="date"
-              xAxisType="date"
-              showLegend={true}
-              stacked={true}
-            />
-          </div>
-        );
-        
-      case 'pie':
-      case 'donut':
-        const ChartComponent = widget.vizType === 'pie' ? PieChart : DonutChart;
-        return (
-          <div className="h-[400px] flex items-center justify-center">
-            <div className="w-full max-w-md">
-              <ChartComponent
-                data={data.data}
-                showLegend={true}
-                showLabels={true}
-              />
-            </div>
-          </div>
-        );
-        
-      default:
-        return null;
-    }
-  };
-
-  const renderComparisonKPI = () => {
-    if (!compareMode || relevantEntities.length === 0) return null;
-    const formatNumber = (n: number) => Math.round(n).toLocaleString();
-
-    // If time series multi-series: sum per entity
-    let totals: Array<{ id: string; total: number; name: string }> = [];
-    if (Array.isArray(data.data) && data.data.length > 0) {
-      const sample = data.data[0];
-      if (typeof sample === 'object' && 'date' in sample) {
-        totals = relevantEntities.map((e) => ({
-          id: e.id,
-          name: e.name,
-          total: data.data.reduce((sum: number, row: any) => sum + (Number(row[e.id]) || 0), 0),
-        }));
-      } else if (typeof sample === 'object' && 'name' in sample && 'value' in sample) {
-        totals = data.data
-          .filter((row: any) => typeof row.value === 'number')
-          .map((row: any) => ({ id: row.name, name: row.name, total: Number(row.value) }));
-      }
-    }
-
-    if (totals.length === 0) return null;
-    const sorted = [...totals].sort((a, b) => b.total - a.total);
-    const top = sorted[0];
-    const second = sorted[1] || { total: 0 } as any;
-    const diff = top.total - (second.total || 0);
-    const pct = second.total > 0 ? (diff / second.total) * 100 : 0;
-
+    // Only support KPI visualization now
     return (
-      <div className="mb-4">
-        <div className="rounded-lg border p-4 bg-card">
-          <div className="text-sm text-muted-foreground mb-1">Comparison</div>
-          <div className="text-3xl font-bold">{formatNumber(diff)} <span className="text-base font-normal text-muted-foreground">(+{pct.toFixed(1)}%)</span></div>
-          <div className="text-xs text-muted-foreground mt-1">Top vs next best across selected {widget.breakdown === 'rep' ? 'reps' : widget.breakdown === 'setter' ? 'setters' : 'entities'}</div>
+      <div className="h-[400px] flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-6xl font-bold text-primary mb-4">
+            {data.data.value?.toLocaleString() || 0}
+          </div>
+          {data.data.comparison && (
+            <div className={`text-2xl font-medium ${
+              data.data.comparison.value > 0 ? 'text-green-600' : 'text-red-600'
+            }`}>
+              {data.data.comparison.value > 0 ? '↗' : '↘'} {Math.abs(data.data.comparison.value)}%
+            </div>
+          )}
+          {metricDefinition?.unit && (
+            <div className="text-lg text-muted-foreground mt-2">
+              {metricDefinition.unit}
+            </div>
+          )}
         </div>
       </div>
     );
   };
 
   const renderDataTable = () => {
-    if (!Array.isArray(data.data)) return null;
-    
-    const columns = Object.keys(data.data[0] || {});
-    
     return (
-      <Table>
-        <TableHeader>
-          <TableRow>
-            {columns.map(col => (
-              <TableHead key={col} className="capitalize">
-                {col.replace(/_/g, ' ')}
-              </TableHead>
-            ))}
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {data.data.slice(0, 50).map((row: any, index: number) => (
-            <TableRow key={index}>
-              {columns.map(col => (
-                <TableCell key={col}>
-                  {typeof row[col] === 'number' 
-                    ? row[col].toLocaleString()
-                    : row[col]
-                  }
-                </TableCell>
-              ))}
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Metric</TableHead>
+              <TableHead>Value</TableHead>
+              <TableHead>Change</TableHead>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    );
-  };
-
-  const renderCompareSummary = () => {
-    if (!compareMode || relevantEntities.length === 0) return null;
-    
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Comparison Summary</CardTitle>
-          <CardDescription>
-            Comparing {relevantEntities.length} {widget.breakdown === 'rep' ? 'reps' : 'setters'}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {relevantEntities.map(entity => (
-              <div key={entity.id} className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div 
-                    className="w-3 h-3 rounded-full" 
-                    style={{ backgroundColor: entity.color }}
-                  />
-                  <span className="font-medium">{entity.name}</span>
-                </div>
-                <Badge variant="secondary">{entity.type}</Badge>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+          </TableHeader>
+          <TableBody>
+            <TableRow>
+              <TableCell className="font-medium">
+                {widget.settings?.title || metricDefinition?.displayName || widget.metricName}
+              </TableCell>
+              <TableCell>
+                {data.data.value?.toLocaleString() || 0}
+                {metricDefinition?.unit && <span className="text-muted-foreground ml-1">{metricDefinition.unit}</span>}
+              </TableCell>
+              <TableCell>
+                {data.data.comparison ? (
+                  <div className={`flex items-center gap-1 ${
+                    data.data.comparison.value > 0 ? 'text-green-600' : 'text-red-600'
+                  }`}>
+                    {data.data.comparison.value > 0 ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
+                    {Math.abs(data.data.comparison.value)}%
+                  </div>
+                ) : (
+                  <span className="text-muted-foreground">-</span>
+                )}
+              </TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
+      </div>
     );
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle className="text-2xl">
+          <DialogTitle className="flex items-center gap-2">
             {widget.settings?.title || metricDefinition?.displayName || widget.metricName}
+            <Badge variant="secondary" className="text-xs">
+              KPI
+            </Badge>
           </DialogTitle>
-          <DialogDescription>
-            {metricDefinition?.description}
-          </DialogDescription>
-          {metricDefinition?.formula && (
-            <div className="mt-2 font-mono text-xs bg-muted p-2 rounded">
-              Formula: {metricDefinition.formula}
-            </div>
+          {metricDefinition?.description && (
+            <DialogDescription>{metricDefinition.description}</DialogDescription>
           )}
         </DialogHeader>
 
-        <Tabs defaultValue="visualization" className="mt-6">
+        <Tabs defaultValue="visualization" className="flex-1 overflow-hidden">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="visualization">Visualization</TabsTrigger>
-            <TabsTrigger value="data">Raw Data</TabsTrigger>
-            <TabsTrigger value="insights">Insights</TabsTrigger>
+            <TabsTrigger value="data">Data</TabsTrigger>
+            <TabsTrigger value="details">Details</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="visualization" className="space-y-4">
-            {renderComparisonKPI()}
-            {renderFullChart()}
-            {renderCompareSummary()}
-          </TabsContent>
-
-          <TabsContent value="data">
-            <div className="space-y-4">
-              <div className="flex justify-end">
-                <Button variant="outline" size="sm" className="gap-2">
-                  <Download className="h-4 w-4" />
-                  Export CSV
-                </Button>
-              </div>
-              <div className="max-h-[500px] overflow-auto border rounded">
-                {renderDataTable()}
-              </div>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="insights" className="space-y-4">
+          <TabsContent value="visualization" className="flex-1 overflow-auto">
             <Card>
-              <CardHeader>
-                <CardTitle>Key Insights</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+              <CardHeader className="pb-4">
+                <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">Highest Value</p>
-                    <p className="text-2xl font-bold">
-                      {Array.isArray(data.data) 
-                        ? Math.max(...data.data.map((d: any) => d.value || 0)).toLocaleString()
-                        : 'N/A'
-                      }
-                    </p>
+                    <CardTitle className="text-lg">Full View</CardTitle>
+                    <CardDescription>Detailed view of your metric</CardDescription>
                   </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Average</p>
-                    <p className="text-2xl font-bold">
-                      {Array.isArray(data.data) 
-                        ? (data.data.reduce((sum: number, d: any) => sum + (d.value || 0), 0) / data.data.length).toFixed(0)
-                        : 'N/A'
-                      }
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Trend</p>
-                    <div className="flex items-center gap-2">
-                      <TrendingUp className="h-5 w-5 text-green-500" />
-                      <span className="text-lg font-semibold">+12.5%</span>
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Data Points</p>
-                    <p className="text-2xl font-bold">
-                      {Array.isArray(data.data) ? data.data.length : 1}
-                    </p>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm">
+                      <Download className="h-4 w-4 mr-2" />
+                      Export
+                    </Button>
+                    <Button variant="outline" size="sm">
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      Share
+                    </Button>
                   </div>
                 </div>
-
-                {compareMode && relevantEntities.length > 0 && (
-                  <div className="pt-4 border-t">
-                    <h4 className="font-medium mb-2">Comparison Analysis</h4>
-                    <ul className="space-y-2 text-sm">
-                      <li>• Top performer: <strong>{relevantEntities[0].name}</strong></li>
-                      <li>• Variance between entities: <strong>23%</strong></li>
-                      <li>• All entities showing positive trend</li>
-                    </ul>
-                  </div>
-                )}
+              </CardHeader>
+              <CardContent>
+                {renderFullChart()}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="data" className="flex-1 overflow-auto">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Raw Data</CardTitle>
+                <CardDescription>View the underlying data for this metric</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {renderDataTable()}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="details" className="flex-1 overflow-auto">
+            <div className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Metric Information</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground">Name</label>
+                      <div className="mt-1">{widget.metricName}</div>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground">Display Name</label>
+                      <div className="mt-1">{metricDefinition?.displayName || widget.metricName}</div>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground">Category</label>
+                      <div className="mt-1">{metricDefinition?.category || '-'}</div>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground">Unit</label>
+                      <div className="mt-1">{metricDefinition?.unit || '-'}</div>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground">Breakdown</label>
+                      <div className="mt-1 capitalize">{widget.breakdown}</div>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground">Visualization</label>
+                      <div className="mt-1">KPI Tile</div>
+                    </div>
+                  </div>
+                  
+                  {metricDefinition?.description && (
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground">Description</label>
+                      <div className="mt-1 text-sm">{metricDefinition.description}</div>
+                    </div>
+                  )}
+                  
+                  {metricDefinition?.formula && (
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground">Formula</label>
+                      <div className="mt-1 font-mono text-sm bg-muted p-2 rounded">
+                        {metricDefinition.formula}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {compareMode && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Compare Mode</CardTitle>
+                    <CardDescription>This widget is currently in compare mode</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-sm">
+                      Comparing {compareEntities?.length || 0} entities
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
           </TabsContent>
         </Tabs>
       </DialogContent>

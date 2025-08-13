@@ -62,32 +62,10 @@ const categoryIcons: Record<string, React.ReactNode> = {
 // Visualization type labels
 const vizTypeLabels: Record<VizType, string> = {
   kpi: "KPI Tile",
-  line: "Line Chart",
-  bar: "Bar Chart",
-  area: "Area Chart",
-  pie: "Pie Chart",
-  donut: "Donut Chart",
-  table: "Table",
-  funnel: "Funnel",
-  compareMatrix: "Comparison Matrix",
-  compareTable: "Comparison Table",
-  horizontalBar: "Horizontal Bar",
-  stackedBar: "Stacked Bar",
-  scatter: "Scatter Plot",
-  radar: "Radar Chart",
-  radialBar: "Radial Bar",
-  sparkline: "Sparkline",
 };
 
 // Derive sensible visualization defaults when none are provided by the registry
 function getRecommendedVizFromBreakdowns(breakdowns: BreakdownType[]): VizType[] {
-  if (!breakdowns || breakdowns.length === 0) return ["kpi"];
-  if (breakdowns.includes("link")) return ["compareMatrix", "compareTable"];
-  if (breakdowns.includes("time")) return ["line", "area", "sparkline"] as VizType[];
-  if (breakdowns.includes("total")) return ["kpi"];
-  if (breakdowns.includes("rep") || breakdowns.includes("setter")) {
-    return ["bar", "pie", "table"];
-  }
   return ["kpi"];
 }
 
@@ -117,14 +95,8 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
     switch (viz) {
       case 'kpi':
         return 'total';
-      case 'line':
-      case 'area':
-        return 'time';
-      case 'compareMatrix':
-      case 'compareTable':
-        return 'link';
       default:
-        return 'rep';
+        return 'total';
     }
   };
 
@@ -395,18 +367,6 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
                       <div className="flex flex-wrap gap-2">
                         {([
                           'kpi',
-                          'line',
-                          'area',
-                          'bar',
-                          'horizontalBar',
-                          'stackedBar',
-                          'pie',
-                          'donut',
-                          'radar',
-                          'radialBar',
-                          'scatter',
-                          'sparkline',
-                          'table',
                         ] as VizType[]).map((viz) => (
                           <Button
                             key={`all-${viz}`}

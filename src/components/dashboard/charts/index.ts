@@ -1,13 +1,2 @@
 export { ChartWrapper } from './chart-wrapper';
-export { KPIChart } from './kpi-chart';
-export { LineChart } from './line-chart';
-export { BarChart } from './bar-chart';
-export { AreaChart } from './area-chart';
-export { PieChart, DonutChart } from './pie-chart';
-export { TableChart } from './table-chart';
-export { default as HorizontalBarChart } from './variants/horizontal-bar-chart';
-export { default as StackedBarChart } from './variants/stacked-bar-chart';
-export { default as ScatterChart } from './variants/scatter-chart';
-export { default as RadarChart } from './variants/radar-chart';
-export { default as RadialBarChart } from './variants/radial-bar-chart';
-export { default as SparklineChart } from './variants/sparkline-chart'; 
+export { KPIChart } from './kpi-chart'; 
