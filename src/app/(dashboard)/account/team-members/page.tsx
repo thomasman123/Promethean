@@ -138,6 +138,14 @@ export default function TeamMembersPage() {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to invite')
+      
+      // Show success message based on response
+      if (data.message) {
+        toast.success(data.message)
+      } else {
+        toast.success('Invitation sent successfully!')
+      }
+      
       // Clear form and refresh
       setEmail('')
       setFullName('')
