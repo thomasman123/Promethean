@@ -186,6 +186,7 @@ export class MetricsEngine {
     
     // Determine aggregation level based on date range
     const aggregationLevel = this.determineTimeAggregation(appliedFilters);
+    console.log('🐛 DEBUG - Using aggregation level:', aggregationLevel);
     
     let dateSeriesInterval: string;
     let dateGrouping: string;
@@ -195,7 +196,7 @@ export class MetricsEngine {
       case 'month':
         dateSeriesInterval = "'1 month'::interval";
         dateGrouping = "DATE_TRUNC('month', appointments.date_booked_for)";
-        dateDisplay = "TO_CHAR(date_series.date, 'YYYY-MM') as date";
+        dateDisplay = "TO_CHAR(date_series.date, 'Mon YYYY') as date";
         break;
       case 'week':
         dateSeriesInterval = "'1 week'::interval";
@@ -206,7 +207,7 @@ export class MetricsEngine {
       default:
         dateSeriesInterval = "'1 day'::interval";
         dateGrouping = "DATE(appointments.date_booked_for)";
-        dateDisplay = "date_series.date::text as date";
+        dateDisplay = "TO_CHAR(date_series.date, 'Mon DD') as date";
         break;
     }
     
@@ -257,21 +258,26 @@ export class MetricsEngine {
       startDate: startDate.toISOString(),
       endDate: endDate.toISOString(),
       diffInDays,
-      willUse: diffInDays > 60 ? 'month' : diffInDays > 14 ? 'week' : 'day',
+      willUse: diffInDays >= 60 ? 'month' : diffInDays >= 14 ? 'week' : 'day',
+      logic: {
+        isMonth: diffInDays >= 60,
+        isWeek: diffInDays >= 14 && diffInDays < 60,
+        isDay: diffInDays < 14
+      },
       appliedFiltersParams: appliedFilters.params
     });
     
     // 2+ months (60+ days) → monthly aggregation
-    if (diffInDays > 60) {
+    if (diffInDays >= 60) {
       return 'month';
     }
     
-    // 2+ weeks (14+ days) → weekly aggregation
-    if (diffInDays > 14) {
+    // 2+ weeks (14-59 days) → weekly aggregation  
+    if (diffInDays >= 14) {
       return 'week';
     }
     
-    // 1 week or less → daily aggregation
+    // ≤ 2 weeks (1-13 days) → daily aggregation
     return 'day';
   }
 
