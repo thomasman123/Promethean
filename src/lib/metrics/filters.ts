@@ -50,42 +50,122 @@ export function applyStandardFilters(filters: MetricFilters): AppliedFilters {
   // Rep filter - applied if repIds provided
   if (filters.repIds && filters.repIds.length > 0) {
     if (filters.repIds.length === 1) {
-      conditions.push({
-        field: 'sales_rep_user_id',
-        operator: '=',
-        value: filters.repIds[0],
-        paramName: 'rep_id'
-      })
-      params.rep_id = filters.repIds[0]
+      const repId = filters.repIds[0]
+      // Check if it's a UUID or GHL ID based on format
+      if (isUUID(repId)) {
+        conditions.push({
+          field: 'sales_rep_user_id',
+          operator: '=',
+          value: repId,
+          paramName: 'rep_id'
+        })
+        params.rep_id = repId
+      } else {
+        // It's a GHL ID, use the ghl_id column
+        conditions.push({
+          field: 'sales_rep_ghl_id',
+          operator: '=',
+          value: repId,
+          paramName: 'rep_ghl_id'
+        })
+        params.rep_ghl_id = repId
+      }
     } else {
-      conditions.push({
-        field: 'sales_rep_user_id',
-        operator: 'IN',
-        value: filters.repIds,
-        paramName: 'rep_ids'
-      })
-      params.rep_ids = filters.repIds
+      // Multiple IDs - separate UUIDs from GHL IDs
+      const uuids = filters.repIds.filter(id => isUUID(id))
+      const ghlIds = filters.repIds.filter(id => !isUUID(id))
+      
+      const orConditions: string[] = []
+      
+      if (uuids.length > 0) {
+        if (uuids.length === 1) {
+          orConditions.push('sales_rep_user_id = $rep_uuid')
+          params.rep_uuid = uuids[0]
+        } else {
+          orConditions.push('sales_rep_user_id = ANY($rep_uuids)')
+          params.rep_uuids = uuids
+        }
+      }
+      
+      if (ghlIds.length > 0) {
+        if (ghlIds.length === 1) {
+          orConditions.push('sales_rep_ghl_id = $rep_ghl')
+          params.rep_ghl = ghlIds[0]
+        } else {
+          orConditions.push('sales_rep_ghl_id = ANY($rep_ghls)')
+          params.rep_ghls = ghlIds
+        }
+      }
+      
+      if (orConditions.length > 0) {
+        conditions.push({
+          field: `(${orConditions.join(' OR ')})`,
+          operator: '',
+          value: '',
+          paramName: 'rep_mixed'
+        })
+      }
     }
   }
 
   // Setter filter - applied if setterIds provided
   if (filters.setterIds && filters.setterIds.length > 0) {
     if (filters.setterIds.length === 1) {
-      conditions.push({
-        field: 'setter_user_id',
-        operator: '=',
-        value: filters.setterIds[0],
-        paramName: 'setter_id'
-      })
-      params.setter_id = filters.setterIds[0]
+      const setterId = filters.setterIds[0]
+      // Check if it's a UUID or GHL ID based on format
+      if (isUUID(setterId)) {
+        conditions.push({
+          field: 'setter_user_id',
+          operator: '=',
+          value: setterId,
+          paramName: 'setter_id'
+        })
+        params.setter_id = setterId
+      } else {
+        // It's a GHL ID, use the ghl_id column
+        conditions.push({
+          field: 'setter_ghl_id',
+          operator: '=',
+          value: setterId,
+          paramName: 'setter_ghl_id'
+        })
+        params.setter_ghl_id = setterId
+      }
     } else {
-      conditions.push({
-        field: 'setter_user_id',
-        operator: 'IN',
-        value: filters.setterIds,
-        paramName: 'setter_ids'
-      })
-      params.setter_ids = filters.setterIds
+      // Multiple IDs - separate UUIDs from GHL IDs
+      const uuids = filters.setterIds.filter(id => isUUID(id))
+      const ghlIds = filters.setterIds.filter(id => !isUUID(id))
+      
+      const orConditions: string[] = []
+      
+      if (uuids.length > 0) {
+        if (uuids.length === 1) {
+          orConditions.push('setter_user_id = $setter_uuid')
+          params.setter_uuid = uuids[0]
+        } else {
+          orConditions.push('setter_user_id = ANY($setter_uuids)')
+          params.setter_uuids = uuids
+        }
+      }
+      
+      if (ghlIds.length > 0) {
+        if (ghlIds.length === 1) {
+          orConditions.push('setter_ghl_id = $setter_ghl')
+          params.setter_ghl = ghlIds[0]
+        } else {
+          orConditions.push('setter_ghl_id = ANY($setter_ghls)')
+          params.setter_ghls = ghlIds
+        }
+      }
+      
+      if (orConditions.length > 0) {
+        conditions.push({
+          field: `(${orConditions.join(' OR ')})`,
+          operator: '',
+          value: '',
+          paramName: 'setter_mixed'
+        })
+      }
     }
   }
 
@@ -104,6 +184,9 @@ export function buildWhereClause(appliedFilters: AppliedFilters, additionalWhere
       // For IN operations, we need to handle arrays differently
       const placeholders = condition.value.map((_: any, index: number) => `$${condition.paramName}_${index}`).join(', ')
       conditions.push(`${condition.field} IN (${placeholders})`)
+    } else if (condition.operator === '') {
+      // Custom condition (like OR conditions) - field already contains the full condition
+      conditions.push(condition.field)
     } else {
       conditions.push(`${condition.field} ${condition.operator} $${condition.paramName}`)
     }
@@ -172,4 +255,12 @@ export function validateFilters(filters: MetricFilters): { valid: boolean; error
     valid: errors.length === 0,
     errors
   }
+} 
+
+/**
+ * Check if a string is a valid UUID format
+ */
+function isUUID(str: string): boolean {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+  return uuidRegex.test(str)
 } 
