@@ -5,12 +5,10 @@ import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { MultiSelect, MultiSelectOption } from "@/components/ui/multi-select";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { X, Filter, ToggleLeft, ToggleRight } from "lucide-react";
+import { X, Filter } from "lucide-react";
 import { useDashboardStore } from "@/lib/dashboard/store";
 import { DateRange } from "react-day-picker";
-import { CompareModeControls } from "./compare-mode-controls";
 import { cn } from "@/lib/utils";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -25,10 +23,7 @@ export function GlobalFilters({ className }: GlobalFiltersProps) {
     filters, 
     setFilters, 
     clearFilters,
-    compareMode,
-    toggleCompareMode,
   } = useDashboardStore();
-  const [isCompareModalOpen, setIsCompareModalOpen] = useState(false);
   const [repOptions, setRepOptions] = useState<MultiSelectOption[]>([])
   const [setterOptions, setSetterOptions] = useState<MultiSelectOption[]>([])
   const { selectedAccountId } = useAuth()
@@ -108,13 +103,6 @@ export function GlobalFilters({ className }: GlobalFiltersProps) {
     ).length
   ), [filters])
 
-  const openCompareModal = () => {
-    if (!compareMode) {
-      toggleCompareMode();
-    }
-    setIsCompareModalOpen(true);
-  };
-
   return (
     <div className={cn("flex flex-col gap-4 p-4 border-b", className)}>
       {/* Main Filter Bar */}
@@ -148,28 +136,6 @@ export function GlobalFilters({ className }: GlobalFiltersProps) {
           className="w-[220px]"
         />
         
-        <Separator orientation="vertical" className="h-6" />
-        
-        {/* Compare Mode Button opens modal */}
-        <Button
-          variant={compareMode ? "default" : "outline"}
-          size="sm"
-          onClick={openCompareModal}
-          className="gap-2"
-        >
-          {compareMode ? (
-            <>
-              <ToggleRight className="h-4 w-4" />
-              Compare Settings
-            </>
-          ) : (
-            <>
-              <ToggleLeft className="h-4 w-4" />
-              Open Compare
-            </>
-          )}
-        </Button>
-        
         <div className="flex-1" />
         
         {/* Active Filters Display */}
@@ -191,28 +157,6 @@ export function GlobalFilters({ className }: GlobalFiltersProps) {
           </div>
         )}
       </div>
-      
-      {/* Compare Mode Modal */}
-      <Dialog open={isCompareModalOpen} onOpenChange={setIsCompareModalOpen}>
-        <DialogContent className="max-w-3xl">
-          <DialogHeader>
-            <DialogTitle>Compare Mode</DialogTitle>
-          </DialogHeader>
-          <CompareModeControls 
-            reps={repOptions}
-            setters={setterOptions}
-            className="mt-2"
-          />
-          <div className="flex justify-end gap-2 pt-2">
-            {compareMode && (
-              <Button variant="ghost" onClick={() => { toggleCompareMode(); setIsCompareModalOpen(false); }}>
-                Disable compare
-              </Button>
-            )}
-            <Button onClick={() => setIsCompareModalOpen(false)}>Done</Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 } 

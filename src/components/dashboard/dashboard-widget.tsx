@@ -118,80 +118,9 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
 
   // Build multi-series for global compare (line charts)
   useEffect(() => {
-    const run = async () => {
-      if (!compareMode || !compareEntities || compareEntities.length === 0) {
-        setCompareData([]);
-        setCompareLines([]);
-        return;
-      }
-      if (widget.vizType !== 'line') {
-        setCompareData([]);
-        setCompareLines([]);
-        return;
-      }
-      if (!selectedAccountId) return;
-
-      const now = new Date();
-      const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-      const startDate = filters.startDate ? (filters.startDate instanceof Date ? filters.startDate : new Date(filters.startDate)) : thirtyDaysAgo;
-      const endDate = filters.endDate ? (filters.endDate instanceof Date ? filters.endDate : new Date(filters.endDate)) : now;
-
-      const engineMetricName = (() => {
-        const name = widget.metricName;
-        if (name.includes('appointment')) return 'total_appointments';
-        return name;
-      })();
-
-      const entities = compareModeSettings.scope === 'rep'
-        ? compareEntities.filter(e => e.type === 'rep')
-        : compareModeSettings.scope === 'setter'
-          ? compareEntities.filter(e => e.type === 'setter')
-          : compareEntities; // pair: include both; render separate lines
-
-      const baseFilters = {
-        dateRange: { start: formatLocalYMD(startDate), end: formatLocalYMD(endDate) },
-        accountId: selectedAccountId,
-      } as any;
-
-      const seriesByKey: Record<string, { name: string; points: Array<{ date: string; value: number }> }> = {};
-
-      await Promise.all(
-        entities.map(async (ent, idx) => {
-          const reqFilters = { ...baseFilters } as any;
-          if (ent.type === 'rep') reqFilters.repIds = [ent.id];
-          if (ent.type === 'setter') reqFilters.setterIds = [ent.id];
-          const resp = await fetch('/api/metrics', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ metricName: engineMetricName, filters: reqFilters, vizType: 'line', breakdown: 'total' })
-          });
-          if (!resp.ok) return;
-          const json = await resp.json();
-          const ts = (json?.result?.type === 'time' && Array.isArray(json?.result?.data)) ? json.result.data as Array<{ date: string; value: number }> : [];
-          const key = `${ent.type}-${ent.id}`;
-          seriesByKey[key] = { name: ent.name || 'Unknown', points: ts };
-        })
-      );
-
-      const allDates = new Set<string>();
-      Object.values(seriesByKey).forEach(s => s.points.forEach(p => allDates.add(p.date)));
-      const dates = Array.from(allDates);
-
-      const combined = dates.map(date => {
-        const row: Record<string, any> = { date };
-        for (const [key, s] of Object.entries(seriesByKey)) {
-          const found = s.points.find(p => p.date === date);
-          row[key] = found?.value || 0;
-        }
-        return row;
-      });
-
-      const lines = Object.entries(seriesByKey).map(([key, s]) => ({ dataKey: key, name: s.name }));
-      setCompareData(combined);
-      setCompareLines(lines);
-    };
-
-    run();
+    // Compare functionality disabled on main dashboard
+    setCompareData([]);
+    setCompareLines([]);
   }, [compareMode, JSON.stringify(compareEntities), compareModeSettings.scope, widget.vizType, widget.metricName, selectedAccountId, filters.startDate, filters.endDate]);
 
   useEffect(() => {
