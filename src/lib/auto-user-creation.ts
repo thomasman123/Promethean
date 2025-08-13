@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import type { Database } from './database.types'
 
-// Helper function to auto-create pending users for data linking with GHL IDs
+// Helper function to ensure GHL users exist in centralized table and link existing app users
 export async function ensureUsersExistForData(
   supabase: ReturnType<typeof createClient<Database>>,
   accountId: string,
@@ -37,6 +37,18 @@ export async function ensureUsersExistForData(
     if (setterName && setterName.trim() && setterGhlId) {
       const setterEmail = await getGHLEmailForUser(setterName, ghlApiKey, ghlLocationId, setterGhlId)
       
+      // Upsert to centralized ghl_users table
+      const { data: ghlUserId } = await supabase.rpc(
+        'upsert_ghl_user',
+        {
+          p_account_id: accountId,
+          p_ghl_user_id: setterGhlId,
+          p_name: setterName.trim(),
+          p_email: setterEmail || null,
+          p_primary_role: 'setter'
+        }
+      )
+      
       // Check if setter already exists as a real user through account_access
       if (setterEmail) {
         const { data: existingUserAccess } = await supabase
@@ -49,9 +61,17 @@ export async function ensureUsersExistForData(
         
         if (existingUserAccess) {
           result.setterUserId = existingUserAccess.user_id
+          
+          // Update ghl_users table to link to app user
+          await supabase
+            .from('ghl_users')
+            .update({ app_user_id: existingUserAccess.user_id, is_invited: true })
+            .eq('account_id', accountId)
+            .eq('ghl_user_id', setterGhlId)
+          
           console.log('✅ Found existing setter user:', setterEmail)
         } else {
-          console.log('⚠️ Setter not found in app users - storing GHL ID for later invitation:', setterName)
+          console.log('⚠️ Setter not found in app users - stored in ghl_users for later invitation:', setterName)
         }
       }
     }
@@ -59,6 +79,18 @@ export async function ensureUsersExistForData(
     // Process sales rep
     if (salesRepName && salesRepName.trim() && salesRepGhlId) {
       const salesRepEmail = await getGHLEmailForUser(salesRepName, ghlApiKey, ghlLocationId, salesRepGhlId)
+      
+      // Upsert to centralized ghl_users table
+      const { data: ghlUserId } = await supabase.rpc(
+        'upsert_ghl_user',
+        {
+          p_account_id: accountId,
+          p_ghl_user_id: salesRepGhlId,
+          p_name: salesRepName.trim(),
+          p_email: salesRepEmail || null,
+          p_primary_role: 'sales_rep'
+        }
+      )
       
       // Check if sales rep already exists as a real user through account_access
       if (salesRepEmail) {
@@ -72,9 +104,17 @@ export async function ensureUsersExistForData(
         
         if (existingUserAccess) {
           result.salesRepUserId = existingUserAccess.user_id
+          
+          // Update ghl_users table to link to app user
+          await supabase
+            .from('ghl_users')
+            .update({ app_user_id: existingUserAccess.user_id, is_invited: true })
+            .eq('account_id', accountId)
+            .eq('ghl_user_id', salesRepGhlId)
+          
           console.log('✅ Found existing sales rep user:', salesRepEmail)
         } else {
-          console.log('⚠️ Sales rep not found in app users - storing GHL ID for later invitation:', salesRepName)
+          console.log('⚠️ Sales rep not found in app users - stored in ghl_users for later invitation:', salesRepName)
         }
       }
     }
