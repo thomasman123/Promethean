@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
         .eq('is_active', true)
         .single()
 
-      if (!access || !['moderator'].includes(access.role)) {
+      if (!access || !['admin', 'moderator'].includes(access.role)) {
         return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
       }
     }

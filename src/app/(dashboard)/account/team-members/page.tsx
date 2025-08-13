@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useAuth } from '@/hooks/useAuth'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { toast } from 'sonner'
 
 interface TeamMember {
   account_id: string
@@ -170,11 +171,15 @@ export default function TeamMembersPage() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to invite')
       
+      toast.success(`Successfully invited ${pendingUser.name}!`)
+      
       // Refresh both lists
       await fetchMembers()
       await fetchPendingUsers()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to invite user')
+      const errorMessage = e instanceof Error ? e.message : 'Failed to invite user'
+      setError(errorMessage)
+      toast.error(`Failed to invite ${pendingUser.name}: ${errorMessage}`)
     } finally {
       setInvitingPendingUser(null)
     }
