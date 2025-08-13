@@ -71,9 +71,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch team members' }, { status: 500 })
     }
 
-    // Split into reps and setters based on their role
+    // Split into reps and setters based on their role (exclude moderators - they're for account management only)
     const invitedReps = (team || [])
-      .filter(m => m.role && ['sales_rep', 'admin', 'moderator'].includes(m.role))
+      .filter(m => m.role && ['sales_rep', 'admin'].includes(m.role)) // Removed 'moderator'
       .filter(m => (m as any).full_name && (m as any).full_name.trim().length > 2) // Filter out invalid names
       .map<Candidate>(m => ({ 
         id: (m as any).user_id, 
@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
       }))
 
     const invitedSetters = (team || [])
-      .filter(m => m.role && ['setter', 'admin', 'moderator'].includes(m.role))
+      .filter(m => m.role && ['setter', 'admin'].includes(m.role)) // Removed 'moderator'
       .filter(m => (m as any).full_name && (m as any).full_name.trim().length > 2) // Filter out invalid names
       .map<Candidate>(m => ({ 
         id: (m as any).user_id, 
