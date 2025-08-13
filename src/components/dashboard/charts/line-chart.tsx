@@ -31,6 +31,8 @@ export function LineChart({
   disableTooltip = false,
   className
 }: LineChartProps) {
+  console.log('🐛 DEBUG - LineChart props:', { data, lines, xAxisKey });
+  
   const chartConfig = lines.reduce((config, line, index) => {
     config[line.dataKey] = {
       label: line.name,
@@ -39,52 +41,48 @@ export function LineChart({
     return config;
   }, {} as Record<string, any>);
 
-  return (
-    <ChartContainer config={chartConfig} className={cn("w-full h-full", className)}>
+    return (
+    <div className={cn("w-full h-full", className)}>
       <ResponsiveContainer width="100%" height="100%">
         <RechartsLineChart
           data={data}
           margin={{
-            top: 5,
-            right: 10,
-            left: 10,
-            bottom: 5,
+            top: 20,
+            right: 20,
+            left: 20,
+            bottom: 20,
           }}
         >
           {showGrid && (
-            <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+            <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
           )}
           <XAxis
             dataKey={xAxisKey}
-            tickLine={false}
-            axisLine={false}
-            className="text-xs fill-muted-foreground"
+            stroke="#9ca3af"
+            fontSize={12}
           />
           <YAxis
-            tickLine={false}
-            axisLine={false}
-            className="text-xs fill-muted-foreground"
+            stroke="#9ca3af"
+            fontSize={12}
           />
           {!disableTooltip && (
-            <ChartTooltip
-              content={<ChartTooltipContent />}
-            />
+            <Tooltip />
           )}
           {showLegend && <Legend />}
-                  {lines.map((line) => (
-          <Line
-            key={line.dataKey}
-            type="monotone"
-            dataKey={line.dataKey}
-            stroke={line.color || 'hsl(var(--primary))'}
-            strokeWidth={3}
-            dot={{ r: 4, fill: line.color || 'hsl(var(--primary))' }}
-            activeDot={{ r: 6, fill: line.color || 'hsl(var(--primary))' }}
-            connectNulls={true}
-          />
-        ))}
+          {lines.map((line) => (
+            <Line
+              key={line.dataKey}
+              type="monotone"
+              dataKey={line.dataKey}
+              stroke="#3b82f6"
+              strokeWidth={3}
+              dot={{ r: 4, fill: "#3b82f6", stroke: "#3b82f6", strokeWidth: 2 }}
+              activeDot={{ r: 6, fill: "#3b82f6", stroke: "#ffffff", strokeWidth: 2 }}
+              connectNulls={true}
+            />
+          ))}
         </RechartsLineChart>
       </ResponsiveContainer>
-    </ChartContainer>
+    </div>
   );
 } 
