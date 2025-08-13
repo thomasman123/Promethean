@@ -177,7 +177,7 @@ export function WidgetDetailModal({ widget, data, open, onOpenChange }: WidgetDe
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[96vw] h-[95vh] max-w-none">
+      <DialogContent className="w-[96vw] h-[95vh] max-w-[96vw] sm:max-w-[96vw] md:max-w-[96vw] lg:max-w-[96vw]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {widget.settings?.title || metricDefinition?.displayName || widget.metricName}
