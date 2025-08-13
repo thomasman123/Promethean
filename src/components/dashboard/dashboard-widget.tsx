@@ -6,7 +6,8 @@ import {
   KPIChart,
   LineChart,
   BarChart,
-  AreaChart
+  AreaChart,
+  RadarChart
 } from "./charts";
 import { CompareWidget } from "./compare-widget";
 import { WidgetDetailModal } from "./widget-detail-modal";
@@ -356,6 +357,36 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
             xAxisKey={areaXAxisKey}
             showLegend={false}
             showGrid={true}
+            disableTooltip={isDragging}
+            className="h-full"
+          />
+        );
+      case 'radar':
+        let radarData;
+        let radarAngleKey;
+        if (Array.isArray(data.data) && data.data.length > 0) {
+          radarData = data.data.map((item: any) => ({
+            date: item.date || item.name,
+            value: item.value || 0
+          }));
+          radarAngleKey = 'date';
+        } else {
+          radarData = [
+            { date: 'Current', value: data.data.value || 0 }
+          ];
+          radarAngleKey = 'date';
+        }
+        return (
+          <RadarChart
+            key={chartKey}
+            data={radarData}
+            radarSeries={[{
+              dataKey: 'value',
+              name: widget.settings?.title || metricDefinition?.displayName || widget.metricName,
+              color: 'var(--primary)'
+            }]}
+            angleKey={radarAngleKey}
+            showLegend={false}
             disableTooltip={isDragging}
             className="h-full"
           />

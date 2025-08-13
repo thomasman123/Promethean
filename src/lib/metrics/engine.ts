@@ -78,7 +78,7 @@ export class MetricsEngine {
     let effectiveMetric = metric;
     let useCustomTimeSQL = false;
     
-    if ((options?.vizType === 'line' || options?.vizType === 'bar' || options?.vizType === 'area') && metric.name === 'Total Appointments') {
+    if ((options?.vizType === 'line' || options?.vizType === 'bar' || options?.vizType === 'area' || options?.vizType === 'radar') && metric.name === 'Total Appointments') {
       // We'll use custom SQL for complete date range
       useCustomTimeSQL = true;
       effectiveMetric = {

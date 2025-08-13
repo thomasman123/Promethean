@@ -65,6 +65,7 @@ const vizTypeLabels: Record<VizType, string> = {
   line: "Line Chart",
   bar: "Bar Chart",
   area: "Area Chart",
+  radar: "Radar Chart",
 };
 
 // Derive sensible visualization defaults when none are provided by the registry
@@ -103,6 +104,10 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
       case 'line':
         return 'total'; // Use total breakdown, engine will convert to time automatically
       case 'bar':
+        return 'total';
+      case 'area':
+        return 'total';
+      case 'radar':
         return 'total';
       default:
         return 'total';
@@ -351,7 +356,7 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
 
                       {/* All Visualizations */}
                       <div className="flex flex-wrap gap-2">
-                        {(["kpi", "line", "bar", "area"] as VizType[]).map((viz) => (
+                        {(["kpi", "line", "bar", "area", "radar"] as VizType[]).map((viz) => (
                           <Button
                             key={`all-${viz}`}
                             type="button"
