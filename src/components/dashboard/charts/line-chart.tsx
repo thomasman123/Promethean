@@ -76,10 +76,11 @@ export function LineChart({
             key={line.dataKey}
             type="monotone"
             dataKey={line.dataKey}
-            stroke={line.color}
-            strokeWidth={2}
-            dot={{ r: 4, fill: line.color }}
-            activeDot={{ r: 6, fill: line.color }}
+            stroke={line.color || 'hsl(var(--primary))'}
+            strokeWidth={3}
+            dot={{ r: 4, fill: line.color || 'hsl(var(--primary))' }}
+            activeDot={{ r: 6, fill: line.color || 'hsl(var(--primary))' }}
+            connectNulls={true}
           />
         ))}
         </RechartsLineChart>
