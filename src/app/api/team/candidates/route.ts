@@ -82,12 +82,12 @@ export async function GET(request: NextRequest) {
     const setterNames = new Map<string, string | null>()
 
     const [dialsRes, discoveriesRes, apptsRes] = await Promise.all([
-      supabase.from('dials').select('setter_user_id, setter').eq('account_id', accountId),
-      supabase.from('discoveries').select('setter_user_id, sales_rep_user_id, setter, sales_rep').eq('account_id', accountId),
-      supabase.from('appointments').select('sales_rep_user_id, setter_user_id, sales_rep, setter').eq('account_id', accountId)
+      supabase.from('dials').select('setter_user_id, setter, setter_ghl_id, sales_rep_ghl_id').eq('account_id', accountId),
+      supabase.from('discoveries').select('setter_user_id, sales_rep_user_id, setter, sales_rep, setter_ghl_id, sales_rep_ghl_id').eq('account_id', accountId),
+      supabase.from('appointments').select('sales_rep_user_id, setter_user_id, sales_rep, setter, setter_ghl_id, sales_rep_ghl_id').eq('account_id', accountId)
     ])
 
-    const add = (id: string | null, name: string | null, type: 'rep' | 'setter') => {
+    const add = (id: string | null, name: string | null, type: 'rep' | 'setter', ghlId?: string | null) => {
       if (!id) return
       if (type === 'rep') {
         repIds.add(id)
@@ -99,27 +99,30 @@ export async function GET(request: NextRequest) {
     }
 
     ;(dialsRes.data || []).forEach((r: any) => {
-      // Use user_id if available, otherwise use name as ID
-      if (r.setter_user_id || r.setter) {
-        add(r.setter_user_id || `name:${r.setter}`, r.setter || null, 'setter')
+      // Use user_id if available, otherwise use GHL ID, otherwise use name as ID
+      if (r.setter_user_id || r.setter_ghl_id || r.setter) {
+        add(r.setter_user_id || r.setter_ghl_id || `name:${r.setter}`, r.setter || null, 'setter', r.setter_ghl_id)
+      }
+      if (r.sales_rep_ghl_id) {
+        add(r.sales_rep_ghl_id, r.setter || null, 'rep', r.sales_rep_ghl_id) // Name might not be available for sales rep in dials
       }
     })
     ;(discoveriesRes.data || []).forEach((r: any) => {
-      // Use user_id if available, otherwise fall back to name-based ID
-      if (r.setter_user_id || r.setter) {
-        add(r.setter_user_id || `name:${r.setter}`, r.setter || null, 'setter')
+      // Use user_id if available, otherwise fall back to GHL ID, otherwise name-based ID
+      if (r.setter_user_id || r.setter_ghl_id || r.setter) {
+        add(r.setter_user_id || r.setter_ghl_id || `name:${r.setter}`, r.setter || null, 'setter', r.setter_ghl_id)
       }
-      if (r.sales_rep_user_id || r.sales_rep) {
-        add(r.sales_rep_user_id || `name:${r.sales_rep}`, r.sales_rep || null, 'rep')
+      if (r.sales_rep_user_id || r.sales_rep_ghl_id || r.sales_rep) {
+        add(r.sales_rep_user_id || r.sales_rep_ghl_id || `name:${r.sales_rep}`, r.sales_rep || null, 'rep', r.sales_rep_ghl_id)
       }
     })
     ;(apptsRes.data || []).forEach((r: any) => {
-      // Use user_id if available, otherwise use name as ID
-      if (r.sales_rep_user_id || r.sales_rep) {
-        add(r.sales_rep_user_id || `name:${r.sales_rep}`, r.sales_rep || null, 'rep')
+      // Use user_id if available, otherwise use GHL ID, otherwise use name as ID
+      if (r.sales_rep_user_id || r.sales_rep_ghl_id || r.sales_rep) {
+        add(r.sales_rep_user_id || r.sales_rep_ghl_id || `name:${r.sales_rep}`, r.sales_rep || null, 'rep', r.sales_rep_ghl_id)
       }
-      if (r.setter_user_id || r.setter) {
-        add(r.setter_user_id || `name:${r.setter}`, r.setter || null, 'setter')
+      if (r.setter_user_id || r.setter_ghl_id || r.setter) {
+        add(r.setter_user_id || r.setter_ghl_id || `name:${r.setter}`, r.setter || null, 'setter', r.setter_ghl_id)
       }
     })
 

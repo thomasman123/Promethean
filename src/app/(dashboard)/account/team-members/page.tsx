@@ -26,12 +26,28 @@ interface TeamMember {
   created_for_data?: boolean
 }
 
+interface PendingUser {
+  ghl_user_id: string
+  name: string
+  email: string
+  first_name: string
+  last_name: string
+  phone: string
+  suggested_role: 'admin' | 'moderator' | 'sales_rep' | 'setter'
+  activity_count: number
+  appointment_count: number
+  discovery_count: number
+  dial_count: number
+  last_activity: string
+}
+
 export default function TeamMembersPage() {
   const { selectedAccountId, getAccountBasedPermissions, accountChangeTimestamp } = useAuth()
   const permissions = getAccountBasedPermissions()
   const [members, setMembers] = useState<TeamMember[]>([])
   const [ghlUsers, setGhlUsers] = useState<Array<{ id: string; email: string | null; name: string | null; role: string | null }>>([])
   const [dataUserPreviews, setDataUserPreviews] = useState<any[]>([])
+  const [pendingUsers, setPendingUsers] = useState<PendingUser[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -41,6 +57,7 @@ export default function TeamMembersPage() {
   const [inviting, setInviting] = useState(false)
   const [openInvite, setOpenInvite] = useState(false)
   const [convertingUser, setConvertingUser] = useState<string | null>(null)
+  const [invitingPendingUser, setInvitingPendingUser] = useState<string | null>(null)
 
   useEffect(() => {
     if (!selectedAccountId) return
@@ -48,9 +65,11 @@ export default function TeamMembersPage() {
     setError(null)
     setMembers([])
     setGhlUsers([])
+    setPendingUsers([])
     fetchMembers()
     fetchGhlUsers()
     fetchDataUserPreviews()
+    fetchPendingUsers()
   }, [selectedAccountId, accountChangeTimestamp])
 
   const fetchMembers = async () => {
@@ -95,6 +114,20 @@ export default function TeamMembersPage() {
     }
   }
 
+  const fetchPendingUsers = async () => {
+    if (!selectedAccountId) return
+    try {
+      const ts = Date.now()
+      const res = await fetch(`/api/team/pending-users?accountId=${selectedAccountId}&_ts=${ts}`, { cache: 'no-store' })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to fetch pending users')
+      setPendingUsers(data.pendingUsers || [])
+    } catch (e) {
+      console.warn('Failed to fetch pending users:', e)
+      setPendingUsers([])
+    }
+  }
+
   const invite = async () => {
     if (!selectedAccountId || !email) return
     setInviting(true)
@@ -112,11 +145,41 @@ export default function TeamMembersPage() {
       setFullName('')
       setRole('setter')
       await fetchMembers()
+      await fetchPendingUsers() // Refresh pending users too
       setOpenInvite(false)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to invite')
     } finally {
       setInviting(false)
+    }
+  }
+
+  const invitePendingUser = async (pendingUser: PendingUser) => {
+    if (!selectedAccountId) return
+    setInvitingPendingUser(pendingUser.ghl_user_id)
+    setError(null)
+    
+    try {
+      const res = await fetch('/api/team/pending-users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          accountId: selectedAccountId,
+          ghlUserId: pendingUser.ghl_user_id,
+          email: pendingUser.email,
+          fullName: pendingUser.name,
+          role: pendingUser.suggested_role
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to invite pending user')
+      
+      await fetchMembers()
+      await fetchPendingUsers()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to invite pending user')
+    } finally {
+      setInvitingPendingUser(null)
     }
   }
 
@@ -281,6 +344,55 @@ export default function TeamMembersPage() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Pending GHL Users Section */}
+            {pendingUsers.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    Pending GHL Users
+                    <Badge variant="secondary">{pendingUsers.length}</Badge>
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    Users from your GHL account who have activity in appointments, discoveries, or dials but haven't been invited to the app yet.
+                  </p>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {pendingUsers.map((user) => (
+                    <div key={user.ghl_user_id} className="flex items-center justify-between p-3 border rounded">
+                      <div className="space-y-1">
+                        <div className="font-medium flex items-center gap-2">
+                          {user.name || 'Unknown'}
+                          <Badge variant={user.activity_count >= 5 ? 'default' : 'secondary'}>
+                            {user.suggested_role.replace('_', ' ')}
+                          </Badge>
+                          {user.email && (
+                            <Badge variant="outline" className="text-green-600">
+                              ✓ Email
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="text-sm text-muted-foreground">{user.email || 'No email'}</div>
+                        <div className="text-xs text-muted-foreground">
+                          Activity: {user.appointment_count} appointments, {user.discovery_count} discoveries, {user.dial_count} dials
+                          {user.phone && ` • Phone: ${user.phone}`}
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button 
+                          variant="default" 
+                          size="sm" 
+                          onClick={() => invitePendingUser(user)}
+                          disabled={invitingPendingUser === user.ghl_user_id || !user.email}
+                        >
+                          {invitingPendingUser === user.ghl_user_id ? 'Inviting...' : 'Invite to App'}
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
 
             {/* Data Users Section */}
             {dataUserPreviews.length > 0 && (

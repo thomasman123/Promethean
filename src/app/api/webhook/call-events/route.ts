@@ -840,7 +840,9 @@ async function processAppointmentWebhook(payload: any) {
         total_sales_value: null,
         metadata: JSON.stringify(metadata),
         setter_user_id: userIds.setterUserId || null,
-        sales_rep_user_id: userIds.salesRepUserId || null
+        sales_rep_user_id: userIds.salesRepUserId || null,
+        setter_ghl_id: setterData?.id || null,
+        sales_rep_ghl_id: salesRepData?.id || null
       };
       
       // Check for existing appointment to prevent duplicates
@@ -908,7 +910,9 @@ async function processAppointmentWebhook(payload: any) {
         date_booked_for: payload.appointment?.startTime ? 
           new Date(payload.appointment.startTime).toISOString() : null,
         setter_user_id: userIds.setterUserId || null,
-        sales_rep_user_id: userIds.salesRepUserId || null
+        sales_rep_user_id: userIds.salesRepUserId || null,
+        setter_ghl_id: setterData?.id || null,
+        sales_rep_ghl_id: salesRepData?.id || null
       };
       
       // Check for existing discovery to prevent duplicates

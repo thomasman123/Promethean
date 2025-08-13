@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import type { Database } from './database.types'
 
-// Helper function to auto-create users for data linking with GHL IDs
+// Helper function to auto-create pending users for data linking with GHL IDs
 export async function ensureUsersExistForData(
   supabase: ReturnType<typeof createClient<Database>>,
   accountId: string,
@@ -11,44 +11,105 @@ export async function ensureUsersExistForData(
   ghlLocationId?: string,
   setterGhlId?: string,
   salesRepGhlId?: string
-): Promise<{ setterUserId?: string; salesRepUserId?: string }> {
-  const result: { setterUserId?: string; salesRepUserId?: string } = {}
+): Promise<{ 
+  setterUserId?: string; 
+  salesRepUserId?: string;
+  setterGhlId?: string;
+  salesRepGhlId?: string;
+}> {
+  const result: { 
+    setterUserId?: string; 
+    salesRepUserId?: string;
+    setterGhlId?: string;
+    salesRepGhlId?: string;
+  } = {}
+  
+  // Always return the GHL IDs for storage
+  if (setterGhlId) {
+    result.setterGhlId = setterGhlId
+  }
+  if (salesRepGhlId) {
+    result.salesRepGhlId = salesRepGhlId
+  }
   
   try {
     // Process setter
-    if (setterName && setterName.trim()) {
+    if (setterName && setterName.trim() && setterGhlId) {
       const setterEmail = await getGHLEmailForUser(setterName, ghlApiKey, ghlLocationId, setterGhlId)
-      const { data: setterUserId } = await supabase.rpc(
-        'create_data_user_if_not_exists',
-        {
-          p_account_id: accountId,
-          p_name: setterName.trim(),
-          p_role: 'setter',
-          p_email: setterEmail || undefined
+      
+      // Check if setter already exists as a real user through account_access
+      if (setterEmail) {
+        const { data: existingUserAccess } = await supabase
+          .from('account_access')
+          .select('user_id, profiles!inner(id, email)')
+          .eq('account_id', accountId)
+          .eq('profiles.email', setterEmail)
+          .eq('is_active', true)
+          .single()
+        
+        if (existingUserAccess) {
+          result.setterUserId = existingUserAccess.user_id
+          console.log('✅ Found existing setter user:', setterEmail)
+        } else {
+          console.log('⚠️ Setter not found in app users - storing GHL ID for later invitation:', setterName)
         }
-      )
-      if (setterUserId) result.setterUserId = setterUserId
+      }
     }
 
     // Process sales rep
-    if (salesRepName && salesRepName.trim()) {
+    if (salesRepName && salesRepName.trim() && salesRepGhlId) {
       const salesRepEmail = await getGHLEmailForUser(salesRepName, ghlApiKey, ghlLocationId, salesRepGhlId)
-      const { data: salesRepUserId } = await supabase.rpc(
-        'create_data_user_if_not_exists',
-        {
-          p_account_id: accountId,
-          p_name: salesRepName.trim(),
-          p_role: 'sales_rep',
-          p_email: salesRepEmail || undefined
+      
+      // Check if sales rep already exists as a real user through account_access
+      if (salesRepEmail) {
+        const { data: existingUserAccess } = await supabase
+          .from('account_access')
+          .select('user_id, profiles!inner(id, email)')
+          .eq('account_id', accountId)
+          .eq('profiles.email', salesRepEmail)
+          .eq('is_active', true)
+          .single()
+        
+        if (existingUserAccess) {
+          result.salesRepUserId = existingUserAccess.user_id
+          console.log('✅ Found existing sales rep user:', salesRepEmail)
+        } else {
+          console.log('⚠️ Sales rep not found in app users - storing GHL ID for later invitation:', salesRepName)
         }
-      )
-      if (salesRepUserId) result.salesRepUserId = salesRepUserId
+      }
     }
 
     return result
   } catch (error) {
     console.error('Error ensuring users exist for data:', error)
     return result
+  }
+}
+
+// Legacy function that creates data users - keeping for compatibility but marking as deprecated
+export async function createDataUserIfNotExists(
+  supabase: ReturnType<typeof createClient<Database>>,
+  accountId: string,
+  name: string,
+  role: 'setter' | 'sales_rep',
+  email?: string
+): Promise<string | null> {
+  console.warn('⚠️ createDataUserIfNotExists is deprecated - use ensureUsersExistForData instead')
+  
+  try {
+    const { data: userId } = await supabase.rpc(
+      'create_data_user_if_not_exists',
+      {
+        p_account_id: accountId,
+        p_name: name.trim(),
+        p_role: role,
+        p_email: email || undefined
+      }
+    )
+    return userId
+  } catch (error) {
+    console.error('Error creating data user:', error)
+    return null
   }
 }
 
