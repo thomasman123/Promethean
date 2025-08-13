@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
@@ -21,7 +21,7 @@ type CallOutcome = "show" | "no_show" | "reschedule" | "cancel";
 
 type ShownOutcome = "won" | "lost" | "follow_up";
 
-export default function AppointmentsUpdatesPage() {
+function AppointmentsUpdatesPageContent() {
   const { selectedAccountId } = useAuth();
   const [items, setItems] = useState<AppointmentItem[]>([]);
   const [openId, setOpenId] = useState<string | null>(null);
@@ -68,6 +68,14 @@ export default function AppointmentsUpdatesPage() {
         <AppointmentSheet key={`drawer-${item.id}`} open={openId === item.id} onOpenChange={(v) => !v && setOpenId(null)} item={item} />
       ))}
     </div>
+  );
+}
+
+export default function AppointmentsUpdatesPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <AppointmentsUpdatesPageContent />
+    </Suspense>
   );
 }
 

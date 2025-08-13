@@ -16,22 +16,31 @@ export default function UpdateDataPage() {
 			<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 				<Card>
 					<CardHeader>
-						<CardTitle className="flex items-center gap-2"><Calendar className="h-5 w-5" /> Appointments</CardTitle>
-						<CardDescription>Fill Show/No-Show, outcomes, objections and lead quality</CardDescription>
+						<CardTitle className="flex items-center gap-2"><Calendar className="h-5 w-5" /> Complete Data Flow</CardTitle>
+						<CardDescription>Fill appointments and discoveries in one guided flow</CardDescription>
 					</CardHeader>
 					<CardContent>
-						<Link href="/dashboard/appointments?flow=1">
-							<Button className="gap-2">Open My Appointment Updates <ChevronRight className="h-4 w-4" /></Button>
+						<Link href="/dashboard/update-data/flow">
+							<Button className="gap-2">Start Data Updates <ChevronRight className="h-4 w-4" /></Button>
 						</Link>
 					</CardContent>
 				</Card>
 				<Card>
 					<CardHeader>
-						<CardTitle className="flex items-center gap-2"><ClipboardList className="h-5 w-5" /> Discoveries</CardTitle>
-						<CardDescription>Capture discovery outcomes (coming soon)</CardDescription>
+						<CardTitle className="flex items-center gap-2"><ClipboardList className="h-5 w-5" /> Quick Stats</CardTitle>
+						<CardDescription>Your pending data completion status</CardDescription>
 					</CardHeader>
 					<CardContent>
-						<Button variant="outline" disabled className="gap-2">Coming soon</Button>
+						<div className="space-y-2">
+							<div className="flex justify-between text-sm">
+								<span>Appointments pending:</span>
+								<span className="font-medium">2</span>
+							</div>
+							<div className="flex justify-between text-sm">
+								<span>Discoveries pending:</span>
+								<span className="font-medium">0</span>
+							</div>
+						</div>
 					</CardContent>
 				</Card>
 			</div>
