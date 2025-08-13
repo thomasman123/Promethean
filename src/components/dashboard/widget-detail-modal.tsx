@@ -11,6 +11,7 @@ import { DashboardWidget as WidgetType, MetricData } from "@/lib/dashboard/types
 import { useDashboardStore } from "@/lib/dashboard/store";
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { Progress } from "@/components/ui/progress";
 
 interface WidgetDetailModalProps {
   widget: WidgetType;
@@ -33,6 +34,10 @@ export function WidgetDetailModal({ widget, data, open, onOpenChange }: WidgetDe
   const [isLoadingSeries, setIsLoadingSeries] = useState(false);
   const [showReps, setShowReps] = useState(true);
   const [showSetters, setShowSetters] = useState(true);
+
+  // Leaders (totals) lists
+  const [repLeaders, setRepLeaders] = useState<Array<{ id: string; name: string; value: number }>>([]);
+  const [setterLeaders, setSetterLeaders] = useState<Array<{ id: string; name: string; value: number }>>([]);
 
   const { filters: globalFilters } = useDashboardStore();
 
@@ -142,6 +147,64 @@ export function WidgetDetailModal({ widget, data, open, onOpenChange }: WidgetDe
     loadMultiSeries();
   }, [open, widget.vizType, widget.metricName, selectedAccountId, showReps, showSetters, (globalFilters as any)?.repIds, (globalFilters as any)?.setterIds]);
 
+  // Leaders (totals) fetch — sums the time series to totals per entity
+  useEffect(() => {
+    const loadLeaders = async () => {
+      if (!open) return;
+      if (!selectedAccountId) return;
+
+      const candidatesRes = await fetch(`/api/team/candidates?accountId=${encodeURIComponent(selectedAccountId)}`);
+      const candidatesJson = await candidatesRes.json();
+
+      const selectedRepIds: string[] = (globalFilters as any)?.repIds || [];
+      const selectedSetterIds: string[] = (globalFilters as any)?.setterIds || [];
+
+      const MAX_PER_GROUP = 8;
+      const allReps = candidatesJson.reps || [];
+      const allSetters = candidatesJson.setters || [];
+
+      const reps = (selectedRepIds.length > 0
+        ? allReps.filter((r: any) => selectedRepIds.includes(r.id))
+        : allReps
+      ).slice(0, MAX_PER_GROUP);
+
+      const setters = (selectedSetterIds.length > 0
+        ? allSetters.filter((s: any) => selectedSetterIds.includes(s.id))
+        : allSetters
+      ).slice(0, MAX_PER_GROUP);
+
+      const { start, end } = resolveDates();
+      const baseFilters = { dateRange: { start, end }, accountId: selectedAccountId } as any;
+      const engineMetricName = getEngineMetricName(widget.metricName, 'total');
+
+      const fetchTotal = async (entity: any, type: 'rep' | 'setter') => {
+        const filters = { ...baseFilters } as any;
+        if (type === 'rep') filters.repIds = [entity.id];
+        if (type === 'setter') filters.setterIds = [entity.id];
+        const resp = await fetch('/api/metrics', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ metricName: engineMetricName, filters, vizType: 'line', breakdown: 'total' })
+        });
+        if (!resp.ok) return { id: entity.id, name: entity.name || 'Unknown', value: 0 };
+        const json = await resp.json();
+        const ts = (json?.result?.type === 'time' && Array.isArray(json?.result?.data)) ? json.result.data as Array<{ date: string; value: number }> : [];
+        const total = ts.reduce((s, p) => s + (p.value || 0), 0);
+        return { id: entity.id, name: entity.name || 'Unknown', value: total };
+      };
+
+      const [repTotals, setterTotals] = await Promise.all([
+        Promise.all(reps.map((r: any) => fetchTotal(r, 'rep'))),
+        Promise.all(setters.map((s: any) => fetchTotal(s, 'setter')))
+      ]);
+
+      setRepLeaders(repTotals.sort((a, b) => b.value - a.value));
+      setSetterLeaders(setterTotals.sort((a, b) => b.value - a.value));
+    };
+
+    loadLeaders();
+  }, [open, selectedAccountId, (globalFilters as any)?.repIds, (globalFilters as any)?.setterIds]);
+
   useEffect(() => {
     if (!open) return;
     if (Array.isArray((data as any).data)) {
@@ -229,53 +292,35 @@ export function WidgetDetailModal({ widget, data, open, onOpenChange }: WidgetDe
     }
   };
 
-  const renderBreakdown = () => {
-    const total = grouped.reduce((s, x) => s + x.value, 0) || 1;
-    const chartData = grouped.map(g => ({ entity: g.name, value: g.value }));
-
+  const LeadersList = ({ title, items }: { title: string; items: Array<{ name: string; value: number }> }) => {
+    const total = Math.max(1, items.reduce((s, i) => s + i.value, 0));
+    const top = Math.max(1, items[0]?.value || 1);
     return (
       <Card>
-        <CardHeader className="flex items-center justify-between">
-          <div>
-            <CardTitle className="text-base">Breakdown by {actor === 'rep' ? 'Sales Rep' : 'Setter'}</CardTitle>
-            <CardDescription>Same filters and aggregation; alternate attribution</CardDescription>
-          </div>
-          <div className="flex gap-2">
-            <Button size="sm" variant={actor === 'rep' ? 'default' : 'outline'} onClick={() => setActor('rep')}>Reps</Button>
-            <Button size="sm" variant={actor === 'setter' ? 'default' : 'outline'} onClick={() => setActor('setter')}>Setters</Button>
-          </div>
+        <CardHeader>
+          <CardTitle className="text-base">{title}</CardTitle>
+          <CardDescription>Comparison within group</CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="h-[50vh]">
-            <BarChart
-              data={chartData.map(d => ({ date: d.entity, value: d.value }))}
-              bars={[{ dataKey: 'value', name: 'Value', color: 'var(--primary)' }]}
-              xAxisKey="date"
-              showLegend={false}
-              showGrid
-              className="h-full w-full"
-            />
-          </div>
-          <div className="mt-4">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Entity</TableHead>
-                  <TableHead className="text-right">Value</TableHead>
-                  <TableHead className="text-right">Share</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {grouped.map(row => (
-                  <TableRow key={row.name}>
-                    <TableCell>{row.name}</TableCell>
-                    <TableCell className="text-right">{row.value.toLocaleString()}</TableCell>
-                    <TableCell className="text-right">{((row.value / total) * 100).toFixed(1)}%</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+        <CardContent className="space-y-3">
+          {items.map((item, idx) => {
+            const pctOfTotal = (item.value / total) * 100;
+            const pctOfTop = (item.value / top) * 100;
+            return (
+              <div key={item.name} className="rounded-md border p-3">
+                <div className="flex items-center justify-between">
+                  <div className="font-medium truncate">{idx + 1}. {item.name}</div>
+                  <div className="text-sm tabular-nums font-mono">{item.value.toLocaleString()}</div>
+                </div>
+                <div className="mt-2 text-xs text-muted-foreground flex items-center justify-between">
+                  <span>{pctOfTotal.toFixed(1)}% of total</span>
+                  <span>{pctOfTop.toFixed(1)}% of top</span>
+                </div>
+                <div className="mt-2">
+                  <Progress value={pctOfTop} />
+                </div>
+              </div>
+            );
+          })}
         </CardContent>
       </Card>
     );
@@ -305,10 +350,9 @@ export function WidgetDetailModal({ widget, data, open, onOpenChange }: WidgetDe
         </DialogHeader>
 
         <Tabs defaultValue="chart" className="w-full h-[calc(95vh-6rem)]">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="chart">Chart</TabsTrigger>
-            <TabsTrigger value="breakdown">Breakdown</TabsTrigger>
-            <TabsTrigger value="data">Data</TabsTrigger>
+            <TabsTrigger value="leaders">Leaders</TabsTrigger>
           </TabsList>
 
           <TabsContent value="chart" className="space-y-4 h-full">
@@ -344,37 +388,11 @@ export function WidgetDetailModal({ widget, data, open, onOpenChange }: WidgetDe
             </Card>
           </TabsContent>
 
-          <TabsContent value="breakdown" className="space-y-4">
-            {renderBreakdown()}
-          </TabsContent>
-
-          <TabsContent value="data" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Summary</CardTitle>
-                <CardDescription>Key information about this widget</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Property</TableHead>
-                      <TableHead>Value</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    <TableRow>
-                      <TableCell className="font-medium">Metric</TableCell>
-                      <TableCell>{metricDefinition?.displayName || widget.metricName}</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell className="font-medium">Breakdown</TableCell>
-                      <TableCell>{widget.breakdown}</TableCell>
-                    </TableRow>
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
+          <TabsContent value="leaders" className="space-y-6 h-full overflow-auto">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <LeadersList title="Sales Reps" items={repLeaders} />
+              <LeadersList title="Setters" items={setterLeaders} />
+            </div>
           </TabsContent>
         </Tabs>
       </DialogContent>
