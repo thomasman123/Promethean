@@ -74,25 +74,24 @@ export class MetricsEngine {
     
     // Check if we need to modify the metric for dynamic time aggregation
     let effectiveMetric = metric;
+    let useCustomTimeSQL = false;
+    
     if (options?.vizType === 'line' && metric.name === 'Total Appointments') {
-      // Create a dynamic time-series version of the metric
+      // We'll use custom SQL for complete date range
+      useCustomTimeSQL = true;
       effectiveMetric = {
         ...metric,
-        breakdownType: 'time',
-        query: {
-          table: 'appointments',
-          select: [
-            'DATE(date_booked_for) as date',
-            'COUNT(*) as value'
-          ],
-          groupBy: ['DATE(date_booked_for)'],
-          orderBy: ['date ASC']
-        }
+        breakdownType: 'time'
       };
     }
     
     // Build the complete SQL query
-    const sql = this.buildSQL(effectiveMetric, appliedFilters)
+    let sql: string;
+    if (useCustomTimeSQL) {
+      sql = this.buildTimeSeriesSQL(appliedFilters);
+    } else {
+      sql = this.buildSQL(effectiveMetric, appliedFilters);
+    }
     
     // Flatten parameters for Supabase
     const params = flattenParams(appliedFilters)
@@ -175,6 +174,38 @@ export class MetricsEngine {
     ].filter(part => part.length > 0)
     
     return sqlParts.join(' ')
+  }
+
+  /**
+   * Build time-series SQL with complete date range (including zero values)
+   */
+  private buildTimeSeriesSQL(appliedFilters: any): string {
+    // Build WHERE conditions for the appointments table
+    const whereClause = buildWhereClause(appliedFilters, []);
+    const appointmentConditions = whereClause.replace('WHERE ', '').replace(/\bdate_booked_for\b/g, 'appointments.date_booked_for');
+    
+    // Generate date series and LEFT JOIN with appointments to get all dates including zeros
+    const sql = `
+      WITH date_series AS (
+        SELECT generate_series(
+          :start_date::date,
+          :end_date::date,
+          '1 day'::interval
+        )::date as date
+      )
+      SELECT 
+        date_series.date::text as date,
+        COALESCE(COUNT(appointments.id), 0) as value
+      FROM date_series
+      LEFT JOIN appointments ON (
+        DATE(appointments.date_booked_for) = date_series.date
+        ${appointmentConditions ? ` AND (${appointmentConditions})` : ''}
+      )
+      GROUP BY date_series.date
+      ORDER BY date_series.date ASC
+    `;
+    
+    return sql.trim();
   }
 
   /**
