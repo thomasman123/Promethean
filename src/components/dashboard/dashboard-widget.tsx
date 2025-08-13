@@ -104,10 +104,35 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
         const now = new Date();
         const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
         
+        // Ensure dates are Date objects before calling toISOString
+        let startDate: Date, endDate: Date;
+        try {
+          startDate = globalFilters.startDate 
+            ? (globalFilters.startDate instanceof Date ? globalFilters.startDate : new Date(globalFilters.startDate))
+            : thirtyDaysAgo;
+          endDate = globalFilters.endDate 
+            ? (globalFilters.endDate instanceof Date ? globalFilters.endDate : new Date(globalFilters.endDate))
+            : now;
+
+          // Validate that the dates are valid
+          if (isNaN(startDate.getTime())) {
+            console.warn('Invalid startDate, using fallback:', globalFilters.startDate);
+            startDate = thirtyDaysAgo;
+          }
+          if (isNaN(endDate.getTime())) {
+            console.warn('Invalid endDate, using fallback:', globalFilters.endDate);
+            endDate = now;
+          }
+        } catch (dateError) {
+          console.error('Error parsing dates, using fallbacks:', dateError);
+          startDate = thirtyDaysAgo;
+          endDate = now;
+        }
+
         const requestFilters = {
           dateRange: {
-            start: (globalFilters.startDate || thirtyDaysAgo).toISOString(),
-            end: (globalFilters.endDate || now).toISOString()
+            start: startDate.toISOString(),
+            end: endDate.toISOString()
           },
           accountId: selectedAccountId,
           repIds: globalFilters.repIds,
@@ -134,7 +159,13 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
           originalMetricName: widgetKey.metricName,
           breakdown: widgetKey.breakdown,
           engineMetricName,
-          filters: requestFilters
+          filters: requestFilters,
+          globalFiltersDebug: {
+            startDate: globalFilters.startDate,
+            endDate: globalFilters.endDate,
+            startDateType: typeof globalFilters.startDate,
+            endDateType: typeof globalFilters.endDate
+          }
         });
 
         // Call metrics API
