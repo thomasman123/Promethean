@@ -71,8 +71,9 @@ export function WidgetDetailModal({ widget, data, open, onOpenChange }: WidgetDe
   // Fetch time series for both reps and setters concurrently and build a combined multi-line dataset
   useEffect(() => {
     const loadMultiSeries = async () => {
-      if (!open || widget.vizType !== 'line') return;
+      if (!open) return;
       if (!selectedAccountId) return;
+      if (!['line', 'bar', 'area'].includes(widget.vizType)) return;
 
       setIsLoadingSeries(true);
       try {
@@ -339,7 +340,7 @@ export function WidgetDetailModal({ widget, data, open, onOpenChange }: WidgetDe
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[96vw] h-[95vh] max-w-[96vw] sm:max-w-[96vw] md:max-w-[96vw] lg:max-w-[96vw]">
+      <DialogContent className="w-[92vw] h-[90vh] max-w-[92vw] sm:max-w-[92vw] md:max-w-[92vw] lg:max-w-[92vw]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {widget.settings?.title || metricDefinition?.displayName || widget.metricName}
@@ -349,7 +350,7 @@ export function WidgetDetailModal({ widget, data, open, onOpenChange }: WidgetDe
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs defaultValue="chart" className="w-full h-[calc(95vh-6rem)]">
+        <Tabs defaultValue="chart" className="w-full h-[calc(90vh-6rem)]">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="chart">Chart</TabsTrigger>
             <TabsTrigger value="leaders">Leaders</TabsTrigger>
@@ -360,7 +361,7 @@ export function WidgetDetailModal({ widget, data, open, onOpenChange }: WidgetDe
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-base">Full Size Chart</CardTitle>
                 <div className="flex items-center gap-2">
-                  {widget.vizType === 'line' && (
+                  {['line','bar','area'].includes(widget.vizType) && (
                     <>
                       <Button size="sm" variant={showReps ? 'default' : 'outline'} onClick={() => setShowReps(v => !v)}>Reps</Button>
                       <Button size="sm" variant={showSetters ? 'default' : 'outline'} onClick={() => setShowSetters(v => !v)}>Setters</Button>
@@ -375,6 +376,28 @@ export function WidgetDetailModal({ widget, data, open, onOpenChange }: WidgetDe
                     <LineChart
                       data={multiData}
                       lines={multiLines.map((l, idx) => ({ dataKey: l.dataKey, name: l.name, color: `var(--chart-${(idx % 10) + 1})` }))}
+                      xAxisKey="date"
+                      showLegend
+                      showGrid
+                      className="h-full w-full"
+                    />
+                  </div>
+                ) : widget.vizType === 'bar' && multiData.length > 0 ? (
+                  <div className="h-full w-full">
+                    <BarChart
+                      data={multiData}
+                      bars={multiLines.map((l, idx) => ({ dataKey: l.dataKey, name: l.name, color: `var(--chart-${(idx % 10) + 1})` }))}
+                      xAxisKey="date"
+                      showLegend
+                      showGrid
+                      className="h-full w-full"
+                    />
+                  </div>
+                ) : widget.vizType === 'area' && multiData.length > 0 ? (
+                  <div className="h-full w-full">
+                    <AreaChart
+                      data={multiData}
+                      areas={multiLines.map((l, idx) => ({ dataKey: l.dataKey, name: l.name, color: `var(--chart-${(idx % 10) + 1})` }))}
                       xAxisKey="date"
                       showLegend
                       showGrid
