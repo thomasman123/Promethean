@@ -21,10 +21,11 @@ export class MetricsEngine {
    * Execute a metric request
    */
   async execute(request: MetricRequest, options?: { vizType?: string; dynamicBreakdown?: string }): Promise<MetricResponse> {
-    const startTime = Date.now()
+    
     let metric: MetricDefinition | null = null
     
     try {
+      const startTime = Date.now()
       // Validate filters
       const filterValidation = validateFilters(request.filters)
       if (!filterValidation.valid) {
@@ -51,6 +52,7 @@ export class MetricsEngine {
       }
 
     } catch (error) {
+      const startTime = Date.now()
       const executionTime = Date.now() - startTime
       
       console.error('Metrics engine error:', error)
@@ -76,7 +78,7 @@ export class MetricsEngine {
     let effectiveMetric = metric;
     let useCustomTimeSQL = false;
     
-    if (options?.vizType === 'line' && metric.name === 'Total Appointments') {
+    if ((options?.vizType === 'line' || options?.vizType === 'bar') && metric.name === 'Total Appointments') {
       // We'll use custom SQL for complete date range
       useCustomTimeSQL = true;
       effectiveMetric = {
@@ -121,26 +123,11 @@ export class MetricsEngine {
    */
   private buildSQL(metric: MetricDefinition, appliedFilters: any): string {
     const query = metric.query
-    
     // Build SELECT clause
-    let selectClause = `SELECT ${query.select.join(', ')}`
-    
-    // Add profile names for rep/setter/link breakdowns
-    if (metric.breakdownType === 'rep' || metric.breakdownType === 'setter' || metric.breakdownType === 'link') {
-      // Profile names are already included in the registry joins
-    }
+    const selectClause = `SELECT ${query.select.join(', ')}`
     
     // Build FROM clause
-    let fromClause = `FROM ${query.table}`
-    
-    // Build JOIN clauses
-    if (query.joins && query.joins.length > 0) {
-      const joinClauses = query.joins.map(join => {
-        const joinType = join.type || 'INNER'
-        return `${joinType} JOIN ${join.table} ON ${join.on}`
-      })
-      fromClause += ' ' + joinClauses.join(' ')
-    }
+    const fromClause = `FROM ${query.table}`
     
     // Build WHERE clause
     const whereClause = buildWhereClause(appliedFilters, query.where)
@@ -287,83 +274,38 @@ export class MetricsEngine {
   private formatResults(breakdownType: string, rawResults: any[]): MetricResult {
     switch (breakdownType) {
       case 'total':
-        const totalValue = rawResults[0]?.value || 0
-        return {
-          type: 'total',
-          data: { value: Number(totalValue) } as TotalResult
-        }
-      
+        return { type: 'total', data: { value: Number(rawResults?.[0]?.value || 0) } };
       case 'rep':
-        const repResults: RepResult[] = rawResults.map(row => ({
-          repId: row.rep_id,
-          repName: row.full_name || row.rep_name || 'Unknown Rep',
-          value: Number(row.value || 0)
-        })).filter(result => result.repId) // Filter out null rep IDs
-        
-        return {
-          type: 'rep',
-          data: repResults
-        }
-      
+        return { type: 'rep', data: rawResults as any };
       case 'setter':
-        const setterResults: SetterResult[] = rawResults.map(row => ({
-          setterId: row.setter_id,
-          setterName: row.full_name || row.setter_name || 'Unknown Setter',
-          value: Number(row.value || 0)
-        })).filter(result => result.setterId) // Filter out null setter IDs
-        
-        return {
-          type: 'setter',
-          data: setterResults
-        }
-      
+        return { type: 'setter', data: rawResults as any };
       case 'link':
-        const linkResults: LinkResult[] = rawResults.map(row => ({
-          setterId: row.setter_id,
-          setterName: row.setter_name || 'Unknown Setter',
-          repId: row.rep_id,
-          repName: row.rep_name || 'Unknown Rep',
-          value: Number(row.value || 0)
-        })).filter(result => result.setterId && result.repId) // Filter out incomplete links
-        
-        return {
-          type: 'link',
-          data: linkResults
-        }
-      
+        return { type: 'link', data: rawResults as any };
       case 'time':
-        const timeResults: TimeResult[] = rawResults.map(row => ({
-          date: row.date || row.time_period || 'Unknown',
-          value: Number(row.value || 0)
-        }))
-        
+        // Ensure time objects have date and value keys
         return {
           type: 'time',
-          data: timeResults
-        }
-      
+          data: (rawResults || []).map((r: any) => ({
+            date: String(r.date ?? r.time_period ?? ''),
+            value: Number(r.value ?? 0),
+          })),
+        };
       default:
-        throw new Error(`Unknown breakdown type: ${breakdownType}`)
+        return { type: 'total', data: { value: 0 } };
     }
   }
 
-  /**
-   * Create error result based on breakdown type
-   */
   private createErrorResult(breakdownType: string, error: Error): MetricResult {
-    console.error('Creating error result for breakdown type:', breakdownType, error)
-    
+    console.error('Metrics error:', error)
     switch (breakdownType) {
-      case 'total':
-        return { type: 'total', data: { value: 0 } }
+      case 'time':
+        return { type: 'time', data: [] }
       case 'rep':
         return { type: 'rep', data: [] }
       case 'setter':
         return { type: 'setter', data: [] }
       case 'link':
         return { type: 'link', data: [] }
-      case 'time':
-        return { type: 'time', data: [] }
       default:
         return { type: 'total', data: { value: 0 } }
     }
