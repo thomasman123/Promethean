@@ -109,7 +109,7 @@ export function WidgetDetailModal({ widget, data, open, onOpenChange }: WidgetDe
           const json = await resp.json();
           const ts = (json?.result?.type === 'time' && Array.isArray(json?.result?.data)) ? json.result.data as Array<{ date: string; value: number }> : [];
           const safeKey = `${type}-${slugify(entity.name || entity.id)}`;
-          seriesByKey[safeKey] = { name: `${entity.name || 'Unknown'} (${type === 'rep' ? 'Rep' : 'Setter'})`, points: ts };
+          seriesByKey[safeKey] = { name: `${entity.name || 'Unknown'}`, points: ts };
         };
 
         await Promise.all([

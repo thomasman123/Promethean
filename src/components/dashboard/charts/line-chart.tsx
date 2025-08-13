@@ -73,6 +73,7 @@ export function LineChart({
 						key={line.dataKey}
 						type="monotone"
 						dataKey={line.dataKey}
+						name={line.name}
 						stroke={`var(--color-${line.dataKey}, var(--primary))`}
 						strokeWidth={2.5}
 						dot={{ r: 4, fill: `var(--color-${line.dataKey}, var(--primary))` }}
