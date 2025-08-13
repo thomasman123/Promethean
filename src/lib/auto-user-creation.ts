@@ -38,16 +38,26 @@ export async function ensureUsersExistForData(
       const setterEmail = await getGHLEmailForUser(setterName, ghlApiKey, ghlLocationId, setterGhlId)
       
       // Upsert to centralized ghl_users table
-      const { data: ghlUserId } = await supabase.rpc(
-        'upsert_ghl_user',
-        {
-          p_account_id: accountId,
-          p_ghl_user_id: setterGhlId,
-          p_name: setterName.trim(),
-          p_email: setterEmail || null,
-          p_primary_role: 'setter'
+      try {
+        const { data: ghlUserId, error: upsertError } = await supabase.rpc(
+          'upsert_ghl_user' as any,
+          {
+            p_account_id: accountId,
+            p_ghl_user_id: setterGhlId,
+            p_name: setterName.trim(),
+            p_email: setterEmail || null,
+            p_primary_role: 'setter'
+          }
+        )
+        
+        if (upsertError) {
+          console.error('❌ Failed to upsert setter to ghl_users:', upsertError)
+        } else {
+          console.log('✅ Successfully upserted setter to ghl_users:', ghlUserId)
         }
-      )
+      } catch (upsertError) {
+        console.error('❌ Exception during setter upsert:', upsertError)
+      }
       
       // Check if setter already exists as a real user through account_access
       if (setterEmail) {
@@ -64,8 +74,8 @@ export async function ensureUsersExistForData(
           
           // Update ghl_users table to link to app user
           await supabase
-            .from('ghl_users')
-            .update({ app_user_id: existingUserAccess.user_id, is_invited: true })
+            .from('ghl_users' as any)
+            .update({ app_user_id: existingUserAccess.user_id, is_invited: true } as any)
             .eq('account_id', accountId)
             .eq('ghl_user_id', setterGhlId)
           
@@ -81,16 +91,26 @@ export async function ensureUsersExistForData(
       const salesRepEmail = await getGHLEmailForUser(salesRepName, ghlApiKey, ghlLocationId, salesRepGhlId)
       
       // Upsert to centralized ghl_users table
-      const { data: ghlUserId } = await supabase.rpc(
-        'upsert_ghl_user',
-        {
-          p_account_id: accountId,
-          p_ghl_user_id: salesRepGhlId,
-          p_name: salesRepName.trim(),
-          p_email: salesRepEmail || null,
-          p_primary_role: 'sales_rep'
+      try {
+        const { data: ghlUserId, error: upsertError } = await supabase.rpc(
+          'upsert_ghl_user' as any,
+          {
+            p_account_id: accountId,
+            p_ghl_user_id: salesRepGhlId,
+            p_name: salesRepName.trim(),
+            p_email: salesRepEmail || null,
+            p_primary_role: 'sales_rep'
+          }
+        )
+        
+        if (upsertError) {
+          console.error('❌ Failed to upsert sales rep to ghl_users:', upsertError)
+        } else {
+          console.log('✅ Successfully upserted sales rep to ghl_users:', ghlUserId)
         }
-      )
+      } catch (upsertError) {
+        console.error('❌ Exception during sales rep upsert:', upsertError)
+      }
       
       // Check if sales rep already exists as a real user through account_access
       if (salesRepEmail) {
@@ -107,8 +127,8 @@ export async function ensureUsersExistForData(
           
           // Update ghl_users table to link to app user
           await supabase
-            .from('ghl_users')
-            .update({ app_user_id: existingUserAccess.user_id, is_invited: true })
+            .from('ghl_users' as any)
+            .update({ app_user_id: existingUserAccess.user_id, is_invited: true } as any)
             .eq('account_id', accountId)
             .eq('ghl_user_id', salesRepGhlId)
           
