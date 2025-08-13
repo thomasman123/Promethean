@@ -48,46 +48,46 @@ export function applyStandardFilters(filters: MetricFilters): AppliedFilters {
 	params.account_id = filters.accountId
 
 	// Rep filter - applied if repIds provided
-	// In this schema, reps are stored as text in `sales_rep`
+	// In this schema, reps are stored as UUIDs in `sales_rep_user_id`
 	if (filters.repIds && filters.repIds.length > 0) {
 		if (filters.repIds.length === 1) {
 			conditions.push({
-				field: 'sales_rep',
+				field: 'sales_rep_user_id',
 				operator: '=',
 				value: filters.repIds[0],
-				paramName: 'rep_name'
+				paramName: 'rep_user_id'
 			})
-			params.rep_name = filters.repIds[0]
+			params.rep_user_id = filters.repIds[0]
 		} else {
 			conditions.push({
-				field: 'sales_rep',
+				field: 'sales_rep_user_id',
 				operator: 'IN',
 				value: filters.repIds,
-				paramName: 'rep_names'
+				paramName: 'rep_user_ids'
 			})
-			params.rep_names = filters.repIds
+			params.rep_user_ids = filters.repIds
 		}
 	}
 
 	// Setter filter - applied if setterIds provided
-	// In this schema, setters are stored as text in `setter`
+	// In this schema, setters are stored as UUIDs in `setter_user_id`
 	if (filters.setterIds && filters.setterIds.length > 0) {
 		if (filters.setterIds.length === 1) {
 			conditions.push({
-				field: 'setter',
+				field: 'setter_user_id',
 				operator: '=',
 				value: filters.setterIds[0],
-				paramName: 'setter_name'
+				paramName: 'setter_user_id'
 			})
-			params.setter_name = filters.setterIds[0]
+			params.setter_user_id = filters.setterIds[0]
 		} else {
 			conditions.push({
-				field: 'setter',
+				field: 'setter_user_id',
 				operator: 'IN',
 				value: filters.setterIds,
-				paramName: 'setter_names'
+				paramName: 'setter_user_ids'
 			})
-			params.setter_names = filters.setterIds
+			params.setter_user_ids = filters.setterIds
 		}
 	}
 
