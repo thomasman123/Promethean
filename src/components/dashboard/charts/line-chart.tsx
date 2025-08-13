@@ -18,6 +18,7 @@ interface LineChartProps {
 	showLegend?: boolean;
 	showGrid?: boolean;
 	disableTooltip?: boolean;
+	animate?: boolean;
 	className?: string;
 }
 
@@ -29,6 +30,7 @@ export function LineChart({
 	showLegend = false,
 	showGrid = true,
 	disableTooltip = false,
+	animate = false,
 	className
 }: LineChartProps) {
 	const chartConfig = lines.reduce((config, line, index) => {
@@ -79,7 +81,8 @@ export function LineChart({
 						dot={{ r: 4, fill: `var(--color-${line.dataKey}, var(--primary))` }}
 						activeDot={{ r: 6, stroke: 'var(--background)', strokeWidth: 2 }}
 						connectNulls={true}
-						isAnimationActive={false}
+						isAnimationActive={animate}
+						animationDuration={400}
 					/>
 				))}
 			</RechartsLineChart>

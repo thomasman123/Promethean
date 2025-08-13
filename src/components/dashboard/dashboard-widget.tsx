@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { 
   ChartWrapper, 
   KPIChart,
@@ -122,6 +122,8 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
     setCompareData([]);
     setCompareLines([]);
   }, [compareMode, JSON.stringify(compareEntities), compareModeSettings.scope, widget.vizType, widget.metricName, selectedAccountId, filters.startDate, filters.endDate]);
+
+  const hasAnimatedRef = useRef(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -256,6 +258,9 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
         setData(mockData);
       } finally {
         setIsLoading(false);
+        if (!hasAnimatedRef.current) {
+          hasAnimatedRef.current = true; // ensure animation only on first successful load
+        }
       }
     };
     
@@ -289,13 +294,13 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
         if (compareMode && compareLines.length > 0 && compareData.length > 0) {
           return (
             <LineChart
-              key={chartKey}
               data={compareData}
               lines={compareLines.map((l, idx) => ({ dataKey: l.dataKey, name: l.name, color: `var(--chart-${(idx % 10) + 1})` }))}
               xAxisKey="date"
               showLegend
               showGrid
               disableTooltip={isDragging}
+              animate={!hasAnimatedRef.current}
               className="h-full"
             />
           );
@@ -328,6 +333,7 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
             showLegend={false}
             showGrid={true}
             disableTooltip={isDragging}
+            animate={!hasAnimatedRef.current}
             className="h-full"
           />
         );
@@ -360,6 +366,7 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
             showLegend={false}
             showGrid={true}
             disableTooltip={isDragging}
+            animate={!hasAnimatedRef.current}
             className="h-full"
           />
         );
@@ -390,6 +397,7 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
             showLegend={false}
             showGrid={true}
             disableTooltip={isDragging}
+            animate={!hasAnimatedRef.current}
             className="h-full"
           />
         );

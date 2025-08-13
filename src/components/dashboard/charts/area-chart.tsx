@@ -18,6 +18,7 @@ interface AreaChartProps {
 	showLegend?: boolean;
 	showGrid?: boolean;
 	disableTooltip?: boolean;
+	animate?: boolean;
 	className?: string;
 }
 
@@ -29,6 +30,7 @@ export function AreaChart({
 	showLegend = false,
 	showGrid = true,
 	disableTooltip = false,
+	animate = false,
 	className
 }: AreaChartProps) {
 	const chartConfig = areas.reduce((config, a, index) => {
@@ -70,7 +72,8 @@ export function AreaChart({
 						fill={`var(--color-${a.dataKey}, var(--primary))`}
 						fillOpacity={0.28}
 						strokeWidth={2}
-						isAnimationActive={false}
+						isAnimationActive={animate}
+						animationDuration={400}
 					/>
 				))}
 			</RechartsAreaChart>

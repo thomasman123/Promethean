@@ -18,6 +18,7 @@ interface BarChartProps {
 	showLegend?: boolean;
 	showGrid?: boolean;
 	disableTooltip?: boolean;
+	animate?: boolean;
 	className?: string;
 }
 
@@ -29,6 +30,7 @@ export function BarChart({
 	showLegend = false,
 	showGrid = true,
 	disableTooltip = false,
+	animate = false,
 	className
 }: BarChartProps) {
 	const chartConfig = bars.reduce((config, bar, index) => {
@@ -67,7 +69,8 @@ export function BarChart({
 						dataKey={bar.dataKey}
 						fill={`var(--color-${bar.dataKey}, var(--primary))`}
 						radius={8}
-						isAnimationActive={false}
+						isAnimationActive={animate}
+						animationDuration={400}
 					/>
 				))}
 			</RechartsBarChart>
