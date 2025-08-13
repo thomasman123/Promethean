@@ -62,14 +62,15 @@ const categoryIcons: Record<string, React.ReactNode> = {
 // Visualization type labels
 const vizTypeLabels: Record<VizType, string> = {
   kpi: "KPI Tile",
-  line: "Line Chart"
+  line: "Line Chart",
+  bar: "Bar Chart",
 };
 
 // Derive sensible visualization defaults when none are provided by the registry
 function getRecommendedVizFromBreakdowns(breakdowns: BreakdownType[]): VizType[] {
-  if (breakdowns.includes("time")) return ["line", "kpi"];
-  if (breakdowns.includes("total")) return ["kpi", "line"]; // Allow line charts for total metrics too
-  return ["line", "kpi"];
+  if (breakdowns.includes("time")) return ["line", "bar", "kpi"];
+  if (breakdowns.includes("total")) return ["line", "bar", "kpi"]; // Allow time visuals for totals too
+  return ["line", "bar", "kpi"];
 }
 
 const FAVORITES_KEY = "promethean.metric.favorites";
@@ -100,6 +101,8 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
         return 'total';
       case 'line':
         return 'total'; // Use total breakdown, engine will convert to time automatically
+      case 'bar':
+        return 'total';
       default:
         return 'total';
     }
@@ -343,48 +346,11 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
                     <div className="rounded-lg border bg-card p-4">
                       <div className="flex items-center justify-between mb-3">
                         <div className="text-sm font-medium">Visualization</div>
-                        <Badge variant="secondary" className="text-xs">Recommended</Badge>
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {(selectedMetric as any).recommendedVisualizations?.length
-                          ? (selectedMetric as any).recommendedVisualizations
-                          : getRecommendedVizFromBreakdowns(selectedMetric.supportedBreakdowns)
-                        .map((viz: VizType) => (
-                          <Button
-                            key={viz}
-                            type="button"
-                            variant={selectedViz === viz ? "default" : "outline"}
-                            size="sm"
-                            className="rounded-md"
-                            onClick={() => handleVizChange(viz)}
-                          >
-                            {vizTypeLabels[viz]}
-                          </Button>
-                        ))}
                       </div>
 
                       {/* All Visualizations */}
-                      <Separator className="my-4" />
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="text-sm font-medium">All visualizations</div>
-                        <Badge variant="outline" className="text-xs">Full list</Badge>
-                      </div>
                       <div className="flex flex-wrap gap-2">
-                        {([
-                          'kpi',
-                          'line',
-                          'area',
-                          'bar',
-                          'horizontalBar',
-                          'stackedBar',
-                          'pie',
-                          'donut',
-                          'radar',
-                          'radialBar',
-                          'scatter',
-                          'sparkline',
-                          'table',
-                        ] as VizType[]).map((viz) => (
+                        {(["kpi", "line", "bar"] as VizType[]).map((viz) => (
                           <Button
                             key={`all-${viz}`}
                             type="button"
