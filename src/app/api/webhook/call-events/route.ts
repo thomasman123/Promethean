@@ -922,6 +922,32 @@ async function processAppointmentWebhook(payload: any) {
       
       console.log('✅ Appointment saved successfully:', payload.appointment?.id);
       
+      // Refresh GHL user roles now that the appointment is saved and activity counts should be accurate
+      try {
+        console.log('🔄 Refreshing GHL user roles after appointment save...');
+        
+        if (setterData?.id) {
+          await supabase.rpc('update_ghl_user_roles_with_context' as any, {
+            p_account_id: account.id,
+            p_ghl_user_id: setterData.id,
+            p_current_role: 'setter'
+          });
+          console.log('✅ Refreshed setter role:', setterData.id);
+        }
+        
+        if (salesRepData?.id) {
+          await supabase.rpc('update_ghl_user_roles_with_context' as any, {
+            p_account_id: account.id,
+            p_ghl_user_id: salesRepData.id,
+            p_current_role: 'sales_rep'
+          });
+          console.log('✅ Refreshed sales rep role:', salesRepData.id);
+        }
+      } catch (refreshError) {
+        console.error('⚠️ Failed to refresh GHL user roles (non-critical):', refreshError);
+        // Don't throw - this is not critical to appointment processing
+      }
+      
       // Link this appointment back to the originating dial
       await linkAppointmentToDial(supabase, savedAppointment, contactData, account.id);
       
@@ -1032,6 +1058,32 @@ async function processAppointmentWebhook(payload: any) {
       }
       
       console.log('✅ Discovery saved successfully:', payload.appointment?.id);
+      
+      // Refresh GHL user roles now that the discovery is saved and activity counts should be accurate
+      try {
+        console.log('🔄 Refreshing GHL user roles after discovery save...');
+        
+        if (setterData?.id) {
+          await supabase.rpc('update_ghl_user_roles_with_context' as any, {
+            p_account_id: account.id,
+            p_ghl_user_id: setterData.id,
+            p_current_role: 'setter'
+          });
+          console.log('✅ Refreshed setter role:', setterData.id);
+        }
+        
+        if (salesRepData?.id) {
+          await supabase.rpc('update_ghl_user_roles_with_context' as any, {
+            p_account_id: account.id,
+            p_ghl_user_id: salesRepData.id,
+            p_current_role: 'sales_rep'
+          });
+          console.log('✅ Refreshed sales rep role:', salesRepData.id);
+        }
+      } catch (refreshError) {
+        console.error('⚠️ Failed to refresh GHL user roles (non-critical):', refreshError);
+        // Don't throw - this is not critical to discovery processing
+      }
       
       // Link this discovery back to the originating dial  
       await linkAppointmentToDial(supabase, savedDiscovery, contactData, account.id);
