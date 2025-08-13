@@ -1,6 +1,6 @@
 "use client";
 
-import { Line, LineChart as RechartsLineChart, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from "recharts";
+import { Line, LineChart as RechartsLineChart, XAxis, YAxis, CartesianGrid, Legend } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { cn } from "@/lib/utils";
 
@@ -31,8 +31,6 @@ export function LineChart({
   disableTooltip = false,
   className
 }: LineChartProps) {
-  console.log('🐛 DEBUG - LineChart props:', { data, lines, xAxisKey });
-  
   const chartConfig = lines.reduce((config, line, index) => {
     config[line.dataKey] = {
       label: line.name,
@@ -41,48 +39,48 @@ export function LineChart({
     return config;
   }, {} as Record<string, any>);
 
-    return (
-    <div className={cn("w-full h-full", className)}>
-      <ResponsiveContainer width="100%" height="100%">
-        <RechartsLineChart
-          data={data}
-          margin={{
-            top: 20,
-            right: 20,
-            left: 20,
-            bottom: 20,
-          }}
-        >
-          {showGrid && (
-            <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-          )}
-          <XAxis
-            dataKey={xAxisKey}
-            stroke="#9ca3af"
-            fontSize={12}
+  return (
+    <ChartContainer config={chartConfig} className={cn("w-full h-full aspect-auto", className)}>
+      <RechartsLineChart
+        data={data}
+        margin={{
+          top: 12,
+          right: 16,
+          left: 8,
+          bottom: 8,
+        }}
+      >
+        {showGrid && (
+          <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+        )}
+        <XAxis
+          dataKey={xAxisKey}
+          tickLine={false}
+          axisLine={false}
+          className="text-xs fill-muted-foreground"
+        />
+        <YAxis
+          tickLine={false}
+          axisLine={false}
+          className="text-xs fill-muted-foreground"
+        />
+        {!disableTooltip && (
+          <ChartTooltip content={<ChartTooltipContent />} />
+        )}
+        {showLegend && <Legend />}
+        {lines.map((line) => (
+          <Line
+            key={line.dataKey}
+            type="monotone"
+            dataKey={line.dataKey}
+            stroke={`var(--color-${line.dataKey})`}
+            strokeWidth={2.5}
+            dot={{ r: 4, fill: `var(--color-${line.dataKey})` }}
+            activeDot={{ r: 6 }}
+            connectNulls={true}
           />
-          <YAxis
-            stroke="#9ca3af"
-            fontSize={12}
-          />
-          {!disableTooltip && (
-            <Tooltip />
-          )}
-          {showLegend && <Legend />}
-          {lines.map((line) => (
-            <Line
-              key={line.dataKey}
-              type="monotone"
-              dataKey={line.dataKey}
-              stroke="#3b82f6"
-              strokeWidth={3}
-              dot={{ r: 4, fill: "#3b82f6", stroke: "#3b82f6", strokeWidth: 2 }}
-              activeDot={{ r: 6, fill: "#3b82f6", stroke: "#ffffff", strokeWidth: 2 }}
-              connectNulls={true}
-            />
-          ))}
-        </RechartsLineChart>
-      </ResponsiveContainer>
-    </div>
+        ))}
+      </RechartsLineChart>
+    </ChartContainer>
   );
 } 
