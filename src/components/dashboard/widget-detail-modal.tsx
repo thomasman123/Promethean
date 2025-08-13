@@ -27,10 +27,12 @@ export function WidgetDetailModal({ widget, data, open, onOpenChange }: WidgetDe
   const [actor, setActor] = useState<'rep' | 'setter'>('rep');
   const [grouped, setGrouped] = useState<Array<{ name: string; value: number }>>([]);
 
-  // State for multi-line chart
+  // Multi-line chart state
   const [multiData, setMultiData] = useState<Array<Record<string, any>>>([]);
   const [multiLines, setMultiLines] = useState<Array<{ dataKey: string; name: string }>>([]);
   const [isLoadingSeries, setIsLoadingSeries] = useState(false);
+  const [showReps, setShowReps] = useState(true);
+  const [showSetters, setShowSetters] = useState(true);
 
   const { filters: globalFilters } = useDashboardStore();
 
@@ -40,6 +42,8 @@ export function WidgetDetailModal({ widget, data, open, onOpenChange }: WidgetDe
     const day = String(d.getDate()).padStart(2, '0');
     return `${y}-${m}-${day}`;
   };
+
+  const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 
   const resolveDates = () => {
     const now = new Date();
@@ -59,7 +63,7 @@ export function WidgetDetailModal({ widget, data, open, onOpenChange }: WidgetDe
     return dashboardMetricName;
   };
 
-  // Fetch candidates for actor and build multi-series time data for line charts
+  // Fetch time series for both reps and setters concurrently and build a combined multi-line dataset
   useEffect(() => {
     const loadMultiSeries = async () => {
       if (!open || widget.vizType !== 'line') return;
@@ -67,66 +71,61 @@ export function WidgetDetailModal({ widget, data, open, onOpenChange }: WidgetDe
 
       setIsLoadingSeries(true);
       try {
-        // 1) load candidates
         const candidatesRes = await fetch(`/api/team/candidates?accountId=${encodeURIComponent(selectedAccountId)}`);
         const candidatesJson = await candidatesRes.json();
-        const list = (actor === 'rep' ? candidatesJson.reps : candidatesJson.setters) || [];
-        const top = list.slice(0, 5); // initial: top 5 (first 5)
+        const reps = (candidatesJson.reps || []).slice(0, 4); // show up to 4 of each
+        const setters = (candidatesJson.setters || []).slice(0, 4);
 
-        // 2) fetch time series per candidate
         const { start, end } = resolveDates();
-        const baseFilters = {
-          dateRange: { start, end },
-          accountId: selectedAccountId,
-        } as any;
-
+        const baseFilters = { dateRange: { start, end }, accountId: selectedAccountId } as any;
         const engineMetricName = getEngineMetricName(widget.metricName, 'total');
 
-        const seriesByEntity: Record<string, Array<{ date: string; value: number }>> = {};
-        const lines: Array<{ dataKey: string; name: string }> = [];
+        const seriesByKey: Record<string, { name: string; points: Array<{ date: string; value: number }> }> = {};
+        const fetchForEntity = async (entity: any, type: 'rep' | 'setter') => {
+          const filters = { ...baseFilters } as any;
+          if (type === 'rep') filters.repIds = [entity.id];
+          if (type === 'setter') filters.setterIds = [entity.id];
+          const resp = await fetch('/api/metrics', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ metricName: engineMetricName, filters, vizType: 'line', breakdown: 'total' })
+          });
+          if (!resp.ok) return;
+          const json = await resp.json();
+          const ts = (json?.result?.type === 'time' && Array.isArray(json?.result?.data)) ? json.result.data as Array<{ date: string; value: number }> : [];
+          const safeKey = `${type}-${slugify(entity.name || entity.id)}`;
+          seriesByKey[safeKey] = { name: `${entity.name || 'Unknown'} (${type === 'rep' ? 'Rep' : 'Setter'})`, points: ts };
+        };
 
-        await Promise.all(
-          top.map(async (entity: any) => {
-            const filters = { ...baseFilters } as any;
-            if (actor === 'rep') filters.repIds = [entity.id];
-            if (actor === 'setter') filters.setterIds = [entity.id];
+        await Promise.all([
+          ...(showReps ? reps.map((r: any) => fetchForEntity(r, 'rep')) : []),
+          ...(showSetters ? setters.map((s: any) => fetchForEntity(s, 'setter')) : []),
+        ]);
 
-            const resp = await fetch('/api/metrics', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ metricName: engineMetricName, filters, vizType: 'line', breakdown: 'total' })
-            });
-            if (!resp.ok) return;
-            const json = await resp.json();
-            const ts = (json?.result?.type === 'time' && Array.isArray(json?.result?.data)) ? json.result.data as Array<{ date: string; value: number }> : [];
-            seriesByEntity[entity.id] = ts;
-            lines.push({ dataKey: entity.id, name: entity.name || 'Unknown' });
-          })
-        );
-
-        // 3) combine into a single dataset keyed by date
         const allDates = new Set<string>();
-        Object.values(seriesByEntity).forEach(arr => arr.forEach(p => allDates.add(p.date)));
-        const sortedDates = Array.from(allDates);
+        Object.values(seriesByKey).forEach(s => s.points.forEach(p => allDates.add(p.date)));
+        const dates = Array.from(allDates);
 
-        const combined = sortedDates.map(date => {
+        const combined = dates.map(date => {
           const row: Record<string, any> = { date };
-          for (const [entityId, arr] of Object.entries(seriesByEntity)) {
-            const found = (arr as any[]).find(p => p.date === date);
-            row[entityId] = found?.value || 0;
+          for (const [key, s] of Object.entries(seriesByKey)) {
+            const found = s.points.find(p => p.date === date);
+            row[key] = found?.value || 0;
           }
           return row;
         });
 
-        setMultiLines(lines);
+        const lines = Object.entries(seriesByKey).map(([key, s]) => ({ dataKey: key, name: s.name }));
+
         setMultiData(combined);
+        setMultiLines(lines);
       } finally {
         setIsLoadingSeries(false);
       }
     };
 
     loadMultiSeries();
-  }, [open, widget.vizType, widget.metricName, selectedAccountId, actor]);
+  }, [open, widget.vizType, widget.metricName, selectedAccountId, showReps, showSetters]);
 
   useEffect(() => {
     if (!open) return;
@@ -304,8 +303,8 @@ export function WidgetDetailModal({ widget, data, open, onOpenChange }: WidgetDe
                 <div className="flex items-center gap-2">
                   {widget.vizType === 'line' && (
                     <>
-                      <Button size="sm" variant={actor === 'rep' ? 'default' : 'outline'} onClick={() => setActor('rep')}>Reps</Button>
-                      <Button size="sm" variant={actor === 'setter' ? 'default' : 'outline'} onClick={() => setActor('setter')}>Setters</Button>
+                      <Button size="sm" variant={showReps ? 'default' : 'outline'} onClick={() => setShowReps(v => !v)}>Reps</Button>
+                      <Button size="sm" variant={showSetters ? 'default' : 'outline'} onClick={() => setShowSetters(v => !v)}>Setters</Button>
                     </>
                   )}
                   <Button variant="outline" size="sm" onClick={handleExport}>Export</Button>
@@ -316,7 +315,7 @@ export function WidgetDetailModal({ widget, data, open, onOpenChange }: WidgetDe
                   <div className="h-full w-full">
                     <LineChart
                       data={multiData}
-                      lines={multiLines.map((l, idx) => ({ dataKey: l.dataKey, name: l.name, color: `var(--chart-${(idx % 5) + 1})` }))}
+                      lines={multiLines.map((l, idx) => ({ dataKey: l.dataKey, name: l.name, color: `var(--chart-${(idx % 10) + 1})` }))}
                       xAxisKey="date"
                       showLegend
                       showGrid
