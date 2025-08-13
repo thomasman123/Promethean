@@ -73,10 +73,10 @@ export function LineChart({
             key={line.dataKey}
             type="monotone"
             dataKey={line.dataKey}
-            stroke={`var(--color-${line.dataKey})`}
+            stroke={`var(--color-${line.dataKey}, hsl(var(--primary)))`}
             strokeWidth={2.5}
-            dot={{ r: 4, fill: `var(--color-${line.dataKey})` }}
-            activeDot={{ r: 6 }}
+            dot={{ r: 4, fill: `var(--color-${line.dataKey}, hsl(var(--primary)))` }}
+            activeDot={{ r: 6, stroke: 'var(--background)', strokeWidth: 2 }}
             connectNulls={true}
           />
         ))}
