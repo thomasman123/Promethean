@@ -28,9 +28,13 @@ CREATE TABLE IF NOT EXISTS public.pending_users (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     
     -- Constraints
-    UNIQUE(account_id, ghl_user_id),
-    UNIQUE(account_id, email) WHERE email IS NOT NULL
+    UNIQUE(account_id, ghl_user_id)
 );
+
+-- Create unique index for email constraint (allows multiple NULL emails)
+CREATE UNIQUE INDEX IF NOT EXISTS idx_pending_users_unique_email 
+ON public.pending_users(account_id, email) 
+WHERE email IS NOT NULL;
 
 -- Create indexes for performance
 CREATE INDEX IF NOT EXISTS idx_pending_users_account_id ON public.pending_users(account_id);
@@ -60,9 +64,10 @@ ALTER TABLE public.pending_users ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can view pending users in their account" ON public.pending_users
     FOR SELECT USING (
         account_id IN (
-            SELECT p.account_id 
-            FROM public.profiles p 
-            WHERE p.user_id = auth.uid()
+            SELECT aa.account_id 
+            FROM public.account_access aa 
+            WHERE aa.user_id = auth.uid()
+            AND aa.is_active = true
         )
     );
 
@@ -70,10 +75,11 @@ CREATE POLICY "Users can view pending users in their account" ON public.pending_
 CREATE POLICY "Admins and moderators can manage pending users" ON public.pending_users
     FOR ALL USING (
         account_id IN (
-            SELECT p.account_id 
-            FROM public.profiles p 
-            WHERE p.user_id = auth.uid() 
-            AND p.role IN ('admin', 'moderator')
+            SELECT aa.account_id 
+            FROM public.account_access aa 
+            WHERE aa.user_id = auth.uid() 
+            AND aa.role IN ('admin', 'moderator')
+            AND aa.is_active = true
         )
     );
 
@@ -184,7 +190,7 @@ SELECT
     COALESCE(dial_count.count, 0) as dial_count,
     -- Get who invited them
     inviter.email as invited_by_email,
-    inviter_profile.name as invited_by_name
+    inviter_profile.full_name as invited_by_name
 FROM public.pending_users pu
 LEFT JOIN (
     SELECT setter_ghl_id as ghl_id, account_id, COUNT(*) as count
@@ -220,4 +226,4 @@ LEFT JOIN (
     GROUP BY sales_rep_ghl_id, account_id
 ) dial_count ON dial_count.ghl_id = pu.ghl_user_id AND dial_count.account_id = pu.account_id
 LEFT JOIN auth.users inviter ON inviter.id = pu.invited_by
-LEFT JOIN public.profiles inviter_profile ON inviter_profile.user_id = pu.invited_by; 
+LEFT JOIN public.profiles inviter_profile ON inviter_profile.id = pu.invited_by; 
