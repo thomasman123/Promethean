@@ -68,7 +68,7 @@ const vizTypeLabels: Record<VizType, string> = {
 // Derive sensible visualization defaults when none are provided by the registry
 function getRecommendedVizFromBreakdowns(breakdowns: BreakdownType[]): VizType[] {
   if (breakdowns.includes("time")) return ["line", "kpi"];
-  if (breakdowns.includes("total")) return ["kpi"];
+  if (breakdowns.includes("total")) return ["kpi", "line"]; // Allow line charts for total metrics too
   return ["line", "kpi"];
 }
 
@@ -99,7 +99,7 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
       case 'kpi':
         return 'total';
       case 'line':
-        return 'time';
+        return 'total'; // Use total breakdown, engine will convert to time automatically
       default:
         return 'total';
     }

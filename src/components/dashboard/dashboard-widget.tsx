@@ -179,7 +179,9 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             metricName: engineMetricName,
-            filters: requestFilters
+            filters: requestFilters,
+            vizType: widget.vizType, // Include visualization type
+            breakdown: widgetKey.breakdown
           })
         });
 
@@ -197,8 +199,8 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
         
         let transformedData: MetricData;
         
-        if (widget.vizType === 'line' && widget.breakdown === 'time') {
-          // For line charts with time breakdown, expect array data
+        if (widget.vizType === 'line' && engineResult?.type === 'time') {
+          // For line charts, engine dynamically converts to time-series
           transformedData = {
             metricName: widgetKey.metricName,
             breakdown: widgetKey.breakdown,

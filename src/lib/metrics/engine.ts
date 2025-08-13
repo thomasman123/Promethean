@@ -20,7 +20,7 @@ export class MetricsEngine {
   /**
    * Execute a metric request
    */
-  async execute(request: MetricRequest): Promise<MetricResponse> {
+  async execute(request: MetricRequest, options?: { vizType?: string; dynamicBreakdown?: string }): Promise<MetricResponse> {
     const startTime = Date.now()
     let metric: MetricDefinition | null = null
     
@@ -37,8 +37,8 @@ export class MetricsEngine {
         throw new Error(`Metric '${request.metricName}' not found`)
       }
 
-      // Build and execute query
-      const result = await this.executeMetricQuery(metric, request.filters)
+      // Build and execute query with dynamic modification
+      const result = await this.executeMetricQuery(metric, request.filters, options)
 
       const executionTime = Date.now() - startTime
 
@@ -68,12 +68,31 @@ export class MetricsEngine {
   /**
    * Execute the SQL query for a specific metric
    */
-  private async executeMetricQuery(metric: MetricDefinition, filters: any): Promise<MetricResult> {
+  private async executeMetricQuery(metric: MetricDefinition, filters: any, options?: { vizType?: string; dynamicBreakdown?: string }): Promise<MetricResult> {
     // Apply standard filters
     const appliedFilters = applyStandardFilters(filters)
     
+    // Check if we need to modify the metric for dynamic time aggregation
+    let effectiveMetric = metric;
+    if (options?.vizType === 'line' && metric.name === 'Total Appointments') {
+      // Create a dynamic time-series version of the metric
+      effectiveMetric = {
+        ...metric,
+        breakdownType: 'time',
+        query: {
+          table: 'appointments',
+          select: [
+            'DATE(date_booked_for) as date',
+            'COUNT(*) as value'
+          ],
+          groupBy: ['DATE(date_booked_for)'],
+          orderBy: ['date ASC']
+        }
+      };
+    }
+    
     // Build the complete SQL query
-    const sql = this.buildSQL(metric, appliedFilters)
+    const sql = this.buildSQL(effectiveMetric, appliedFilters)
     
     // Flatten parameters for Supabase
     const params = flattenParams(appliedFilters)
@@ -95,7 +114,7 @@ export class MetricsEngine {
     // Format results based on breakdown type
     // data is a JSONB array, so we need to parse it
     const results = Array.isArray(data) ? data : (data ? JSON.parse(String(data)) : [])
-    return this.formatResults(metric.breakdownType, results)
+    return this.formatResults(effectiveMetric.breakdownType, results)
   }
 
   /**

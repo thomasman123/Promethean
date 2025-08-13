@@ -71,9 +71,18 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Execute metric calculation
+    // Check if we need dynamic time aggregation for line charts
+    const requestedVizType = body.vizType;
+    const requestedBreakdown = body.breakdown;
+    
+    // Execute metric calculation with dynamic query modification
     console.log('🐛 DEBUG - API: About to execute metric request:', metricRequest);
-    const result = await metricsEngine.execute(metricRequest)
+    console.log('🐛 DEBUG - API: Requested viz type:', requestedVizType, 'breakdown:', requestedBreakdown);
+    
+    const result = await metricsEngine.execute(metricRequest, {
+      vizType: requestedVizType,
+      dynamicBreakdown: requestedBreakdown
+    })
     console.log('🐛 DEBUG - API: Metric execution result:', result);
 
     return NextResponse.json(result)
