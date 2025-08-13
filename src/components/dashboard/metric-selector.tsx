@@ -64,13 +64,14 @@ const vizTypeLabels: Record<VizType, string> = {
   kpi: "KPI Tile",
   line: "Line Chart",
   bar: "Bar Chart",
+  area: "Area Chart",
 };
 
 // Derive sensible visualization defaults when none are provided by the registry
 function getRecommendedVizFromBreakdowns(breakdowns: BreakdownType[]): VizType[] {
-  if (breakdowns.includes("time")) return ["line", "bar", "kpi"];
-  if (breakdowns.includes("total")) return ["line", "bar", "kpi"]; // Allow time visuals for totals too
-  return ["line", "bar", "kpi"];
+  if (breakdowns.includes("time")) return ["line", "bar", "area", "kpi"];
+  if (breakdowns.includes("total")) return ["line", "bar", "area", "kpi"]; // Allow time visuals for totals too
+  return ["line", "bar", "area", "kpi"];
 }
 
 const FAVORITES_KEY = "promethean.metric.favorites";
@@ -350,7 +351,7 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
 
                       {/* All Visualizations */}
                       <div className="flex flex-wrap gap-2">
-                        {(["kpi", "line", "bar"] as VizType[]).map((viz) => (
+                        {(["kpi", "line", "bar", "area"] as VizType[]).map((viz) => (
                           <Button
                             key={`all-${viz}`}
                             type="button"

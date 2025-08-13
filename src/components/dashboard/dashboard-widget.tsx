@@ -5,7 +5,8 @@ import {
   ChartWrapper, 
   KPIChart,
   LineChart,
-  BarChart
+  BarChart,
+  AreaChart
 } from "./charts";
 import { CompareWidget } from "./compare-widget";
 import { WidgetDetailModal } from "./widget-detail-modal";
@@ -322,6 +323,37 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
               color: 'var(--primary)'
             }]}
             xAxisKey={barXAxisKey}
+            showLegend={false}
+            showGrid={true}
+            disableTooltip={isDragging}
+            className="h-full"
+          />
+        );
+      case 'area':
+        let areaData;
+        let areaXAxisKey;
+        if (Array.isArray(data.data) && data.data.length > 0) {
+          areaData = data.data.map((item: any) => ({
+            date: item.date || item.name,
+            value: item.value || 0
+          }));
+          areaXAxisKey = 'date';
+        } else {
+          areaData = [
+            { date: 'Current', value: data.data.value || 0 }
+          ];
+          areaXAxisKey = 'date';
+        }
+        return (
+          <AreaChart
+            key={chartKey}
+            data={areaData}
+            areas={[{
+              dataKey: 'value',
+              name: widget.settings?.title || metricDefinition?.displayName || widget.metricName,
+              color: 'var(--primary)'
+            }]}
+            xAxisKey={areaXAxisKey}
             showLegend={false}
             showGrid={true}
             disableTooltip={isDragging}
