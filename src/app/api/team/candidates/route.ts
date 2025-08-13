@@ -127,17 +127,46 @@ export async function GET(request: NextRequest) {
           return
         }
 
-        const candidate: Candidate = {
+        const userRoles = ghlUser.roles || [ghlUser.primary_role]
+        const isRep = userRoles.includes('sales_rep') || userRoles.includes('admin') || userRoles.includes('moderator')
+        const isSetter = userRoles.includes('setter')
+
+        // Create candidate object
+        const baseCandidate = {
           id: ghlUser.ghl_user_id, // Use GHL ID as the filter ID
           name: ghlUser.name,
-          role: ghlUser.primary_role === 'sales_rep' || ghlUser.primary_role === 'admin' || ghlUser.primary_role === 'moderator' ? 'rep' : 'setter',
           invited: ghlUser.is_invited
         }
 
-        if (candidate.role === 'rep') {
-          ghlReps.push(candidate)
-        } else {
-          ghlSetters.push(candidate)
+        // Add to rep list if they have rep role or activity
+        if (isRep || ghlUser.sales_rep_activity_count > 0) {
+          ghlReps.push({
+            ...baseCandidate,
+            role: 'rep'
+          })
+        }
+
+        // Add to setter list if they have setter role or activity
+        if (isSetter || ghlUser.setter_activity_count > 0) {
+          ghlSetters.push({
+            ...baseCandidate,
+            role: 'setter'
+          })
+        }
+
+        // If no specific roles but has general activity, default to primary role
+        if (!isRep && !isSetter && ghlUser.activity_count > 0) {
+          const defaultRole = ghlUser.primary_role === 'sales_rep' ? 'rep' : 'setter'
+          const candidate: Candidate = {
+            ...baseCandidate,
+            role: defaultRole
+          }
+          
+          if (defaultRole === 'rep') {
+            ghlReps.push(candidate)
+          } else {
+            ghlSetters.push(candidate)
+          }
         }
       })
     }
