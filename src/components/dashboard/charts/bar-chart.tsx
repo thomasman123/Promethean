@@ -41,21 +41,14 @@ export function BarChart({
 
 	return (
 		<ChartContainer config={chartConfig} className={cn("w-full h-full aspect-auto", className)}>
-			<RechartsBarChart
-				data={data}
-				margin={{
-					top: 12,
-					right: 16,
-					left: 8,
-					bottom: 8,
-				}}
-			>
+			<RechartsBarChart data={data} margin={{ top: 12, right: 16, left: 8, bottom: 8 }}>
 				{showGrid && (
-					<CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+					<CartesianGrid vertical={false} className="stroke-muted" />
 				)}
 				<XAxis
 					dataKey={xAxisKey}
 					tickLine={false}
+					tickMargin={10}
 					axisLine={false}
 					className="text-xs fill-muted-foreground"
 				/>
@@ -65,7 +58,7 @@ export function BarChart({
 					className="text-xs fill-muted-foreground"
 				/>
 				{!disableTooltip && (
-					<ChartTooltip content={<ChartTooltipContent />} />
+					<ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
 				)}
 				{showLegend && <Legend />}
 				{bars.map((bar) => (
@@ -73,7 +66,7 @@ export function BarChart({
 						key={bar.dataKey}
 						dataKey={bar.dataKey}
 						fill={`var(--color-${bar.dataKey}, var(--primary))`}
-						radius={2}
+						radius={8}
 					/>
 				))}
 			</RechartsBarChart>
