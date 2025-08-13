@@ -105,32 +105,56 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
         const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
         
         const requestFilters = {
+          dateRange: {
+            start: (globalFilters.startDate || thirtyDaysAgo).toISOString(),
+            end: (globalFilters.endDate || now).toISOString()
+          },
           accountId: selectedAccountId,
-          startDate: globalFilters.startDate || thirtyDaysAgo,
-          endDate: globalFilters.endDate || now,
           repIds: globalFilters.repIds,
           setterIds: globalFilters.setterIds
         };
+
+        // Map dashboard metric name to engine metric name based on breakdown
+        const getEngineMetricName = (dashboardMetricName: string, breakdown: string) => {
+          // Map common dashboard metrics to engine metrics based on breakdown
+          if (dashboardMetricName.includes('appointment')) {
+            if (breakdown === 'total') return 'total_appointments';
+            if (breakdown === 'rep') return 'total_appointments_reps'; 
+            if (breakdown === 'setter') return 'total_appointments_setters';
+            if (breakdown === 'link') return 'appointments_link';
+          }
+          
+          // Default fallback - use the metric name as-is
+          return dashboardMetricName;
+        };
+
+        const engineMetricName = getEngineMetricName(widgetKey.metricName, widgetKey.breakdown);
+
+        console.log('🐛 DEBUG - Dashboard Widget API Call:', {
+          originalMetricName: widgetKey.metricName,
+          breakdown: widgetKey.breakdown,
+          engineMetricName,
+          filters: requestFilters
+        });
 
         // Call metrics API
         const response = await fetch('/api/metrics', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            metricName: widgetKey.metricName,
-            breakdown: widgetKey.breakdown,
-            filters: requestFilters,
-            compareMode,
-            compareEntities: relevantEntities,
-            compareModeSettings
+            metricName: engineMetricName,
+            filters: requestFilters
           })
         });
 
         if (!response.ok) {
-          throw new Error(`API Error: ${response.status}`);
+          const errorText = await response.text();
+          console.error('🐛 DEBUG - API Error Response:', errorText);
+          throw new Error(`API Error: ${response.status} - ${errorText}`);
         }
 
         const apiResult = await response.json();
+        console.log('🐛 DEBUG - API Success Response:', apiResult);
         
         // Transform API result to match expected format
         const transformResult = (result: any): MetricData => {
