@@ -77,6 +77,47 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ invitation: inv, warning: 'Invitation created but backfill failed' })
     }
 
+    // After invitation is created, check if this email matches any GHL users and backfill their data
+    try {
+      // Find GHL users with matching email
+      const { data: ghlUsers } = await supabase
+        .from('ghl_users' as any)
+        .select('ghl_user_id')
+        .eq('account_id', accountId)
+        .eq('email', email)
+        .eq('is_invited', false)
+
+      if (ghlUsers && ghlUsers.length > 0) {
+        // Get the app user ID from the invitation
+        const { data: createdUser } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('email', email)
+          .single()
+
+        if (createdUser) {
+          // Backfill data for each matching GHL user
+          for (const ghlUser of ghlUsers as any[]) {
+            const { data: backfillResult } = await supabase.rpc(
+              'backfill_user_data_on_invitation' as any,
+              {
+                p_account_id: accountId,
+                p_ghl_user_id: (ghlUser as any).ghl_user_id,
+                p_app_user_id: createdUser.id
+              }
+            )
+            
+            if (backfillResult && backfillResult.length > 0) {
+              console.log(`✅ Backfilled GHL user ${(ghlUser as any).ghl_user_id}:`, backfillResult[0])
+            }
+          }
+        }
+      }
+    } catch (ghlBackfillError) {
+      console.warn('Failed to backfill GHL user data (non-critical):', ghlBackfillError)
+      // Don't fail the invitation for this
+    }
+
     return NextResponse.json({ invitation: inv })
   } catch (e) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

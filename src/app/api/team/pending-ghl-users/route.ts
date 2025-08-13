@@ -2,13 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import type { Database } from '@/lib/database.types'
 
-interface Candidate {
-  id: string
-  name: string | null
-  role: 'rep' | 'setter'
-  invited: boolean
-}
-
 export async function GET(request: NextRequest) {
   try {
     const supabase = createServerClient<Database>(
@@ -59,43 +52,38 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Get all active team members for this account (invited app users only)
-    const { data: team, error } = await supabase
-      .from('team_members')
+    // Get uninvited GHL users from the centralized table
+    const { data: ghlUsers, error: ghlError } = await supabase
+      .from('ghl_users' as any)
       .select('*')
       .eq('account_id', accountId)
-      .eq('is_active', true)
+      .eq('is_invited', false)
+      .gt('activity_count', 0) // Only users with activity
 
-    if (error) {
-      console.error('Error fetching team members:', error)
-      return NextResponse.json({ error: 'Failed to fetch team members' }, { status: 500 })
+    if (ghlError) {
+      console.error('Error fetching GHL users:', ghlError)
+      return NextResponse.json({ error: 'Failed to fetch pending users' }, { status: 500 })
     }
 
-    // Split into reps and setters based on their role
-    const invitedReps = (team || [])
-      .filter(m => m.role && ['sales_rep', 'admin', 'moderator'].includes(m.role))
-      .map<Candidate>(m => ({ 
-        id: (m as any).user_id, 
-        name: (m as any).full_name || null, 
-        role: 'rep', 
-        invited: true 
-      }))
-
-    const invitedSetters = (team || [])
-      .filter(m => m.role && ['setter', 'admin', 'moderator'].includes(m.role))
-      .map<Candidate>(m => ({ 
-        id: (m as any).user_id, 
-        name: (m as any).full_name || null, 
-        role: 'setter', 
-        invited: true 
-      }))
+    // Format the response
+    const pendingUsers = (ghlUsers || []).map((user: any) => ({
+      ghl_user_id: user.ghl_user_id,
+      name: user.name,
+      email: user.email,
+      primary_role: user.primary_role,
+      roles: user.roles || [],
+      activity_count: user.activity_count,
+      setter_activity_count: user.setter_activity_count || 0,
+      sales_rep_activity_count: user.sales_rep_activity_count || 0,
+      last_seen_at: user.last_seen_at
+    }))
 
     return NextResponse.json({
-      reps: invitedReps,
-      setters: invitedSetters
+      pendingUsers,
+      count: pendingUsers.length
     })
   } catch (e) {
-    console.error('team/candidates error', e)
+    console.error('pending-ghl-users error', e)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 } 

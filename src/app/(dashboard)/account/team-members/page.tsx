@@ -29,16 +29,13 @@ interface TeamMember {
 interface PendingUser {
   ghl_user_id: string
   name: string
-  email: string
-  first_name: string
-  last_name: string
-  phone: string
-  suggested_role: 'admin' | 'moderator' | 'sales_rep' | 'setter'
+  email: string | null
+  primary_role: 'admin' | 'moderator' | 'sales_rep' | 'setter'
+  roles: string[]
   activity_count: number
-  appointment_count: number
-  discovery_count: number
-  dial_count: number
-  last_activity: string
+  setter_activity_count: number
+  sales_rep_activity_count: number
+  last_seen_at: string
 }
 
 export default function TeamMembersPage() {
@@ -118,7 +115,7 @@ export default function TeamMembersPage() {
     if (!selectedAccountId) return
     try {
       const ts = Date.now()
-      const res = await fetch(`/api/team/pending-users?accountId=${selectedAccountId}&_ts=${ts}`, { cache: 'no-store' })
+      const res = await fetch(`/api/team/pending-ghl-users?accountId=${selectedAccountId}&_ts=${ts}`, { cache: 'no-store' })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to fetch pending users')
       setPendingUsers(data.pendingUsers || [])
@@ -158,26 +155,26 @@ export default function TeamMembersPage() {
     if (!selectedAccountId) return
     setInvitingPendingUser(pendingUser.ghl_user_id)
     setError(null)
-    
     try {
-      const res = await fetch('/api/team/pending-users', {
+      // Invite the user through the regular invite endpoint
+      const res = await fetch('/api/team/invite', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+        body: JSON.stringify({ 
           accountId: selectedAccountId,
-          ghlUserId: pendingUser.ghl_user_id,
           email: pendingUser.email,
           fullName: pendingUser.name,
-          role: pendingUser.suggested_role
+          role: pendingUser.primary_role
         }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Failed to invite pending user')
+      if (!res.ok) throw new Error(data.error || 'Failed to invite')
       
+      // Refresh both lists
       await fetchMembers()
       await fetchPendingUsers()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to invite pending user')
+      setError(e instanceof Error ? e.message : 'Failed to invite user')
     } finally {
       setInvitingPendingUser(null)
     }
@@ -364,7 +361,7 @@ export default function TeamMembersPage() {
                         <div className="font-medium flex items-center gap-2">
                           {user.name || 'Unknown'}
                           <Badge variant={user.activity_count >= 5 ? 'default' : 'secondary'}>
-                            {user.suggested_role.replace('_', ' ')}
+                            {user.primary_role.replace('_', ' ')}
                           </Badge>
                           {user.email && (
                             <Badge variant="outline" className="text-green-600">
@@ -374,8 +371,7 @@ export default function TeamMembersPage() {
                         </div>
                         <div className="text-sm text-muted-foreground">{user.email || 'No email'}</div>
                         <div className="text-xs text-muted-foreground">
-                          Activity: {user.appointment_count} appointments, {user.discovery_count} discoveries, {user.dial_count} dials
-                          {user.phone && ` • Phone: ${user.phone}`}
+                          Activity: {user.activity_count} | Last seen: {new Date(user.last_seen_at).toLocaleDateString()}
                         </div>
                       </div>
                       <div className="flex gap-2">
