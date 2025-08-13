@@ -814,16 +814,14 @@ async function processAppointmentWebhook(payload: any) {
         salesRepGhlId: salesRepData?.id
       });
 
-      const { ensureUsersExistForData } = await import('@/lib/auto-user-creation');
-      const userIds = await ensureUsersExistForData(
+      const { linkExistingUsersToData } = await import('@/lib/auto-user-creation');
+      const userIds = await linkExistingUsersToData(
         supabase,
         account.id,
         baseData.setter,
         baseData.sales_rep,
-        account.ghl_api_key || undefined,
-        account.ghl_location_id || undefined,
-        setterData?.id,
-        salesRepData?.id
+        setterData?.email,
+        salesRepData?.email
       );
 
       console.log('✅ User creation results:', {
@@ -960,16 +958,14 @@ async function processAppointmentWebhook(payload: any) {
         salesRepGhlId: salesRepData?.id
       });
 
-      const { ensureUsersExistForData } = await import('@/lib/auto-user-creation');
-      const userIds = await ensureUsersExistForData(
+      const { linkExistingUsersToData } = await import('@/lib/auto-user-creation');
+      const userIds = await linkExistingUsersToData(
         supabase,
         account.id,
         baseData.setter,
         baseData.sales_rep,
-        account.ghl_api_key || undefined,
-        account.ghl_location_id || undefined,
-        setterData?.id,
-        salesRepData?.id
+        setterData?.email,
+        salesRepData?.email
       );
 
       console.log('✅ User creation results for discovery:', {
