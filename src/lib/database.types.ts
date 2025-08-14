@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "13.0.4"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          operationName?: string
-          query?: string
-          variables?: Json
-          extensions?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       account_access: {
@@ -125,6 +100,7 @@ export type Database = {
           ghl_webhook_id: string | null
           id: string
           is_active: boolean
+          is_agency: boolean | null
           last_future_sync_at: string | null
           name: string
           updated_at: string
@@ -142,6 +118,7 @@ export type Database = {
           ghl_webhook_id?: string | null
           id?: string
           is_active?: boolean
+          is_agency?: boolean | null
           last_future_sync_at?: string | null
           name: string
           updated_at?: string
@@ -159,6 +136,7 @@ export type Database = {
           ghl_webhook_id?: string | null
           id?: string
           is_active?: boolean
+          is_agency?: boolean | null
           last_future_sync_at?: string | null
           name?: string
           updated_at?: string
@@ -169,12 +147,15 @@ export type Database = {
         Row: {
           account_id: string
           call_outcome: string | null
+          campaign_attribution_id: string | null
           cash_collected: number | null
           contact_name: string
           created_at: string
           date_booked: string
           date_booked_for: string
           email: string | null
+          ghl_appointment_id: string | null
+          ghl_source: string | null
           id: string
           lead_quality: number | null
           metadata: Json | null
@@ -182,10 +163,14 @@ export type Database = {
           phone: string | null
           pitched: boolean | null
           sales_rep: string | null
+          sales_rep_ghl_id: string | null
           sales_rep_user_id: string | null
           setter: string
+          setter_ghl_id: string | null
           setter_user_id: string | null
           show_outcome: string | null
+          source_category: string | null
+          specific_source: string | null
           total_sales_value: number | null
           updated_at: string
           watched_assets: boolean | null
@@ -193,12 +178,15 @@ export type Database = {
         Insert: {
           account_id: string
           call_outcome?: string | null
+          campaign_attribution_id?: string | null
           cash_collected?: number | null
           contact_name: string
           created_at?: string
           date_booked?: string
           date_booked_for: string
           email?: string | null
+          ghl_appointment_id?: string | null
+          ghl_source?: string | null
           id?: string
           lead_quality?: number | null
           metadata?: Json | null
@@ -206,10 +194,14 @@ export type Database = {
           phone?: string | null
           pitched?: boolean | null
           sales_rep?: string | null
+          sales_rep_ghl_id?: string | null
           sales_rep_user_id?: string | null
           setter: string
+          setter_ghl_id?: string | null
           setter_user_id?: string | null
           show_outcome?: string | null
+          source_category?: string | null
+          specific_source?: string | null
           total_sales_value?: number | null
           updated_at?: string
           watched_assets?: boolean | null
@@ -217,12 +209,15 @@ export type Database = {
         Update: {
           account_id?: string
           call_outcome?: string | null
+          campaign_attribution_id?: string | null
           cash_collected?: number | null
           contact_name?: string
           created_at?: string
           date_booked?: string
           date_booked_for?: string
           email?: string | null
+          ghl_appointment_id?: string | null
+          ghl_source?: string | null
           id?: string
           lead_quality?: number | null
           metadata?: Json | null
@@ -230,10 +225,14 @@ export type Database = {
           phone?: string | null
           pitched?: boolean | null
           sales_rep?: string | null
+          sales_rep_ghl_id?: string | null
           sales_rep_user_id?: string | null
           setter?: string
+          setter_ghl_id?: string | null
           setter_user_id?: string | null
           show_outcome?: string | null
+          source_category?: string | null
+          specific_source?: string | null
           total_sales_value?: number | null
           updated_at?: string
           watched_assets?: boolean | null
@@ -247,6 +246,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "appointments_campaign_attribution_id_fkey"
+            columns: ["campaign_attribution_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_attribution"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "appointments_sales_rep_user_id_fkey"
             columns: ["sales_rep_user_id"]
             isOneToOne: false
@@ -273,6 +279,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "team_members"
             referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "appointments_source_category_fkey"
+            columns: ["source_category"]
+            isOneToOne: false
+            referencedRelation: "source_categories"
+            referencedColumns: ["name"]
           },
         ]
       }
@@ -313,6 +326,68 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "calendar_mappings_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campaign_attribution: {
+        Row: {
+          account_id: string
+          ad_id: string | null
+          ad_name: string | null
+          ad_set_id: string | null
+          ad_set_name: string | null
+          campaign_id: string
+          campaign_name: string | null
+          created_at: string | null
+          id: string
+          platform: string
+          utm_campaign: string | null
+          utm_content: string | null
+          utm_medium: string | null
+          utm_source: string | null
+          utm_term: string | null
+        }
+        Insert: {
+          account_id: string
+          ad_id?: string | null
+          ad_name?: string | null
+          ad_set_id?: string | null
+          ad_set_name?: string | null
+          campaign_id: string
+          campaign_name?: string | null
+          created_at?: string | null
+          id?: string
+          platform: string
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          utm_term?: string | null
+        }
+        Update: {
+          account_id?: string
+          ad_id?: string | null
+          ad_name?: string | null
+          ad_set_id?: string | null
+          ad_set_name?: string | null
+          campaign_id?: string
+          campaign_name?: string | null
+          created_at?: string | null
+          id?: string
+          platform?: string
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          utm_term?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_attribution_account_id_fkey"
             columns: ["account_id"]
             isOneToOne: false
             referencedRelation: "accounts"
@@ -389,7 +464,9 @@ export type Database = {
           id: string
           meaningful_conversation: boolean | null
           phone: string
+          sales_rep_ghl_id: string | null
           setter: string
+          setter_ghl_id: string | null
           setter_user_id: string | null
           updated_at: string
         }
@@ -405,7 +482,9 @@ export type Database = {
           id?: string
           meaningful_conversation?: boolean | null
           phone: string
+          sales_rep_ghl_id?: string | null
           setter: string
+          setter_ghl_id?: string | null
           setter_user_id?: string | null
           updated_at?: string
         }
@@ -421,7 +500,9 @@ export type Database = {
           id?: string
           meaningful_conversation?: boolean | null
           phone?: string
+          sales_rep_ghl_id?: string | null
           setter?: string
+          setter_ghl_id?: string | null
           setter_user_id?: string | null
           updated_at?: string
         }
@@ -454,60 +535,84 @@ export type Database = {
           account_id: string
           call_outcome: string | null
           call_sid: string | null
+          campaign_attribution_id: string | null
           contact_name: string
           created_at: string
           date_booked: string
           date_booked_for: string
           email: string | null
+          ghl_appointment_id: string | null
+          ghl_source: string | null
           id: string
+          lead_quality: number | null
           linked_appointment_id: string | null
           metadata: Json | null
           phone: string | null
           sales_rep: string | null
+          sales_rep_ghl_id: string | null
           sales_rep_user_id: string | null
           setter: string
+          setter_ghl_id: string | null
           setter_user_id: string | null
           show_outcome: string | null
+          source_category: string | null
+          specific_source: string | null
           updated_at: string
         }
         Insert: {
           account_id: string
           call_outcome?: string | null
           call_sid?: string | null
+          campaign_attribution_id?: string | null
           contact_name: string
           created_at?: string
           date_booked?: string
           date_booked_for: string
           email?: string | null
+          ghl_appointment_id?: string | null
+          ghl_source?: string | null
           id?: string
+          lead_quality?: number | null
           linked_appointment_id?: string | null
           metadata?: Json | null
           phone?: string | null
           sales_rep?: string | null
+          sales_rep_ghl_id?: string | null
           sales_rep_user_id?: string | null
           setter: string
+          setter_ghl_id?: string | null
           setter_user_id?: string | null
           show_outcome?: string | null
+          source_category?: string | null
+          specific_source?: string | null
           updated_at?: string
         }
         Update: {
           account_id?: string
           call_outcome?: string | null
           call_sid?: string | null
+          campaign_attribution_id?: string | null
           contact_name?: string
           created_at?: string
           date_booked?: string
           date_booked_for?: string
           email?: string | null
+          ghl_appointment_id?: string | null
+          ghl_source?: string | null
           id?: string
+          lead_quality?: number | null
           linked_appointment_id?: string | null
           metadata?: Json | null
           phone?: string | null
           sales_rep?: string | null
+          sales_rep_ghl_id?: string | null
           sales_rep_user_id?: string | null
           setter?: string
+          setter_ghl_id?: string | null
           setter_user_id?: string | null
           show_outcome?: string | null
+          source_category?: string | null
+          specific_source?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -516,6 +621,13 @@ export type Database = {
             columns: ["account_id"]
             isOneToOne: false
             referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "discoveries_campaign_attribution_id_fkey"
+            columns: ["campaign_attribution_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_attribution"
             referencedColumns: ["id"]
           },
           {
@@ -559,6 +671,141 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "team_members"
             referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "discoveries_source_category_fkey"
+            columns: ["source_category"]
+            isOneToOne: false
+            referencedRelation: "source_categories"
+            referencedColumns: ["name"]
+          },
+        ]
+      }
+      ghl_source_mappings: {
+        Row: {
+          account_id: string
+          created_at: string | null
+          description: string | null
+          ghl_source: string
+          id: string
+          is_active: boolean | null
+          source_category: string
+          specific_source: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          account_id: string
+          created_at?: string | null
+          description?: string | null
+          ghl_source: string
+          id?: string
+          is_active?: boolean | null
+          source_category: string
+          specific_source?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          account_id?: string
+          created_at?: string | null
+          description?: string | null
+          ghl_source?: string
+          id?: string
+          is_active?: boolean | null
+          source_category?: string
+          specific_source?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ghl_source_mappings_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ghl_source_mappings_source_category_fkey"
+            columns: ["source_category"]
+            isOneToOne: false
+            referencedRelation: "source_categories"
+            referencedColumns: ["name"]
+          },
+        ]
+      }
+      ghl_users: {
+        Row: {
+          account_id: string
+          activity_count: number | null
+          app_user_id: string | null
+          created_at: string | null
+          email: string | null
+          first_name: string | null
+          ghl_user_id: string
+          id: string
+          invited_at: string | null
+          invited_by: string | null
+          is_invited: boolean | null
+          last_name: string | null
+          last_seen_at: string | null
+          name: string
+          phone: string | null
+          primary_role: string | null
+          roles: string[] | null
+          sales_rep_activity_count: number | null
+          setter_activity_count: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          account_id: string
+          activity_count?: number | null
+          app_user_id?: string | null
+          created_at?: string | null
+          email?: string | null
+          first_name?: string | null
+          ghl_user_id: string
+          id?: string
+          invited_at?: string | null
+          invited_by?: string | null
+          is_invited?: boolean | null
+          last_name?: string | null
+          last_seen_at?: string | null
+          name: string
+          phone?: string | null
+          primary_role?: string | null
+          roles?: string[] | null
+          sales_rep_activity_count?: number | null
+          setter_activity_count?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          account_id?: string
+          activity_count?: number | null
+          app_user_id?: string | null
+          created_at?: string | null
+          email?: string | null
+          first_name?: string | null
+          ghl_user_id?: string
+          id?: string
+          invited_at?: string | null
+          invited_by?: string | null
+          is_invited?: boolean | null
+          last_name?: string | null
+          last_seen_at?: string | null
+          name?: string
+          phone?: string | null
+          primary_role?: string | null
+          roles?: string[] | null
+          sales_rep_activity_count?: number | null
+          setter_activity_count?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ghl_users_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -626,6 +873,77 @@ export type Database = {
           },
         ]
       }
+      pending_users: {
+        Row: {
+          account_id: string
+          created_at: string | null
+          email: string | null
+          first_name: string | null
+          first_seen_at: string | null
+          ghl_user_id: string
+          id: string
+          invite_accepted: boolean | null
+          invite_sent: boolean | null
+          invited_at: string | null
+          invited_by: string | null
+          last_name: string | null
+          last_seen_at: string | null
+          name: string
+          permissions: Json | null
+          phone: string | null
+          role: string
+          updated_at: string | null
+        }
+        Insert: {
+          account_id: string
+          created_at?: string | null
+          email?: string | null
+          first_name?: string | null
+          first_seen_at?: string | null
+          ghl_user_id: string
+          id?: string
+          invite_accepted?: boolean | null
+          invite_sent?: boolean | null
+          invited_at?: string | null
+          invited_by?: string | null
+          last_name?: string | null
+          last_seen_at?: string | null
+          name: string
+          permissions?: Json | null
+          phone?: string | null
+          role: string
+          updated_at?: string | null
+        }
+        Update: {
+          account_id?: string
+          created_at?: string | null
+          email?: string | null
+          first_name?: string | null
+          first_seen_at?: string | null
+          ghl_user_id?: string
+          id?: string
+          invite_accepted?: boolean | null
+          invite_sent?: boolean | null
+          invited_at?: string | null
+          invited_by?: string | null
+          last_name?: string | null
+          last_seen_at?: string | null
+          name?: string
+          permissions?: Json | null
+          phone?: string | null
+          role?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pending_users_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -659,6 +977,30 @@ export type Database = {
           is_active?: boolean
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
+        }
+        Relationships: []
+      }
+      source_categories: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          display_name: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          display_name: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          display_name?: string
+          id?: string
+          name?: string
         }
         Relationships: []
       }
@@ -733,6 +1075,53 @@ export type Database = {
       }
     }
     Views: {
+      dashboard_candidates: {
+        Row: {
+          account_id: string | null
+          activity_count: number | null
+          candidate_role: string | null
+          email: string | null
+          ghl_user_id: string | null
+          id: string | null
+          is_app_user: boolean | null
+          is_invited: boolean | null
+          name: string | null
+          primary_role: string | null
+        }
+        Insert: {
+          account_id?: string | null
+          activity_count?: number | null
+          candidate_role?: never
+          email?: string | null
+          ghl_user_id?: string | null
+          id?: string | null
+          is_app_user?: never
+          is_invited?: boolean | null
+          name?: string | null
+          primary_role?: string | null
+        }
+        Update: {
+          account_id?: string | null
+          activity_count?: number | null
+          candidate_role?: never
+          email?: string | null
+          ghl_user_id?: string | null
+          id?: string | null
+          is_app_user?: never
+          is_invited?: boolean | null
+          name?: string | null
+          primary_role?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ghl_users_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       discovery_appointment_flow: {
         Row: {
           account_id: string | null
@@ -774,6 +1163,68 @@ export type Database = {
           },
         ]
       }
+      pending_users_with_stats: {
+        Row: {
+          account_id: string | null
+          appointment_count: number | null
+          created_at: string | null
+          dial_count: number | null
+          discovery_count: number | null
+          email: string | null
+          first_name: string | null
+          first_seen_at: string | null
+          ghl_user_id: string | null
+          id: string | null
+          invite_accepted: boolean | null
+          invite_sent: boolean | null
+          invited_at: string | null
+          invited_by: string | null
+          invited_by_email: string | null
+          invited_by_name: string | null
+          last_name: string | null
+          last_seen_at: string | null
+          name: string | null
+          permissions: Json | null
+          phone: string | null
+          role: string | null
+          updated_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pending_users_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      source_attribution_summary: {
+        Row: {
+          account_id: string | null
+          source_category: string | null
+          specific_source: string | null
+          total_appointments: number | null
+          total_revenue: number | null
+          won_appointments: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointments_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_source_category_fkey"
+            columns: ["source_category"]
+            isOneToOne: false
+            referencedRelation: "source_categories"
+            referencedColumns: ["name"]
+          },
+        ]
+      }
       team_members: {
         Row: {
           account_id: string | null
@@ -808,6 +1259,18 @@ export type Database = {
       admin_complete_account_cleanup: {
         Args: { target_account_id: string }
         Returns: undefined
+      }
+      backfill_user_data_on_invitation: {
+        Args: {
+          p_account_id: string
+          p_ghl_user_id: string
+          p_app_user_id: string
+        }
+        Returns: {
+          appointments_updated: number
+          discoveries_updated: number
+          dials_updated: number
+        }[]
       }
       convert_data_user_to_invited: {
         Args: { p_user_id: string; p_real_email: string }
@@ -857,6 +1320,12 @@ export type Database = {
         Args: { query_sql: string; query_params?: Json }
         Returns: Json
       }
+      get_unmapped_sources: {
+        Args: { p_account_id: string }
+        Returns: {
+          ghl_source: string
+        }[]
+      }
       get_user_accounts: {
         Args: { user_id: string }
         Returns: {
@@ -886,6 +1355,10 @@ export type Database = {
           user_id: string
         }
       }
+      invite_pending_user: {
+        Args: { p_pending_user_id: string; p_invited_by?: string }
+        Returns: boolean
+      }
       link_user_to_account_and_backfill: {
         Args: {
           p_account_id: string
@@ -906,6 +1379,10 @@ export type Database = {
         Args: { user_id: string; account_id: string }
         Returns: boolean
       }
+      sync_ghl_users_from_existing_data: {
+        Args: { p_account_id: string }
+        Returns: number
+      }
       test_auth_context: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -914,6 +1391,49 @@ export type Database = {
           user_exists_in_profiles: boolean
           user_role_in_profiles: string
         }[]
+      }
+      toggle_account_agency_status: {
+        Args: { p_account_id: string; p_is_agency: boolean }
+        Returns: boolean
+      }
+      update_ghl_user_roles: {
+        Args: { p_account_id: string; p_ghl_user_id: string }
+        Returns: undefined
+      }
+      update_ghl_user_roles_with_context: {
+        Args: {
+          p_account_id: string
+          p_ghl_user_id: string
+          p_current_role?: string
+        }
+        Returns: undefined
+      }
+      upsert_ghl_user: {
+        Args: {
+          p_account_id: string
+          p_ghl_user_id: string
+          p_name: string
+          p_email?: string
+          p_first_name?: string
+          p_last_name?: string
+          p_phone?: string
+          p_primary_role?: string
+        }
+        Returns: string
+      }
+      upsert_pending_user: {
+        Args: {
+          p_account_id: string
+          p_ghl_user_id: string
+          p_name: string
+          p_email?: string
+          p_first_name?: string
+          p_last_name?: string
+          p_phone?: string
+          p_role?: string
+          p_permissions?: Json
+        }
+        Returns: string
       }
     }
     Enums: {
@@ -1043,9 +1563,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       user_role: ["admin", "moderator", "sales_rep", "setter"],
