@@ -39,6 +39,7 @@ interface SourceMapping {
   is_active: boolean | null;
   is_new?: boolean;
   has_changes?: boolean;
+  is_contact_source?: boolean;
 }
 
 interface SourceCategory {
@@ -63,6 +64,8 @@ export default function SourceMappingPage() {
   const [mappings, setMappings] = useState<SourceMapping[]>([]);
   const [categories, setCategories] = useState<SourceCategory[]>([]);
   const [unmappedSources, setUnmappedSources] = useState<string[]>([]);
+  const [contactMappings, setContactMappings] = useState<SourceMapping[]>([]);
+  const [unmappedContactSources, setUnmappedContactSources] = useState<{contact_source: string, usage_count: number}[]>([]);
   const [sourceUsage, setSourceUsage] = useState<SourceUsage[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -121,6 +124,31 @@ export default function SourceMappingPage() {
       if (unmappedError) throw unmappedError;
       setUnmappedSources(unmappedData?.map((u: any) => u.ghl_source) || []);
 
+      // Fetch contact source mappings
+      const { data: contactMappingsData, error: contactMapError } = await supabase
+        .from('contact_source_mappings')
+        .select('*')
+        .eq('account_id', selectedAccountId)
+        .order('contact_source');
+
+      if (contactMapError) throw contactMapError;
+      setContactMappings(contactMappingsData?.map((mapping: any) => ({
+        ghl_source: mapping.contact_source, // Use ghl_source field for consistency
+        source_category: mapping.source_category,
+        specific_source: mapping.specific_source,
+        description: mapping.description,
+        is_active: mapping.is_active,
+        id: mapping.id,
+        is_contact_source: true // Flag to identify contact sources
+      })) || []);
+
+      // Fetch unmapped contact sources
+      const { data: unmappedContactData, error: unmappedContactError } = await supabase
+        .rpc('get_unmapped_contact_sources', { p_account_id: selectedAccountId });
+
+      if (unmappedContactError) throw unmappedContactError;
+      setUnmappedContactSources(unmappedContactData || []);
+
       // Fetch source usage statistics
       const { data: usageData, error: usageError } = await supabase
         .from('appointments')
@@ -176,7 +204,15 @@ export default function SourceMappingPage() {
   };
 
   const updateMapping = (ghlSource: string, field: string, value: any) => {
+    // Update GHL mappings
     setMappings(prev => prev.map(m => 
+      m.ghl_source === ghlSource 
+        ? { ...m, [field]: value, has_changes: true }
+        : m
+    ));
+    
+    // Update contact mappings
+    setContactMappings(prev => prev.map(m => 
       m.ghl_source === ghlSource 
         ? { ...m, [field]: value, has_changes: true }
         : m
@@ -189,24 +225,52 @@ export default function SourceMappingPage() {
     try {
       setSaving(true);
 
-      const { error } = await supabase
-        .from('ghl_source_mappings')
-        .upsert({
-          ...mapping,
-          account_id: selectedAccountId,
-          updated_at: new Date().toISOString()
-        });
+      if (mapping.is_contact_source) {
+        // Save to contact_source_mappings table
+        const { error } = await supabase
+          .from('contact_source_mappings')
+          .upsert({
+            id: mapping.id,
+            contact_source: mapping.ghl_source,
+            source_category: mapping.source_category,
+            specific_source: mapping.specific_source,
+            description: mapping.description,
+            is_active: mapping.is_active,
+            account_id: selectedAccountId,
+            updated_at: new Date().toISOString()
+          });
 
-      if (error) throw error;
+        if (error) throw error;
 
-      setMappings(prev => prev.map(m => 
-        m.ghl_source === mapping.ghl_source 
-          ? { ...m, has_changes: false, is_new: false }
-          : m
-      ));
+        setContactMappings(prev => prev.map(m => 
+          m.ghl_source === mapping.ghl_source 
+            ? { ...m, has_changes: false, is_new: false }
+            : m
+        ));
 
-      // Remove from unmapped if it was there
-      setUnmappedSources(prev => prev.filter(s => s !== mapping.ghl_source));
+        // Remove from unmapped contact sources
+        setUnmappedContactSources(prev => prev.filter(s => s.contact_source !== mapping.ghl_source));
+      } else {
+        // Save to ghl_source_mappings table
+        const { error } = await supabase
+          .from('ghl_source_mappings')
+          .upsert({
+            ...mapping,
+            account_id: selectedAccountId,
+            updated_at: new Date().toISOString()
+          });
+
+        if (error) throw error;
+
+        setMappings(prev => prev.map(m => 
+          m.ghl_source === mapping.ghl_source 
+            ? { ...m, has_changes: false, is_new: false }
+            : m
+        ));
+
+        // Remove from unmapped if it was there
+        setUnmappedSources(prev => prev.filter(s => s !== mapping.ghl_source));
+      }
 
       toast.success(`Saved mapping for ${mapping.ghl_source}`);
     } catch (error) {
@@ -230,6 +294,22 @@ export default function SourceMappingPage() {
     
     setMappings(prev => [...prev, newMapping]);
     setUnmappedSources(prev => prev.filter(s => s !== source));
+  };
+
+  const addUnmappedContactSource = (source: string) => {
+    const newMapping: SourceMapping = {
+      ghl_source: source,
+      source_category: 'unknown',
+      specific_source: '',
+      description: '',
+      is_active: true,
+      is_new: true,
+      has_changes: true,
+      is_contact_source: true
+    };
+    
+    setContactMappings(prev => [...prev, newMapping]);
+    setUnmappedContactSources(prev => prev.filter(s => s.contact_source !== source));
   };
 
   const addCustomSource = () => {
@@ -329,7 +409,7 @@ export default function SourceMappingPage() {
               <Alert>
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>
-                  <strong>New sources detected:</strong> {unmappedSources.join(', ')}
+                  <strong>New GHL sources detected:</strong> {unmappedSources.join(', ')}
                   <div className="mt-2 flex gap-2 flex-wrap">
                     {unmappedSources.map(source => (
                       <Button
@@ -341,6 +421,34 @@ export default function SourceMappingPage() {
                         <Plus className="h-4 w-4 mr-1" />
                         Add {source}
                       </Button>
+                    ))}
+                  </div>
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {/* Unmapped Contact Sources Alert */}
+            {unmappedContactSources.length > 0 && (
+              <Alert className="border-orange-200 bg-orange-50">
+                <AlertCircle className="h-4 w-4 text-orange-600" />
+                <AlertDescription>
+                  <strong className="text-orange-800">Contact sources needing mapping:</strong>
+                  <div className="mt-2 space-y-2">
+                    {unmappedContactSources.map(source => (
+                      <div key={source.contact_source} className="flex items-center justify-between">
+                        <span className="text-orange-700">
+                          "{source.contact_source}" ({source.usage_count} uses)
+                        </span>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => addUnmappedContactSource(source.contact_source)}
+                          className="ml-2"
+                        >
+                          <Plus className="h-4 w-4 mr-1" />
+                          Map Contact Source
+                        </Button>
+                      </div>
                     ))}
                   </div>
                 </AlertDescription>
@@ -368,7 +476,7 @@ export default function SourceMappingPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {mappings.map((mapping) => (
+                  {[...mappings, ...contactMappings].map((mapping) => (
                     <Card 
                       key={mapping.ghl_source} 
                       className={`p-4 ${mapping.is_new ? 'border-blue-500' : ''} ${mapping.has_changes ? 'border-orange-500' : ''}`}
@@ -376,14 +484,18 @@ export default function SourceMappingPage() {
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                         {/* Left Column */}
                         <div className="space-y-4">
-                          <div className="flex items-center gap-2">
-                            <Label className="font-medium">GHL Source:</Label>
-                            <code className="bg-gray-100 px-2 py-1 rounded text-sm font-mono">
-                              {mapping.ghl_source}
-                            </code>
-                            {mapping.is_new && <Badge variant="secondary">New</Badge>}
-                            {mapping.has_changes && !mapping.is_new && <Badge variant="outline">Modified</Badge>}
-                          </div>
+                                                  <div className="flex items-center gap-2">
+                          <Label className="font-medium">
+                            {mapping.is_contact_source ? 'Contact Source:' : 'GHL Source:'}
+                          </Label>
+                          <code className="bg-gray-100 px-2 py-1 rounded text-sm font-mono">
+                            {mapping.ghl_source}
+                          </code>
+                          {mapping.is_contact_source && <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">Contact</Badge>}
+                          {!mapping.is_contact_source && <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">GHL</Badge>}
+                          {mapping.is_new && <Badge variant="secondary">New</Badge>}
+                          {mapping.has_changes && !mapping.is_new && <Badge variant="outline">Modified</Badge>}
+                        </div>
 
                           <div>
                             <Label htmlFor={`category-${mapping.ghl_source}`}>Business Category</Label>
@@ -464,9 +576,9 @@ export default function SourceMappingPage() {
                   ))}
                 </div>
 
-                {mappings.length === 0 && (
+                {mappings.length === 0 && contactMappings.length === 0 && (
                   <div className="text-center py-8 text-muted-foreground">
-                    No source mappings configured yet. Add sources from the detected list above or create custom ones.
+                    No source mappings configured yet. Add sources from the detected lists above or create custom ones.
                   </div>
                 )}
               </CardContent>
