@@ -80,7 +80,25 @@ export default function UpdateDataPage() {
         type: 'appointment',
       }));
 
-      const discoveries: DiscoveryItem[] = [];
+      // Fetch discoveries that need updates (call_outcome is null)
+      const { data: discos, error: discosError } = await supabase
+        .from('discoveries')
+        .select('id, contact_name, date_booked_for, setter_user_id')
+        .eq('account_id', selectedAccountId)
+        .eq('setter_user_id', effectiveUserId)
+        .is('call_outcome', null)
+        .order('date_booked_for', { ascending: true });
+
+      if (discosError) {
+        console.warn('Failed to fetch discoveries:', discosError.message);
+      }
+
+      const discoveries: DiscoveryItem[] = (discos || []).map((d) => ({
+        id: d.id,
+        leadName: d.contact_name,
+        scheduledAt: d.date_booked_for,
+        type: 'discovery',
+      }));
 
       setAllItems([...appointments, ...discoveries]);
       setCurrentIndex(0);
@@ -406,12 +424,33 @@ function DiscoveryEntryCard({
   item: DiscoveryItem;
   onComplete: () => void;
 }) {
-  const [outcome, setOutcome] = useState<string>("");
+  const [callOutcome, setCallOutcome] = useState<'show' | 'no_show' | 'reschedule' | 'cancel' | "">("");
+  const [shownOutcome, setShownOutcome] = useState<'booked' | 'not_booked' | "">("");
+  const [leadQuality, setLeadQuality] = useState<string>("");
+
+  const mustShowFollowSteps = callOutcome === "show";
+
+  const canSubmit = useMemo(() => {
+    if (!callOutcome) return false;
+    if (!mustShowFollowSteps) return true; // For no show, reschedule, cancel - just call outcome is enough
+    // For show - need shown outcome
+    return !!shownOutcome;
+  }, [callOutcome, mustShowFollowSteps, shownOutcome]);
 
   const handleSubmit = async () => {
-    if (!outcome) return;
+    if (!canSubmit) return;
+    const payload = {
+      callOutcome,
+      shownOutcome: shownOutcome || undefined,
+      leadQuality: leadQuality ? Number(leadQuality) : undefined,
+    };
     try {
-      console.log('Discovery outcome:', { discoveryId: item.id, outcome });
+      const res = await fetch('/api/discoveries/outcome', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ discoveryId: item.id, payload })
+      });
+      if (!res.ok) throw new Error(await res.text());
       onComplete();
     } catch (e) {
       console.error('Failed to save discovery outcome', e);
@@ -441,13 +480,41 @@ function DiscoveryEntryCard({
         </Alert>
 
         <div className="space-y-2">
-          <Label>Discovery Outcome</Label>
-          <Select value={outcome} onValueChange={setOutcome}>
+          <Label>Call Outcome</Label>
+          <Select value={callOutcome} onValueChange={(v: 'show' | 'no_show' | 'reschedule' | 'cancel') => setCallOutcome(v)}>
             <SelectTrigger><SelectValue placeholder="Select outcome" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="qualified">Qualified</SelectItem>
-              <SelectItem value="not_qualified">Not Qualified</SelectItem>
-              <SelectItem value="follow_up">Follow Up</SelectItem>
+              <SelectItem value="show">Show</SelectItem>
+              <SelectItem value="no_show">No Show</SelectItem>
+              <SelectItem value="reschedule">Reschedule</SelectItem>
+              <SelectItem value="cancel">Cancel</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {mustShowFollowSteps && (
+          <div className="space-y-2">
+            <Label>Shown Outcome</Label>
+            <Select value={shownOutcome} onValueChange={(v: 'booked' | 'not_booked') => setShownOutcome(v)}>
+              <SelectTrigger><SelectValue placeholder="Select result" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="booked">Booked</SelectItem>
+                <SelectItem value="not_booked">Not Booked</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
+        <div className="space-y-2">
+          <Label>Lead Quality (Optional)</Label>
+          <Select value={leadQuality} onValueChange={setLeadQuality}>
+            <SelectTrigger><SelectValue placeholder="Select quality (1–5)" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="1">1</SelectItem>
+              <SelectItem value="2">2</SelectItem>
+              <SelectItem value="3">3</SelectItem>
+              <SelectItem value="4">4</SelectItem>
+              <SelectItem value="5">5</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -455,7 +522,7 @@ function DiscoveryEntryCard({
         <Separator />
 
         <div className="flex items-center justify-end gap-3">
-          <Button disabled={!outcome} onClick={handleSubmit} size="lg" className="gap-2">
+          <Button disabled={!canSubmit} onClick={handleSubmit} size="lg" className="gap-2">
             Complete & Continue <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
