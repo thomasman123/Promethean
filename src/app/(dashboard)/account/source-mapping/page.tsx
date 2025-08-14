@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -18,28 +18,67 @@ import {
 } from '@/components/ui/breadcrumb';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { useAuth } from '@/hooks/useAuth';
+import { Loader2 } from 'lucide-react';
 
 export default function SourceMappingPage() {
-  const { getAccountBasedPermissions } = useAuth();
+  const { user, loading, getAccountBasedPermissions } = useAuth();
   const permissions = getAccountBasedPermissions();
   const router = useRouter();
 
-  // Check permissions
+  // Debug logging
   useEffect(() => {
+    console.log('SourceMappingPage - Auth state:', {
+      user: !!user,
+      loading,
+      canManageAccount: permissions.canManageAccount,
+      userEmail: user?.email
+    });
+  }, [user, loading, permissions.canManageAccount]);
+
+  // Handle authentication and permissions
+  useEffect(() => {
+    if (loading) return; // Don't redirect while loading
+    
+    if (!user) {
+      console.log('SourceMappingPage - No user, redirecting to login');
+      router.replace('/login');
+      return;
+    }
+    
     if (!permissions.canManageAccount) {
+      console.log('SourceMappingPage - No account management permissions, redirecting to dashboard');
       router.replace('/dashboard');
       return;
     }
-  }, [permissions.canManageAccount, router]);
+  }, [user, loading, permissions.canManageAccount, router]);
 
-  // Show access denied if no permissions
-  if (!permissions.canManageAccount) {
+  // Show loading state while checking auth
+  if (loading) {
+    return (
+      <SidebarInset>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto" />
+            <p className="text-muted-foreground mt-2">Loading...</p>
+          </div>
+        </div>
+      </SidebarInset>
+    );
+  }
+
+  // Show access denied if no user or permissions
+  if (!user || !permissions.canManageAccount) {
     return (
       <SidebarInset>
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
             <h2 className="text-lg font-semibold">Access Denied</h2>
-            <p className="text-muted-foreground">You need moderator permissions to access source mapping.</p>
+            <p className="text-muted-foreground">
+              {!user 
+                ? 'You need to be logged in to access this page.' 
+                : 'You need moderator permissions to access source mapping.'
+              }
+            </p>
           </div>
         </div>
       </SidebarInset>
