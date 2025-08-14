@@ -15,6 +15,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Calendar, ClipboardList, CheckCircle2, ChevronRight } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { supabase } from "@/lib/supabase";
 
 interface AppointmentItem {
   id: string;
@@ -49,24 +50,47 @@ const objectionOptions = [
 ];
 
 export default function UpdateDataPage() {
-  const { selectedAccountId } = useAuth();
+  const { selectedAccountId, user } = useAuth();
   const [allItems, setAllItems] = useState<DataItem[]>([]);
   const [completedItems, setCompletedItems] = useState<Set<string>>(new Set());
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlowComplete, setIsFlowComplete] = useState(false);
 
   useEffect(() => {
-    // TODO: fetch assigned appointments and discoveries for current user
-    const mockAppointments: AppointmentItem[] = [
-      { id: "a1", leadName: "Acme Co / John", scheduledAt: new Date().toISOString(), type: "appointment" },
-      { id: "a2", leadName: "Globex / Mary", scheduledAt: new Date().toISOString(), type: "appointment" },
-    ];
-    const mockDiscoveries: DiscoveryItem[] = [
-      // No discoveries for now
-    ];
-    
-    setAllItems([...mockAppointments, ...mockDiscoveries]);
-  }, [selectedAccountId]);
+    const fetchItems = async () => {
+      if (!selectedAccountId || !user?.id) return;
+      // Fetch appointments assigned to this user (as sales_rep_user_id or setter_user_id) and with null lead_quality (not completed)
+      const { data: appts, error } = await supabase
+        .from('appointments')
+        .select('id, contact_name, date_booked_for, sales_rep_user_id, setter_user_id')
+        .eq('account_id', selectedAccountId)
+        .is('lead_quality', null)
+        .or(`sales_rep_user_id.eq.${user.id},setter_user_id.eq.${user.id}`)
+        .order('date_booked_for', { ascending: true });
+
+      if (error) {
+        console.warn('Failed to fetch appointments:', error.message);
+        setAllItems([]);
+        return;
+      }
+
+      const appointments: AppointmentItem[] = (appts || []).map((a) => ({
+        id: a.id,
+        leadName: a.contact_name,
+        scheduledAt: a.date_booked_for,
+        type: 'appointment',
+      }));
+
+      // TODO: Fetch discoveries similarly when API is ready
+      const discoveries: DiscoveryItem[] = [];
+
+      setAllItems([...appointments, ...discoveries]);
+      setCurrentIndex(0);
+      setCompletedItems(new Set());
+      setIsFlowComplete(false);
+    };
+    fetchItems();
+  }, [selectedAccountId, user?.id]);
 
   const currentItem = allItems[currentIndex];
   const totalItems = allItems.length;
@@ -369,7 +393,6 @@ function AppointmentEntryCard({
         <Separator />
 
         <div className="flex items-center justify-end gap-3">
-          <Button variant="outline">Save draft</Button>
           <Button disabled={!canSubmit} onClick={handleSubmit} size="lg" className="gap-2">
             Complete & Continue <ChevronRight className="h-4 w-4" />
           </Button>
@@ -436,7 +459,6 @@ function DiscoveryEntryCard({
         <Separator />
 
         <div className="flex items-center justify-end gap-3">
-          <Button variant="outline">Save draft</Button>
           <Button disabled={!outcome} onClick={handleSubmit} size="lg" className="gap-2">
             Complete & Continue <ChevronRight className="h-4 w-4" />
           </Button>
