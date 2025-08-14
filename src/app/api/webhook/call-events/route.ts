@@ -533,7 +533,10 @@ async function processAppointmentWebhook(payload: any) {
               email: contactData?.email,
               phone: contactData?.phone,
               companyName: contactData?.companyName,
-              tags: contactData?.tags
+              tags: contactData?.tags,
+              source: contactData?.source,
+              attributionSource: contactData?.attributionSource,
+              lastAttributionSource: contactData?.lastAttributionSource
             });
           } else {
             const errorText = await contactResponse.text();
@@ -657,7 +660,10 @@ async function processAppointmentWebhook(payload: any) {
               email: contactData?.email,
               phone: contactData?.phone,
               companyName: contactData?.companyName,
-              tags: contactData?.tags
+              tags: contactData?.tags,
+              source: contactData?.source,
+              attributionSource: contactData?.attributionSource,
+              lastAttributionSource: contactData?.lastAttributionSource
             });
           }
         }
@@ -955,6 +961,41 @@ async function processAppointmentWebhook(payload: any) {
         salesRepUserId: userIds.salesRepUserId || 'None'
       });
 
+      // Process contact attribution data
+      const contactAttribution = contactData?.attributionSource || contactData?.lastAttributionSource || {};
+      console.log('🎯 Processing contact attribution:', {
+        contactSource: contactData?.source,
+        attributionSource: contactAttribution,
+        hasAttribution: !!contactAttribution
+      });
+
+      // Call the classification function
+      let classifiedAttribution = null;
+      if (contactData) {
+        try {
+          const { data: attributionResult, error: attributionError } = await supabase
+            .rpc('classify_contact_attribution', {
+              p_contact_source: contactData.source || null,
+              p_utm_source: contactAttribution.utmSource || null,
+              p_utm_medium: contactAttribution.utmMedium || null,
+              p_utm_campaign: contactAttribution.campaign || null,
+              p_referrer: contactAttribution.referrer || null,
+              p_gclid: contactAttribution.gclid || null,
+              p_fbclid: contactAttribution.fbclid || null,
+              p_account_id: account.id
+            });
+
+          if (attributionError) {
+            console.error('Error classifying contact attribution:', attributionError);
+          } else {
+            classifiedAttribution = attributionResult;
+            console.log('✅ Contact attribution classified:', classifiedAttribution);
+          }
+        } catch (error) {
+          console.error('Error calling attribution classification:', error);
+        }
+      }
+
       const appointmentData = {
         ...baseData,
         date_booked: webhookTimestamp, // When appointment was booked (webhook received)
@@ -968,7 +1009,18 @@ async function processAppointmentWebhook(payload: any) {
         setter_ghl_id: setterData?.id || null,
         sales_rep_ghl_id: salesRepData?.id || null,
         ghl_appointment_id: payload.appointment?.id || null,
-        ghl_source: fullAppointmentData?.createdBy?.source || fullAppointmentData?.source || 'unknown' // Add GHL source from createdBy.source
+        ghl_source: fullAppointmentData?.createdBy?.source || fullAppointmentData?.source || 'unknown', // Add GHL source from createdBy.source
+        // Contact attribution fields
+        contact_source: contactData?.source || null,
+        contact_utm_source: contactAttribution.utmSource || null,
+        contact_utm_medium: contactAttribution.utmMedium || null,
+        contact_utm_campaign: contactAttribution.campaign || null,
+        contact_utm_content: contactAttribution.utmContent || null,
+        contact_referrer: contactAttribution.referrer || null,
+        contact_gclid: contactAttribution.gclid || null,
+        contact_fbclid: contactAttribution.fbclid || null,
+        contact_campaign_id: contactAttribution.campaignId || null,
+        last_attribution_source: classifiedAttribution ? JSON.stringify(classifiedAttribution) : null
       };
       
       // Check for existing appointment to prevent duplicates
@@ -1101,6 +1153,41 @@ async function processAppointmentWebhook(payload: any) {
         salesRepUserId: userIds.salesRepUserId || 'None' // This maps to appointment creator
       });
 
+      // Process contact attribution data for discoveries
+      const contactAttribution = contactData?.attributionSource || contactData?.lastAttributionSource || {};
+      console.log('🎯 Processing discovery contact attribution:', {
+        contactSource: contactData?.source,
+        attributionSource: contactAttribution,
+        hasAttribution: !!contactAttribution
+      });
+
+      // Call the classification function for discoveries
+      let classifiedAttribution = null;
+      if (contactData) {
+        try {
+          const { data: attributionResult, error: attributionError } = await supabase
+            .rpc('classify_contact_attribution', {
+              p_contact_source: contactData.source || null,
+              p_utm_source: contactAttribution.utmSource || null,
+              p_utm_medium: contactAttribution.utmMedium || null,
+              p_utm_campaign: contactAttribution.campaign || null,
+              p_referrer: contactAttribution.referrer || null,
+              p_gclid: contactAttribution.gclid || null,
+              p_fbclid: contactAttribution.fbclid || null,
+              p_account_id: account.id
+            });
+
+          if (attributionError) {
+            console.error('Error classifying discovery contact attribution:', attributionError);
+          } else {
+            classifiedAttribution = attributionResult;
+            console.log('✅ Discovery contact attribution classified:', classifiedAttribution);
+          }
+        } catch (error) {
+          console.error('Error calling discovery attribution classification:', error);
+        }
+      }
+
       const discoveryData = {
         ...baseData,
         date_booked_for: payload.appointment.startTime ? 
@@ -1110,7 +1197,18 @@ async function processAppointmentWebhook(payload: any) {
         setter_ghl_id: salesRepData?.id || null, // Swapped: setter gets salesRepData ID
         sales_rep_ghl_id: setterData?.id || null, // Swapped: sales_rep gets setterData ID
         ghl_appointment_id: payload.appointment?.id || null,
-        ghl_source: fullAppointmentData?.createdBy?.source || fullAppointmentData?.source || 'unknown' // Add GHL source from createdBy.source
+        ghl_source: fullAppointmentData?.createdBy?.source || fullAppointmentData?.source || 'unknown', // Add GHL source from createdBy.source
+        // Contact attribution fields for discoveries
+        contact_source: contactData?.source || null,
+        contact_utm_source: contactAttribution.utmSource || null,
+        contact_utm_medium: contactAttribution.utmMedium || null,
+        contact_utm_campaign: contactAttribution.campaign || null,
+        contact_utm_content: contactAttribution.utmContent || null,
+        contact_referrer: contactAttribution.referrer || null,
+        contact_gclid: contactAttribution.gclid || null,
+        contact_fbclid: contactAttribution.fbclid || null,
+        contact_campaign_id: contactAttribution.campaignId || null,
+        last_attribution_source: classifiedAttribution ? JSON.stringify(classifiedAttribution) : null
       };
       
       // Check for existing discovery to prevent duplicates
