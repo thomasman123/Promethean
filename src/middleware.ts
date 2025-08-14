@@ -69,15 +69,32 @@ export async function middleware(req: NextRequest) {
   // Check admin access for admin routes
   if (session && req.nextUrl.pathname.startsWith('/admin')) {
     try {
-      // Get user profile to check role
+      // Check if user is impersonating someone
+      const impersonatedUserId = req.cookies.get('impersonate_user_id')?.value
+      let effectiveUserId = session.user.id
+
+      // If impersonating, check if the actual user is admin first
+      if (impersonatedUserId) {
+        const { data: actualProfile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', session.user.id)
+          .single()
+        
+        if (actualProfile?.role === 'admin') {
+          effectiveUserId = impersonatedUserId
+        }
+      }
+
+      // Get effective user profile to check role
       const { data: profile, error } = await supabase
         .from('profiles')
         .select('role')
-        .eq('id', session.user.id)
+        .eq('id', effectiveUserId)
         .single()
 
       if (error || !profile || profile.role !== 'admin') {
-        console.log('Middleware - Admin access denied for user:', session.user.id, 'role:', profile?.role)
+        console.log('Middleware - Admin access denied for user:', effectiveUserId, 'role:', profile?.role)
         return NextResponse.redirect(new URL('/dashboard', req.url))
       }
     } catch (error) {
@@ -89,15 +106,32 @@ export async function middleware(req: NextRequest) {
   // Check moderator/admin access for account routes
   if (session && req.nextUrl.pathname.startsWith('/account')) {
     try {
-      // Get user profile to check role
+      // Check if user is impersonating someone
+      const impersonatedUserId = req.cookies.get('impersonate_user_id')?.value
+      let effectiveUserId = session.user.id
+
+      // If impersonating, check if the actual user is admin first
+      if (impersonatedUserId) {
+        const { data: actualProfile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', session.user.id)
+          .single()
+        
+        if (actualProfile?.role === 'admin') {
+          effectiveUserId = impersonatedUserId
+        }
+      }
+
+      // Get effective user profile to check role
       const { data: profile, error } = await supabase
         .from('profiles')
         .select('role')
-        .eq('id', session.user.id)
+        .eq('id', effectiveUserId)
         .single()
 
       if (error || !profile || (profile.role !== 'admin' && profile.role !== 'moderator')) {
-        console.log('Middleware - Account access denied for user:', session.user.id, 'role:', profile?.role)
+        console.log('Middleware - Account access denied for user:', effectiveUserId, 'role:', profile?.role)
         return NextResponse.redirect(new URL('/dashboard', req.url))
       }
     } catch (error) {

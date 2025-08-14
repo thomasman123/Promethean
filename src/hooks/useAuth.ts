@@ -12,6 +12,7 @@ interface UserWithProfile extends User {
 
 export function useAuth() {
   const [user, setUser] = useState<UserWithProfile | null>(null)
+  const [impersonatedUser, setImpersonatedUser] = useState<UserWithProfile | null>(null)
   const [effectiveUserId, setEffectiveUserId] = useState<string | null>(null)
   const [impersonatedUserId, setImpersonatedUserId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -61,10 +62,47 @@ export function useAuth() {
     loadImpersonation()
   }, [accountChangeTimestamp])
 
-  // Effective user id
+  // Effective user id and fetch impersonated user profile
   useEffect(() => {
     setEffectiveUserId(impersonatedUserId || user?.id || null)
-  }, [impersonatedUserId, user?.id])
+    
+    // Fetch impersonated user profile when impersonation changes
+    const fetchImpersonatedProfile = async () => {
+      if (impersonatedUserId && user?.profile?.role === 'admin') {
+        try {
+          // Get impersonated user profile
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', impersonatedUserId)
+            .single()
+
+          // Get impersonated user's account access
+          const { data: accountAccessData } = await supabase
+            .from('account_access')
+            .select(`
+              *,
+              account:accounts(*)
+            `)
+            .eq('user_id', impersonatedUserId)
+            .eq('is_active', true)
+
+          setImpersonatedUser({
+            id: impersonatedUserId,
+            profile,
+            accountAccess: accountAccessData || []
+          } as UserWithProfile)
+        } catch (error) {
+          console.error('Failed to fetch impersonated user profile:', error)
+          setImpersonatedUser(null)
+        }
+      } else {
+        setImpersonatedUser(null)
+      }
+    }
+
+    fetchImpersonatedProfile()
+  }, [impersonatedUserId, user?.id, user?.profile?.role])
 
   // Persist selected account across refreshes
   useEffect(() => {
@@ -295,34 +333,39 @@ export function useAuth() {
   }
 
   const getAvailableAccounts = () => {
-    if (user?.profile?.role === 'admin') {
+    const effectiveUser = impersonatedUser || user
+    if (effectiveUser?.profile?.role === 'admin') {
       return allAccounts.map(account => ({
         id: account.id,
         name: account.name,
         description: account.description
       }))
     }
-    return user?.accountAccess?.map(access => access.account) || []
+    return effectiveUser?.accountAccess?.map(access => access.account) || []
   }
 
   const getCurrentAccountAccess = () => {
-    if (!selectedAccountId || !user?.accountAccess) return null
-    return user.accountAccess.find(access => access.account_id === selectedAccountId)
+    const effectiveUser = impersonatedUser || user
+    if (!selectedAccountId || !effectiveUser?.accountAccess) return null
+    return effectiveUser.accountAccess.find(access => access.account_id === selectedAccountId)
   }
 
   const getUserRole = (): UserRole | null => {
+    const effectiveUser = impersonatedUser || user
     const currentAccess = getCurrentAccountAccess()
-    return currentAccess?.role || user?.profile?.role || null
+    return currentAccess?.role || effectiveUser?.profile?.role || null
   }
 
   const canAccessAccount = (accountId: string): boolean => {
-    return user?.accountAccess?.some(access => 
+    const effectiveUser = impersonatedUser || user
+    return effectiveUser?.accountAccess?.some(access => 
       access.account_id === accountId && access.is_active
     ) || false
   }
 
   const isAdmin = (): boolean => {
-    return user?.profile?.role === 'admin'
+    const effectiveUser = impersonatedUser || user
+    return effectiveUser?.profile?.role === 'admin'
   }
 
   const isModerator = (): boolean => {

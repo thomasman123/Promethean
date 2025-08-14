@@ -50,7 +50,7 @@ const objectionOptions = [
 ];
 
 export default function UpdateDataPage() {
-  const { selectedAccountId, user } = useAuth();
+  const { selectedAccountId, user, effectiveUserId } = useAuth();
   const [allItems, setAllItems] = useState<DataItem[]>([]);
   const [completedItems, setCompletedItems] = useState<Set<string>>(new Set());
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -58,12 +58,12 @@ export default function UpdateDataPage() {
 
   useEffect(() => {
     const fetchItems = async () => {
-      if (!selectedAccountId || !user?.id) return;
+      if (!selectedAccountId || !effectiveUserId) return;
       const { data: appts, error } = await supabase
         .from('appointments')
         .select('id, contact_name, date_booked_for, sales_rep_user_id')
         .eq('account_id', selectedAccountId)
-        .eq('sales_rep_user_id', user.id)
+        .eq('sales_rep_user_id', effectiveUserId)
         .is('lead_quality', null)
         .order('date_booked_for', { ascending: true });
 
@@ -88,7 +88,7 @@ export default function UpdateDataPage() {
       setIsFlowComplete(false);
     };
     fetchItems();
-  }, [selectedAccountId, user?.id]);
+  }, [selectedAccountId, effectiveUserId]);
 
   const currentItem = allItems[currentIndex];
   const totalItems = allItems.length;
