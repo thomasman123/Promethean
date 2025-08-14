@@ -12,6 +12,8 @@ interface UserWithProfile extends User {
 
 export function useAuth() {
   const [user, setUser] = useState<UserWithProfile | null>(null)
+  const [effectiveUserId, setEffectiveUserId] = useState<string | null>(null)
+  const [impersonatedUserId, setImpersonatedUserId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null)
   const [allAccounts, setAllAccounts] = useState<Accounts[]>([])
@@ -45,6 +47,24 @@ export function useAuth() {
 
     return () => subscription.unsubscribe()
   }, []) // Remove selectedAccountId dependency to avoid re-running auth flow
+
+  // Poll impersonation cookie on load and on account change timestamp (cheap fetch)
+  useEffect(() => {
+    const loadImpersonation = async () => {
+      try {
+        const res = await fetch('/api/auth/impersonation', { cache: 'no-store' })
+        const json = await res.json()
+        const impersonated = json?.impersonatedUserId || null
+        setImpersonatedUserId(impersonated)
+      } catch {}
+    }
+    loadImpersonation()
+  }, [accountChangeTimestamp])
+
+  // Effective user id
+  useEffect(() => {
+    setEffectiveUserId(impersonatedUserId || user?.id || null)
+  }, [impersonatedUserId, user?.id])
 
   // Persist selected account across refreshes
   useEffect(() => {
@@ -175,14 +195,7 @@ export function useAuth() {
         }
       }
 
-      try {
-        console.log('Profile fetched successfully:', profile)
-      } catch (logError) {
-        console.log('Error logging profile fetch success:', logError)
-      }
-
       // Get user's account access
-      console.log('Fetching account access for user:', authUser.id)
       let accountAccess: (AccountAccess & { account: Accounts })[] = []
       
       try {
@@ -196,23 +209,9 @@ export function useAuth() {
           .eq('is_active', true)
 
         if (accessError) {
-          try {
-            console.warn('Error fetching account access:', accessError)
-            console.warn('Account access error details:', {
-              code: accessError?.code || 'no code',
-              message: accessError?.message || 'no message',
-              details: accessError?.details || 'no details',
-              hint: accessError?.hint || 'no hint'
-            })
-          } catch (logError) {
-            console.log('Error logging account access error:', logError)
-          }
-          
           // Try to create default account access if none exists  
           if (accessError.code === 'PGRST116') {
-            console.log('No account access found, attempting to create default access...')
-            
-            const { data: newAccess, error: createAccessError } = await supabase
+            const { data: newAccess } = await supabase
               .from('account_access')
               .insert({
                 user_id: authUser.id,
@@ -225,39 +224,14 @@ export function useAuth() {
                 account:accounts(*)
               `)
               .single()
-            
-            if (createAccessError) {
-              try {
-                console.warn('Failed to create account access:', createAccessError)
-              } catch (logError) {
-                console.log('Error logging create access error:', logError)
-              }
-              accountAccess = []
-            } else {
-              try {
-                console.log('Account access created successfully:', newAccess)
-              } catch (logError) {
-                console.log('Error logging account access success:', logError)
-              }
-              accountAccess = [newAccess]
-            }
+            accountAccess = newAccess ? [newAccess] : []
           } else {
             accountAccess = []
           }
         } else {
-          try {
-            console.log('Account access fetched:', data)
-          } catch (logError) {
-            console.log('Error logging account access fetch success:', logError)
-          }
           accountAccess = data || []
         }
       } catch (accountError) {
-        try {
-          console.warn('Exception in account access fetch:', accountError)
-        } catch (logError) {
-          console.log('Error logging account exception:', logError)
-        }
         accountAccess = []
       }
 
@@ -272,39 +246,26 @@ export function useAuth() {
       // For admin users, also fetch all accounts
       if (profile?.role === 'admin') {
         try {
-          const { data: accounts, error: accountsError } = await supabase
+          const { data: accounts } = await supabase
             .from('accounts')
             .select('*')
             .eq('is_active', true)
             .order('name')
-
-          if (accountsError) {
-            console.warn('Error fetching all accounts for admin:', accountsError)
-            setAllAccounts([])
-          } else {
-            console.log('🐛 DEBUG - Admin accounts fetched:', {
-              count: accounts?.length || 0,
-              accounts: accounts?.map(a => ({ id: a.id, name: a.name })) || []
-            })
-            setAllAccounts(accounts || [])
-            // Restore persisted selection if available and accessible
-            if (!selectedAccountId && accounts && accounts.length > 0) {
-              let restored: string | null = null
-              try {
-                restored = window.localStorage.getItem(localStorageKey(authUser.id))
-              } catch {}
-              const isValid = restored && accounts.some(a => a.id === restored)
-              if (isValid && restored) {
-                console.log('🐛 DEBUG - Restoring persisted selectedAccountId for admin:', restored)
-                setSelectedAccountId(restored)
-              } else {
-                console.log('🐛 DEBUG - Setting default selectedAccountId for admin:', accounts[0].id)
-                setSelectedAccountId(accounts[0].id)
-              }
+          setAllAccounts(accounts || [])
+          // Restore persisted selection if available and accessible
+          if (!selectedAccountId && accounts && accounts.length > 0) {
+            let restored: string | null = null
+            try {
+              restored = window.localStorage.getItem(localStorageKey(authUser.id))
+            } catch {}
+            const isValid = restored && accounts.some(a => a.id === restored)
+            if (isValid && restored) {
+              setSelectedAccountId(restored)
+            } else {
+              setSelectedAccountId(accounts[0].id)
             }
           }
         } catch (error) {
-          console.warn('Exception fetching all accounts:', error)
           setAllAccounts([])
         }
       } else {
@@ -316,7 +277,6 @@ export function useAuth() {
           } catch {}
           const isValid = restored && accountAccess.some(a => a.account_id === restored)
           if (isValid && restored) {
-            console.log('🐛 DEBUG - Restoring persisted selectedAccountId for user:', restored)
             setSelectedAccountId(restored)
           } else {
             setSelectedAccountId(accountAccess[0].account_id)
@@ -325,7 +285,6 @@ export function useAuth() {
       }
 
     } catch (error) {
-      console.warn('Error in fetchUserProfile:', error)
     } finally {
       setLoading(false)
     }
@@ -336,7 +295,6 @@ export function useAuth() {
   }
 
   const getAvailableAccounts = () => {
-    // If user is admin, they have access to all accounts
     if (user?.profile?.role === 'admin') {
       return allAccounts.map(account => ({
         id: account.id,
@@ -344,7 +302,6 @@ export function useAuth() {
         description: account.description
       }))
     }
-    // For non-admin users, return accounts they have specific access to
     return user?.accountAccess?.map(access => access.account) || []
   }
 
@@ -379,10 +336,7 @@ export function useAuth() {
   }
 
   const hasAccountAccess = (): boolean => {
-    // Admins have access to all accounts
     if (isAdmin()) return true
-    
-    // Other users need specific account access
     return !!getCurrentAccountAccess()
   }
 
@@ -391,21 +345,20 @@ export function useAuth() {
     const account = getSelectedAccount()
     
     return {
-      canViewDashboard: true, // Everyone can see dashboard
-      canViewAds: isModerator(), // Only moderators and admins
-      canViewAITools: true, // Everyone can see AI tools  
-      canManageAccount: isModerator(), // Only moderators and admins
-      canManageTeam: isModerator(), // Only moderators and admins
+      canViewDashboard: true,
+      canViewAds: isModerator(),
+      canViewAITools: true, 
+      canManageAccount: isModerator(),
+      canManageTeam: isModerator(),
       currentAccount: account,
       currentRole: role,
-      isAccountSpecific: !isAdmin() // Non-admins are account-specific
+      isAccountSpecific: !isAdmin()
     }
   }
 
   const handleAccountChange = (accountId: string) => {
     setSelectedAccountId(accountId)
     setAccountChangeTimestamp(Date.now())
-    // Broadcast change to other hook instances in this tab
     try {
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent(accountChangedEvent, { detail: accountId }))
@@ -413,12 +366,30 @@ export function useAuth() {
     } catch {}
   }
 
+  const startImpersonation = async (targetUserId: string) => {
+    await fetch('/api/admin/impersonate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: targetUserId })
+    })
+    setAccountChangeTimestamp(Date.now())
+  }
+
+  const stopImpersonation = async () => {
+    await fetch('/api/admin/impersonate', { method: 'DELETE' })
+    setAccountChangeTimestamp(Date.now())
+  }
+
   return {
     user,
+    effectiveUserId,
+    impersonatedUserId,
     loading,
     selectedAccountId,
-    setSelectedAccountId: handleAccountChange, // Use the new handler
+    setSelectedAccountId: handleAccountChange,
     signOut,
+    startImpersonation,
+    stopImpersonation,
     getAvailableAccounts,
     getCurrentAccountAccess,
     getUserRole,
@@ -428,6 +399,6 @@ export function useAuth() {
     getSelectedAccount,
     hasAccountAccess,
     getAccountBasedPermissions,
-    accountChangeTimestamp, // Export the timestamp for pages to react to
+    accountChangeTimestamp,
   }
 } 

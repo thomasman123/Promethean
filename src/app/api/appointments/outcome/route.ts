@@ -37,6 +37,16 @@ export async function POST(req: NextRequest) {
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+  // Determine effective user id (impersonation if admin)
+  const impersonatedCookie = req.cookies.get('impersonate_user_id')?.value || null;
+  let effectiveUserId = user.id;
+  if (impersonatedCookie) {
+    const { data: adminProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+    if (adminProfile?.role === 'admin') {
+      effectiveUserId = impersonatedCookie;
+    }
+  }
+
   const body = await req.json();
   const { appointmentId, payload } = body as {
     appointmentId: string,
@@ -65,7 +75,7 @@ export async function POST(req: NextRequest) {
   if (fetchErr || !appt) {
     return NextResponse.json({ error: 'Appointment not found' }, { status: 404 });
   }
-  if (appt.sales_rep_user_id !== user.id) {
+  if (appt.sales_rep_user_id !== effectiveUserId) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
@@ -93,7 +103,7 @@ export async function POST(req: NextRequest) {
 
   try {
     await (supabase as any).from('updates_audit').insert({
-      user_id: user.id,
+      user_id: effectiveUserId,
       entity_type: 'appointment',
       entity_id: appointmentId,
       payload,

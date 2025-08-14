@@ -88,7 +88,7 @@ interface AccountAccess {
 }
 
 export default function ManageAccountsPage() {
-  const { user } = useAuth()
+  const { user, isAdmin, startImpersonation, stopImpersonation, impersonatedUserId } = useAuth()
   const [accounts, setAccounts] = useState<Account[]>([])
   const [users, setUsers] = useState<UserProfile[]>([])
   const [accountAccess, setAccountAccess] = useState<Record<string, AccountAccess[]>>({})

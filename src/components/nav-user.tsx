@@ -8,6 +8,8 @@ import {
   CreditCard,
   LogOut,
   Sparkles,
+  ShieldAlert,
+  UserPlus,
 } from "lucide-react"
 
 import {
@@ -32,6 +34,7 @@ import {
 } from "@/components/ui/sidebar"
 import { useAuth } from "@/hooks/useAuth"
 import { toast } from "sonner"
+import { Badge } from "@/components/ui/badge"
 
 export function NavUser({
   user,
@@ -43,7 +46,7 @@ export function NavUser({
   }
 }) {
   const { isMobile } = useSidebar()
-  const { signOut } = useAuth()
+  const { signOut, isAdmin, impersonatedUserId, stopImpersonation } = useAuth()
   const router = useRouter()
 
   const handleLogout = async () => {
@@ -54,6 +57,16 @@ export function NavUser({
     } catch (error) {
       toast.error("Error logging out")
       console.error("Logout error:", error)
+    }
+  }
+
+  const handleStopImpersonation = async () => {
+    try {
+      await stopImpersonation()
+      toast.success("Stopped impersonating")
+      router.refresh()
+    } catch (e) {
+      toast.error("Failed to stop impersonation")
     }
   }
 
@@ -74,6 +87,9 @@ export function NavUser({
                 <span className="truncate font-medium">{user.name}</span>
                 <span className="truncate text-xs">{user.email}</span>
               </div>
+              {impersonatedUserId && (
+                <Badge variant="destructive" className="ml-2">Impersonating</Badge>
+              )}
               <ChevronsUpDown className="ml-auto size-4" />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
@@ -95,6 +111,15 @@ export function NavUser({
                 </div>
               </div>
             </DropdownMenuLabel>
+            {impersonatedUserId && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleStopImpersonation}>
+                  <ShieldAlert />
+                  Stop impersonating
+                </DropdownMenuItem>
+              </>
+            )}
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
               <DropdownMenuItem>
