@@ -616,11 +616,27 @@ async function processAppointmentWebhook(payload: any) {
         console.error('Error during appointment enrichment:', error);
       }
     } else if (calendarMapping.target_table !== 'appointments') {
-      // Fallback to basic enrichment for non-appointments tables
-      // Enrich with contact data if contactId exists
-      if (payload.appointment?.contactId && account.ghl_api_key) {
-        try {
-          console.log('🔍 Fetching contact details for ID:', payload.appointment.contactId);
+      // For discoveries and other tables, do full enrichment including setter data
+      try {
+        // 1. Fetch full appointment details to get createdBy info
+        console.log('📅 Fetching full appointment details for ID:', payload.appointment.id);
+        
+        const appointmentResponse = await fetch(`https://services.leadconnectorhq.com/calendars/events/appointments/${payload.appointment.id}`, {
+          headers: {
+            'Authorization': `Bearer ${account.ghl_api_key}`,
+            'Version': '2021-07-28',
+          },
+        });
+        
+        if (appointmentResponse.ok) {
+          const appointmentApiResponse = await appointmentResponse.json();
+          fullAppointmentData = appointmentApiResponse.appointment;
+          console.log('🔍 Raw appointment API response:', JSON.stringify(appointmentApiResponse, null, 2));
+        }
+        
+        // 2. Enrich with contact data if contactId exists
+        if (payload.appointment?.contactId && account.ghl_api_key) {
+          console.log('👤 Fetching contact details for ID:', payload.appointment.contactId);
           
           const contactResponse = await fetch(`https://services.leadconnectorhq.com/contacts/${payload.appointment.contactId}`, {
             headers: {
@@ -630,35 +646,90 @@ async function processAppointmentWebhook(payload: any) {
           });
           
           if (contactResponse.ok) {
-            contactData = await contactResponse.json();
-            console.log('👤 Contact data:', contactData ? 
-              { name: contactData.name, email: contactData.email, phone: contactData.phone } : 'not found');
+            const contactApiData = await contactResponse.json();
+            contactData = contactApiData.contact;
+            console.log('👤 Contact data retrieved:', {
+              name: contactData?.name,
+              firstName: contactData?.firstName,
+              lastName: contactData?.lastName,
+              email: contactData?.email,
+              phone: contactData?.phone,
+              companyName: contactData?.companyName,
+              tags: contactData?.tags
+            });
           }
-        } catch (error) {
-          console.error('Failed to fetch contact data:', error);
         }
-      }
-      
-      // Enrich with assigned user (sales rep) data
-      if (payload.appointment?.assignedUserId && account.ghl_api_key) {
-        try {
-          console.log('🔍 Fetching sales rep details for ID:', payload.appointment.assignedUserId);
+        
+        // 3. Get setter (createdBy.userId) details - CRITICAL for discoveries!
+        const setterId = fullAppointmentData?.createdBy?.userId;
+        console.log('🔍 Setter ID extraction debug:', {
+          fullAppointmentData: !!fullAppointmentData,
+          createdBy: fullAppointmentData?.createdBy,
+          setterId: setterId
+        });
+        
+        if (setterId) {
+          console.log('👨‍🎯 Fetching setter details for ID:', setterId);
           
-          const userResponse = await fetch(`https://services.leadconnectorhq.com/users/${payload.appointment.assignedUserId}`, {
+          const setterResponse = await fetch(`https://services.leadconnectorhq.com/users/${setterId}`, {
             headers: {
               'Authorization': `Bearer ${account.ghl_api_key}`,
               'Version': '2021-07-28',
             },
           });
           
-          if (userResponse.ok) {
-            salesRepData = await userResponse.json();
-            console.log('👨‍💼 Sales rep data:', salesRepData ? 
-              { name: salesRepData.name, email: salesRepData.email } : 'not found');
+          if (setterResponse.ok) {
+            setterData = await setterResponse.json();
+            console.log('👨‍🎯 Setter data retrieved:', {
+              name: setterData?.name,
+              email: setterData?.email,
+              firstName: setterData?.firstName,
+              lastName: setterData?.lastName
+            });
+          } else {
+            const errorText = await setterResponse.text();
+            console.error('Failed to fetch setter details:', {
+              status: setterResponse.status,
+              statusText: setterResponse.statusText,
+              error: errorText,
+              userId: setterId
+            });
           }
-        } catch (error) {
-          console.error('Failed to fetch sales rep data:', error);
         }
+        
+        // 4. Get sales rep (assignedUserId) details
+        const salesRepId = fullAppointmentData?.assignedUserId || payload.appointment?.assignedUserId;
+        if (salesRepId) {
+          console.log('👨‍💼 Fetching sales rep details for ID:', salesRepId);
+          
+          const salesRepResponse = await fetch(`https://services.leadconnectorhq.com/users/${salesRepId}`, {
+            headers: {
+              'Authorization': `Bearer ${account.ghl_api_key}`,
+              'Version': '2021-07-28',
+            },
+          });
+          
+          if (salesRepResponse.ok) {
+            salesRepData = await salesRepResponse.json();
+            console.log('👨‍💼 Sales rep data retrieved:', {
+              name: salesRepData?.name,
+              email: salesRepData?.email,
+              firstName: salesRepData?.firstName,
+              lastName: salesRepData?.lastName
+            });
+          } else {
+            const errorText = await salesRepResponse.text();
+            console.error('Failed to fetch sales rep details:', {
+              status: salesRepResponse.status,
+              statusText: salesRepResponse.statusText,
+              error: errorText,
+              userId: salesRepId
+            });
+          }
+        }
+        
+      } catch (error) {
+        console.error('Error during discovery enrichment:', error);
       }
     }
 
