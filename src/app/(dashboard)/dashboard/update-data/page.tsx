@@ -59,13 +59,12 @@ export default function UpdateDataPage() {
   useEffect(() => {
     const fetchItems = async () => {
       if (!selectedAccountId || !user?.id) return;
-      // Fetch appointments assigned to this user (as sales_rep_user_id or setter_user_id) and with null lead_quality (not completed)
       const { data: appts, error } = await supabase
         .from('appointments')
-        .select('id, contact_name, date_booked_for, sales_rep_user_id, setter_user_id')
+        .select('id, contact_name, date_booked_for, sales_rep_user_id')
         .eq('account_id', selectedAccountId)
+        .eq('sales_rep_user_id', user.id)
         .is('lead_quality', null)
-        .or(`sales_rep_user_id.eq.${user.id},setter_user_id.eq.${user.id}`)
         .order('date_booked_for', { ascending: true });
 
       if (error) {
@@ -81,7 +80,6 @@ export default function UpdateDataPage() {
         type: 'appointment',
       }));
 
-      // TODO: Fetch discoveries similarly when API is ready
       const discoveries: DiscoveryItem[] = [];
 
       setAllItems([...appointments, ...discoveries]);
@@ -99,8 +97,6 @@ export default function UpdateDataPage() {
 
   const handleItemComplete = (itemId: string) => {
     setCompletedItems(prev => new Set([...prev, itemId]));
-    
-    // Move to next item or complete flow
     if (currentIndex < allItems.length - 1) {
       setCurrentIndex(prev => prev + 1);
     } else {
@@ -142,7 +138,6 @@ export default function UpdateDataPage() {
 
   return (
     <div className="p-6 space-y-6">
-      {/* Progress Header */}
       <Card className="border shadow-sm">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
@@ -224,7 +219,6 @@ function AppointmentEntryCard({
   item: AppointmentItem;
   onComplete: () => void;
 }) {
-  // Form state
   const [callOutcome, setCallOutcome] = useState<CallOutcome | "">("");
   const [watchedAssets, setWatchedAssets] = useState<"true" | "false" | "">("");
   const [pitched, setPitched] = useState<"true" | "false" | "">("");
@@ -241,7 +235,6 @@ function AppointmentEntryCard({
   const canSubmit = useMemo(() => {
     if (!callOutcome) return false;
     if (!mustShowFollowSteps) return !!leadQuality;
-
     if (!watchedAssets || !pitched || !shownOutcome) return false;
     if (won) {
       if (!cashCollected || !totalSalesValue) return false;
@@ -297,7 +290,6 @@ function AppointmentEntryCard({
           <AlertDescription>Complete each section in order. When you finish, click Continue to move to the next item.</AlertDescription>
         </Alert>
 
-        {/* Step 1: Call Outcome */}
         <div className="space-y-2">
           <Label>Call Outcome</Label>
           <Select value={callOutcome} onValueChange={(v: CallOutcome) => setCallOutcome(v)}>
@@ -311,12 +303,10 @@ function AppointmentEntryCard({
           </Select>
         </div>
 
-        {/* Early exit to Lead Quality if not show */}
         {(!mustShowFollowSteps) ? (
           <LeadQualitySection leadQuality={leadQuality} setLeadQuality={setLeadQuality} />
         ) : (
           <>
-            {/* Step 2: Watched Assets */}
             <div className="space-y-2">
               <Label>Watched Assets?</Label>
               <Select value={watchedAssets} onValueChange={(v: "true" | "false") => setWatchedAssets(v)}>
@@ -328,7 +318,6 @@ function AppointmentEntryCard({
               </Select>
             </div>
 
-            {/* Step 3: Pitched? */}
             <div className="space-y-2">
               <Label>Pitched?</Label>
               <Select value={pitched} onValueChange={(v: "true" | "false") => setPitched(v)}>
@@ -340,7 +329,6 @@ function AppointmentEntryCard({
               </Select>
             </div>
 
-            {/* Step 4: Shown Outcome */}
             <div className="space-y-2">
               <Label>Shown Outcome</Label>
               <Select value={shownOutcome} onValueChange={(v: ShownOutcome) => setShownOutcome(v)}>
@@ -353,7 +341,6 @@ function AppointmentEntryCard({
               </Select>
             </div>
 
-            {/* Step 5: Cash Details if Won */}
             {won && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="space-y-2">
@@ -373,7 +360,6 @@ function AppointmentEntryCard({
               </div>
             )}
 
-            {/* Step 6: Objections - Multi Select */}
             <div className="space-y-2">
               <Label>Objections (select all that apply)</Label>
               <MultiSelect
@@ -385,7 +371,6 @@ function AppointmentEntryCard({
               />
             </div>
 
-            {/* Step 7: Lead Quality */}
             <LeadQualitySection leadQuality={leadQuality} setLeadQuality={setLeadQuality} />
           </>
         )}
@@ -414,7 +399,6 @@ function DiscoveryEntryCard({
   const handleSubmit = async () => {
     if (!outcome) return;
     try {
-      // TODO: API call for discovery outcome
       console.log('Discovery outcome:', { discoveryId: item.id, outcome });
       onComplete();
     } catch (e) {

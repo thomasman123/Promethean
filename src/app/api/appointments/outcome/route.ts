@@ -56,6 +56,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
   }
 
+  // Authorization: only assigned sales_rep_user_id can update
+  const { data: appt, error: fetchErr } = await supabase
+    .from('appointments')
+    .select('id, sales_rep_user_id')
+    .eq('id', appointmentId)
+    .single();
+  if (fetchErr || !appt) {
+    return NextResponse.json({ error: 'Appointment not found' }, { status: 404 });
+  }
+  if (appt.sales_rep_user_id !== user.id) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
   const callOutcomeDb = mapCallOutcome(payload.callOutcome);
   const showOutcomeDb = payload.shownOutcome ? mapShowOutcome(payload.shownOutcome) : null;
 
