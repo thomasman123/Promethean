@@ -466,148 +466,118 @@ export default function ManageAccountsPage() {
 														Manage Users
 													</Button>
 												</DialogTrigger>
-												<DialogContent className="max-w-4xl">
-													<DialogHeader>
-														<DialogTitle>Manage Users for {account.name}</DialogTitle>
-														<DialogDescription>
-															Assign users to this account and manage their roles. Note: Admin role is app-wide, not account-specific.
-														</DialogDescription>
-													</DialogHeader>
-													
-													<div className="space-y-6">
-														{/* Assign New User Section */}
-														<div className="border rounded-lg p-4 space-y-4">
-															<h3 className="text-lg font-medium">Assign New User</h3>
-															<div className="grid grid-cols-2 gap-4">
+												<DialogContent className="w-[92vw] sm:max-w-4xl max-h-[85vh] p-0 overflow-hidden">
+													<div className="max-h-[85vh] overflow-y-auto">
+														<div className="p-6 space-y-6">
+															<DialogHeader>
+																<DialogTitle>Manage Users for {account.name}</DialogTitle>
+																<DialogDescription>
+																	Assign users to this account and manage their roles. Note: Admin role is app-wide, not account-specific.
+																</DialogDescription>
+															</DialogHeader>
+
+															{/* Assign New User Section */}
+															<div className="border rounded-lg p-4 space-y-4">
+																<h3 className="text-lg font-medium">Assign New User</h3>
+																<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+																	<div>
+																		<Label htmlFor="user-select">Select User</Label>
+																		<Select value={selectedUser} onValueChange={setSelectedUser}>
+																			<SelectTrigger>
+																				<SelectValue placeholder="Choose a user" />
+																			</SelectTrigger>
+																			<SelectContent>
+																				{users
+																					.filter(u => !accountAccess[account.id]?.some(a => a.user_id === u.id) && u.role !== 'admin')
+																					.length > 0 ? (
+																						users
+																							.filter(u => !accountAccess[account.id]?.some(a => a.user_id === u.id) && u.role !== 'admin')
+																							.map((u) => (
+																							<SelectItem key={u.id} value={u.id}>
+																								{u.full_name || u.email}
+																								<span className="text-xs text-muted-foreground ml-2">({u.role})</span>
+																							</SelectItem>
+																						))
+																					) : (
+																						<SelectItem value="no-users" disabled>
+																							No users available (admins excluded)
+																						</SelectItem>
+																				)}
+																		</SelectContent>
+																	</Select>
+																</div>
 																<div>
-																	<Label htmlFor="user-select">Select User</Label>
-																	<Select value={selectedUser} onValueChange={setSelectedUser}>
+																	<Label htmlFor="role-select">Account Role</Label>
+																	<Select value={selectedRole} onValueChange={(value: 'moderator' | 'sales_rep' | 'setter') => setSelectedRole(value)}>
 																		<SelectTrigger>
-																			<SelectValue placeholder="Choose a user" />
+																			<SelectValue />
 																		</SelectTrigger>
 																		<SelectContent>
-																			{users
-																				.filter(user => 
-																					!accountAccess[account.id]?.some(access => access.user_id === user.id) &&
-																					user.role !== 'admin' // Exclude admin users
-																				)
-																				.length > 0 ? (
-																				users
-																					.filter(user => 
-																						!accountAccess[account.id]?.some(access => access.user_id === user.id) &&
-																						user.role !== 'admin'
-																				)
-																				.map((user) => (
-																					<SelectItem key={user.id} value={user.id}>
-																						{user.full_name || user.email} 
-																						<span className="text-xs text-muted-foreground ml-2">
-																							({user.role})
-																						</span>
-																					</SelectItem>
-																				))
-																			) : (
-																			<SelectItem value="no-users" disabled>
-																				No users available (admins excluded)
-																			</SelectItem>
-																		)
-																	</SelectContent>
-																</Select>
+																			<SelectItem value="moderator">Moderator</SelectItem>
+																			<SelectItem value="sales_rep">Sales Rep</SelectItem>
+																			<SelectItem value="setter">Setter</SelectItem>
+																		</SelectContent>
+																	</Select>
+																</div>
 															</div>
 															<div>
-															<Label htmlFor="role-select">Account Role</Label>
-															<Select value={selectedRole} onValueChange={(value: 'moderator' | 'sales_rep' | 'setter') => setSelectedRole(value)}>
-																<SelectTrigger>
-																	<SelectValue />
-																</SelectTrigger>
-																<SelectContent>
-																	<SelectItem value="moderator">Moderator</SelectItem>
-																	<SelectItem value="sales_rep">Sales Rep</SelectItem>
-																	<SelectItem value="setter">Setter</SelectItem>
-																</SelectContent>
-															</Select>
+																<Button onClick={assignUserToAccount} disabled={!selectedUser || selectedUser === 'no-users'}>
+																	<UserPlus className="h-4 w-4 mr-2" />
+																	Assign User
+																</Button>
 															</div>
 														</div>
-														<Button 
-															onClick={assignUserToAccount} 
-															disabled={!selectedUser || selectedUser === 'no-users'}
-														>
-															<UserPlus className="h-4 w-4 mr-2" />
-															Assign User
-														</Button>
-													</div>
 
-													{/* Current Users Section */}
-													<div className="space-y-4">
-														<h3 className="text-lg font-medium">Current Users ({accountAccess[account.id]?.length || 0})</h3>
-														{accountAccess[account.id]?.length > 0 ? (
-															<Table>
-																<TableHeader>
-																	<TableRow>
-																		<TableHead>Name</TableHead>
-																		<TableHead>Email</TableHead>
-																		<TableHead>Account Role</TableHead>
-																		<TableHead>Granted</TableHead>
-																		<TableHead>Actions</TableHead>
-																	</TableRow>
-																</TableHeader>
-																<TableBody>
-																	{accountAccess[account.id].map((access) => (
-																		<TableRow key={access.id}>
-																			<TableCell className="font-medium">
-																				{access.user_profile?.full_name || 'N/A'}
-																			</TableCell>
-																			<TableCell>{access.user_profile?.email}</TableCell>
-																			<TableCell>
-																				<Badge className={access.role === 'admin' ? "bg-red-100 text-red-800 border-red-200" : roleColors[access.role as keyof typeof roleColors]}>
-																					<span className="flex items-center gap-1">
-																						{getRoleIcon(access.role)}
-																						{access.role.replace('_', ' ')}
-																					</span>
-																				</Badge>
-																			</TableCell>
-																			<TableCell>
-																				{new Date(access.granted_at).toLocaleDateString()}
-																			</TableCell>
-																			<TableCell className="space-x-2">
-																				<Button
-																					variant="outline"
-																					size="sm"
-																					onClick={() => removeUserFromAccount(account.id, access.user_id)}
-																				>
-																					<Trash2 className="h-4 w-4" />
-																				</Button>
-																				<Button
-																					variant="secondary"
-																					size="sm"
-																					onClick={async () => {
-																						await startImpersonation(access.user_id)
-																						toast.success('Now impersonating user')
-																				}}
-																					disabled={!!impersonatedUserId && impersonatedUserId === access.user_id}
-																				>
-																					<UserCheck className="h-4 w-4 mr-1" />
-																						Impersonate
-																				</Button>
-																			</TableCell>
+														{/* Current Users Section */}
+														<div className="space-y-4">
+															<h3 className="text-lg font-medium">Current Users ({accountAccess[account.id]?.length || 0})</h3>
+															{accountAccess[account.id]?.length > 0 ? (
+																<Table>
+																	<TableHeader>
+																		<TableRow>
+																			<TableHead>Name</TableHead>
+																			<TableHead>Email</TableHead>
+																			<TableHead>Account Role</TableHead>
+																			<TableHead>Granted</TableHead>
+																			<TableHead>Actions</TableHead>
 																		</TableRow>
-																	))}
-																</TableBody>
-														</Table>
-													) : (
-														<div className="text-center py-8 text-muted-foreground">
-															No users assigned to this account yet.
+																	</TableHeader>
+																	<TableBody>
+																		{accountAccess[account.id].map((access) => (
+																			<TableRow key={access.id}>
+																				<TableCell className="font-medium">{access.user_profile?.full_name || 'N/A'}</TableCell>
+																				<TableCell>{access.user_profile?.email}</TableCell>
+																				<TableCell>
+																					<Badge className={access.role === 'admin' ? "bg-red-100 text-red-800 border-red-200" : roleColors[access.role as keyof typeof roleColors]}>
+																						<span className="flex items-center gap-1">{getRoleIcon(access.role)}{access.role.replace('_', ' ')}</span>
+																					</Badge>
+																				</TableCell>
+																				<TableCell>{new Date(access.granted_at).toLocaleDateString()}</TableCell>
+																				<TableCell className="space-x-2">
+																					<Button variant="outline" size="sm" onClick={() => removeUserFromAccount(account.id, access.user_id)}>
+																						<Trash2 className="h-4 w-4" />
+																					</Button>
+																					<Button variant="secondary" size="sm" onClick={async () => { await startImpersonation(access.user_id); toast.success('Now impersonating user') }} disabled={!!impersonatedUserId && impersonatedUserId === access.user_id}>
+																						<UserCheck className="h-4 w-4 mr-1" />
+																						Impersonate
+																					</Button>
+																				</TableCell>
+																			</TableRow>
+																		))}
+																	</TableBody>
+																</Table>
+															) : (
+																<div className="text-center py-8 text-muted-foreground">No users assigned to this account yet.</div>
+															)}
 														</div>
-													)}
-												</div>
-											</div>
 
-											<div className="flex justify-end">
-												<Button variant="outline" onClick={() => setAssignUserOpen(false)}>
-													Close
-												</Button>
-											</div>
-										</DialogContent>
-									</Dialog>
+														<div className="flex justify-end pt-2">
+															<Button variant="outline" onClick={() => setAssignUserOpen(false)}>Close</Button>
+														</div>
+													</div>
+													</div>
+												</DialogContent>
+											</Dialog>
 								</div>
 							</CardHeader>
 							<CardContent>
