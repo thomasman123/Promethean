@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/sidebar"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { useAuth } from "@/hooks/useAuth"
-import { Settings, Users, Calendar, Zap } from "lucide-react"
+import { Settings, Users, Calendar, Zap, Target } from "lucide-react"
 
 export default function AccountPage() {
   const { user, loading, getAccountBasedPermissions, getSelectedAccount, accountChangeTimestamp } = useAuth()
@@ -73,6 +73,14 @@ export default function AccountPage() {
       description: "Map your calendar for appointment scheduling",
       icon: Calendar,
       href: "/account/calendar-mapping",
+      available: permissions.canManageAccount,
+      requiredRole: "Moderator or Admin"
+    },
+    {
+      title: "Source Mapping",
+      description: "Configure source attribution for appointments and discoveries",
+      icon: Target,
+      href: "/account/source-mapping",
       available: permissions.canManageAccount,
       requiredRole: "Moderator or Admin"
     },
