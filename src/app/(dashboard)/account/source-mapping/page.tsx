@@ -57,6 +57,15 @@ interface SourceUsage {
   mapped_specific?: string | null;
 }
 
+interface ContactSourceUsage {
+  contact_source: string;
+  appointment_count: number;
+  discovery_count: number;
+  total_count: number;
+  mapped_category?: string;
+  mapped_specific?: string | null;
+}
+
 export default function SourceMappingPage() {
   const { user, loading, getAccountBasedPermissions, selectedAccountId } = useAuth();
   const permissions = getAccountBasedPermissions();
@@ -69,6 +78,7 @@ export default function SourceMappingPage() {
   const [sourceUsage, setSourceUsage] = useState<SourceUsage[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [contactSourceUsage, setContactSourceUsage] = useState<ContactSourceUsage[]>([]);
 
   // Handle authentication and permissions
   useEffect(() => {
@@ -193,6 +203,53 @@ export default function SourceMappingPage() {
         }).sort((a, b) => b.total_count - a.total_count);
 
         setSourceUsage(usage);
+      }
+
+      // Fetch contact source usage statistics
+      const { data: contactApptUsage, error: cApptErr } = await supabase
+        .from('appointments')
+        .select('contact_source')
+        .eq('account_id', selectedAccountId)
+        .not('contact_source', 'is', null)
+        .neq('contact_source', '');
+
+      const { data: contactDiscUsage, error: cDiscErr } = await supabase
+        .from('discoveries')
+        .select('contact_source')
+        .eq('account_id', selectedAccountId)
+        .not('contact_source', 'is', null)
+        .neq('contact_source', '');
+
+      if (cApptErr || cDiscErr) {
+        console.warn('Failed to fetch contact source usage data:', cApptErr || cDiscErr);
+      } else {
+        const contactCounts: Record<string, { appointments: number; discoveries: number }> = {};
+
+        contactApptUsage?.forEach((item: any) => {
+          const src = item.contact_source;
+          if (!contactCounts[src]) contactCounts[src] = { appointments: 0, discoveries: 0 };
+          contactCounts[src].appointments++;
+        });
+
+        contactDiscUsage?.forEach((item: any) => {
+          const src = item.contact_source;
+          if (!contactCounts[src]) contactCounts[src] = { appointments: 0, discoveries: 0 };
+          contactCounts[src].discoveries++;
+        });
+
+        const mappedContactUsage: ContactSourceUsage[] = Object.entries(contactCounts).map(([src, counts]) => {
+          const mapping = contactMappingsData?.find((m: any) => m.contact_source === src);
+          return {
+            contact_source: src,
+            appointment_count: counts.appointments,
+            discovery_count: counts.discoveries,
+            total_count: counts.appointments + counts.discoveries,
+            mapped_category: mapping?.source_category,
+            mapped_specific: mapping?.specific_source
+          };
+        }).sort((a, b) => b.total_count - a.total_count);
+
+        setContactSourceUsage(mappedContactUsage);
       }
       
     } catch (error) {
@@ -587,7 +644,7 @@ export default function SourceMappingPage() {
             {/* Live Source Usage */}
             <Card>
               <CardHeader>
-                <CardTitle>Your Source Activity</CardTitle>
+                <CardTitle>GHL Source Activity</CardTitle>
                 <CardDescription>
                   Real data from your appointments and discoveries, sorted by frequency
                 </CardDescription>
@@ -634,6 +691,62 @@ export default function SourceMappingPage() {
                     <p>No source data found yet.</p>
                     <p className="text-sm mt-1">
                       Source tracking will appear here as appointments and discoveries come through your webhooks.
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Contact Source Usage */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Contact Source Activity</CardTitle>
+                <CardDescription>
+                  Activity grouped by `contact_source` tracked on appointments and discoveries
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {contactSourceUsage.length > 0 ? (
+                  <div className="space-y-3">
+                    {contactSourceUsage.map((usage) => (
+                      <div key={usage.contact_source} className="p-4 border rounded-lg">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-3">
+                            <code className="bg-gray-100 px-2 py-1 rounded text-sm font-mono">
+                              {usage.contact_source}
+                            </code>
+                            {usage.mapped_category && (
+                              <Badge variant="secondary">
+                                {categories.find(c => c.name === usage.mapped_category)?.display_name || usage.mapped_category}
+                              </Badge>
+                            )}
+                            {usage.mapped_specific && (
+                              <span className="text-sm text-muted-foreground">
+                                "{usage.mapped_specific}"
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-sm font-medium">
+                            {usage.total_count} total
+                          </div>
+                        </div>
+                        <div className="flex gap-4 text-sm text-muted-foreground">
+                          <span>{usage.appointment_count} appointments</span>
+                          <span>{usage.discovery_count} discoveries</span>
+                          {!usage.mapped_category && (
+                            <Badge variant="outline" className="text-xs">
+                              Unmapped
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <p>No contact source data found yet.</p>
+                    <p className="text-sm mt-1">
+                      Contact source tracking will appear here as data flows in.
                     </p>
                   </div>
                 )}
