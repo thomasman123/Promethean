@@ -974,7 +974,7 @@ async function processAppointmentWebhook(payload: any) {
       if (contactData) {
         try {
           const { data: attributionResult, error: attributionError } = await supabase
-            .rpc('classify_contact_attribution', {
+            .rpc('classify_contact_attribution_enhanced', {
               p_contact_source: contactData.source || null,
               p_utm_source: contactAttribution.utmSource || null,
               p_utm_medium: contactAttribution.utmMedium || null,
@@ -1166,7 +1166,7 @@ async function processAppointmentWebhook(payload: any) {
       if (contactData) {
         try {
           const { data: attributionResult, error: attributionError } = await supabase
-            .rpc('classify_contact_attribution', {
+            .rpc('classify_contact_attribution_enhanced', {
               p_contact_source: contactData.source || null,
               p_utm_source: contactAttribution.utmSource || null,
               p_utm_medium: contactAttribution.utmMedium || null,
