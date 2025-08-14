@@ -779,12 +779,20 @@ async function processAppointmentWebhook(payload: any) {
         hasSetterData: !!setterData,
         setterName: setterData?.name,
         setterFirstName: setterData?.firstName,
-        setterLastName: setterData?.lastName
+        setterLastName: setterData?.lastName,
+        setterIdFromAppointment: fullAppointmentData?.createdBy?.userId
       });
       
       if (setterData?.name) return setterData.name;
       if (setterData?.firstName || setterData?.lastName) {
         return `${setterData.firstName || ''} ${setterData.lastName || ''}`.trim();
+      }
+      
+      // If we have a setter ID but couldn't fetch user data, use a fallback name
+      const setterId = fullAppointmentData?.createdBy?.userId;
+      if (setterId) {
+        console.log('⚠️ Setter ID found but user data fetch failed, using ID-based fallback');
+        return `User ${setterId.slice(-8)}`; // Use last 8 chars of ID as identifier
       }
       
       console.log('⚠️ No setter data available, falling back to Webhook');
@@ -799,7 +807,8 @@ async function processAppointmentWebhook(payload: any) {
       return null;
     };
 
-    const baseData = {
+    // Create base data appropriate for the target table
+    const commonData = {
       account_id: account.id,
       contact_name: getContactName(),
       email: contactData?.email || null,
@@ -808,11 +817,16 @@ async function processAppointmentWebhook(payload: any) {
       sales_rep: getSalesRepName(),
       call_outcome: null,
       show_outcome: null,
+      lead_quality: null,
+    };
+
+    // Add appointment-specific fields only for appointments table
+    const baseData = calendarMapping.target_table === 'appointments' ? {
+      ...commonData,
       pitched: null,
       watched_assets: null,
-      lead_quality: null,
       objections: null,
-    };
+    } : commonData;
     
     // Save to appropriate table based on mapping
     if (calendarMapping.target_table === 'appointments') {
