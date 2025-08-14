@@ -30,16 +30,26 @@ import {
 import { ThemeToggle } from '@/components/theme-toggle';
 import { useAuth } from '@/hooks/useAuth';
 
-interface SourceMapping {
+interface GHLSourceMapping {
   id?: string;
   ghl_source: string;
   source_category: string;
   specific_source?: string | null;
   description?: string | null;
-  is_active: boolean | null;
+  is_active: boolean;
   is_new?: boolean;
   has_changes?: boolean;
-  is_contact_source?: boolean;
+}
+
+interface ContactSourceMapping {
+  id?: string;
+  contact_source: string;
+  source_category: string;
+  specific_source?: string | null;
+  description?: string | null;
+  is_active: boolean;
+  is_new?: boolean;
+  has_changes?: boolean;
 }
 
 interface SourceCategory {
@@ -49,16 +59,7 @@ interface SourceCategory {
 }
 
 interface SourceUsage {
-  ghl_source: string;
-  appointment_count: number;
-  discovery_count: number;
-  total_count: number;
-  mapped_category?: string;
-  mapped_specific?: string | null;
-}
-
-interface ContactSourceUsage {
-  contact_source: string;
+  source: string;
   appointment_count: number;
   discovery_count: number;
   total_count: number;
@@ -70,15 +71,15 @@ export default function SourceMappingPage() {
   const { user, loading, getAccountBasedPermissions, selectedAccountId } = useAuth();
   const permissions = getAccountBasedPermissions();
   const router = useRouter();
-  const [mappings, setMappings] = useState<SourceMapping[]>([]);
+  const [ghlMappings, setGhlMappings] = useState<GHLSourceMapping[]>([]);
+  const [contactMappings, setContactMappings] = useState<ContactSourceMapping[]>([]);
   const [categories, setCategories] = useState<SourceCategory[]>([]);
-  const [unmappedSources, setUnmappedSources] = useState<string[]>([]);
-  const [contactMappings, setContactMappings] = useState<SourceMapping[]>([]);
+  const [unmappedGhlSources, setUnmappedGhlSources] = useState<string[]>([]);
   const [unmappedContactSources, setUnmappedContactSources] = useState<{contact_source: string, usage_count: number}[]>([]);
-  const [sourceUsage, setSourceUsage] = useState<SourceUsage[]>([]);
+  const [ghlSourceUsage, setGhlSourceUsage] = useState<SourceUsage[]>([]);
+  const [contactSourceUsage, setContactSourceUsage] = useState<SourceUsage[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [contactSourceUsage, setContactSourceUsage] = useState<ContactSourceUsage[]>([]);
 
   // Handle authentication and permissions
   useEffect(() => {
@@ -117,22 +118,15 @@ export default function SourceMappingPage() {
       if (catError) throw catError;
       setCategories(categoriesData || []);
 
-      // Fetch existing mappings for this account
-      const { data: mappingsData, error: mapError } = await supabase
+      // Fetch GHL source mappings
+      const { data: ghlMappingsData, error: ghlMapError } = await supabase
         .from('ghl_source_mappings')
         .select('*')
         .eq('account_id', selectedAccountId)
         .order('ghl_source');
 
-      if (mapError) throw mapError;
-      setMappings(mappingsData || []);
-
-      // Fetch unmapped sources
-      const { data: unmappedData, error: unmappedError } = await supabase
-        .rpc('get_unmapped_sources', { p_account_id: selectedAccountId });
-
-      if (unmappedError) throw unmappedError;
-      setUnmappedSources(unmappedData?.map((u: any) => u.ghl_source) || []);
+      if (ghlMapError) throw ghlMapError;
+      setGhlMappings(ghlMappingsData || []);
 
       // Fetch contact source mappings
       const { data: contactMappingsData, error: contactMapError } = await supabase
@@ -142,15 +136,14 @@ export default function SourceMappingPage() {
         .order('contact_source');
 
       if (contactMapError) throw contactMapError;
-      setContactMappings(contactMappingsData?.map((mapping: any) => ({
-        ghl_source: mapping.contact_source, // Use ghl_source field for consistency
-        source_category: mapping.source_category,
-        specific_source: mapping.specific_source,
-        description: mapping.description,
-        is_active: mapping.is_active,
-        id: mapping.id,
-        is_contact_source: true // Flag to identify contact sources
-      })) || []);
+      setContactMappings(contactMappingsData || []);
+
+      // Fetch unmapped GHL sources
+      const { data: unmappedGhlData, error: unmappedGhlError } = await supabase
+        .rpc('get_unmapped_sources', { p_account_id: selectedAccountId });
+
+      if (unmappedGhlError) throw unmappedGhlError;
+      setUnmappedGhlSources(unmappedGhlData?.map((u: any) => u.ghl_source) || []);
 
       // Fetch unmapped contact sources
       const { data: unmappedContactData, error: unmappedContactError } = await supabase
@@ -159,41 +152,38 @@ export default function SourceMappingPage() {
       if (unmappedContactError) throw unmappedContactError;
       setUnmappedContactSources(unmappedContactData || []);
 
-      // Fetch source usage statistics
-      const { data: usageData, error: usageError } = await supabase
+      // Fetch GHL source usage
+      const { data: ghlAppts, error: ghlApptsErr } = await supabase
         .from('appointments')
         .select('ghl_source')
         .eq('account_id', selectedAccountId)
         .not('ghl_source', 'is', null);
 
-      const { data: discoveryUsageData, error: discoveryUsageError } = await supabase
+      const { data: ghlDisc, error: ghlDiscErr } = await supabase
         .from('discoveries')
         .select('ghl_source')
         .eq('account_id', selectedAccountId)
         .not('ghl_source', 'is', null);
 
-      if (usageError || discoveryUsageError) {
-        console.warn('Failed to fetch usage data:', usageError || discoveryUsageError);
-      } else {
-        // Combine and count usage
-        const sourceCounts: Record<string, { appointments: number; discoveries: number }> = {};
+      if (!ghlApptsErr && !ghlDiscErr) {
+        const ghlCounts: Record<string, { appointments: number; discoveries: number }> = {};
         
-        usageData?.forEach((item: any) => {
+        ghlAppts?.forEach((item: any) => {
           const source = item.ghl_source;
-          if (!sourceCounts[source]) sourceCounts[source] = { appointments: 0, discoveries: 0 };
-          sourceCounts[source].appointments++;
+          if (!ghlCounts[source]) ghlCounts[source] = { appointments: 0, discoveries: 0 };
+          ghlCounts[source].appointments++;
         });
 
-        discoveryUsageData?.forEach((item: any) => {
+        ghlDisc?.forEach((item: any) => {
           const source = item.ghl_source;
-          if (!sourceCounts[source]) sourceCounts[source] = { appointments: 0, discoveries: 0 };
-          sourceCounts[source].discoveries++;
+          if (!ghlCounts[source]) ghlCounts[source] = { appointments: 0, discoveries: 0 };
+          ghlCounts[source].discoveries++;
         });
 
-        const usage: SourceUsage[] = Object.entries(sourceCounts).map(([source, counts]) => {
-          const mapping = mappingsData?.find(m => m.ghl_source === source);
+        const ghlUsage: SourceUsage[] = Object.entries(ghlCounts).map(([source, counts]) => {
+          const mapping = ghlMappingsData?.find(m => m.ghl_source === source);
           return {
-            ghl_source: source,
+            source,
             appointment_count: counts.appointments,
             discovery_count: counts.discoveries,
             total_count: counts.appointments + counts.discoveries,
@@ -202,45 +192,43 @@ export default function SourceMappingPage() {
           };
         }).sort((a, b) => b.total_count - a.total_count);
 
-        setSourceUsage(usage);
+        setGhlSourceUsage(ghlUsage);
       }
 
-      // Fetch contact source usage statistics
-      const { data: contactApptUsage, error: cApptErr } = await supabase
+      // Fetch contact source usage
+      const { data: contactAppts, error: contactApptsErr } = await supabase
         .from('appointments')
         .select('contact_source')
         .eq('account_id', selectedAccountId)
         .not('contact_source', 'is', null)
         .neq('contact_source', '');
 
-      const { data: contactDiscUsage, error: cDiscErr } = await supabase
+      const { data: contactDisc, error: contactDiscErr } = await supabase
         .from('discoveries')
         .select('contact_source')
         .eq('account_id', selectedAccountId)
         .not('contact_source', 'is', null)
         .neq('contact_source', '');
 
-      if (cApptErr || cDiscErr) {
-        console.warn('Failed to fetch contact source usage data:', cApptErr || cDiscErr);
-      } else {
+      if (!contactApptsErr && !contactDiscErr) {
         const contactCounts: Record<string, { appointments: number; discoveries: number }> = {};
 
-        contactApptUsage?.forEach((item: any) => {
-          const src = item.contact_source;
-          if (!contactCounts[src]) contactCounts[src] = { appointments: 0, discoveries: 0 };
-          contactCounts[src].appointments++;
+        contactAppts?.forEach((item: any) => {
+          const source = item.contact_source;
+          if (!contactCounts[source]) contactCounts[source] = { appointments: 0, discoveries: 0 };
+          contactCounts[source].appointments++;
         });
 
-        contactDiscUsage?.forEach((item: any) => {
-          const src = item.contact_source;
-          if (!contactCounts[src]) contactCounts[src] = { appointments: 0, discoveries: 0 };
-          contactCounts[src].discoveries++;
+        contactDisc?.forEach((item: any) => {
+          const source = item.contact_source;
+          if (!contactCounts[source]) contactCounts[source] = { appointments: 0, discoveries: 0 };
+          contactCounts[source].discoveries++;
         });
 
-        const mappedContactUsage: ContactSourceUsage[] = Object.entries(contactCounts).map(([src, counts]) => {
-          const mapping = contactMappingsData?.find((m: any) => m.contact_source === src);
+        const contactUsage: SourceUsage[] = Object.entries(contactCounts).map(([source, counts]) => {
+          const mapping = contactMappingsData?.find(m => m.contact_source === source);
           return {
-            contact_source: src,
+            source,
             appointment_count: counts.appointments,
             discovery_count: counts.discoveries,
             total_count: counts.appointments + counts.discoveries,
@@ -249,7 +237,7 @@ export default function SourceMappingPage() {
           };
         }).sort((a, b) => b.total_count - a.total_count);
 
-        setContactSourceUsage(mappedContactUsage);
+        setContactSourceUsage(contactUsage);
       }
       
     } catch (error) {
@@ -260,86 +248,88 @@ export default function SourceMappingPage() {
     }
   };
 
-  const updateMapping = (ghlSource: string, field: string, value: any) => {
-    // Update GHL mappings
-    setMappings(prev => prev.map(m => 
-      m.ghl_source === ghlSource 
-        ? { ...m, [field]: value, has_changes: true }
-        : m
-    ));
-    
-    // Update contact mappings
-    setContactMappings(prev => prev.map(m => 
+  const updateGhlMapping = (ghlSource: string, field: string, value: any) => {
+    setGhlMappings(prev => prev.map(m => 
       m.ghl_source === ghlSource 
         ? { ...m, [field]: value, has_changes: true }
         : m
     ));
   };
 
-  const saveMapping = async (mapping: SourceMapping) => {
+  const updateContactMapping = (contactSource: string, field: string, value: any) => {
+    setContactMappings(prev => prev.map(m => 
+      m.contact_source === contactSource 
+        ? { ...m, [field]: value, has_changes: true }
+        : m
+    ));
+  };
+
+  const saveGhlMapping = async (mapping: GHLSourceMapping) => {
     if (!selectedAccountId) return;
     
     try {
       setSaving(true);
 
-      if (mapping.is_contact_source) {
-        // Save to contact_source_mappings table
-        const { error } = await supabase
-          .from('contact_source_mappings')
-          .upsert({
-            id: mapping.id,
-            contact_source: mapping.ghl_source,
-            source_category: mapping.source_category,
-            specific_source: mapping.specific_source,
-            description: mapping.description,
-            is_active: mapping.is_active,
-            account_id: selectedAccountId,
-            updated_at: new Date().toISOString()
-          });
+      const { error } = await supabase
+        .from('ghl_source_mappings')
+        .upsert({
+          ...mapping,
+          account_id: selectedAccountId,
+          updated_at: new Date().toISOString()
+        });
 
-        if (error) throw error;
+      if (error) throw error;
 
-        setContactMappings(prev => prev.map(m => 
-          m.ghl_source === mapping.ghl_source 
-            ? { ...m, has_changes: false, is_new: false }
-            : m
-        ));
+      setGhlMappings(prev => prev.map(m => 
+        m.ghl_source === mapping.ghl_source 
+          ? { ...m, has_changes: false, is_new: false }
+          : m
+      ));
 
-        // Remove from unmapped contact sources
-        setUnmappedContactSources(prev => prev.filter(s => s.contact_source !== mapping.ghl_source));
-      } else {
-        // Save to ghl_source_mappings table
-        const { error } = await supabase
-          .from('ghl_source_mappings')
-          .upsert({
-            ...mapping,
-            account_id: selectedAccountId,
-            updated_at: new Date().toISOString()
-          });
-
-        if (error) throw error;
-
-        setMappings(prev => prev.map(m => 
-          m.ghl_source === mapping.ghl_source 
-            ? { ...m, has_changes: false, is_new: false }
-            : m
-        ));
-
-        // Remove from unmapped if it was there
-        setUnmappedSources(prev => prev.filter(s => s !== mapping.ghl_source));
-      }
-
-      toast.success(`Saved mapping for ${mapping.ghl_source}`);
+      setUnmappedGhlSources(prev => prev.filter(s => s !== mapping.ghl_source));
+      toast.success(`Saved GHL mapping for ${mapping.ghl_source}`);
     } catch (error) {
-      console.error('Failed to save mapping:', error);
-      toast.error('Failed to save mapping');
+      console.error('Failed to save GHL mapping:', error);
+      toast.error('Failed to save GHL mapping');
     } finally {
       setSaving(false);
     }
   };
 
-  const addUnmappedSource = (source: string) => {
-    const newMapping: SourceMapping = {
+  const saveContactMapping = async (mapping: ContactSourceMapping) => {
+    if (!selectedAccountId) return;
+    
+    try {
+      setSaving(true);
+
+      const { error } = await supabase
+        .from('contact_source_mappings')
+        .upsert({
+          ...mapping,
+          account_id: selectedAccountId,
+          updated_at: new Date().toISOString()
+        });
+
+      if (error) throw error;
+
+      setContactMappings(prev => prev.map(m => 
+        m.contact_source === mapping.contact_source 
+          ? { ...m, has_changes: false, is_new: false }
+          : m
+      ));
+
+      setUnmappedContactSources(prev => prev.filter(s => s.contact_source !== mapping.contact_source));
+      toast.success(`Saved contact mapping for ${mapping.contact_source}`);
+    } catch (error) {
+      console.error('Failed to save contact mapping:', error);
+      toast.error('Failed to save contact mapping');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const addUnmappedGhlSource = (source: string) => {
+    const newMapping: GHLSourceMapping = {
       ghl_source: source,
       source_category: 'unknown',
       specific_source: '',
@@ -349,31 +339,30 @@ export default function SourceMappingPage() {
       has_changes: true
     };
     
-    setMappings(prev => [...prev, newMapping]);
-    setUnmappedSources(prev => prev.filter(s => s !== source));
+    setGhlMappings(prev => [...prev, newMapping]);
+    setUnmappedGhlSources(prev => prev.filter(s => s !== source));
   };
 
   const addUnmappedContactSource = (source: string) => {
-    const newMapping: SourceMapping = {
-      ghl_source: source,
+    const newMapping: ContactSourceMapping = {
+      contact_source: source,
       source_category: 'unknown',
       specific_source: '',
       description: '',
       is_active: true,
       is_new: true,
-      has_changes: true,
-      is_contact_source: true
+      has_changes: true
     };
     
     setContactMappings(prev => [...prev, newMapping]);
     setUnmappedContactSources(prev => prev.filter(s => s.contact_source !== source));
   };
 
-  const addCustomSource = () => {
+  const addCustomGhlSource = () => {
     const source = prompt('Enter new GHL source name:');
-    if (!source || mappings.some(m => m.ghl_source === source)) return;
+    if (!source || ghlMappings.some(m => m.ghl_source === source)) return;
 
-    const newMapping: SourceMapping = {
+    const newMapping: GHLSourceMapping = {
       ghl_source: source,
       source_category: 'unknown',
       specific_source: '',
@@ -383,7 +372,7 @@ export default function SourceMappingPage() {
       has_changes: true
     };
     
-    setMappings(prev => [...prev, newMapping]);
+    setGhlMappings(prev => [...prev, newMapping]);
   };
 
   // Show loading state while checking auth
@@ -448,7 +437,7 @@ export default function SourceMappingPage() {
         <div className="mb-6">
           <h1 className="text-3xl font-bold">Source Attribution Mapping</h1>
           <p className="text-muted-foreground mt-2">
-            Map GHL sources to your business categories and track detailed attribution
+            Map GHL sources and contact sources to your business categories for detailed attribution tracking
           </p>
         </div>
 
@@ -461,19 +450,19 @@ export default function SourceMappingPage() {
           </div>
         ) : (
           <div className="space-y-6">
-            {/* Unmapped Sources Alert */}
-            {unmappedSources.length > 0 && (
+            {/* Unmapped GHL Sources Alert */}
+            {unmappedGhlSources.length > 0 && (
               <Alert>
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>
-                  <strong>New GHL sources detected:</strong> {unmappedSources.join(', ')}
+                  <strong>New GHL sources detected:</strong> {unmappedGhlSources.join(', ')}
                   <div className="mt-2 flex gap-2 flex-wrap">
-                    {unmappedSources.map(source => (
+                    {unmappedGhlSources.map(source => (
                       <Button
                         key={source}
                         size="sm"
                         variant="outline"
-                        onClick={() => addUnmappedSource(source)}
+                        onClick={() => addUnmappedGhlSource(source)}
                       >
                         <Plus className="h-4 w-4 mr-1" />
                         Add {source}
@@ -512,55 +501,51 @@ export default function SourceMappingPage() {
               </Alert>
             )}
 
-            {/* Current Mappings */}
+            {/* GHL Source Mappings */}
             <Card>
               <CardHeader>
                 <div className="flex justify-between items-center">
                   <div>
                     <CardTitle className="flex items-center gap-2">
                       <Target className="h-5 w-5" />
-                      Source Mappings
+                      GHL Source Mappings
                     </CardTitle>
                     <CardDescription>
                       Map each GHL source to a business category and specific source
                     </CardDescription>
                   </div>
-                  <Button onClick={addCustomSource} variant="outline">
+                  <Button onClick={addCustomGhlSource} variant="outline">
                     <Plus className="h-4 w-4 mr-2" />
-                    Add Custom Source
+                    Add Custom GHL Source
                   </Button>
                 </div>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {[...mappings, ...contactMappings].map((mapping) => (
+                  {ghlMappings.map((mapping) => (
                     <Card 
                       key={mapping.ghl_source} 
                       className={`p-4 ${mapping.is_new ? 'border-blue-500' : ''} ${mapping.has_changes ? 'border-orange-500' : ''}`}
                     >
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                        {/* Left Column */}
                         <div className="space-y-4">
-                                                  <div className="flex items-center gap-2">
-                          <Label className="font-medium">
-                            {mapping.is_contact_source ? 'Contact Source:' : 'GHL Source:'}
-                          </Label>
-                          <code className="bg-gray-100 px-2 py-1 rounded text-sm font-mono">
-                            {mapping.ghl_source}
-                          </code>
-                          {mapping.is_contact_source && <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">Contact</Badge>}
-                          {!mapping.is_contact_source && <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">GHL</Badge>}
-                          {mapping.is_new && <Badge variant="secondary">New</Badge>}
-                          {mapping.has_changes && !mapping.is_new && <Badge variant="outline">Modified</Badge>}
-                        </div>
+                          <div className="flex items-center gap-2">
+                            <Label className="font-medium">GHL Source:</Label>
+                            <code className="bg-gray-100 px-2 py-1 rounded text-sm font-mono">
+                              {mapping.ghl_source}
+                            </code>
+                            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">GHL</Badge>
+                            {mapping.is_new && <Badge variant="secondary">New</Badge>}
+                            {mapping.has_changes && !mapping.is_new && <Badge variant="outline">Modified</Badge>}
+                          </div>
 
                           <div>
-                            <Label htmlFor={`category-${mapping.ghl_source}`}>Business Category</Label>
+                            <Label htmlFor={`ghl-category-${mapping.ghl_source}`}>Business Category</Label>
                             <Select 
                               value={mapping.source_category}
-                              onValueChange={(value) => updateMapping(mapping.ghl_source, 'source_category', value)}
+                              onValueChange={(value) => updateGhlMapping(mapping.ghl_source, 'source_category', value)}
                             >
-                              <SelectTrigger id={`category-${mapping.ghl_source}`}>
+                              <SelectTrigger id={`ghl-category-${mapping.ghl_source}`}>
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
@@ -577,24 +562,23 @@ export default function SourceMappingPage() {
                           </div>
 
                           <div>
-                            <Label htmlFor={`specific-${mapping.ghl_source}`}>Specific Source</Label>
+                            <Label htmlFor={`ghl-specific-${mapping.ghl_source}`}>Specific Source</Label>
                             <Input
-                              id={`specific-${mapping.ghl_source}`}
+                              id={`ghl-specific-${mapping.ghl_source}`}
                               value={mapping.specific_source || ''}
-                              onChange={(e) => updateMapping(mapping.ghl_source, 'specific_source', e.target.value)}
+                              onChange={(e) => updateGhlMapping(mapping.ghl_source, 'specific_source', e.target.value)}
                               placeholder="e.g., VSL Landing Page, Facebook Campaign XYZ"
                             />
                           </div>
                         </div>
 
-                        {/* Right Column */}
                         <div className="space-y-4">
                           <div>
-                            <Label htmlFor={`desc-${mapping.ghl_source}`}>Description</Label>
+                            <Label htmlFor={`ghl-desc-${mapping.ghl_source}`}>Description</Label>
                             <Textarea
-                              id={`desc-${mapping.ghl_source}`}
+                              id={`ghl-desc-${mapping.ghl_source}`}
                               value={mapping.description || ''}
-                              onChange={(e) => updateMapping(mapping.ghl_source, 'description', e.target.value)}
+                              onChange={(e) => updateGhlMapping(mapping.ghl_source, 'description', e.target.value)}
                               placeholder="Optional notes about this source"
                               rows={3}
                             />
@@ -603,18 +587,18 @@ export default function SourceMappingPage() {
                           <div className="flex items-center justify-between">
                             <div className="flex items-center space-x-2">
                               <Switch
-                                id={`active-${mapping.ghl_source}`}
-                                checked={mapping.is_active || false}
-                                onCheckedChange={(checked) => updateMapping(mapping.ghl_source, 'is_active', checked)}
+                                id={`ghl-active-${mapping.ghl_source}`}
+                                checked={mapping.is_active}
+                                onCheckedChange={(checked) => updateGhlMapping(mapping.ghl_source, 'is_active', checked)}
                               />
-                              <Label htmlFor={`active-${mapping.ghl_source}`}>
+                              <Label htmlFor={`ghl-active-${mapping.ghl_source}`}>
                                 {mapping.is_active ? 'Active' : 'Inactive'}
                               </Label>
                             </div>
 
                             <Button
                               size="sm"
-                              onClick={() => saveMapping(mapping)}
+                              onClick={() => saveGhlMapping(mapping)}
                               disabled={!mapping.has_changes || saving}
                             >
                               {saving ? (
@@ -633,15 +617,131 @@ export default function SourceMappingPage() {
                   ))}
                 </div>
 
-                {mappings.length === 0 && contactMappings.length === 0 && (
+                {ghlMappings.length === 0 && (
                   <div className="text-center py-8 text-muted-foreground">
-                    No source mappings configured yet. Add sources from the detected lists above or create custom ones.
+                    No GHL source mappings configured yet. Add sources from the detected lists above or create custom ones.
                   </div>
                 )}
               </CardContent>
             </Card>
 
-            {/* Live Source Usage */}
+            {/* Contact Source Mappings */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Target className="h-5 w-5" />
+                  Contact Source Mappings
+                </CardTitle>
+                <CardDescription>
+                  Map each contact source to a business category and specific source
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {contactMappings.map((mapping) => (
+                    <Card 
+                      key={mapping.contact_source} 
+                      className={`p-4 ${mapping.is_new ? 'border-blue-500' : ''} ${mapping.has_changes ? 'border-orange-500' : ''}`}
+                    >
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        <div className="space-y-4">
+                          <div className="flex items-center gap-2">
+                            <Label className="font-medium">Contact Source:</Label>
+                            <code className="bg-gray-100 px-2 py-1 rounded text-sm font-mono">
+                              {mapping.contact_source}
+                            </code>
+                            <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">Contact</Badge>
+                            {mapping.is_new && <Badge variant="secondary">New</Badge>}
+                            {mapping.has_changes && !mapping.is_new && <Badge variant="outline">Modified</Badge>}
+                          </div>
+
+                          <div>
+                            <Label htmlFor={`contact-category-${mapping.contact_source}`}>Business Category</Label>
+                            <Select 
+                              value={mapping.source_category}
+                              onValueChange={(value) => updateContactMapping(mapping.contact_source, 'source_category', value)}
+                            >
+                              <SelectTrigger id={`contact-category-${mapping.contact_source}`}>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {categories.map((cat) => (
+                                  <SelectItem key={cat.name} value={cat.name}>
+                                    <div>
+                                      <div className="font-medium">{cat.display_name}</div>
+                                      <div className="text-xs text-muted-foreground">{cat.description}</div>
+                                    </div>
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div>
+                            <Label htmlFor={`contact-specific-${mapping.contact_source}`}>Specific Source</Label>
+                            <Input
+                              id={`contact-specific-${mapping.contact_source}`}
+                              value={mapping.specific_source || ''}
+                              onChange={(e) => updateContactMapping(mapping.contact_source, 'specific_source', e.target.value)}
+                              placeholder="e.g., VSL Landing Page, Facebook Campaign XYZ"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="space-y-4">
+                          <div>
+                            <Label htmlFor={`contact-desc-${mapping.contact_source}`}>Description</Label>
+                            <Textarea
+                              id={`contact-desc-${mapping.contact_source}`}
+                              value={mapping.description || ''}
+                              onChange={(e) => updateContactMapping(mapping.contact_source, 'description', e.target.value)}
+                              placeholder="Optional notes about this source"
+                              rows={3}
+                            />
+                          </div>
+
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-2">
+                              <Switch
+                                id={`contact-active-${mapping.contact_source}`}
+                                checked={mapping.is_active}
+                                onCheckedChange={(checked) => updateContactMapping(mapping.contact_source, 'is_active', checked)}
+                              />
+                              <Label htmlFor={`contact-active-${mapping.contact_source}`}>
+                                {mapping.is_active ? 'Active' : 'Inactive'}
+                              </Label>
+                            </div>
+
+                            <Button
+                              size="sm"
+                              onClick={() => saveContactMapping(mapping)}
+                              disabled={!mapping.has_changes || saving}
+                            >
+                              {saving ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <>
+                                  <Save className="h-4 w-4 mr-1" />
+                                  Save
+                                </>
+                              )}
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+
+                {contactMappings.length === 0 && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No contact source mappings configured yet. Add sources from the detected lists above.
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* GHL Source Activity */}
             <Card>
               <CardHeader>
                 <CardTitle>GHL Source Activity</CardTitle>
@@ -650,14 +750,14 @@ export default function SourceMappingPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {sourceUsage.length > 0 ? (
+                {ghlSourceUsage.length > 0 ? (
                   <div className="space-y-3">
-                    {sourceUsage.map((usage) => (
-                      <div key={usage.ghl_source} className="p-4 border rounded-lg">
+                    {ghlSourceUsage.map((usage) => (
+                      <div key={usage.source} className="p-4 border rounded-lg">
                         <div className="flex items-center justify-between mb-2">
                           <div className="flex items-center gap-3">
                             <code className="bg-gray-100 px-2 py-1 rounded text-sm font-mono">
-                              {usage.ghl_source}
+                              {usage.source}
                             </code>
                             {usage.mapped_category && (
                               <Badge variant="secondary">
@@ -688,7 +788,7 @@ export default function SourceMappingPage() {
                   </div>
                 ) : (
                   <div className="text-center py-8 text-muted-foreground">
-                    <p>No source data found yet.</p>
+                    <p>No GHL source data found yet.</p>
                     <p className="text-sm mt-1">
                       Source tracking will appear here as appointments and discoveries come through your webhooks.
                     </p>
@@ -697,23 +797,23 @@ export default function SourceMappingPage() {
               </CardContent>
             </Card>
 
-            {/* Contact Source Usage */}
+            {/* Contact Source Activity */}
             <Card>
               <CardHeader>
                 <CardTitle>Contact Source Activity</CardTitle>
                 <CardDescription>
-                  Activity grouped by `contact_source` tracked on appointments and discoveries
+                  Activity grouped by contact_source tracked on appointments and discoveries
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 {contactSourceUsage.length > 0 ? (
                   <div className="space-y-3">
                     {contactSourceUsage.map((usage) => (
-                      <div key={usage.contact_source} className="p-4 border rounded-lg">
+                      <div key={usage.source} className="p-4 border rounded-lg">
                         <div className="flex items-center justify-between mb-2">
                           <div className="flex items-center gap-3">
                             <code className="bg-gray-100 px-2 py-1 rounded text-sm font-mono">
-                              {usage.contact_source}
+                              {usage.source}
                             </code>
                             {usage.mapped_category && (
                               <Badge variant="secondary">
