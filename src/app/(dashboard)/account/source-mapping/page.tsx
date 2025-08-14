@@ -47,6 +47,15 @@ interface SourceCategory {
   description: string | null;
 }
 
+interface SourceUsage {
+  ghl_source: string;
+  appointment_count: number;
+  discovery_count: number;
+  total_count: number;
+  mapped_category?: string;
+  mapped_specific?: string | null;
+}
+
 export default function SourceMappingPage() {
   const { user, loading, getAccountBasedPermissions, selectedAccountId } = useAuth();
   const permissions = getAccountBasedPermissions();
@@ -54,6 +63,7 @@ export default function SourceMappingPage() {
   const [mappings, setMappings] = useState<SourceMapping[]>([]);
   const [categories, setCategories] = useState<SourceCategory[]>([]);
   const [unmappedSources, setUnmappedSources] = useState<string[]>([]);
+  const [sourceUsage, setSourceUsage] = useState<SourceUsage[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -110,6 +120,52 @@ export default function SourceMappingPage() {
 
       if (unmappedError) throw unmappedError;
       setUnmappedSources(unmappedData?.map((u: any) => u.ghl_source) || []);
+
+      // Fetch source usage statistics
+      const { data: usageData, error: usageError } = await supabase
+        .from('appointments')
+        .select('ghl_source')
+        .eq('account_id', selectedAccountId)
+        .not('ghl_source', 'is', null);
+
+      const { data: discoveryUsageData, error: discoveryUsageError } = await supabase
+        .from('discoveries')
+        .select('ghl_source')
+        .eq('account_id', selectedAccountId)
+        .not('ghl_source', 'is', null);
+
+      if (usageError || discoveryUsageError) {
+        console.warn('Failed to fetch usage data:', usageError || discoveryUsageError);
+      } else {
+        // Combine and count usage
+        const sourceCounts: Record<string, { appointments: number; discoveries: number }> = {};
+        
+        usageData?.forEach((item: any) => {
+          const source = item.ghl_source;
+          if (!sourceCounts[source]) sourceCounts[source] = { appointments: 0, discoveries: 0 };
+          sourceCounts[source].appointments++;
+        });
+
+        discoveryUsageData?.forEach((item: any) => {
+          const source = item.ghl_source;
+          if (!sourceCounts[source]) sourceCounts[source] = { appointments: 0, discoveries: 0 };
+          sourceCounts[source].discoveries++;
+        });
+
+        const usage: SourceUsage[] = Object.entries(sourceCounts).map(([source, counts]) => {
+          const mapping = mappingsData?.find(m => m.ghl_source === source);
+          return {
+            ghl_source: source,
+            appointment_count: counts.appointments,
+            discovery_count: counts.discoveries,
+            total_count: counts.appointments + counts.discoveries,
+            mapped_category: mapping?.source_category,
+            mapped_specific: mapping?.specific_source
+          };
+        }).sort((a, b) => b.total_count - a.total_count);
+
+        setSourceUsage(usage);
+      }
       
     } catch (error) {
       console.error('Failed to fetch data:', error);
@@ -416,42 +472,59 @@ export default function SourceMappingPage() {
               </CardContent>
             </Card>
 
-            {/* Attribution Examples */}
+            {/* Live Source Usage */}
             <Card>
               <CardHeader>
-                <CardTitle>Common Source Mapping Examples</CardTitle>
+                <CardTitle>Your Source Activity</CardTitle>
+                <CardDescription>
+                  Real data from your appointments and discoveries, sorted by frequency
+                </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                  <div className="space-y-2">
-                    <div className="p-3 border rounded-lg">
-                      <div className="font-medium">Discovery Calls</div>
-                      <code className="text-xs">manual</code> → <Badge variant="secondary">discovery</Badge> → "Discovery Call Booking"
-                    </div>
-                    <div className="p-3 border rounded-lg">
-                      <div className="font-medium">Landing Pages</div>
-                      <code className="text-xs">funnel</code> → <Badge variant="secondary">funnel</Badge> → "VSL Landing Page"
-                    </div>
-                    <div className="p-3 border rounded-lg">
-                      <div className="font-medium">Direct Calendar</div>
-                      <code className="text-xs">calendar</code> → <Badge variant="secondary">organic</Badge> → "Website Calendar Widget"
-                    </div>
+                {sourceUsage.length > 0 ? (
+                  <div className="space-y-3">
+                    {sourceUsage.map((usage) => (
+                      <div key={usage.ghl_source} className="p-4 border rounded-lg">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-3">
+                            <code className="bg-gray-100 px-2 py-1 rounded text-sm font-mono">
+                              {usage.ghl_source}
+                            </code>
+                            {usage.mapped_category && (
+                              <Badge variant="secondary">
+                                {categories.find(c => c.name === usage.mapped_category)?.display_name || usage.mapped_category}
+                              </Badge>
+                            )}
+                            {usage.mapped_specific && (
+                              <span className="text-sm text-muted-foreground">
+                                "{usage.mapped_specific}"
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-sm font-medium">
+                            {usage.total_count} total
+                          </div>
+                        </div>
+                        <div className="flex gap-4 text-sm text-muted-foreground">
+                          <span>{usage.appointment_count} appointments</span>
+                          <span>{usage.discovery_count} discoveries</span>
+                          {!usage.mapped_category && (
+                            <Badge variant="outline" className="text-xs">
+                              Unmapped
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                  <div className="space-y-2">
-                    <div className="p-3 border rounded-lg">
-                      <div className="font-medium">Cold Call Follow-up</div>
-                      <code className="text-xs">automation</code> → <Badge variant="secondary">outbound_dial</Badge> → "Cold Call Workflow"
-                    </div>
-                    <div className="p-3 border rounded-lg">
-                      <div className="font-medium">Paid Ads</div>
-                      <code className="text-xs">api</code> → <Badge variant="secondary">paid_ads</Badge> → "Facebook Lead Form"
-                    </div>
-                    <div className="p-3 border rounded-lg">
-                      <div className="font-medium">Partner Referral</div>
-                      <code className="text-xs">manual</code> → <Badge variant="secondary">referral</Badge> → "Partner ABC Referral"
-                    </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <p>No source data found yet.</p>
+                    <p className="text-sm mt-1">
+                      Source tracking will appear here as appointments and discoveries come through your webhooks.
+                    </p>
                   </div>
-                </div>
+                )}
               </CardContent>
             </Card>
           </div>
