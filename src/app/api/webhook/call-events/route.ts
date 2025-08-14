@@ -965,7 +965,8 @@ async function processAppointmentWebhook(payload: any) {
         sales_rep_user_id: userIds.salesRepUserId || null,
         setter_ghl_id: setterData?.id || null,
         sales_rep_ghl_id: salesRepData?.id || null,
-        ghl_appointment_id: payload.appointment?.id || null
+        ghl_appointment_id: payload.appointment?.id || null,
+        ghl_source: fullAppointmentData?.source || 'unknown' // Add GHL source
       };
       
       // Check for existing appointment to prevent duplicates
@@ -1106,7 +1107,8 @@ async function processAppointmentWebhook(payload: any) {
         sales_rep_user_id: userIds.salesRepUserId || null, // appointment creator user ID
         setter_ghl_id: salesRepData?.id || null, // Swapped: setter gets salesRepData ID
         sales_rep_ghl_id: setterData?.id || null, // Swapped: sales_rep gets setterData ID
-        ghl_appointment_id: payload.appointment?.id || null
+        ghl_appointment_id: payload.appointment?.id || null,
+        ghl_source: fullAppointmentData?.source || 'unknown' // Add GHL source
       };
       
       // Check for existing discovery to prevent duplicates
