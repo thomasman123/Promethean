@@ -781,20 +781,30 @@ async function processAppointmentWebhook(payload: any) {
         setterFirstName: setterData?.firstName,
         setterLastName: setterData?.lastName,
         setterIdFromAppointment: fullAppointmentData?.createdBy?.userId,
-        targetTable: calendarMapping.target_table
+        targetTable: calendarMapping.target_table,
+        salesRepData: salesRepData,
+        salesRepName: salesRepData?.name
       });
       
-      // For discoveries, use the person it was booked for (sales rep) instead of complex setter logic
+      // For discoveries, the "setter" is actually the appointment owner (sales rep from appointments perspective)
       if (calendarMapping.target_table === 'discoveries') {
         if (salesRepData?.name) return salesRepData.name;
         if (salesRepData?.firstName || salesRepData?.lastName) {
           return `${salesRepData.firstName || ''} ${salesRepData.lastName || ''}`.trim();
         }
-        // For discoveries, if no sales rep data, use the appointment title or a simple fallback
-        return fullAppointmentData?.title || 'Discovery Call';
+        
+        // If we have a sales rep ID but couldn't fetch user data, use a fallback name
+        const salesRepId = fullAppointmentData?.assignedUserId || payload.appointment?.assignedUserId;
+        if (salesRepId) {
+          console.log('⚠️ Sales rep ID found but user data fetch failed, using ID-based fallback');
+          return `User ${salesRepId.slice(-8)}`; // Use last 8 chars of ID as identifier
+        }
+        
+        console.log('⚠️ No sales rep data available for discovery setter, falling back to Webhook');
+        return 'Webhook';
       }
       
-      // For appointments, use the original complex setter logic
+      // For appointments, use the original setter logic (createdBy)
       if (setterData?.name) return setterData.name;
       if (setterData?.firstName || setterData?.lastName) {
         return `${setterData.firstName || ''} ${setterData.lastName || ''}`.trim();
@@ -812,6 +822,23 @@ async function processAppointmentWebhook(payload: any) {
     };
 
     const getSalesRepName = () => {
+      // For discoveries, the "sales rep" is actually the setter (createdBy from appointments perspective)
+      if (calendarMapping.target_table === 'discoveries') {
+        if (setterData?.name) return setterData.name;
+        if (setterData?.firstName || setterData?.lastName) {
+          return `${setterData.firstName || ''} ${setterData.lastName || ''}`.trim();
+        }
+        
+        // If we have a setter ID but couldn't fetch user data, use a fallback name
+        const setterId = fullAppointmentData?.createdBy?.userId;
+        if (setterId) {
+          return `User ${setterId.slice(-8)}`; // Use last 8 chars of ID as identifier
+        }
+        
+        return 'Webhook'; // Fallback for discoveries
+      }
+      
+      // For appointments, use the original sales rep logic (assignedUserId)
       if (salesRepData?.name) return salesRepData.name;
       if (salesRepData?.firstName || salesRepData?.lastName) {
         return `${salesRepData.firstName || ''} ${salesRepData.lastName || ''}`.trim();
@@ -1048,36 +1075,37 @@ async function processAppointmentWebhook(payload: any) {
       
     } else if (calendarMapping.target_table === 'discoveries') {
       // Auto-create users for setter and sales rep if they don't exist
-      console.log('👥 Auto-creating users for discovery data:', {
-        setter: baseData.setter,
-        salesRep: baseData.sales_rep,
-        setterGhlId: setterData?.id,
-        salesRepGhlId: salesRepData?.id
+      // For discoveries: setter = appointment owner (salesRepData), sales_rep = appointment creator (setterData)
+      console.log('👥 Auto-creating users for discovery data (roles swapped):', {
+        setter: baseData.setter, // This is the appointment owner (salesRepData)
+        salesRep: baseData.sales_rep, // This is the appointment creator (setterData)
+        setterGhlId: salesRepData?.id, // Swapped: setter gets salesRepData
+        salesRepGhlId: setterData?.id // Swapped: sales_rep gets setterData
       });
 
       const { linkExistingUsersToData } = await import('@/lib/auto-user-creation');
       const userIds = await linkExistingUsersToData(
         supabase,
         account.id,
-        baseData.setter,
-        baseData.sales_rep,
-        setterData?.email,
-        salesRepData?.email
+        baseData.setter, // appointment owner (salesRepData)
+        baseData.sales_rep, // appointment creator (setterData) 
+        salesRepData?.email, // Swapped: setter email comes from salesRepData
+        setterData?.email // Swapped: sales_rep email comes from setterData
       );
 
-      console.log('✅ User creation results for discovery:', {
-        setterUserId: userIds.setterUserId || 'None',
-        salesRepUserId: userIds.salesRepUserId || 'None'
+      console.log('✅ User creation results for discovery (roles swapped):', {
+        setterUserId: userIds.setterUserId || 'None', // This maps to appointment owner
+        salesRepUserId: userIds.salesRepUserId || 'None' // This maps to appointment creator
       });
 
       const discoveryData = {
         ...baseData,
         date_booked_for: payload.appointment.startTime ? 
           new Date(payload.appointment.startTime).toISOString() : null,
-        setter_user_id: userIds.setterUserId || null,
-        sales_rep_user_id: userIds.salesRepUserId || null,
-        setter_ghl_id: setterData?.id || null,
-        sales_rep_ghl_id: salesRepData?.id || null,
+        setter_user_id: userIds.setterUserId || null, // appointment owner user ID
+        sales_rep_user_id: userIds.salesRepUserId || null, // appointment creator user ID
+        setter_ghl_id: salesRepData?.id || null, // Swapped: setter gets salesRepData ID
+        sales_rep_ghl_id: setterData?.id || null, // Swapped: sales_rep gets setterData ID
         ghl_appointment_id: payload.appointment?.id || null
       };
       
@@ -1153,25 +1181,28 @@ async function processAppointmentWebhook(payload: any) {
       console.log('✅ Discovery saved successfully:', payload.appointment?.id);
       
       // Refresh GHL user roles now that the discovery is saved and activity counts should be accurate
+      // For discoveries: roles are swapped - salesRepData becomes setter, setterData becomes sales_rep
       try {
-        console.log('🔄 Refreshing GHL user roles after discovery save...');
+        console.log('🔄 Refreshing GHL user roles after discovery save (roles swapped)...');
         
-        if (setterData?.id) {
-          await supabase.rpc('update_ghl_user_roles_with_context' as any, {
-            p_account_id: account.id,
-            p_ghl_user_id: setterData.id,
-            p_current_role: 'setter'
-          });
-          console.log('✅ Refreshed setter role:', setterData.id);
-        }
-        
+        // salesRepData becomes the setter for discoveries (appointment owner)
         if (salesRepData?.id) {
           await supabase.rpc('update_ghl_user_roles_with_context' as any, {
             p_account_id: account.id,
             p_ghl_user_id: salesRepData.id,
+            p_current_role: 'setter'
+          });
+          console.log('✅ Refreshed setter role (appointment owner):', salesRepData.id);
+        }
+        
+        // setterData becomes the sales_rep for discoveries (appointment creator)
+        if (setterData?.id) {
+          await supabase.rpc('update_ghl_user_roles_with_context' as any, {
+            p_account_id: account.id,
+            p_ghl_user_id: setterData.id,
             p_current_role: 'sales_rep'
           });
-          console.log('✅ Refreshed sales rep role:', salesRepData.id);
+          console.log('✅ Refreshed sales rep role (appointment creator):', setterData.id);
         }
       } catch (refreshError) {
         console.error('⚠️ Failed to refresh GHL user roles (non-critical):', refreshError);
