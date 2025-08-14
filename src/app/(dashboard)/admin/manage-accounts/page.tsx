@@ -571,16 +571,16 @@ export default function ManageAccountsPage() {
 															)}
 														</div>
 
-														<div className="flex justify-end pt-2">
-															<Button variant="outline" onClick={() => setAssignUserOpen(false)}>Close</Button>
-														</div>
-													</div>
-													</div>
-												</DialogContent>
-											</Dialog>
-								</div>
-							</CardHeader>
-							<CardContent>
+																																												<div className="flex justify-end pt-2">
+											<Button variant="outline" onClick={() => setAssignUserOpen(false)}>Close</Button>
+										</div>
+									</div>
+								</DialogContent>
+							</Dialog>
+						</div>
+						</div>
+								</CardHeader>
+								<CardContent>
 								<div className="text-sm text-muted-foreground">
 									{accountAccess[account.id]?.length || 0} assigned users
 								</div>
