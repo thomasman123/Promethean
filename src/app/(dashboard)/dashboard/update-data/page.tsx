@@ -12,7 +12,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { useAuth } from "@/hooks/useAuth";
-import { Calendar, ClipboardList, CheckCircle2, ChevronRight } from "lucide-react";
+import { Calendar, ClipboardList, CheckCircle2, ChevronRight, Inbox, Sparkles } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { supabase } from "@/lib/supabase";
@@ -107,14 +107,20 @@ export default function UpdateDataPage() {
   if (isFlowComplete) {
     return (
       <div className="p-6 space-y-6">
-        <div className="rounded-lg bg-green-50 border border-green-200 p-6 text-center">
-          <CheckCircle2 className="mx-auto h-16 w-16 text-green-600 mb-4" />
-          <h1 className="text-2xl font-bold text-green-900">All Data Updates Complete!</h1>
-          <p className="text-green-700 mt-2">You've successfully completed all assigned data updates.</p>
-          <Button className="mt-4" onClick={() => window.location.href = '/dashboard'}>
-            Return to Dashboard
-          </Button>
-        </div>
+        <Card className="relative overflow-hidden border bg-card">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,theme(colors.green/10),transparent_60%)]" />
+          <CardHeader className="text-center space-y-2">
+            <div className="mx-auto size-12 rounded-full border bg-background shadow-sm grid place-items-center">
+              <Sparkles className="h-5 w-5 text-green-600" />
+            </div>
+            <CardTitle className="text-2xl">All data updates complete</CardTitle>
+            <CardDescription>You’ve successfully completed all assigned data updates.</CardDescription>
+          </CardHeader>
+          <CardContent className="flex items-center justify-center gap-3 pb-6">
+            <Button variant="secondary" onClick={() => window.location.reload()}>Refresh</Button>
+            <Button onClick={() => (window.location.href = '/dashboard')}>View Dashboard</Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -122,14 +128,20 @@ export default function UpdateDataPage() {
   if (totalItems === 0) {
     return (
       <div className="p-6 space-y-6">
-        <div className="rounded-lg bg-blue-50 border border-blue-200 p-6 text-center">
-          <CheckCircle2 className="mx-auto h-16 w-16 text-blue-600 mb-4" />
-          <h1 className="text-2xl font-bold text-blue-900">No Data Updates Needed</h1>
-          <p className="text-blue-700 mt-2">You don't have any pending appointments or discoveries to update.</p>
-          <Button className="mt-4" onClick={() => window.location.href = '/dashboard'}>
-            Return to Dashboard
-          </Button>
-        </div>
+        <Card className="relative overflow-hidden border bg-card">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,theme(colors.primary/10),transparent_60%)]" />
+          <CardHeader className="text-center space-y-2">
+            <div className="mx-auto size-12 rounded-full border bg-background shadow-sm grid place-items-center">
+              <Inbox className="h-5 w-5 text-primary" />
+            </div>
+            <CardTitle className="text-2xl">No Data Updates Needed</CardTitle>
+            <CardDescription>You don’t have any pending appointments or discoveries to update.</CardDescription>
+          </CardHeader>
+          <CardContent className="flex items-center justify-center gap-3 pb-6">
+            <Button variant="secondary" onClick={() => window.location.reload()}>Refresh</Button>
+            <Button onClick={() => (window.location.href = '/dashboard')}>Return to Dashboard</Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
