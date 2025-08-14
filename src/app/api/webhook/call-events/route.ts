@@ -780,9 +780,21 @@ async function processAppointmentWebhook(payload: any) {
         setterName: setterData?.name,
         setterFirstName: setterData?.firstName,
         setterLastName: setterData?.lastName,
-        setterIdFromAppointment: fullAppointmentData?.createdBy?.userId
+        setterIdFromAppointment: fullAppointmentData?.createdBy?.userId,
+        targetTable: calendarMapping.target_table
       });
       
+      // For discoveries, use the person it was booked for (sales rep) instead of complex setter logic
+      if (calendarMapping.target_table === 'discoveries') {
+        if (salesRepData?.name) return salesRepData.name;
+        if (salesRepData?.firstName || salesRepData?.lastName) {
+          return `${salesRepData.firstName || ''} ${salesRepData.lastName || ''}`.trim();
+        }
+        // For discoveries, if no sales rep data, use the appointment title or a simple fallback
+        return fullAppointmentData?.title || 'Discovery Call';
+      }
+      
+      // For appointments, use the original complex setter logic
       if (setterData?.name) return setterData.name;
       if (setterData?.firstName || setterData?.lastName) {
         return `${setterData.firstName || ''} ${setterData.lastName || ''}`.trim();
