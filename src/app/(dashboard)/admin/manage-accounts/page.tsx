@@ -526,59 +526,59 @@ export default function ManageAccountsPage() {
 																	Assign User
 																</Button>
 															</div>
-														</div>
 
-														{/* Current Users Section */}
-														<div className="space-y-4">
-															<h3 className="text-lg font-medium">Current Users ({accountAccess[account.id]?.length || 0})</h3>
-															{accountAccess[account.id]?.length > 0 ? (
-																<Table>
-																	<TableHeader>
-																		<TableRow>
-																			<TableHead>Name</TableHead>
-																			<TableHead>Email</TableHead>
-																			<TableHead>Account Role</TableHead>
-																			<TableHead>Granted</TableHead>
-																			<TableHead>Actions</TableHead>
-																		</TableRow>
-																	</TableHeader>
-																	<TableBody>
-																		{accountAccess[account.id].map((access) => (
-																			<TableRow key={access.id}>
-																				<TableCell className="font-medium">{access.user_profile?.full_name || 'N/A'}</TableCell>
-																				<TableCell>{access.user_profile?.email}</TableCell>
-																				<TableCell>
-																					<Badge className={access.role === 'admin' ? "bg-red-100 text-red-800 border-red-200" : roleColors[access.role as keyof typeof roleColors]}>
-																						<span className="flex items-center gap-1">{getRoleIcon(access.role)}{access.role.replace('_', ' ')}</span>
-																					</Badge>
-																				</TableCell>
-																				<TableCell>{new Date(access.granted_at).toLocaleDateString()}</TableCell>
-																				<TableCell className="space-x-2">
-																					<Button variant="outline" size="sm" onClick={() => removeUserFromAccount(account.id, access.user_id)}>
-																						<Trash2 className="h-4 w-4" />
-																					</Button>
-																					<Button variant="secondary" size="sm" onClick={async () => { await startImpersonation(access.user_id); toast.success('Now impersonating user') }} disabled={!!impersonatedUserId && impersonatedUserId === access.user_id}>
-																						<UserCheck className="h-4 w-4 mr-1" />
-																						Impersonate
-																					</Button>
-																				</TableCell>
+															{/* Current Users Section */}
+															<div className="space-y-4">
+																<h3 className="text-lg font-medium">Current Users ({accountAccess[account.id]?.length || 0})</h3>
+																{accountAccess[account.id]?.length > 0 ? (
+																	<Table>
+																		<TableHeader>
+																			<TableRow>
+																				<TableHead>Name</TableHead>
+																				<TableHead>Email</TableHead>
+																				<TableHead>Account Role</TableHead>
+																				<TableHead>Granted</TableHead>
+																				<TableHead>Actions</TableHead>
 																			</TableRow>
-																		))}
-																	</TableBody>
-																</Table>
-															) : (
-																<div className="text-center py-8 text-muted-foreground">No users assigned to this account yet.</div>
-															)}
-														</div>
+																		</TableHeader>
+																		<TableBody>
+																			{accountAccess[account.id].map((access) => (
+																				<TableRow key={access.id}>
+																					<TableCell className="font-medium">{access.user_profile?.full_name || 'N/A'}</TableCell>
+																					<TableCell>{access.user_profile?.email}</TableCell>
+																					<TableCell>
+																						<Badge className={access.role === 'admin' ? "bg-red-100 text-red-800 border-red-200" : roleColors[access.role as keyof typeof roleColors]}>
+																							<span className="flex items-center gap-1">{getRoleIcon(access.role)}{access.role.replace('_', ' ')}</span>
+																						</Badge>
+																					</TableCell>
+																					<TableCell>{new Date(access.granted_at).toLocaleDateString()}</TableCell>
+																					<TableCell className="space-x-2">
+																						<Button variant="outline" size="sm" onClick={() => removeUserFromAccount(account.id, access.user_id)}>
+																							<Trash2 className="h-4 w-4" />
+																						</Button>
+																						<Button variant="secondary" size="sm" onClick={async () => { await startImpersonation(access.user_id); toast.success('Now impersonating user') }} disabled={!!impersonatedUserId && impersonatedUserId === access.user_id}>
+																							<UserCheck className="h-4 w-4 mr-1" />
+																							Impersonate
+																						</Button>
+																					</TableCell>
+																				</TableRow>
+																			))}
+																		</TableBody>
+																	</Table>
+																) : (
+																	<div className="text-center py-8 text-muted-foreground">No users assigned to this account yet.</div>
+																)}
+															</div>
 
-																																												<div className="flex justify-end pt-2">
-											<Button variant="outline" onClick={() => setAssignUserOpen(false)}>Close</Button>
+															<div className="flex justify-end pt-2">
+																<Button variant="outline" onClick={() => setAssignUserOpen(false)}>Close</Button>
+															</div>
+														</div>
+													</div>
+												</DialogContent>
+											</Dialog>
 										</div>
 									</div>
-								</DialogContent>
-							</Dialog>
-						</div>
-						</div>
 								</CardHeader>
 								<CardContent>
 								<div className="text-sm text-muted-foreground">
