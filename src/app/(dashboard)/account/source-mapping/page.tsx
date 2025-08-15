@@ -232,7 +232,7 @@ export default function SourceMappingPage() {
     }
   };
 
-  const updateMapping = (source: string, sourceType: 'ghl' | 'contact', field: string, value: any) => {
+  const updateMapping = (source: string, sourceType: 'ghl' | 'contact' | 'utm', field: string, value: any) => {
     setMappings(prev => prev.map(m => 
       m.source === source && m.source_type === sourceType
         ? { ...m, [field]: value, has_changes: true }
@@ -374,7 +374,7 @@ export default function SourceMappingPage() {
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-foreground">Source Mapping</h1>
           <p className="text-muted-foreground mt-3 text-lg">
-            Map detected sources to business categories for better tracking
+            Automatic UTM-based attribution with manual override options
           </p>
         </div>
 
@@ -387,24 +387,239 @@ export default function SourceMappingPage() {
           </div>
         ) : (
           <div className="space-y-8">
-            {/* New Sources Alert */}
+            {/* UTM Sources vs Legacy Alert */}
             {newMappings.length > 0 && (
               <Alert className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/50">
                 <AlertCircle className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                 <AlertDescription className="text-blue-800 dark:text-blue-200">
-                  <strong>{newMappings.length} new source{newMappings.length > 1 ? 's' : ''} detected:</strong> Map them to categories below
+                  <strong>{newMappings.filter(m => m.is_recommended).length} UTM source{newMappings.filter(m => m.is_recommended).length !== 1 ? 's' : ''} detected</strong> for automatic mapping.
+                  {newMappings.filter(m => !m.is_recommended).length > 0 && (
+                    <span> <strong>{newMappings.filter(m => !m.is_recommended).length} legacy source{newMappings.filter(m => !m.is_recommended).length !== 1 ? 's' : ''}</strong> should be cleaned up.</span>
+                  )}
                 </AlertDescription>
               </Alert>
             )}
 
-            {/* All Sources */}
-            <Card className="shadow-sm">
-              <CardHeader className="pb-6">
-                <CardTitle className="text-xl text-foreground">Sources</CardTitle>
-                <CardDescription className="text-base">
-                  All detected sources from your data - map them to business categories
-                </CardDescription>
-              </CardHeader>
+            {/* UTM Sources (Recommended) */}
+            {mappings.filter(m => m.is_recommended).length > 0 && (
+              <Card className="shadow-sm border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/20">
+                <CardHeader className="pb-6">
+                  <CardTitle className="text-xl text-foreground flex items-center gap-2">
+                    🎯 UTM Sources (Recommended)
+                  </CardTitle>
+                  <CardDescription className="text-base">
+                    Smart UTM-based attribution provides accurate traffic source tracking
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <div className="space-y-6">
+                    {mappings.filter(m => m.is_recommended).map((mapping) => (
+                      <Card 
+                        key={`${mapping.source}-${mapping.source_type}`}
+                        className={`p-6 border-green-300 ${mapping.is_new ? 'bg-green-100 dark:bg-green-950/30' : 'bg-white dark:bg-gray-900'} ${mapping.has_changes ? 'border-orange-500 dark:border-orange-400' : ''}`}
+                      >
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                          <div className="space-y-4">
+                            <div className="flex items-center gap-3 flex-wrap">
+                              <Label className="font-medium text-foreground">UTM Source:</Label>
+                              <code className="bg-muted px-3 py-1.5 rounded-md text-sm font-mono text-foreground border">
+                                {mapping.source}
+                              </code>
+                              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 dark:bg-green-950/50 dark:text-green-300 dark:border-green-800">
+                                UTM-Based
+                              </Badge>
+                              {mapping.is_new && <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300">Auto-Detected</Badge>}
+                              {mapping.has_changes && !mapping.is_new && <Badge variant="outline" className="border-orange-300 text-orange-700 dark:border-orange-700 dark:text-orange-300">Modified</Badge>}
+                            </div>
+
+                            <div className="space-y-2">
+                              <Label htmlFor={`category-${mapping.source}-${mapping.source_type}`} className="text-sm font-medium text-foreground">Business Category</Label>
+                              <Select 
+                                value={mapping.source_category}
+                                onValueChange={(value) => updateMapping(mapping.source, mapping.source_type, 'source_category', value)}
+                              >
+                                <SelectTrigger id={`category-${mapping.source}-${mapping.source_type}`} className="w-full">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {categories.map((cat) => (
+                                    <SelectItem key={cat.name} value={cat.name}>
+                                      <div className="py-1">
+                                        <div className="font-medium text-foreground">{cat.display_name}</div>
+                                        {cat.description && <div className="text-xs text-muted-foreground mt-0.5">{cat.description}</div>}
+                                      </div>
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            <div className="space-y-2">
+                              <Label htmlFor={`specific-${mapping.source}-${mapping.source_type}`} className="text-sm font-medium text-foreground">Specific Source</Label>
+                              <Input
+                                id={`specific-${mapping.source}-${mapping.source_type}`}
+                                value={mapping.specific_source || ''}
+                                onChange={(e) => updateMapping(mapping.source, mapping.source_type, 'specific_source', e.target.value)}
+                                placeholder="e.g., Instagram Ads, Facebook Campaign"
+                                className="w-full"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="space-y-4">
+                            <div className="space-y-2">
+                              <Label htmlFor={`desc-${mapping.source}-${mapping.source_type}`} className="text-sm font-medium text-foreground">Description</Label>
+                              <Textarea
+                                id={`desc-${mapping.source}-${mapping.source_type}`}
+                                value={mapping.description || ''}
+                                onChange={(e) => updateMapping(mapping.source, mapping.source_type, 'description', e.target.value)}
+                                placeholder="Optional notes about this traffic source"
+                                rows={4}
+                                className="w-full resize-none"
+                              />
+                            </div>
+
+                            <div className="flex items-center justify-between pt-2">
+                              <div className="flex items-center space-x-3">
+                                <Switch
+                                  id={`active-${mapping.source}-${mapping.source_type}`}
+                                  checked={mapping.is_active}
+                                  onCheckedChange={(checked) => updateMapping(mapping.source, mapping.source_type, 'is_active', checked)}
+                                />
+                                <Label htmlFor={`active-${mapping.source}-${mapping.source_type}`} className="text-sm font-medium text-foreground">
+                                  {mapping.is_active ? 'Active' : 'Inactive'}
+                                </Label>
+                              </div>
+
+                              <Button
+                                size="sm"
+                                onClick={() => saveMapping(mapping)}
+                                disabled={!mapping.has_changes || saving}
+                                className="min-w-[80px]"
+                              >
+                                {saving ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <>
+                                    <Save className="h-4 w-4 mr-2" />
+                                    Save
+                                  </>
+                                )}
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Enhanced Attribution Details for UTM */}
+                        {mapping.attribution_details && (
+                          <Card className="mt-4 bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700">
+                            <CardHeader className="pb-3">
+                              <CardTitle className="text-sm font-medium text-foreground flex items-center gap-2">
+                                <TrendingUp className="h-4 w-4" />
+                                UTM Attribution Data
+                              </CardTitle>
+                            </CardHeader>
+                            <CardContent className="pt-0">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                                {mapping.attribution_details.utm_source && (
+                                  <div>
+                                    <Label className="text-xs text-muted-foreground">UTM Source</Label>
+                                    <div className="font-medium text-foreground">{mapping.attribution_details.utm_source}</div>
+                                  </div>
+                                )}
+                                {mapping.attribution_details.utm_medium && (
+                                  <div>
+                                    <Label className="text-xs text-muted-foreground">UTM Medium</Label>
+                                    <div className="font-medium text-foreground">{mapping.attribution_details.utm_medium}</div>
+                                  </div>
+                                )}
+                                {mapping.attribution_details.campaigns && mapping.attribution_details.campaigns.length > 0 && (
+                                  <div className="md:col-span-2">
+                                    <Label className="text-xs text-muted-foreground">Sample Campaigns</Label>
+                                    <div className="font-medium text-foreground">{mapping.attribution_details.campaigns.slice(0, 3).join(', ')}</div>
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Campaign Performance Metrics */}
+                              {mapping.attribution_details?.campaign_performance && (
+                                <div className="mt-4 pt-4 border-t border-green-200 dark:border-green-700">
+                                  <Label className="text-xs text-muted-foreground">Performance Metrics</Label>
+                                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-2">
+                                    <div className="text-center">
+                                      <div className="text-lg font-semibold text-foreground">
+                                        {mapping.attribution_details.campaign_performance.total_leads}
+                                      </div>
+                                      <div className="text-xs text-muted-foreground">Total Leads</div>
+                                    </div>
+                                    <div className="text-center">
+                                      <div className="text-lg font-semibold text-foreground">
+                                        {mapping.attribution_details.campaign_performance.high_value_leads}
+                                      </div>
+                                      <div className="text-xs text-muted-foreground">High Value</div>
+                                    </div>
+                                    <div className="text-center">
+                                      <div className="text-lg font-semibold text-foreground">
+                                        {mapping.attribution_details.campaign_performance.conversion_rate}
+                                      </div>
+                                      <div className="text-xs text-muted-foreground">Conversion</div>
+                                    </div>
+                                    <div className="text-center">
+                                      <div className="text-lg font-semibold text-foreground">
+                                        {mapping.attribution_details.campaign_performance.attribution_confidence}
+                                      </div>
+                                      <div className="text-xs text-muted-foreground">Confidence</div>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                            </CardContent>
+                          </Card>
+                        )}
+
+                        {/* Customer Journey for UTM */}
+                        {mapping.funnel_journey && mapping.funnel_journey.length > 0 && (
+                          <Card className="mt-4 bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700">
+                            <CardHeader className="pb-3">
+                              <CardTitle className="text-sm font-medium text-foreground flex items-center gap-2">
+                                <Users className="h-4 w-4" />
+                                Customer Journey
+                              </CardTitle>
+                            </CardHeader>
+                            <CardContent className="pt-0">
+                              <div className="flex items-center space-x-2 overflow-x-auto pb-2">
+                                {mapping.funnel_journey.map((step, index) => (
+                                  <div key={index} className="flex items-center space-x-2 flex-shrink-0">
+                                    <Badge variant="outline" className="whitespace-nowrap text-foreground">
+                                      {step.step}
+                                    </Badge>
+                                    {index < mapping.funnel_journey!.length - 1 && (
+                                      <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        )}
+                      </Card>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Legacy Sources (Cleanup Needed) */}
+            {mappings.filter(m => !m.is_recommended).length > 0 && (
+              <Card className="shadow-sm border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950/20">
+                <CardHeader className="pb-6">
+                  <CardTitle className="text-xl text-foreground flex items-center gap-2">
+                    🧹 Legacy Sources (Cleanup Recommended)
+                  </CardTitle>
+                  <CardDescription className="text-base">
+                    Form-based sources provide limited attribution value. Consider using UTM parameters instead.
+                  </CardDescription>
+                </CardHeader>
               <CardContent className="pt-0">
                 <div className="space-y-6">
                   {mappings.map((mapping) => (
