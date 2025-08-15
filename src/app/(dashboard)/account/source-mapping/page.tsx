@@ -203,13 +203,13 @@ export default function SourceMappingPage() {
               { step: 'Demo Meeting', source: 'Sales Call' }
             ];
           } else if (utmSource === 'fb' && utmMedium === 'ppc') {
-            mapping.funnel_journey = [
+          mapping.funnel_journey = [
               { step: 'Facebook Ad', source: 'Facebook' },
-              { step: 'Landing Page', source: 'Funnel' },
+            { step: 'Landing Page', source: 'Funnel' },
               { step: 'Form Submit', source: 'Lead Capture' },
-              { step: 'Demo Meeting', source: 'Sales Call' }
-            ];
-          }
+            { step: 'Demo Meeting', source: 'Sales Call' }
+          ];
+        }
         }
 
         allMappings.push(mapping);
@@ -612,14 +612,14 @@ export default function SourceMappingPage() {
             {/* Legacy Sources (Cleanup Needed) */}
             {mappings.filter(m => !m.is_recommended).length > 0 && (
               <Card className="shadow-sm border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950/20">
-                <CardHeader className="pb-6">
+              <CardHeader className="pb-6">
                   <CardTitle className="text-xl text-foreground flex items-center gap-2">
                     🧹 Legacy Sources (Cleanup Recommended)
                   </CardTitle>
-                  <CardDescription className="text-base">
+                <CardDescription className="text-base">
                     Form-based sources provide limited attribution value. Consider using UTM parameters instead.
-                  </CardDescription>
-                </CardHeader>
+                </CardDescription>
+              </CardHeader>
               <CardContent className="pt-0">
                 <div className="space-y-6">
                   {mappings.map((mapping) => (
