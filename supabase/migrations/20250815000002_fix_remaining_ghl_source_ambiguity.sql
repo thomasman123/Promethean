@@ -1,79 +1,6 @@
--- Fix ambiguous column reference in get_unmapped_sources function
--- The issue is in lines 43 and 252-253 where ghl_source is referenced without table prefix
+-- Fix remaining ambiguous column references in get_source_attribution_insights function
+-- Lines 178 and 180 still have ambiguous ghl_source and contact_source references
 
-CREATE OR REPLACE FUNCTION get_unmapped_sources(p_account_id UUID)
-RETURNS TABLE(
-  ghl_source VARCHAR(100),
-  usage_count BIGINT,
-  sample_attribution JSONB,
-  utm_campaigns TEXT[],
-  session_sources TEXT[],
-  high_value_leads_count BIGINT,
-  latest_occurrence TIMESTAMPTZ
-) AS $$
-BEGIN
-  RETURN QUERY
-  WITH unmapped_sources AS (
-    SELECT DISTINCT a.ghl_source
-    FROM (
-      SELECT DISTINCT appointments.ghl_source FROM appointments 
-      WHERE appointments.account_id = p_account_id AND appointments.ghl_source IS NOT NULL
-      UNION
-      SELECT DISTINCT discoveries.ghl_source FROM discoveries 
-      WHERE discoveries.account_id = p_account_id AND discoveries.ghl_source IS NOT NULL
-    ) a
-    LEFT JOIN ghl_source_mappings m 
-      ON m.account_id = p_account_id AND m.ghl_source = a.ghl_source
-    WHERE m.id IS NULL
-  ),
-  source_stats AS (
-    SELECT 
-      us.ghl_source,
-      COUNT(*) as total_count,
-      -- Sample attribution data (latest occurrence)
-      (
-        SELECT attribution_data 
-        FROM appointments 
-        WHERE account_id = p_account_id 
-          AND appointments.ghl_source = us.ghl_source 
-          AND attribution_data IS NOT NULL
-        ORDER BY created_at DESC 
-        LIMIT 1
-      ) as sample_attribution_data,
-      -- Aggregate UTM campaigns
-      array_agg(DISTINCT combined.utm_campaign) FILTER (WHERE combined.utm_campaign IS NOT NULL) as campaigns,
-      -- Aggregate session sources  
-      array_agg(DISTINCT combined.session_source) FILTER (WHERE combined.session_source IS NOT NULL) as sources,
-      -- Count high value leads
-      COUNT(*) FILTER (WHERE combined.lead_value = '$100K+') as high_value_count,
-      -- Latest occurrence
-      MAX(combined.created_at) as latest_at
-    FROM unmapped_sources us
-    LEFT JOIN (
-      SELECT ghl_source, utm_campaign, session_source, lead_value, created_at, attribution_data
-      FROM appointments 
-      WHERE account_id = p_account_id
-      UNION ALL
-      SELECT ghl_source, utm_campaign, session_source, lead_value, created_at, attribution_data
-      FROM discoveries 
-      WHERE account_id = p_account_id
-    ) combined ON combined.ghl_source = us.ghl_source
-    GROUP BY us.ghl_source
-  )
-  SELECT 
-    ss.ghl_source::VARCHAR(100),
-    ss.total_count::BIGINT,
-    ss.sample_attribution_data,
-    ss.campaigns,
-    ss.sources,
-    ss.high_value_count::BIGINT,
-    ss.latest_at
-  FROM source_stats ss
-  ORDER BY ss.total_count DESC, ss.latest_at DESC;
-END;
-$$ LANGUAGE plpgsql;
-
--- Also fix the get_source_attribution_insights function where ghl_source is ambiguous
 CREATE OR REPLACE FUNCTION get_source_attribution_insights(
   p_account_id uuid,
   p_source text,
@@ -159,7 +86,7 @@ BEGIN
       jsonb_build_object('step', 'Landing', 'value', 'Funnel Page'),
       jsonb_build_object('step', 'Conversion', 'value', 'Appointment')
     ),
-    -- Sample attribution (fix the ambiguous reference by using the dynamic field)
+    -- Sample attribution (fix the ambiguous reference by using table prefixes)
     (
       CASE p_source_type 
         WHEN 'contact' THEN (
