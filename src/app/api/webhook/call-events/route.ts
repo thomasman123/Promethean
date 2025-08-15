@@ -996,6 +996,41 @@ async function processAppointmentWebhook(payload: any) {
         }
       }
 
+      // Enhanced attribution processing
+      const attributionSource = contactData?.attributionSource;
+      const lastAttributionSource = contactData?.lastAttributionSource;
+      
+      // Extract custom fields for business intelligence
+      const customFields = contactData?.customField || [];
+      const leadValue = customFields.find((cf: any) => cf.id === '13n0JVzjarD1UTyiDfNN')?.value || null;
+      const leadPath = customFields.find((cf: any) => cf.id === 'vHICYHikZaD4Qjkt7F8K')?.value || null;
+      const businessType = customFields.find((cf: any) => cf.id === 'Y1Kj2lNM1o8Hcs7fI7tq')?.value || null;
+
+      // Classify enhanced attribution
+      let enhancedClassification = null;
+      if (attributionSource) {
+        try {
+          const { data: enhancedResult, error: enhancedError } = await supabase
+            .rpc('classify_enhanced_attribution', {
+              p_utm_source: attributionSource.utmSource || null,
+              p_utm_medium: attributionSource.utmMedium || null,
+              p_utm_campaign: attributionSource.campaign || null,
+              p_session_source: attributionSource.sessionSource || null,
+              p_fbclid: attributionSource.fbclid || null,
+              p_landing_url: attributionSource.url || null
+            });
+
+          if (enhancedError) {
+            console.error('Error classifying enhanced attribution:', enhancedError);
+          } else {
+            enhancedClassification = enhancedResult;
+            console.log('✅ Enhanced attribution classified:', enhancedClassification);
+          }
+        } catch (error) {
+          console.error('Error calling enhanced attribution classification:', error);
+        }
+      }
+
       const appointmentData = {
         ...baseData,
         date_booked: webhookTimestamp, // When appointment was booked (webhook received)
@@ -1010,7 +1045,8 @@ async function processAppointmentWebhook(payload: any) {
         sales_rep_ghl_id: salesRepData?.id || null,
         ghl_appointment_id: payload.appointment?.id || null,
         ghl_source: fullAppointmentData?.createdBy?.source || fullAppointmentData?.source || 'unknown', // Add GHL source from createdBy.source
-        // Contact attribution fields
+        
+        // Legacy contact attribution fields (keep for compatibility)
         contact_source: contactData?.source || null,
         contact_utm_source: contactAttribution.utmSource || null,
         contact_utm_medium: contactAttribution.utmMedium || null,
@@ -1020,7 +1056,30 @@ async function processAppointmentWebhook(payload: any) {
         contact_gclid: contactAttribution.gclid || null,
         contact_fbclid: contactAttribution.fbclid || null,
         contact_campaign_id: contactAttribution.campaignId || null,
-        last_attribution_source: classifiedAttribution ? JSON.stringify(classifiedAttribution) : null
+        last_attribution_source: classifiedAttribution ? JSON.stringify(classifiedAttribution) : null,
+        
+        // Enhanced attribution fields
+        utm_source: attributionSource?.utmSource || null,
+        utm_medium: attributionSource?.utmMedium || null,
+        utm_campaign: attributionSource?.campaign || null,
+        utm_content: attributionSource?.utmContent || null,
+        utm_term: attributionSource?.utmTerm || null,
+        utm_id: attributionSource?.utm_id || null,
+        fbclid: attributionSource?.fbclid || null,
+        fbc: attributionSource?.fbc || null,
+        fbp: attributionSource?.fbp || null,
+        landing_url: attributionSource?.url || null,
+        session_source: attributionSource?.sessionSource || null,
+        medium_id: attributionSource?.mediumId || null,
+        user_agent: attributionSource?.userAgent || null,
+        ip_address: attributionSource?.ip || null,
+        attribution_data: attributionSource ? JSON.stringify(attributionSource) : null,
+        last_attribution_data: lastAttributionSource ? JSON.stringify(lastAttributionSource) : null,
+        
+        // Business intelligence fields
+        lead_value: leadValue,
+        lead_path: leadPath,
+        business_type: businessType
       };
       
       // Check for existing appointment to prevent duplicates

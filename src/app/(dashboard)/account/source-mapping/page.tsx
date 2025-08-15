@@ -29,6 +29,7 @@ import {
 } from '@/components/ui/breadcrumb';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { useAuth } from '@/hooks/useAuth';
+import { ArrowRight, ExternalLink, TrendingUp, Users } from 'lucide-react';
 
 interface SourceMapping {
   id?: string;
@@ -40,6 +41,29 @@ interface SourceMapping {
   is_active: boolean;
   is_new?: boolean;
   has_changes?: boolean;
+  // Enhanced attribution fields
+  attribution_details?: {
+    utm_source?: string;
+    utm_medium?: string;
+    utm_campaign?: string;
+    utm_content?: string;
+    utm_term?: string;
+    utm_id?: string;
+    fbclid?: string;
+    landing_url?: string;
+    session_source?: string;
+    campaign_performance?: {
+      total_leads: number;
+      high_value_leads: number;
+      conversion_rate: string;
+      attribution_confidence: string;
+    };
+  };
+  funnel_journey?: Array<{
+    step: string;
+    source: string;
+    timestamp?: string;
+  }>;
 }
 
 interface SourceCategory {
@@ -123,9 +147,10 @@ export default function SourceMappingPage() {
         });
       });
 
-      // Add unmapped GHL sources
+      // Add unmapped GHL sources with enhanced attribution
       unmappedGhl?.forEach((item: any) => {
-        allMappings.push({
+        const attribution = item.sample_attribution;
+        const mapping: SourceMapping = {
           source: item.ghl_source,
           source_type: 'ghl',
           source_category: 'unknown',
@@ -134,7 +159,42 @@ export default function SourceMappingPage() {
           is_active: true,
           is_new: true,
           has_changes: true
-        });
+        };
+
+        // Add enhanced attribution details if available
+        if (attribution || item.utm_campaigns?.length || item.high_value_leads_count) {
+          mapping.attribution_details = {
+            utm_source: attribution?.utmSource,
+            utm_medium: attribution?.utmMedium,
+            utm_campaign: attribution?.campaign,
+            utm_content: attribution?.utmContent,
+            utm_term: attribution?.utmTerm,
+            utm_id: attribution?.utm_id,
+            fbclid: attribution?.fbclid,
+            landing_url: attribution?.url,
+            session_source: attribution?.sessionSource,
+            campaign_performance: {
+              total_leads: item.usage_count || 0,
+              high_value_leads: item.high_value_leads_count || 0,
+              conversion_rate: item.high_value_leads_count && item.usage_count 
+                ? `${Math.round((item.high_value_leads_count / item.usage_count) * 100)}%`
+                : '0%',
+              attribution_confidence: attribution?.confidence || 'unknown'
+            }
+          };
+        }
+
+        // Add funnel journey if we have attribution data
+        if (attribution) {
+          mapping.funnel_journey = [
+            { step: 'Instagram Ad', source: attribution.utmSource || 'ig' },
+            { step: 'Landing Page', source: 'Funnel' },
+            { step: 'Calendar Booking', source: attribution.medium || 'calendar' },
+            { step: 'Demo Meeting', source: 'Sales Call' }
+          ];
+        }
+
+        allMappings.push(mapping);
       });
 
       // Get contact sources (both mapped and unmapped)
@@ -163,9 +223,10 @@ export default function SourceMappingPage() {
         });
       });
 
-      // Add unmapped contact sources
+      // Add unmapped contact sources with enhanced attribution
       unmappedContact?.forEach((item: any) => {
-        allMappings.push({
+        const attribution = item.sample_attribution;
+        const mapping: SourceMapping = {
           source: item.contact_source,
           source_type: 'contact',
           source_category: 'unknown',
@@ -174,7 +235,41 @@ export default function SourceMappingPage() {
           is_active: true,
           is_new: true,
           has_changes: true
-        });
+        };
+
+        // Add enhanced attribution details if available
+        if (attribution || item.utm_campaigns?.length || item.high_value_leads_count) {
+          mapping.attribution_details = {
+            utm_source: attribution?.utmSource,
+            utm_medium: attribution?.utmMedium,
+            utm_campaign: attribution?.campaign,
+            utm_content: attribution?.utmContent,
+            utm_term: attribution?.utmTerm,
+            utm_id: attribution?.utm_id,
+            fbclid: attribution?.fbclid,
+            landing_url: attribution?.url,
+            session_source: attribution?.sessionSource,
+            campaign_performance: {
+              total_leads: item.usage_count || 0,
+              high_value_leads: item.high_value_leads_count || 0,
+              conversion_rate: item.high_value_leads_count && item.usage_count 
+                ? `${Math.round((item.high_value_leads_count / item.usage_count) * 100)}%`
+                : '0%',
+              attribution_confidence: attribution?.confidence || 'unknown'
+            }
+          };
+        }
+
+        // Add funnel journey for contact sources
+        if (attribution && attribution.sessionSource === 'Social media') {
+          mapping.funnel_journey = [
+            { step: 'Social Media', source: attribution.utmSource || 'Social' },
+            { step: 'Landing Page', source: 'Contact Form' },
+            { step: 'Demo Meeting', source: item.contact_source }
+          ];
+        }
+
+        allMappings.push(mapping);
       });
 
       // Sort: new/unmapped first, then by source name
@@ -316,77 +411,77 @@ export default function SourceMappingPage() {
         </div>
       </header>
 
-      <div className="container mx-auto p-6 max-w-5xl">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold">Source Mapping</h1>
-          <p className="text-muted-foreground mt-2">
+      <div className="container mx-auto p-8 max-w-6xl">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-foreground">Source Mapping</h1>
+          <p className="text-muted-foreground mt-3 text-lg">
             Map detected sources to business categories for better tracking
           </p>
         </div>
 
         {dataLoading ? (
-          <div className="flex items-center justify-center min-h-[300px]">
+          <div className="flex items-center justify-center min-h-[400px]">
             <div className="text-center">
-              <Loader2 className="h-8 w-8 animate-spin mx-auto" />
-              <p className="text-muted-foreground mt-2">Loading sources...</p>
+              <Loader2 className="h-8 w-8 animate-spin mx-auto text-muted-foreground" />
+              <p className="text-muted-foreground mt-3">Loading sources...</p>
             </div>
           </div>
         ) : (
-          <div className="space-y-6">
+          <div className="space-y-8">
             {/* New Sources Alert */}
             {newMappings.length > 0 && (
-              <Alert>
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
+              <Alert className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/50">
+                <AlertCircle className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                <AlertDescription className="text-blue-800 dark:text-blue-200">
                   <strong>{newMappings.length} new source{newMappings.length > 1 ? 's' : ''} detected:</strong> Map them to categories below
                 </AlertDescription>
               </Alert>
             )}
 
             {/* All Sources */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Sources</CardTitle>
-                <CardDescription>
+            <Card className="shadow-sm">
+              <CardHeader className="pb-6">
+                <CardTitle className="text-xl text-foreground">Sources</CardTitle>
+                <CardDescription className="text-base">
                   All detected sources from your data - map them to business categories
                 </CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
+              <CardContent className="pt-0">
+                <div className="space-y-6">
                   {mappings.map((mapping) => (
                     <Card 
                       key={`${mapping.source}-${mapping.source_type}`}
-                      className={`p-4 ${mapping.is_new ? 'border-blue-500 bg-blue-50/50' : ''} ${mapping.has_changes ? 'border-orange-500' : ''}`}
+                      className={`p-6 ${mapping.is_new ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/20 dark:border-blue-400' : ''} ${mapping.has_changes ? 'border-orange-500 dark:border-orange-400' : ''}`}
                     >
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         <div className="space-y-4">
-                          <div className="flex items-center gap-2">
-                            <Label className="font-medium">Source:</Label>
-                            <code className="bg-gray-100 px-2 py-1 rounded text-sm font-mono">
+                          <div className="flex items-center gap-3 flex-wrap">
+                            <Label className="font-medium text-foreground">Source:</Label>
+                            <code className="bg-muted px-3 py-1.5 rounded-md text-sm font-mono text-foreground border">
                               {mapping.source}
                             </code>
-                            <Badge variant="outline" className={mapping.source_type === 'ghl' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-orange-50 text-orange-700 border-orange-200'}>
+                            <Badge variant="outline" className={mapping.source_type === 'ghl' ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800' : 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950/50 dark:text-orange-300 dark:border-orange-800'}>
                               {mapping.source_type === 'ghl' ? 'GHL' : 'Contact'}
                             </Badge>
-                            {mapping.is_new && <Badge variant="secondary">New</Badge>}
-                            {mapping.has_changes && !mapping.is_new && <Badge variant="outline">Modified</Badge>}
+                            {mapping.is_new && <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300">New</Badge>}
+                            {mapping.has_changes && !mapping.is_new && <Badge variant="outline" className="border-orange-300 text-orange-700 dark:border-orange-700 dark:text-orange-300">Modified</Badge>}
                           </div>
 
-                          <div>
-                            <Label htmlFor={`category-${mapping.source}-${mapping.source_type}`}>Business Category</Label>
+                          <div className="space-y-2">
+                            <Label htmlFor={`category-${mapping.source}-${mapping.source_type}`} className="text-sm font-medium text-foreground">Business Category</Label>
                             <Select 
                               value={mapping.source_category}
                               onValueChange={(value) => updateMapping(mapping.source, mapping.source_type, 'source_category', value)}
                             >
-                              <SelectTrigger id={`category-${mapping.source}-${mapping.source_type}`}>
+                              <SelectTrigger id={`category-${mapping.source}-${mapping.source_type}`} className="w-full">
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
                                 {categories.map((cat) => (
                                   <SelectItem key={cat.name} value={cat.name}>
-                                    <div>
-                                      <div className="font-medium">{cat.display_name}</div>
-                                      <div className="text-xs text-muted-foreground">{cat.description}</div>
+                                    <div className="py-1">
+                                      <div className="font-medium text-foreground">{cat.display_name}</div>
+                                      {cat.description && <div className="text-xs text-muted-foreground mt-0.5">{cat.description}</div>}
                                     </div>
                                   </SelectItem>
                                 ))}
@@ -394,37 +489,39 @@ export default function SourceMappingPage() {
                             </Select>
                           </div>
 
-                          <div>
-                            <Label htmlFor={`specific-${mapping.source}-${mapping.source_type}`}>Specific Source</Label>
+                          <div className="space-y-2">
+                            <Label htmlFor={`specific-${mapping.source}-${mapping.source_type}`} className="text-sm font-medium text-foreground">Specific Source</Label>
                             <Input
                               id={`specific-${mapping.source}-${mapping.source_type}`}
                               value={mapping.specific_source || ''}
                               onChange={(e) => updateMapping(mapping.source, mapping.source_type, 'specific_source', e.target.value)}
                               placeholder="e.g., VSL Landing Page, Facebook Campaign XYZ"
+                              className="w-full"
                             />
                           </div>
                         </div>
 
                         <div className="space-y-4">
-                          <div>
-                            <Label htmlFor={`desc-${mapping.source}-${mapping.source_type}`}>Description</Label>
+                          <div className="space-y-2">
+                            <Label htmlFor={`desc-${mapping.source}-${mapping.source_type}`} className="text-sm font-medium text-foreground">Description</Label>
                             <Textarea
                               id={`desc-${mapping.source}-${mapping.source_type}`}
                               value={mapping.description || ''}
                               onChange={(e) => updateMapping(mapping.source, mapping.source_type, 'description', e.target.value)}
                               placeholder="Optional notes about this source"
-                              rows={3}
+                              rows={4}
+                              className="w-full resize-none"
                             />
                           </div>
 
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-2">
+                          <div className="flex items-center justify-between pt-2">
+                            <div className="flex items-center space-x-3">
                               <Switch
                                 id={`active-${mapping.source}-${mapping.source_type}`}
                                 checked={mapping.is_active}
                                 onCheckedChange={(checked) => updateMapping(mapping.source, mapping.source_type, 'is_active', checked)}
                               />
-                              <Label htmlFor={`active-${mapping.source}-${mapping.source_type}`}>
+                              <Label htmlFor={`active-${mapping.source}-${mapping.source_type}`} className="text-sm font-medium text-foreground">
                                 {mapping.is_active ? 'Active' : 'Inactive'}
                               </Label>
                             </div>
@@ -433,12 +530,13 @@ export default function SourceMappingPage() {
                               size="sm"
                               onClick={() => saveMapping(mapping)}
                               disabled={!mapping.has_changes || saving}
+                              className="min-w-[80px]"
                             >
                               {saving ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
                               ) : (
                                 <>
-                                  <Save className="h-4 w-4 mr-1" />
+                                  <Save className="h-4 w-4 mr-2" />
                                   Save
                                 </>
                               )}
@@ -446,13 +544,141 @@ export default function SourceMappingPage() {
                           </div>
                         </div>
                       </div>
+
+                      {/* Enhanced Attribution Details */}
+                      {(mapping.attribution_details?.utm_campaign || mapping.attribution_details?.fbclid || mapping.attribution_details?.landing_url) && (
+                        <Card className="mt-4 bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700">
+                          <CardHeader className="pb-3">
+                            <CardTitle className="text-sm font-medium text-foreground flex items-center gap-2">
+                              <TrendingUp className="h-4 w-4" />
+                              Attribution Details
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent className="pt-0">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                              {mapping.attribution_details?.utm_campaign && (
+                                <div>
+                                  <Label className="text-xs text-muted-foreground">Campaign</Label>
+                                  <div className="font-medium text-foreground">{mapping.attribution_details.utm_campaign}</div>
+                                </div>
+                              )}
+                              {mapping.attribution_details?.utm_source && (
+                                <div>
+                                  <Label className="text-xs text-muted-foreground">UTM Source</Label>
+                                  <div className="font-medium text-foreground">{mapping.attribution_details.utm_source}</div>
+                                </div>
+                              )}
+                              {mapping.attribution_details?.utm_medium && (
+                                <div>
+                                  <Label className="text-xs text-muted-foreground">UTM Medium</Label>
+                                  <div className="font-medium text-foreground">{mapping.attribution_details.utm_medium}</div>
+                                </div>
+                              )}
+                              {mapping.attribution_details?.session_source && (
+                                <div>
+                                  <Label className="text-xs text-muted-foreground">Session Source</Label>
+                                  <div className="font-medium text-foreground">{mapping.attribution_details.session_source}</div>
+                                </div>
+                              )}
+                              {mapping.attribution_details?.fbclid && (
+                                <div className="md:col-span-2">
+                                  <Label className="text-xs text-muted-foreground">Facebook Click ID</Label>
+                                  <div className="font-mono text-xs bg-muted px-2 py-1 rounded border text-foreground break-all">
+                                    {mapping.attribution_details.fbclid.substring(0, 50)}...
+                                  </div>
+                                </div>
+                              )}
+                              {mapping.attribution_details?.landing_url && (
+                                <div className="md:col-span-2">
+                                  <Label className="text-xs text-muted-foreground">Landing URL</Label>
+                                  <div className="flex items-center gap-2">
+                                    <div className="font-mono text-xs bg-muted px-2 py-1 rounded border text-foreground flex-1 truncate">
+                                      {mapping.attribution_details.landing_url}
+                                    </div>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-6 w-6 p-0"
+                                      onClick={() => window.open(mapping.attribution_details?.landing_url, '_blank')}
+                                    >
+                                      <ExternalLink className="h-3 w-3" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Campaign Performance Metrics */}
+                            {mapping.attribution_details?.campaign_performance && (
+                              <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+                                <Label className="text-xs text-muted-foreground">Campaign Performance</Label>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-2">
+                                  <div className="text-center">
+                                    <div className="text-lg font-semibold text-foreground">
+                                      {mapping.attribution_details.campaign_performance.total_leads}
+                                    </div>
+                                    <div className="text-xs text-muted-foreground">Total Leads</div>
+                                  </div>
+                                  <div className="text-center">
+                                    <div className="text-lg font-semibold text-foreground">
+                                      {mapping.attribution_details.campaign_performance.high_value_leads}
+                                    </div>
+                                    <div className="text-xs text-muted-foreground">High Value</div>
+                                  </div>
+                                  <div className="text-center">
+                                    <div className="text-lg font-semibold text-foreground">
+                                      {mapping.attribution_details.campaign_performance.conversion_rate}
+                                    </div>
+                                    <div className="text-xs text-muted-foreground">Conversion</div>
+                                  </div>
+                                  <div className="text-center">
+                                    <div className="text-lg font-semibold text-foreground">
+                                      {mapping.attribution_details.campaign_performance.attribution_confidence}
+                                    </div>
+                                    <div className="text-xs text-muted-foreground">Confidence</div>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
+                      )}
+
+                      {/* Customer Journey Visualization */}
+                      {mapping.funnel_journey && mapping.funnel_journey.length > 0 && (
+                        <Card className="mt-4 bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700">
+                          <CardHeader className="pb-3">
+                            <CardTitle className="text-sm font-medium text-foreground flex items-center gap-2">
+                              <Users className="h-4 w-4" />
+                              Customer Journey
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent className="pt-0">
+                            <div className="flex items-center space-x-2 overflow-x-auto pb-2">
+                              {mapping.funnel_journey.map((step, index) => (
+                                <div key={index} className="flex items-center space-x-2 flex-shrink-0">
+                                  <Badge variant="outline" className="whitespace-nowrap text-foreground">
+                                    {step.step}
+                                  </Badge>
+                                  {index < mapping.funnel_journey!.length - 1 && (
+                                    <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      )}
                     </Card>
                   ))}
                 </div>
 
                 {mappings.length === 0 && (
-                  <div className="text-center py-8 text-muted-foreground">
-                    No sources detected yet. Sources will appear here as your system receives appointments and discoveries.
+                  <div className="text-center py-12 text-muted-foreground">
+                    <div className="max-w-md mx-auto">
+                      <p className="text-lg">No sources detected yet.</p>
+                      <p className="mt-2">Sources will appear here as your system receives appointments and discoveries.</p>
+                    </div>
                   </div>
                 )}
               </CardContent>
