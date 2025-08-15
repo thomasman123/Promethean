@@ -34,13 +34,17 @@ import { ArrowRight, ExternalLink, TrendingUp, Users } from 'lucide-react';
 interface SourceMapping {
   id?: string;
   source: string;
-  source_type: 'ghl' | 'contact';
+  source_type: 'ghl' | 'contact' | 'utm';
   source_category: string;
   specific_source?: string | null;
   description?: string | null;
   is_active: boolean;
   is_new?: boolean;
   has_changes?: boolean;
+  is_recommended?: boolean;
+  source_identifier?: string;
+  utm_source?: string;
+  utm_medium?: string;
   // Enhanced attribution fields
   attribution_details?: {
     utm_source?: string;
@@ -52,6 +56,7 @@ interface SourceMapping {
     fbclid?: string;
     landing_url?: string;
     session_source?: string;
+    campaigns?: string[];
     campaign_performance?: {
       total_leads: number;
       high_value_leads: number;
@@ -118,155 +123,93 @@ export default function SourceMappingPage() {
       if (catError) throw catError;
       setCategories(categoriesData || []);
 
-      // Fetch all sources that need mapping (both mapped and unmapped)
+      // Fetch all sources that need mapping using the new UTM-based system
       const allMappings: SourceMapping[] = [];
 
-      // Get GHL sources (both mapped and unmapped)
-      const { data: ghlMappings, error: ghlError } = await supabase
-        .from('ghl_source_mappings')
+      // Get existing UTM mappings
+      const { data: utmMappings, error: utmError } = await supabase
+        .from('utm_attribution_mappings')
         .select('*')
-        .eq('account_id', selectedAccountId);
+        .eq('account_id', selectedAccountId)
+        .eq('is_active', true);
 
-      if (ghlError) throw ghlError;
+      if (utmError) throw utmError;
 
-      const { data: unmappedGhl, error: unmappedGhlError } = await supabase
-        .rpc('get_unmapped_sources', { p_account_id: selectedAccountId });
+      // Get all unmapped sources (UTM + legacy)
+      const { data: unmappedSources, error: unmappedError } = await supabase
+        .rpc('get_all_unmapped_sources', { p_account_id: selectedAccountId });
 
-      if (unmappedGhlError) throw unmappedGhlError;
+      if (unmappedError) throw unmappedError;
 
-      // Add existing GHL mappings
-      ghlMappings?.forEach(mapping => {
+      // Add existing UTM mappings
+      utmMappings?.forEach(mapping => {
         allMappings.push({
           id: mapping.id,
-          source: mapping.ghl_source,
-          source_type: 'ghl',
+          source: `${mapping.utm_source || 'null'} (${mapping.utm_medium || 'null'})`,
+          source_type: 'utm',
           source_category: mapping.source_category,
           specific_source: mapping.specific_source,
           description: mapping.description,
-          is_active: mapping.is_active
+          is_active: mapping.is_active,
+          utm_source: mapping.utm_source,
+          utm_medium: mapping.utm_medium
         });
       });
 
-      // Add unmapped GHL sources with enhanced attribution
-      unmappedGhl?.forEach((item: any) => {
+      // Add all unmapped sources (UTM-based and legacy)
+      unmappedSources?.forEach((item: any) => {
         const attribution = item.sample_attribution;
         const mapping: SourceMapping = {
-          source: item.ghl_source,
-          source_type: 'ghl',
+          source: item.source_display,
+          source_type: item.source_type as 'utm' | 'contact' | 'ghl',
           source_category: 'unknown',
           specific_source: '',
           description: '',
           is_active: true,
           is_new: true,
-          has_changes: true
+          has_changes: true,
+          is_recommended: item.is_recommended,
+          source_identifier: item.source_identifier
         };
 
-        // Add enhanced attribution details if available
-        if (attribution || item.utm_campaigns?.length || item.high_value_leads_count) {
+        // Add enhanced attribution details
+        if (attribution || item.campaigns?.length || item.high_value_leads_count) {
           mapping.attribution_details = {
-            utm_source: attribution?.utmSource,
-            utm_medium: attribution?.utmMedium,
-            utm_campaign: attribution?.campaign,
-            utm_content: attribution?.utmContent,
-            utm_term: attribution?.utmTerm,
-            utm_id: attribution?.utm_id,
-            fbclid: attribution?.fbclid,
-            landing_url: attribution?.url,
-            session_source: attribution?.sessionSource,
+            utm_source: attribution?.utm_source,
+            utm_medium: attribution?.utm_medium,
+            utm_campaign: attribution?.campaigns?.[0],
+            campaigns: item.campaigns,
             campaign_performance: {
               total_leads: item.usage_count || 0,
               high_value_leads: item.high_value_leads_count || 0,
               conversion_rate: item.high_value_leads_count && item.usage_count 
                 ? `${Math.round((item.high_value_leads_count / item.usage_count) * 100)}%`
                 : '0%',
-              attribution_confidence: attribution?.confidence || 'unknown'
+              attribution_confidence: item.is_recommended ? 'high' : 'low'
             }
           };
         }
 
-        // Add funnel journey if we have attribution data
-        if (attribution) {
-          mapping.funnel_journey = [
-            { step: 'Instagram Ad', source: attribution.utmSource || 'ig' },
-            { step: 'Landing Page', source: 'Funnel' },
-            { step: 'Calendar Booking', source: attribution.medium || 'calendar' },
-            { step: 'Demo Meeting', source: 'Sales Call' }
-          ];
-        }
-
-        allMappings.push(mapping);
-      });
-
-      // Get contact sources (both mapped and unmapped)
-      const { data: contactMappings, error: contactError } = await supabase
-        .from('contact_source_mappings')
-        .select('*')
-        .eq('account_id', selectedAccountId);
-
-      if (contactError) throw contactError;
-
-      const { data: unmappedContact, error: unmappedContactError } = await supabase
-        .rpc('get_unmapped_contact_sources', { p_account_id: selectedAccountId });
-
-      if (unmappedContactError) throw unmappedContactError;
-
-      // Add existing contact mappings
-      contactMappings?.forEach(mapping => {
-        allMappings.push({
-          id: mapping.id,
-          source: mapping.contact_source,
-          source_type: 'contact',
-          source_category: mapping.source_category,
-          specific_source: mapping.specific_source,
-          description: mapping.description,
-          is_active: mapping.is_active
-        });
-      });
-
-      // Add unmapped contact sources with enhanced attribution
-      unmappedContact?.forEach((item: any) => {
-        const attribution = item.sample_attribution;
-        const mapping: SourceMapping = {
-          source: item.contact_source,
-          source_type: 'contact',
-          source_category: 'unknown',
-          specific_source: '',
-          description: '',
-          is_active: true,
-          is_new: true,
-          has_changes: true
-        };
-
-        // Add enhanced attribution details if available
-        if (attribution || item.utm_campaigns?.length || item.high_value_leads_count) {
-          mapping.attribution_details = {
-            utm_source: attribution?.utmSource,
-            utm_medium: attribution?.utmMedium,
-            utm_campaign: attribution?.campaign,
-            utm_content: attribution?.utmContent,
-            utm_term: attribution?.utmTerm,
-            utm_id: attribution?.utm_id,
-            fbclid: attribution?.fbclid,
-            landing_url: attribution?.url,
-            session_source: attribution?.sessionSource,
-            campaign_performance: {
-              total_leads: item.usage_count || 0,
-              high_value_leads: item.high_value_leads_count || 0,
-              conversion_rate: item.high_value_leads_count && item.usage_count 
-                ? `${Math.round((item.high_value_leads_count / item.usage_count) * 100)}%`
-                : '0%',
-              attribution_confidence: attribution?.confidence || 'unknown'
-            }
-          };
-        }
-
-        // Add funnel journey for contact sources
-        if (attribution && attribution.sessionSource === 'Social media') {
-          mapping.funnel_journey = [
-            { step: 'Social Media', source: attribution.utmSource || 'Social' },
-            { step: 'Landing Page', source: 'Contact Form' },
-            { step: 'Demo Meeting', source: item.contact_source }
-          ];
+        // Add funnel journey for UTM sources
+        if (item.source_type === 'utm' && attribution?.utm_source) {
+          const utmSource = attribution.utm_source;
+          const utmMedium = attribution.utm_medium;
+          
+          if (utmSource === 'ig' && utmMedium === 'ppc') {
+            mapping.funnel_journey = [
+              { step: 'Instagram Ad', source: 'Instagram' },
+              { step: 'Landing Page', source: 'Funnel' },
+              { step: 'Form Submit', source: 'Lead Capture' },
+              { step: 'Demo Meeting', source: 'Sales Call' }
+            ];
+          } else if (utmSource === 'fb' && utmMedium === 'ppc') {
+            mapping.funnel_journey = [
+              { step: 'Facebook Ad', source: 'Facebook' },
+              { step: 'Landing Page', source: 'Funnel' },
+              { step: 'Form Submit', source: 'Lead Capture' },
+              { step: 'Demo Meeting', source: 'Sales Call' }
+            ];
+          }
         }
 
         allMappings.push(mapping);
@@ -303,12 +246,27 @@ export default function SourceMappingPage() {
     try {
       setSaving(true);
 
-      if (mapping.source_type === 'ghl') {
+      if (mapping.source_type === 'utm') {
+        // Parse UTM source and medium from source_identifier
+        const [utmSource, utmMedium] = mapping.source_identifier?.split('|') || ['', ''];
+        
+        const { error } = await supabase
+          .rpc('save_utm_mapping', {
+            p_account_id: selectedAccountId,
+            p_utm_source: utmSource === 'null' ? null : utmSource,
+            p_utm_medium: utmMedium === 'null' ? null : utmMedium,
+            p_source_category: mapping.source_category,
+            p_specific_source: mapping.specific_source,
+            p_description: mapping.description
+          });
+
+        if (error) throw error;
+      } else if (mapping.source_type === 'ghl') {
         const { error } = await supabase
           .from('ghl_source_mappings')
           .upsert({
             id: mapping.id,
-            ghl_source: mapping.source,
+            ghl_source: mapping.source_identifier || mapping.source,
             source_category: mapping.source_category,
             specific_source: mapping.specific_source,
             description: mapping.description,
@@ -319,11 +277,12 @@ export default function SourceMappingPage() {
 
         if (error) throw error;
       } else {
+        // Contact source mapping (legacy)
         const { error } = await supabase
           .from('contact_source_mappings')
           .upsert({
             id: mapping.id,
-            contact_source: mapping.source,
+            contact_source: mapping.source_identifier || mapping.source,
             source_category: mapping.source_category,
             specific_source: mapping.specific_source,
             description: mapping.description,
