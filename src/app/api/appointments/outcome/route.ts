@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
-import type { Database } from "@/lib/database.types";
+import type { Database } from "@/lib/database-temp.types";
 
 function mapCallOutcome(value: 'show' | 'no_show' | 'reschedule' | 'cancel'): string {
   switch (value) {
@@ -58,7 +58,8 @@ export async function POST(req: NextRequest) {
       cashCollected?: number,
       totalSalesValue?: number,
       objections?: string[],
-      leadQuality: number
+      leadQuality: number,
+      followUpAt?: string | null,
     }
   };
 
@@ -75,7 +76,7 @@ export async function POST(req: NextRequest) {
   if (fetchErr || !appt) {
     return NextResponse.json({ error: 'Appointment not found' }, { status: 404 });
   }
-  if (appt.sales_rep_user_id !== effectiveUserId) {
+  if ((appt as any).sales_rep_user_id !== effectiveUserId) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
@@ -93,6 +94,7 @@ export async function POST(req: NextRequest) {
       total_sales_value: payload.totalSalesValue ?? null,
       objections: payload.objections ?? null,
       lead_quality: payload.leadQuality,
+      follow_up_at: payload.followUpAt ? new Date(payload.followUpAt).toISOString() : null,
       updated_at: new Date().toISOString(),
     })
     .eq('id', appointmentId);
