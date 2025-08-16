@@ -23,6 +23,8 @@ function ResetPasswordInner() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [debugInfo, setDebugInfo] = useState<any>(null)
+  // Track if a valid Supabase session exists (e.g., established by the recovery link)
+  const [hasSession, setHasSession] = useState(false)
 
   const queryAccessToken = searchParams?.get('access_token')
   const queryRefreshToken = searchParams?.get('refresh_token')
@@ -30,6 +32,22 @@ function ResetPasswordInner() {
   const [accessToken, setAccessToken] = useState<string | null>(queryAccessToken)
   const [refreshToken, setRefreshToken] = useState<string | null>(queryRefreshToken)
   const [linkType, setLinkType] = useState<string | null>(queryType)
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    
+    // Listen for auth state changes; if a session appears (e.g., PASSWORD_RECOVERY), allow form
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session) setHasSession(true)
+      // Some providers emit PASSWORD_RECOVERY; treat that as recovery context
+      if (event === 'PASSWORD_RECOVERY') setLinkType('recovery')
+    })
+
+    // Also check current session immediately
+    supabase.auth.getSession().then(({ data }) => setHasSession(!!data.session))
+
+    return () => subscription.unsubscribe()
+  }, [])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -100,6 +118,7 @@ function ResetPasswordInner() {
           hasSession: !!data.session, 
           error: error?.message 
         })
+        if (data.session) setHasSession(true)
       })
     } else {
       console.log('🔍 Not setting session:', {
@@ -193,8 +212,8 @@ function ResetPasswordInner() {
     )
   }
 
-  // Check if we have valid tokens for password reset
-  const hasValidTokens = accessToken && refreshToken && linkType === 'recovery'
+  // Check if we have valid context for password reset
+  const hasValidContext = (accessToken && refreshToken && linkType === 'recovery') || hasSession
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
@@ -202,7 +221,7 @@ function ResetPasswordInner() {
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl text-center">Reset Password</CardTitle>
           <CardDescription className="text-center">
-            {hasValidTokens 
+            {hasValidContext 
               ? 'Enter your new password below'
               : 'This password reset link is invalid or has expired'
             }
@@ -218,11 +237,12 @@ function ResetPasswordInner() {
               <div>Link Type: {debugInfo.linkType || 'None'}</div>
               <div>Access Token: {accessToken ? 'Present' : 'Missing'}</div>
               <div>Refresh Token: {refreshToken ? 'Present' : 'Missing'}</div>
-              <div>Valid for Reset: {hasValidTokens ? 'Yes' : 'No'}</div>
+              <div>Session: {hasSession ? 'Yes' : 'No'}</div>
+              <div>Valid for Reset: {hasValidContext ? 'Yes' : 'No'}</div>
             </div>
           )}
 
-          {!hasValidTokens ? (
+          {!hasValidContext ? (
             <div className="space-y-4">
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
