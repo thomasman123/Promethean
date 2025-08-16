@@ -17,6 +17,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { supabase } from "@/lib/supabase";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
+import { PaymentPlan } from "@/components/payment-plan";
 
 interface AppointmentItem {
 	id: string;
@@ -449,6 +450,10 @@ function AppointmentEntryCard({
 									</Alert>
 								)}
 							</div>
+						)}
+
+						{won && needsPlan && (
+							<PaymentPlan appointmentId={item.id} totalSalesValue={Number(totalSalesValue || 0)} cashCollected={Number(cashCollected || 0)} />
 						)}
 
 						{!isFollowUp && (
