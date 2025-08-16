@@ -49,6 +49,20 @@ interface TestResult {
   proposed_source: string | null
 }
 
+// Form shape for creating/editing rules in this UI
+type NewRuleForm = {
+  rule_name: string
+  utm_source_pattern: string
+  utm_medium_pattern: string
+  utm_campaign_pattern: string
+  source_category: string
+  specific_source: string
+  description: string
+  priority: number
+  is_pattern_match: boolean
+  is_active: boolean
+}
+
 export default function UTMRulesPage() {
   const { user, loading: authLoading, selectedAccountId, getAccountBasedPermissions } = useAuth()
   const router = useRouter()
@@ -62,10 +76,13 @@ export default function UTMRulesPage() {
   const [editingRule, setEditingRule] = useState<string | null>(null)
   const [showNewRule, setShowNewRule] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [suggestedSources, setSuggestedSources] = useState<string[]>([])
+  const [suggestedMediums, setSuggestedMediums] = useState<string[]>([])
+  const [suggestedCampaigns, setSuggestedCampaigns] = useState<string[]>([])
 
   const permissions = getAccountBasedPermissions()
 
-  const [newRule, setNewRule] = useState({
+  const [newRule, setNewRule] = useState<NewRuleForm>({
     rule_name: '',
     utm_source_pattern: '',
     utm_medium_pattern: '',
@@ -120,6 +137,30 @@ export default function UTMRulesPage() {
 
       if (rulesError) throw rulesError
       setRules(rulesData || [])
+
+      // Load observed unmapped UTM combinations to power suggestions
+      const { data: combos } = await supabase
+        .rpc('get_unmapped_utm_combinations', { p_account_id: selectedAccountId })
+
+      const toSortedUnique = (values: (string | null | undefined)[]) => {
+        const counts = new Map<string, number>()
+        values.filter(Boolean).forEach(v => {
+          const key = String(v).trim()
+          if (!key) return
+          counts.set(key, (counts.get(key) || 0) + 1)
+        })
+        return Array.from(counts.entries())
+          .sort((a, b) => b[1] - a[1])
+          .map(([k]) => k)
+      }
+
+      const srcs = toSortedUnique((combos || []).map((c: any) => c.utm_source))
+      const meds = toSortedUnique((combos || []).map((c: any) => c.utm_medium))
+      const camps = toSortedUnique((combos || []).map((c: any) => c.utm_campaign))
+
+      setSuggestedSources(srcs.slice(0, 12))
+      setSuggestedMediums(meds.slice(0, 12))
+      setSuggestedCampaigns(camps.slice(0, 12))
 
     } catch (err) {
       console.error('Error loading data:', err)
@@ -267,13 +308,15 @@ export default function UTMRulesPage() {
         <TabsContent value="rules" className="space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold">Current Rules</h2>
-            <Button 
-              onClick={() => setShowNewRule(true)}
-              disabled={showNewRule}
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Add Rule
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button 
+                onClick={() => setShowNewRule(true)}
+                disabled={showNewRule}
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Add Rule
+              </Button>
+            </div>
           </div>
 
           {showNewRule && (
@@ -285,6 +328,7 @@ export default function UTMRulesPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
+                <QuickTemplates onApply={(tpl) => setNewRule(r => ({ ...r, ...tpl }))} />
                 <RuleForm
                   rule={newRule}
                   categories={categories}
@@ -294,6 +338,9 @@ export default function UTMRulesPage() {
                     resetNewRule()
                   }}
                   saving={saving}
+                  suggestedSources={suggestedSources}
+                  suggestedMediums={suggestedMediums}
+                  suggestedCampaigns={suggestedCampaigns}
                 />
               </CardContent>
             </Card>
@@ -339,6 +386,9 @@ export default function UTMRulesPage() {
                       onSave={(updatedRule) => saveRule({ ...rule, ...updatedRule })}
                       onCancel={() => setEditingRule(null)}
                       saving={saving}
+                      suggestedSources={suggestedSources}
+                      suggestedMediums={suggestedMediums}
+                      suggestedCampaigns={suggestedCampaigns}
                     />
                   ) : (
                     <div className="space-y-2">
@@ -438,21 +488,43 @@ export default function UTMRulesPage() {
   )
 }
 
+function QuickTemplates({ onApply }: { onApply: (tpl: Partial<NewRuleForm>) => void }) {
+  const apply = (tpl: Partial<NewRuleForm>) => onApply(tpl)
+  return (
+    <div className="flex flex-wrap gap-2">
+      <Button variant="outline" size="sm" onClick={() => apply({ rule_name: 'Facebook Ads', utm_source_pattern: 'fb', utm_medium_pattern: 'ppc', specific_source: 'Facebook Ads', is_pattern_match: false })}>Facebook Ads</Button>
+      <Button variant="outline" size="sm" onClick={() => apply({ rule_name: 'Instagram Ads', utm_source_pattern: 'ig', utm_medium_pattern: 'ppc', specific_source: 'Instagram Ads', is_pattern_match: false })}>Instagram Ads</Button>
+      <Button variant="outline" size="sm" onClick={() => apply({ rule_name: 'Google Ads', utm_source_pattern: 'google', utm_medium_pattern: 'cpc', specific_source: 'Google Ads', is_pattern_match: false })}>Google Ads</Button>
+    </div>
+  )
+}
+
 interface RuleFormProps {
   rule: Partial<UTMRule>
   categories: SourceCategory[]
   onSave: (rule: Partial<UTMRule>) => void
   onCancel: () => void
   saving: boolean
+  suggestedSources?: string[]
+  suggestedMediums?: string[]
+  suggestedCampaigns?: string[]
 }
 
-function RuleForm({ rule, categories, onSave, onCancel, saving }: RuleFormProps) {
+function RuleForm({ rule, categories, onSave, onCancel, saving, suggestedSources = [], suggestedMediums = [], suggestedCampaigns = [] }: RuleFormProps) {
   const [formData, setFormData] = useState(rule)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     onSave(formData)
   }
+
+  const ChipRow = ({ values, onPick }: { values: string[]; onPick: (v: string) => void }) => (
+    <div className="flex flex-wrap gap-2 mt-2">
+      {values.slice(0, 10).map((v) => (
+        <Button key={v} type="button" size="sm" variant="secondary" onClick={() => onPick(v)}>{v}</Button>
+      ))}
+    </div>
+  )
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -488,6 +560,7 @@ function RuleForm({ rule, categories, onSave, onCancel, saving }: RuleFormProps)
             onChange={(e) => setFormData({ ...formData, utm_source_pattern: e.target.value })}
             placeholder="e.g., fb, ig, google"
           />
+          <ChipRow values={suggestedSources} onPick={(v) => setFormData({ ...formData, utm_source_pattern: v })} />
         </div>
         <div>
           <Label htmlFor="utm_medium_pattern">UTM Medium Pattern</Label>
@@ -497,6 +570,7 @@ function RuleForm({ rule, categories, onSave, onCancel, saving }: RuleFormProps)
             onChange={(e) => setFormData({ ...formData, utm_medium_pattern: e.target.value })}
             placeholder="e.g., ppc, cpc, social"
           />
+          <ChipRow values={suggestedMediums} onPick={(v) => setFormData({ ...formData, utm_medium_pattern: v })} />
         </div>
         <div>
           <Label htmlFor="utm_campaign_pattern">UTM Campaign Pattern (Optional)</Label>
@@ -506,6 +580,7 @@ function RuleForm({ rule, categories, onSave, onCancel, saving }: RuleFormProps)
             onChange={(e) => setFormData({ ...formData, utm_campaign_pattern: e.target.value })}
             placeholder="e.g., %brand%"
           />
+          <ChipRow values={suggestedCampaigns} onPick={(v) => setFormData({ ...formData, utm_campaign_pattern: v })} />
         </div>
       </div>
 
@@ -559,6 +634,7 @@ function RuleForm({ rule, categories, onSave, onCancel, saving }: RuleFormProps)
           />
           <Label htmlFor="is_pattern_match">Use pattern matching (LIKE)</Label>
         </div>
+        <div className="text-xs text-muted-foreground">Use % as a wildcard. Example: %fb% matches facebook/meta variants.</div>
         <div className="flex items-center space-x-2">
           <Switch
             id="is_active"
