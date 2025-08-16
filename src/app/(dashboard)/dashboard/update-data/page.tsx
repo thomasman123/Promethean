@@ -16,6 +16,7 @@ import { Calendar, ClipboardList, CheckCircle2, ChevronRight, Inbox, Sparkles } 
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { supabase } from "@/lib/supabase";
+import { FollowUpsPanel } from "@/components/follow-ups-panel";
 
 interface AppointmentItem {
 	id: string;
@@ -271,6 +272,9 @@ export default function UpdateDataPage() {
 					</div>
 				</div>
 			)}
+
+			{/* Follow Ups panel embedded below the update section */}
+			<FollowUpsPanel />
 		</div>
 	);
 }
