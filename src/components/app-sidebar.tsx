@@ -45,7 +45,7 @@ const staticData = {
 				{ title: "Dials", url: "/dashboard/dials" },
 			],
 		},
-		{ title: "Update Data", url: "/dashboard/update-data", icon: ClipboardList },
+		{ title: "Update Data", url: "/dashboard/update-data", icon: ClipboardList, items: [ { title: "Follow Ups", url: "/follow-ups" } ] },
 		{ title: "Ads", url: "/ads", icon: MegaphoneIcon, items: [ { title: "Setup", url: "/ads/setup" }, { title: "Campaigns", url: "/ads/campaigns" } ] },
 		{ title: "AI Tools", url: "/ai-tools", icon: Bot, items: [ { title: "Call Analysis", url: "/ai-tools/call-analysis" }, { title: "KPI Breakdown", url: "/ai-tools/kpi-breakdown" } ] },
 		{ title: "Admin", url: "/admin", icon: Shield, items: [ { title: "Manage Accounts", url: "/admin/manage-accounts" } ] },

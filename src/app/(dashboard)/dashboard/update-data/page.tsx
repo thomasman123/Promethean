@@ -181,27 +181,6 @@ export default function UpdateDataPage() {
 		);
 	}
 
-	if (totalItems === 0) {
-		return (
-			<div className="p-6 space-y-6">
-				<Card className="relative overflow-hidden border bg-card">
-					<div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,theme(colors.primary/10),transparent_60%)]" />
-					<CardHeader className="text-center space-y-2">
-						<div className="mx-auto size-12 rounded-full border bg-background shadow-sm grid place-items-center">
-							<Inbox className="h-5 w-5 text-primary" />
-						</div>
-						<CardTitle className="text-2xl">No Data Updates Needed</CardTitle>
-						<CardDescription>You don’t have any pending items to update.</CardDescription>
-					</CardHeader>
-					<CardContent className="flex items-center justify-center gap-3 pb-6">
-						<Button variant="secondary" onClick={() => window.location.reload()}>Refresh</Button>
-						<Button onClick={() => (window.location.href = '/dashboard')}>Return to Dashboard</Button>
-					</CardContent>
-				</Card>
-			</div>
-		);
-	}
-
 	const upcoming = allItems.slice(currentIndex + 1, currentIndex + 4);
 
 	return (
@@ -229,52 +208,69 @@ export default function UpdateDataPage() {
 				</CardContent>
 			</Card>
 
-			<div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-				<div className="lg:col-span-8">
-					{currentItem && (
-						<DataEntryCard
-							mode={mode}
-							item={currentItem}
-							onComplete={() => handleItemComplete(currentItem.id)}
-						/>
-					)}
+			{totalItems === 0 ? (
+				<Card className="relative overflow-hidden border bg-card">
+					<div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,theme(colors.primary/10),transparent_60%)]" />
+					<CardHeader className="text-center space-y-2">
+						<div className="mx-auto size-12 rounded-full border bg-background shadow-sm grid place-items-center">
+							<Inbox className="h-5 w-5 text-primary" />
+						</div>
+						<CardTitle className="text-2xl">No Data Updates Needed</CardTitle>
+						<CardDescription>You don’t have any pending items to update.</CardDescription>
+					</CardHeader>
+					<CardContent className="flex items-center justify-center gap-3 pb-6">
+						<Button variant="secondary" onClick={() => window.location.reload()}>Refresh</Button>
+						<Button onClick={() => (window.location.href = '/dashboard')}>Return to Dashboard</Button>
+					</CardContent>
+				</Card>
+			) : (
+				<div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+					<div className="lg:col-span-8">
+						{currentItem && (
+							<DataEntryCard
+								mode={mode}
+								item={currentItem}
+								onComplete={() => handleItemComplete(currentItem.id)}
+							/>
+						)}
+					</div>
+					<div className="lg:col-span-4">
+						<Card className="border bg-card/50 shadow-sm">
+							<CardHeader className="pb-2">
+								<CardTitle className="text-base">Queue</CardTitle>
+								<CardDescription>Upcoming items</CardDescription>
+							</CardHeader>
+							<CardContent>
+								<ScrollArea className="max-h-[360px] pr-2">
+									<div className="space-y-2">
+										{upcoming.length === 0 && (
+											<div className="text-sm text-muted-foreground">No upcoming items</div>
+										)}
+										{upcoming.map((item) => (
+											<div key={item.id} className="flex items-center gap-3 rounded-md border p-3 bg-background pointer-events-none opacity-80">
+												<div className="rounded-md border size-8 grid place-items-center">
+													{item.type === "appointment" ? (
+														<Calendar className="h-4 w-4" />
+													) : (
+														<ClipboardList className="h-4 w-4" />
+													)}
+												</div>
+												<div className="min-w-0">
+													<div className="truncate text-sm font-medium">{item.leadName}</div>
+													<div className="truncate text-xs text-muted-foreground">{('scheduledAt' in item ? new Date((item as any).scheduledAt).toLocaleString() : new Date((item as any).followUpAt).toLocaleString())}</div>
+												</div>
+												<div className="ml-auto flex items-center gap-2">
+													<Badge variant="secondary" className="capitalize">{item.type === 'follow_up' ? 'follow up' : item.type}</Badge>
+												</div>
+											</div>
+										))}
+									</div>
+								</ScrollArea>
+							</CardContent>
+						</Card>
+					</div>
 				</div>
-				<div className="lg:col-span-4">
-					<Card className="border bg-card/50 shadow-sm">
-						<CardHeader className="pb-2">
-							<CardTitle className="text-base">Queue</CardTitle>
-							<CardDescription>Upcoming items</CardDescription>
-						</CardHeader>
-						<CardContent>
-							<ScrollArea className="max-h-[360px] pr-2">
-								<div className="space-y-2">
-									{upcoming.length === 0 && (
-										<div className="text-sm text-muted-foreground">No upcoming items</div>
-									)}
-									{upcoming.map((item) => (
-										<div key={item.id} className="flex items-center gap-3 rounded-md border p-3 bg-background pointer-events-none opacity-80">
-											<div className="rounded-md border size-8 grid place-items-center">
-												{item.type === "appointment" ? (
-													<Calendar className="h-4 w-4" />
-												) : (
-													<ClipboardList className="h-4 w-4" />
-												)}
-											</div>
-											<div className="min-w-0">
-												<div className="truncate text-sm font-medium">{item.leadName}</div>
-												<div className="truncate text-xs text-muted-foreground">{('scheduledAt' in item ? new Date((item as any).scheduledAt).toLocaleString() : new Date((item as any).followUpAt).toLocaleString())}</div>
-											</div>
-											<div className="ml-auto flex items-center gap-2">
-												<Badge variant="secondary" className="capitalize">{item.type === 'follow_up' ? 'follow up' : item.type}</Badge>
-											</div>
-										</div>
-									))}
-								</div>
-							</ScrollArea>
-						</CardContent>
-					</Card>
-				</div>
-			</div>
+			)}
 		</div>
 	);
 }
