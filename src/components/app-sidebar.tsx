@@ -49,7 +49,7 @@ const staticData = {
 		{ title: "Ads", url: "/ads", icon: MegaphoneIcon, items: [ { title: "Setup", url: "/ads/setup" }, { title: "Campaigns", url: "/ads/campaigns" } ] },
 		{ title: "AI Tools", url: "/ai-tools", icon: Bot, items: [ { title: "Call Analysis", url: "/ai-tools/call-analysis" }, { title: "KPI Breakdown", url: "/ai-tools/kpi-breakdown" } ] },
 		{ title: "Admin", url: "/admin", icon: Shield, items: [ { title: "Manage Accounts", url: "/admin/manage-accounts" } ] },
-		{ title: "Account", url: "/account", icon: Settings, items: [ { title: "CRM Connection", url: "/account/crm-connection" }, { title: "Calendar Mapping", url: "/account/calendar-mapping" }, { title: "Source Mapping", url: "/account/source-mapping" }, { title: "Attribution Settings", url: "/account/attribution-settings" }, { title: "UTM Rules", url: "/account/utm-rules" }, { title: "Team Members", url: "/account/team-members" } ] },
+		{ title: "Account", url: "/account", icon: Settings, items: [ { title: "CRM Connection", url: "/account/crm-connection" }, { title: "Calendar Mapping", url: "/account/calendar-mapping" }, { title: "Attribution Settings", url: "/account/attribution-settings" }, { title: "UTM Rules", url: "/account/utm-rules" }, { title: "Team Members", url: "/account/team-members" } ] },
 	],
 	navSecondary: [
 		{ title: "Support", url: "/support", icon: LifeBuoy },

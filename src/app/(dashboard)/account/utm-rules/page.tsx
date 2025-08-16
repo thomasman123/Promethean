@@ -50,7 +50,7 @@ interface TestResult {
 }
 
 export default function UTMRulesPage() {
-  const { user, loading: authLoading, selectedAccountId } = useAuth()
+  const { user, loading: authLoading, selectedAccountId, getAccountBasedPermissions } = useAuth()
   const router = useRouter()
   
   const [rules, setRules] = useState<UTMRule[]>([])
@@ -62,6 +62,8 @@ export default function UTMRulesPage() {
   const [editingRule, setEditingRule] = useState<string | null>(null)
   const [showNewRule, setShowNewRule] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const permissions = getAccountBasedPermissions()
 
   const [newRule, setNewRule] = useState({
     rule_name: '',
@@ -77,27 +79,31 @@ export default function UTMRulesPage() {
   })
 
   useEffect(() => {
-    loadData()
-  }, [])
+    if (authLoading) return
+    if (!user) {
+      router.replace('/login')
+      return
+    }
+    if (!permissions.canManageAccount) {
+      router.replace('/dashboard')
+      return
+    }
+    if (selectedAccountId) {
+      loadData()
+    } else {
+      setError('No account found')
+      setLoading(false)
+    }
+  }, [authLoading, user, permissions.canManageAccount, selectedAccountId, router])
 
   const loadData = async () => {
     try {
       setLoading(true)
       setError(null)
 
-      // Get current user and account
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('Not authenticated')
-
-      // Get user's primary account
-      const { data: userAccounts } = await supabase
-        .from('user_accounts')
-        .select('account_id')
-        .eq('user_id', user.id)
-        .eq('is_primary', true)
-        .single()
-
-      if (!userAccounts) throw new Error('No account found')
+      if (!selectedAccountId) {
+        throw new Error('No account found')
+      }
 
       // Load source categories
       const { data: categoriesData, error: categoriesError } = await supabase
@@ -110,7 +116,7 @@ export default function UTMRulesPage() {
 
       // Load UTM rules
       const { data: rulesData, error: rulesError } = await supabase
-        .rpc('get_account_utm_rules', { p_account_id: userAccounts.account_id })
+        .rpc('get_account_utm_rules', { p_account_id: selectedAccountId })
 
       if (rulesError) throw rulesError
       setRules(rulesData || [])
@@ -124,14 +130,14 @@ export default function UTMRulesPage() {
   }
 
   const testRules = async () => {
-    if (!accountId) return
+    if (!selectedAccountId) return
 
     try {
       setTesting(true)
       setError(null)
 
       const { data, error } = await supabase
-        .rpc('test_utm_rule_coverage', { p_account_id: accountId })
+        .rpc('test_utm_rule_coverage', { p_account_id: selectedAccountId })
 
       if (error) throw error
       setTestResults(data || [])
@@ -145,14 +151,14 @@ export default function UTMRulesPage() {
   }
 
   const saveRule = async (rule: Partial<UTMRule>) => {
-    if (!accountId) return
+    if (!selectedAccountId) return
 
     try {
       setSaving(true)
       setError(null)
 
       const ruleData = {
-        account_id: accountId,
+        account_id: selectedAccountId,
         rule_name: rule.rule_name,
         utm_source_pattern: rule.utm_source_pattern || null,
         utm_medium_pattern: rule.utm_medium_pattern || null,

@@ -77,10 +77,10 @@ export default function AccountPage() {
       requiredRole: "Moderator or Admin"
     },
     {
-      title: "Source Mapping",
-      description: "Configure source attribution for appointments and discoveries",
+      title: "UTM Rules",
+      description: "Define how UTM parameters map to sources for attribution",
       icon: Target,
-      href: "/account/source-mapping",
+      href: "/account/utm-rules",
       available: permissions.canManageAccount,
       requiredRole: "Moderator or Admin"
     },
