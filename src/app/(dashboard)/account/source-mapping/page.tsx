@@ -638,7 +638,7 @@ export default function SourceMappingPage() {
               </CardHeader>
               <CardContent className="pt-0">
                 <div className="space-y-6">
-                  {mappings.map((mapping) => (
+                  {mappings.filter(m => !m.is_recommended).map((mapping) => (
                     <Card 
                       key={`${mapping.source}-${mapping.source_type}`}
                       className={`p-6 ${mapping.is_new ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/20 dark:border-blue-400' : ''} ${mapping.has_changes ? 'border-orange-500 dark:border-orange-400' : ''}`}
@@ -862,17 +862,18 @@ export default function SourceMappingPage() {
                     </Card>
                   ))}
                 </div>
-
-                {mappings.length === 0 && (
-                  <div className="text-center py-12 text-muted-foreground">
-                    <div className="max-w-md mx-auto">
-                      <p className="text-lg">No sources detected yet.</p>
-                      <p className="mt-2">Sources will appear here as your system receives appointments and discoveries.</p>
-                    </div>
-                  </div>
-                )}
               </CardContent>
             </Card>
+            )}
+
+            {mappings.length === 0 && (
+              <div className="text-center py-12 text-muted-foreground">
+                <div className="max-w-md mx-auto">
+                  <p className="text-lg">No sources detected yet.</p>
+                  <p className="mt-2">Sources will appear here as your system receives appointments and discoveries.</p>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
