@@ -378,6 +378,22 @@ export default function SourceMappingPage() {
           </p>
         </div>
 
+        {/* Configuration Reminder */}
+        <Alert className="mb-6 border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/50">
+          <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+          <AlertDescription className="text-amber-800 dark:text-amber-200">
+            <strong>Important:</strong> UTM parameters mean different things to different accounts. 
+            Configure your{" "}
+            <a 
+              href="/account/utm-rules" 
+              className="font-medium text-amber-900 dark:text-amber-100 underline hover:text-amber-700 dark:hover:text-amber-300"
+            >
+              UTM interpretation rules
+            </a>{" "}
+            to ensure accurate attribution (e.g., does "ppc" mean search ads or social ads for your account?).
+          </AlertDescription>
+        </Alert>
+
         {dataLoading ? (
           <div className="flex items-center justify-center min-h-[400px]">
             <div className="text-center">
