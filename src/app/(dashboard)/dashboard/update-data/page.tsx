@@ -495,6 +495,7 @@ function FollowUpEntryCard({ item, onComplete }: { item: FollowUpItem; onComplet
 	const [pitched, setPitched] = useState<"true" | "false" | "">("");
 
 	const won = result === 'won';
+	const needPlan = won && Number(cashCollected || 0) < Number(totalSalesValue || 0);
 	const canSubmit = useMemo(() => {
 		if (!result) return false;
 		if (won) {
@@ -566,6 +567,10 @@ function FollowUpEntryCard({ item, onComplete }: { item: FollowUpItem; onComplet
 							<Input type="number" inputMode="decimal" value={totalSalesValue} onChange={(e) => setTotalSalesValue(e.target.value)} placeholder="0.00" />
 						</div>
 					</div>
+				)}
+
+				{needPlan && (
+					<PaymentPlan appointmentId={item.id} totalSalesValue={Number(totalSalesValue || 0)} cashCollected={Number(cashCollected || 0)} />
 				)}
 
 				<div className="space-y-2">
