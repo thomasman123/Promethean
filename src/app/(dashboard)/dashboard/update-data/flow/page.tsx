@@ -12,6 +12,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { Calendar, ClipboardList, CheckCircle2 } from "lucide-react";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 
 interface AppointmentItem {
 	id: string;
@@ -390,7 +391,7 @@ function AppointmentSheet({
 							{isFollowUp && (
 								<div className="space-y-2">
 									<Label>Follow Up Date & Time</Label>
-									<Input type="datetime-local" value={followUpAt} onChange={(e) => setFollowUpAt(e.target.value)} />
+									<DateTimePicker value={followUpAt || null} onChange={(iso) => setFollowUpAt(iso || "")} />
 								</div>
 							)}
 

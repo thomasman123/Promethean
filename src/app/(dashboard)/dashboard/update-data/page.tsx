@@ -16,6 +16,7 @@ import { Calendar, ClipboardList, CheckCircle2, ChevronRight, Inbox, Sparkles } 
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { supabase } from "@/lib/supabase";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 
 interface AppointmentItem {
 	id: string;
@@ -427,7 +428,7 @@ function AppointmentEntryCard({
 						{isFollowUp && (
 							<div className="space-y-2">
 								<Label>Follow Up Date & Time</Label>
-								<Input type="datetime-local" value={followUpAt} onChange={(e) => setFollowUpAt(e.target.value)} />
+								<DateTimePicker value={followUpAt || null} onChange={(iso) => setFollowUpAt(iso || "")} />
 							</div>
 						)}
 
