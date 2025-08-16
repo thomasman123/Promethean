@@ -105,7 +105,7 @@ export default function UpdateDataPage() {
 				.select('id, contact_name, date_booked_for, sales_rep_user_id')
 				.eq('account_id', selectedAccountId)
 				.eq('sales_rep_user_id', effectiveUserId)
-				.is('lead_quality', null)
+				.eq('data_filled', false)
 				.order('date_booked_for', { ascending: true });
 
 			if (error) {
@@ -126,7 +126,7 @@ export default function UpdateDataPage() {
 				.select('id, contact_name, date_booked_for, setter_user_id')
 				.eq('account_id', selectedAccountId)
 				.eq('setter_user_id', effectiveUserId)
-				.is('call_outcome', null)
+				.eq('data_filled', false)
 				.order('date_booked_for', { ascending: true });
 
 			if (discosError) {

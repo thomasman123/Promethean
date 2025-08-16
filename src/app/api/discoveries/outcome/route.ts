@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
-import type { Database } from "@/lib/database.types";
+import type { Database } from "@/lib/database-temp.types";
 
 function mapCallOutcome(value: 'show' | 'no_show' | 'reschedule' | 'cancel'): string {
   switch (value) {
@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
   if (fetchErr || !discovery) {
     return NextResponse.json({ error: 'Discovery not found' }, { status: 404 });
   }
-  if (discovery.setter_user_id !== effectiveUserId) {
+  if ((discovery as any).setter_user_id !== effectiveUserId) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
@@ -82,6 +82,7 @@ export async function POST(req: NextRequest) {
       call_outcome: callOutcomeDb,
       show_outcome: showOutcomeDb,
       lead_quality: payload.leadQuality ?? null,
+      data_filled: true,
       updated_at: new Date().toISOString(),
     })
     .eq('id', discoveryId);

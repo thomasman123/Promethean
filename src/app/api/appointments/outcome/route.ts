@@ -95,6 +95,7 @@ export async function POST(req: NextRequest) {
       objections: payload.objections ?? null,
       lead_quality: payload.leadQuality,
       follow_up_at: payload.followUpAt ? new Date(payload.followUpAt).toISOString() : null,
+      data_filled: true,
       updated_at: new Date().toISOString(),
     })
     .eq('id', appointmentId);
