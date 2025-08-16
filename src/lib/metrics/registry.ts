@@ -10,6 +10,28 @@ export const METRICS_REGISTRY: Record<string, MetricDefinition> = {
 			table: 'appointments',
 			select: ['COUNT(*) as value']
 		}
+	},
+	// Show Ups (Appointments): count rows where call_outcome is 'Show'
+	'show_ups_appointments': {
+		name: 'Show Ups (Appointments)',
+		description: 'Total count of appointments with call outcome Show',
+		breakdownType: 'total',
+		query: {
+			table: 'appointments',
+			select: ['COUNT(*) as value'],
+			where: ["call_outcome = 'Show'"]
+		}
+	},
+	// Show Ups (Discoveries): count rows where call_outcome is 'show'
+	'show_ups_discoveries': {
+		name: 'Show Ups (Discoveries)',
+		description: 'Total count of discoveries with call outcome show',
+		breakdownType: 'total',
+		query: {
+			table: 'discoveries',
+			select: ['COUNT(*) as value'],
+			where: ["call_outcome = 'show'"]
+		}
 	}
 }
 
