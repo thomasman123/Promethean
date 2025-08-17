@@ -51,6 +51,16 @@ export async function middleware(req: NextRequest) {
     console.log('Middleware - Error getting session:', error)
   }
 
+  // If a password recovery is in progress, force user to the reset page until cleared
+  const recoveryPending = req.cookies.get('recovery_pending')?.value === '1'
+  if (recoveryPending) {
+    const path = req.nextUrl.pathname
+    const isAllowed = path.startsWith('/reset-password') || path.startsWith('/api/auth/recovery')
+    if (!isAllowed) {
+      return NextResponse.redirect(new URL('/reset-password', req.url))
+    }
+  }
+
   // Debug: Only log for troubleshooting when needed
   if (process.env.NODE_ENV === 'development') {
     console.log('Middleware - Session exists:', !!session, 'Path:', req.nextUrl.pathname)

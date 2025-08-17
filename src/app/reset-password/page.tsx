@@ -126,6 +126,17 @@ function ResetPasswordInner() {
     supabase.auth.getSession().then(({ data }) => setHasSession(!!data.session))
   }, [])
 
+  // Mark recovery pending when we have a valid recovery context
+  useEffect(() => {
+    const markRecoveryPending = async () => {
+      const shouldMark = (accessToken && refreshToken && linkType === 'recovery') || hasSession
+      if (shouldMark) {
+        try { await fetch('/api/auth/recovery/set', { method: 'POST' }) } catch {}
+      }
+    }
+    markRecoveryPending()
+  }, [accessToken, refreshToken, linkType, hasSession])
+
   useEffect(() => {
     // Only set a session if this is an actual recovery flow with tokens
     if (accessToken && refreshToken && linkType === 'recovery') {
@@ -184,9 +195,11 @@ function ResetPasswordInner() {
       } else {
         console.log('🔍 Password updated successfully')
         setSuccess('Password updated successfully! Redirecting to login...')
+        try { await fetch('/api/auth/recovery/clear', { method: 'POST' }) } catch {}
+        try { await supabase.auth.signOut() } catch {}
         setTimeout(() => {
           router.push('/login')
-        }, 2000)
+        }, 1500)
       }
     } catch (err) {
       console.error('🔍 Password update exception:', err)
