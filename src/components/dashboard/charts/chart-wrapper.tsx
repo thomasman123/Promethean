@@ -16,7 +16,6 @@ import {
   Edit, 
   Pin, 
   Info,
-  Maximize2,
   Users
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -36,7 +35,6 @@ interface ChartWrapperProps {
   onDuplicate?: () => void;
   onDelete?: () => void;
   onPin?: () => void;
-  onFullscreen?: () => void;
   className?: string;
   children: React.ReactNode;
 }
@@ -54,7 +52,6 @@ export function ChartWrapper({
   onDuplicate,
   onDelete,
   onPin,
-  onFullscreen,
   className,
   children
 }: ChartWrapperProps) {
@@ -92,30 +89,6 @@ export function ChartWrapper({
             </TooltipProvider>
           )}
           
-          {onFullscreen && (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="h-6 w-6"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      onFullscreen();
-                    }}
-                  >
-                    <Maximize2 className="h-3 w-3" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>View details</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          )}
-          
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="h-6 w-6">
@@ -141,19 +114,11 @@ export function ChartWrapper({
                   {pinned ? 'Unpin' : 'Pin'}
                 </DropdownMenuItem>
               )}
-              {onFullscreen && (
-                <DropdownMenuItem onClick={onFullscreen}>
-                  <Maximize2 className="mr-2 h-4 w-4" />
-                  Fullscreen
-                </DropdownMenuItem>
-              )}
               {onDelete && (
-                <>
-                  <DropdownMenuItem className="text-destructive" onClick={onDelete}>
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Delete
-                  </DropdownMenuItem>
-                </>
+                <DropdownMenuItem className="text-destructive" onClick={onDelete}>
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete
+                </DropdownMenuItem>
               )}
             </DropdownMenuContent>
           </DropdownMenu>

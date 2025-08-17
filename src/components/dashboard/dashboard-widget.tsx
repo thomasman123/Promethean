@@ -375,7 +375,7 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
         <ChartWrapper
           title={widget.settings?.title || metricDefinition?.displayName || widget.metricName}
           description={metricDefinition?.description}
-          onFullscreen={() => setShowDetailModal(true)}
+          onDelete={() => removeWidget(widget.id)}
         >
           {renderChart()}
         </ChartWrapper>
