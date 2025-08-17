@@ -1393,10 +1393,65 @@ async function processAppointmentWebhook(payload: any) {
         // Don't throw - this is not critical to appointment processing
       }
       
-      // Linking handled exclusively in dial webhook (bi-directional +/- 60m). No appointment-side linking.
+      // Link discovery→appointment when discovery was scheduled within 60 minutes before booking
+      try {
+        const bookedAtIso = savedAppointment.date_booked as string;
+        if (bookedAtIso) {
+          const bookedAt = new Date(bookedAtIso);
+          const discWindowStart = new Date(bookedAt.getTime() - 60 * 60 * 1000);
 
-      // Removed old linking mechanism
-      // await linkAppointmentToDial(supabase, savedAppointment, contactData, account.id);
+          const runDiscQuery = async (applyFilters: (q: any) => any) => {
+            let q = supabase
+              .from('discoveries')
+              .select('id, date_booked_for, contact_name, email, phone, linked_appointment_id')
+              .eq('account_id', account.id)
+              .gte('date_booked_for', discWindowStart.toISOString())
+              .lte('date_booked_for', bookedAt.toISOString())
+              .order('date_booked_for', { ascending: false })
+              .limit(1);
+            q = applyFilters(q);
+            const { data, error } = await q;
+            if (error) {
+              console.error('Error searching discoveries for appointment-side linking:', error);
+              return null;
+            }
+            return (data && data.length > 0) ? data[0] : null;
+          };
+
+          // Prefer matching by email, then phone, then name
+          let matchedDisc: any = null;
+          if (appointmentData.email) matchedDisc = await runDiscQuery(q => q.eq('email', appointmentData.email));
+          if (!matchedDisc && appointmentData.phone) matchedDisc = await runDiscQuery(q => q.eq('phone', appointmentData.phone));
+          if (!matchedDisc && appointmentData.contact_name) matchedDisc = await runDiscQuery(q => q.eq('contact_name', appointmentData.contact_name));
+
+          if (matchedDisc && !matchedDisc.linked_appointment_id) {
+            const { error: linkApptErr } = await supabase
+              .from('appointments')
+              .update({ linked_discovery_id: matchedDisc.id })
+              .eq('id', savedAppointment.id);
+            const { error: linkDiscErr } = await supabase
+              .from('discoveries')
+              .update({ linked_appointment_id: savedAppointment.id })
+              .eq('id', matchedDisc.id);
+            if (linkApptErr || linkDiscErr) {
+              console.error('Failed to set discovery<->appointment link (appt-side):', linkApptErr || linkDiscErr);
+            } else {
+              console.log('🔗 Linked discovery to appointment (appt-side):', { discoveryId: matchedDisc.id, appointmentId: savedAppointment.id });
+              // Clear any dial link to favor discovery link as canonical
+              const { error: clearDialErr } = await supabase
+                .from('dials')
+                .update({ booked: false, booked_appointment_id: null })
+                .eq('account_id', account.id)
+                .eq('booked_appointment_id', savedAppointment.id);
+              if (clearDialErr) {
+                console.warn('⚠️ Could not clear dial link after appt-side discovery link:', clearDialErr);
+              }
+            }
+          }
+        }
+      } catch (e3) {
+        console.error('Error in appointment-side discovery linking:', e3);
+      }
       
     } else if (calendarMapping.target_table === 'discoveries') {
       // Auto-create users for discoveries
