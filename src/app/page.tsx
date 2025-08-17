@@ -68,7 +68,7 @@ export default function HomePage() {
     <div className="min-h-screen bg-background">
       {/* Navigation */}
       <nav className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-16 items-center justify-between px-4">
+        <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <div className="flex items-center gap-2">
             <div className="bg-primary text-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
               <Command className="size-5" />
@@ -88,7 +88,7 @@ export default function HomePage() {
       </nav>
 
       {/* Hero Section */}
-      <section className="container px-4 py-24 md:py-32">
+      <section className="container mx-auto px-4 py-24 md:py-32">
         <div className="mx-auto max-w-4xl text-center">
           <Badge variant="secondary" className="mb-4">
             <Zap className="mr-1 h-3 w-3" />
@@ -116,7 +116,7 @@ export default function HomePage() {
       </section>
 
       {/* Features Section */}
-      <section className="container px-4 py-16">
+      <section className="container mx-auto px-4 py-16">
         <div className="mx-auto max-w-4xl text-center mb-16">
           <h2 className="text-3xl md:text-4xl font-bold mb-4">
             Everything You Need to Succeed
@@ -239,7 +239,7 @@ export default function HomePage() {
 
       {/* Benefits Section */}
       <section className="bg-muted/50 py-16">
-        <div className="container px-4">
+        <div className="container mx-auto px-4">
           <div className="mx-auto max-w-4xl text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold mb-4">
               Why Choose Promethean?
@@ -284,7 +284,7 @@ export default function HomePage() {
       </section>
 
       {/* CTA Section */}
-      <section className="container px-4 py-24">
+      <section className="container mx-auto px-4 py-24">
         <div className="mx-auto max-w-4xl text-center">
           <h2 className="text-3xl md:text-4xl font-bold mb-4">
             Ready to Transform Your Operations?
@@ -308,7 +308,7 @@ export default function HomePage() {
 
       {/* Footer */}
       <footer className="border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container px-4 py-8">
+        <div className="container mx-auto px-4 py-8">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="flex items-center gap-2 mb-4 md:mb-0">
               <div className="bg-primary text-primary-foreground flex aspect-square size-6 items-center justify-center rounded-lg">
