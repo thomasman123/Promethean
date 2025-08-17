@@ -78,9 +78,9 @@ export function DateRangePicker({
             )}
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="p-0" align="start">
-          <div className="flex">
-            <div className="w-40 border-r p-2 space-y-1">
+        <PopoverContent side="bottom" align="start" sideOffset={8} collisionPadding={12} className="p-0 max-w-[95vw]">
+          <div className="flex flex-col sm:flex-row">
+            <div className="w-full sm:w-40 border-b sm:border-b-0 sm:border-r p-2 space-y-1">
               {quickRanges.map((q) => (
                 <Button key={q.label} variant="ghost" className="w-full justify-start" onClick={() => handleQuickSelect(q.get)}>
                   {q.label}
