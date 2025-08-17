@@ -29,25 +29,38 @@ function ResetPasswordInner() {
   const queryAccessToken = searchParams?.get('access_token')
   const queryRefreshToken = searchParams?.get('refresh_token')
   const queryType = searchParams?.get('type')
+  const queryCode = searchParams?.get('code')
   const [accessToken, setAccessToken] = useState<string | null>(queryAccessToken)
   const [refreshToken, setRefreshToken] = useState<string | null>(queryRefreshToken)
   const [linkType, setLinkType] = useState<string | null>(queryType)
 
   useEffect(() => {
     if (typeof window === 'undefined') return
-    
-    // Listen for auth state changes; if a session appears (e.g., PASSWORD_RECOVERY), allow form
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session) setHasSession(true)
-      // Some providers emit PASSWORD_RECOVERY; treat that as recovery context
-      if (event === 'PASSWORD_RECOVERY') setLinkType('recovery')
-    })
 
-    // Also check current session immediately
-    supabase.auth.getSession().then(({ data }) => setHasSession(!!data.session))
+    // Handle PKCE/email recovery links that come with ?code=...
+    const handleCodeParam = async () => {
+      if (queryCode) {
+        try {
+          const { data, error } = await supabase.auth.exchangeCodeForSession(queryCode)
+          if (error) {
+            // Fall through to hash/query token parsing
+            console.warn('exchangeCodeForSession failed:', error.message)
+          } else if (data?.session) {
+            setHasSession(true)
+            setLinkType('recovery')
+            // Clean the URL to remove the code param
+            const url = new URL(window.location.href)
+            url.searchParams.delete('code')
+            router.replace(url.pathname + url.search + url.hash)
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
+    }
 
-    return () => subscription.unsubscribe()
-  }, [])
+    handleCodeParam()
+  }, [queryCode, router])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -63,7 +76,8 @@ function ResetPasswordInner() {
       search,
       queryAccessToken,
       queryRefreshToken,
-      queryType
+      queryType,
+      queryCode
     })
     
     // If tokens are not in query, attempt to parse from hash
@@ -100,14 +114,20 @@ function ResetPasswordInner() {
       search,
       hasQueryTokens: !!(queryAccessToken && queryRefreshToken),
       hasHashTokens: !!(hash && hash.includes('access_token')),
+      hasCode: !!queryCode,
       linkType: linkType || queryType
     })
     
     setParsing(false)
-  }, [accessToken, router, queryAccessToken, queryRefreshToken, queryType, linkType])
+  }, [accessToken, router, queryAccessToken, queryRefreshToken, queryType, linkType, queryCode])
 
   useEffect(() => {
-    // Only set a session if this is an actual recovery flow
+    // If PKCE exchange created a session, mark it
+    supabase.auth.getSession().then(({ data }) => setHasSession(!!data.session))
+  }, [])
+
+  useEffect(() => {
+    // Only set a session if this is an actual recovery flow with tokens
     if (accessToken && refreshToken && linkType === 'recovery') {
       console.log('🔍 Setting Supabase session with tokens')
       supabase.auth.setSession({
@@ -124,10 +144,11 @@ function ResetPasswordInner() {
       console.log('🔍 Not setting session:', {
         hasAccessToken: !!accessToken,
         hasRefreshToken: !!refreshToken,
-        linkType
+        linkType,
+        hasCode: !!queryCode
       })
     }
-  }, [accessToken, refreshToken, linkType])
+  }, [accessToken, refreshToken, linkType, queryCode])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -234,6 +255,7 @@ function ResetPasswordInner() {
               <div className="font-semibold mb-2">Debug Info:</div>
               <div>Has Query Tokens: {debugInfo.hasQueryTokens ? 'Yes' : 'No'}</div>
               <div>Has Hash Tokens: {debugInfo.hasHashTokens ? 'Yes' : 'No'}</div>
+              <div>Has Code: {debugInfo.hasCode ? 'Yes' : 'No'}</div>
               <div>Link Type: {debugInfo.linkType || 'None'}</div>
               <div>Access Token: {accessToken ? 'Present' : 'Missing'}</div>
               <div>Refresh Token: {refreshToken ? 'Present' : 'Missing'}</div>
