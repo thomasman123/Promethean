@@ -67,6 +67,10 @@ export default function TeamMembersPage() {
   const [invitingPendingUser, setInvitingPendingUser] = useState<string | null>(null)
   const [invitingGhlUser, setInvitingGhlUser] = useState<string | null>(null)
   const [updatingRoleUser, setUpdatingRoleUser] = useState<string | null>(null)
+  // Add dialog state for inviting GHL user with chosen role
+  const [openGhlInvite, setOpenGhlInvite] = useState(false)
+  const [ghlInviteUser, setGhlInviteUser] = useState<GhlUser | null>(null)
+  const [ghlInviteRole, setGhlInviteRole] = useState<TeamMember['role']>('setter')
 
   useEffect(() => {
     if (!selectedAccountId) return
@@ -200,7 +204,8 @@ export default function TeamMembersPage() {
     return 'setter'
   }
 
-  const inviteGhlUser = async (user: GhlUser) => {
+  // Accept optional chosenRole to respect user selection from dialog
+  const inviteGhlUser = async (user: GhlUser, chosenRole?: TeamMember['role']) => {
     if (!selectedAccountId || !user.email) return
     setInvitingGhlUser(user.id)
     try {
@@ -211,7 +216,7 @@ export default function TeamMembersPage() {
           accountId: selectedAccountId,
           email: user.email,
           fullName: user.name || '',
-          role: roleFromGhl(user.role)
+          role: chosenRole || roleFromGhl(user.role)
         }),
       })
       const data = await res.json()
@@ -220,6 +225,8 @@ export default function TeamMembersPage() {
       await fetchMembers()
       await fetchPendingUsers()
       await fetchGhlUsers()
+      setOpenGhlInvite(false)
+      setGhlInviteUser(null)
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Failed to invite user')
     } finally {
@@ -436,7 +443,7 @@ export default function TeamMembersPage() {
                         <Button
                           variant="default"
                           size="sm"
-                          onClick={() => inviteGhlUser(u)}
+                          onClick={() => { setGhlInviteUser(u); setGhlInviteRole(roleFromGhl(u.role)); setOpenGhlInvite(true) }}
                           disabled={!u.email || u.invited || u.joined || invitingGhlUser === u.id}
                         >
                           {invitingGhlUser === u.id ? 'Inviting...' : u.joined ? 'Already Member' : u.invited ? 'Invited' : 'Invite to App'}
@@ -603,6 +610,48 @@ export default function TeamMembersPage() {
 
             <DialogFooter>
               <Button onClick={invite} disabled={inviting || !email}>Invite</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Invite specific GHL user with selected role */}
+        <Dialog open={openGhlInvite} onOpenChange={(o) => { setOpenGhlInvite(o); if (!o) { setGhlInviteUser(null); setGhlInviteRole('setter') } }}>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Invite GHL User</DialogTitle>
+              <DialogDescription>
+                Choose the role for the invite. Default is based on the user’s GHL role.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-2">
+              <div className="text-sm text-muted-foreground">
+                {ghlInviteUser?.name || 'Unknown'} {ghlInviteUser?.email ? `• ${ghlInviteUser.email}` : ''}
+              </div>
+
+              <div className="space-y-2">
+                <Label>Role</Label>
+                <Select value={ghlInviteRole} onValueChange={(v) => setGhlInviteRole(v as TeamMember['role'])}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {isAdmin() && <SelectItem value="admin">Admin</SelectItem>}
+                    <SelectItem value="moderator">Moderator</SelectItem>
+                    <SelectItem value="sales_rep">Sales Rep</SelectItem>
+                    <SelectItem value="setter">Setter</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button 
+                onClick={() => { if (ghlInviteUser) inviteGhlUser(ghlInviteUser, ghlInviteRole) }} 
+                disabled={!ghlInviteUser?.email || (ghlInviteUser ? invitingGhlUser === ghlInviteUser.id : false)}
+              >
+                {ghlInviteUser && invitingGhlUser === ghlInviteUser.id ? 'Inviting...' : 'Invite'}
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
