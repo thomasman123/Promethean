@@ -380,6 +380,50 @@ async function processPhoneCallWebhook(payload: any) {
     
     console.log('✅ Dial saved successfully:', savedDial.id);
     
+    // New: If the appointment already exists (dial arrived after appointment), link it here
+    try {
+      const dialTimeIso = dialData.date_called;
+      if (dialTimeIso) {
+        const dialTime = new Date(dialTimeIso);
+        const windowEnd = new Date(dialTime.getTime() + 60 * 60 * 1000); // 60 minutes after dial
+
+        let apptQuery = supabase
+          .from('appointments')
+          .select('id, date_booked')
+          .eq('account_id', account.id)
+          .gte('date_booked', dialTime.toISOString())
+          .lte('date_booked', windowEnd.toISOString())
+          .order('date_booked', { ascending: true })
+          .limit(1);
+
+        if (dialData.email) {
+          apptQuery = apptQuery.eq('email', dialData.email);
+        } else if (dialData.phone) {
+          apptQuery = apptQuery.eq('phone', dialData.phone);
+        }
+
+        const { data: appts, error: apptErr } = await apptQuery;
+        if (apptErr) {
+          console.error('Error searching appointments to link dial:', apptErr);
+        } else if (appts && appts.length > 0) {
+          const appt = appts[0];
+          const { error: updErr } = await supabase
+            .from('dials')
+            .update({ booked: true, booked_appointment_id: appt.id })
+            .eq('id', savedDial.id);
+          if (updErr) {
+            console.error('Failed to mark dial as booked/link appointment (dial-first path):', updErr);
+          } else {
+            console.log('🔗 Linked dial to existing appointment (dial-first path):', { dialId: savedDial.id, appointmentId: appt.id });
+          }
+        } else {
+          console.log('ℹ️ No appointment found within 60 minutes after dial for linking');
+        }
+      }
+    } catch (e) {
+      console.error('Error linking dial to appointment (dial-first path):', e);
+    }
+    
   } catch (error) {
     console.error('Error processing phone call webhook:', error);
     throw error;
