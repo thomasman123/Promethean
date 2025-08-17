@@ -197,6 +197,17 @@ export const METRICS_REGISTRY: Record<string, MetricDefinition> = {
 			where: ['meaningful_conversation = true']
 		},
 		unit: 'seconds'
+	},
+	// Total Dials: count all rows in dials
+	'total_dials': {
+		name: 'Total Dials',
+		description: 'Total count of all dials within the selected filters',
+		breakdownType: 'total',
+		query: {
+			table: 'dials',
+			select: ['COUNT(*) as value']
+		},
+		unit: 'count'
 	}
 }
 
