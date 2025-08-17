@@ -46,6 +46,8 @@ export default function CRMConnectionPage() {
   const [loading, setLoading] = useState(true)
   const [connecting, setConnecting] = useState(false)
   const [showUninstallDialog, setShowUninstallDialog] = useState(false)
+  const [showWipeDialog, setShowWipeDialog] = useState(false)
+  const [wiping, setWiping] = useState(false)
 
   useEffect(() => {
     if (selectedAccountId) {
@@ -240,6 +242,30 @@ export default function CRMConnectionPage() {
     }
   }
 
+  const wipeAccountData = async () => {
+    if (!selectedAccountId) return
+    setWiping(true)
+    try {
+      const { error } = await supabase.rpc('admin_wipe_account_data', {
+        target_account_id: selectedAccountId,
+      })
+      if (error) {
+        console.error('❌ Failed to wipe data:', error)
+        alert('Failed to wipe data. Please try again.')
+        return
+      }
+      // Refresh any UI that reads counts
+      await fetchConnection()
+      setShowWipeDialog(false)
+      alert('All account activity data has been deleted (users and connection preserved).')
+    } catch (e) {
+      console.error('❌ Error wiping data:', e)
+      alert('An unexpected error occurred while wiping data.')
+    } finally {
+      setWiping(false)
+    }
+  }
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'connected':
@@ -385,6 +411,9 @@ export default function CRMConnectionPage() {
                               Cancel
                             </Button>
                           )}
+                          <Button variant="destructive" onClick={() => setShowWipeDialog(true)} disabled={wiping}>
+                            {wiping ? 'Wiping…' : 'Wipe Data'}
+                          </Button>
                         </>
                       ) : (
                         <div className="flex gap-2">
@@ -394,6 +423,9 @@ export default function CRMConnectionPage() {
                             disabled={loading}
                           >
                             {loading ? 'Disconnecting...' : 'Disconnect'}
+                          </Button>
+                          <Button variant="destructive" onClick={() => setShowWipeDialog(true)} disabled={wiping}>
+                            {wiping ? 'Wiping…' : 'Wipe Data'}
                           </Button>
                           <Button variant="outline" asChild>
                             <a
@@ -496,6 +528,25 @@ export default function CRMConnectionPage() {
             <Button onClick={() => setShowUninstallDialog(false)} className="bg-red-600 hover:bg-red-700 text-white">
               Understood - Data Deleted
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showWipeDialog} onOpenChange={setShowWipeDialog}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Wipe Account Data</DialogTitle>
+            <DialogDescription>
+              This will permanently delete all appointments, discoveries, dials, payments, and webhook logs for this account. Users and the GHL connection will remain.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 text-sm">
+            <p>Type DELETE to confirm:</p>
+            <input id="confirm-delete" className="w-full border rounded px-3 py-2 bg-background" onChange={(e)=>{(e.target as HTMLInputElement).dataset.ok = (e.target as HTMLInputElement).value === 'DELETE' ? '1':'0'}} />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowWipeDialog(false)}>Cancel</Button>
+            <Button onClick={wipeAccountData} disabled={wiping}>Confirm Wipe</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
