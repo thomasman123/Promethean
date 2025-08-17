@@ -347,22 +347,18 @@ async function processPhoneCallWebhook(payload: any) {
       }
     }
     
-    // Prepare dial data
+    // Prepare dial data (mapped to existing dials schema)
     const dialData = {
       account_id: account.id,
-      timestamp: new Date(payload.dateAdded || new Date().toISOString()).toISOString(),
       contact_name: contactName,
-      contact_email: contactEmail,
-      contact_phone: contactPhone,
-      setter_name: setterName,
-      setter_email: setterEmail,
-      setter_id: callerUserId,
-      caller_user_id: callerUserId,
-      duration_seconds: payload.callDuration || 0,
-      call_recording_url: payload.attachments?.[0] || null,
+      email: contactEmail,
+      phone: contactPhone,
+      setter: setterName,
+      duration: payload.callDuration || 0,
+      call_recording_link: payload.attachments?.[0] || null,
       answered: payload.callDuration > 30 && payload.status === 'completed' && payload.callStatus !== 'voicemail',
-      meaningful_convo: payload.callDuration > 120 && payload.status === 'completed' && payload.callStatus !== 'voicemail',
-      booked_appointment_id: null,
+      meaningful_conversation: payload.callDuration > 120 && payload.status === 'completed' && payload.callStatus !== 'voicemail',
+      date_called: new Date(payload.timestamp || payload.dateAdded || new Date().toISOString()).toISOString(),
     };
     
     console.log('💾 Saving dial data:', {
