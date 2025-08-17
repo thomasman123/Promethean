@@ -71,6 +71,84 @@ export const METRICS_REGISTRY: Record<string, MetricDefinition> = {
 			]
 		},
 		unit: 'percent'
+	},
+	// Pitch to Sale - won / pitched (as fraction)
+	'pitch_to_sale_rate': {
+		name: 'Pitch to Sale',
+		description: 'Ratio of sales (won) to pitched appointments',
+		breakdownType: 'total',
+		query: {
+			table: 'appointments',
+			select: [
+				"COALESCE(AVG(CASE WHEN pitched = true THEN CASE WHEN show_outcome = 'won' THEN 1.0 ELSE 0.0 END END), 0) as value"
+			]
+		},
+		unit: 'percent'
+	},
+	// Answer to Sale - won / shows (as fraction)
+	'answer_to_sale_rate': {
+		name: 'Answer to Sale',
+		description: 'Ratio of sales (won) to shown appointments',
+		breakdownType: 'total',
+		query: {
+			table: 'appointments',
+			select: [
+				"COALESCE(AVG(CASE WHEN call_outcome = 'Show' THEN CASE WHEN show_outcome = 'won' THEN 1.0 ELSE 0.0 END END), 0) as value"
+			]
+		},
+		unit: 'percent'
+	},
+	// Cash Collected Per Sale - sum(cash_collected) / count(won)
+	'cash_per_sale': {
+		name: 'Cash Collected Per Sale',
+		description: 'Average cash collected per sale (won appointments)',
+		breakdownType: 'total',
+		query: {
+			table: 'appointments',
+			select: [
+				"COALESCE(SUM(cash_collected), 0) / NULLIF(SUM(CASE WHEN show_outcome = 'won' THEN 1 ELSE 0 END), 0) as value"
+			]
+		},
+		unit: 'currency'
+	},
+	// Cash Collected Per Appointment - average cash per appointment
+	'cash_per_appointment': {
+		name: 'Cash Collected Per Appointment',
+		description: 'Average cash collected per appointment',
+		breakdownType: 'total',
+		query: {
+			table: 'appointments',
+			select: [
+				'COALESCE(AVG(cash_collected), 0) as value'
+			]
+		},
+		unit: 'currency'
+	},
+	// Cash Per Dial - sum(appointments.cash_collected) / count(dials)
+	'cash_per_dial': {
+		name: 'Cash Per Dial',
+		description: 'Total cash collected divided by count of dials',
+		breakdownType: 'total',
+		query: {
+			table: 'appointments',
+			select: [
+				"COALESCE(SUM(cash_collected), 0) / NULLIF((SELECT COUNT(*) FROM dials WHERE account_id = $account_id AND date_called >= $start_date AND date_called <= $end_date), 0) as value"
+			]
+		},
+		unit: 'currency'
+	},
+	// Show Up Rate - shows / appointments (as fraction)
+	'show_up_rate': {
+		name: 'Show Up Rate',
+		description: 'Ratio of shown appointments to total appointments',
+		breakdownType: 'total',
+		query: {
+			table: 'appointments',
+			select: [
+				"COALESCE(AVG(CASE WHEN call_outcome = 'Show' THEN 1.0 ELSE 0.0 END), 0) as value"
+			]
+		},
+		unit: 'percent'
 	}
 }
 
