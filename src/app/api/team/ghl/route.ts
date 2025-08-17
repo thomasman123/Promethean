@@ -136,12 +136,44 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: `Failed to fetch GHL users: ${usersResp.status}` }, { status: usersResp.status })
     }
 
-    const usersData = await usersResp.json()
-    const users = (usersData.users || usersData.data || []).map((u: any) => ({
-      id: u.id,
+    const usersData: { users?: any[]; data?: any[] } = await usersResp.json()
+    const baseUsers = (usersData.users || usersData.data || []).map((u: { id?: string; email?: string; userEmail?: string; name?: string; firstName?: string; lastName?: string; role?: string; userType?: string; }) => ({
+      id: (u.id || '') as string,
       email: u.email || u.userEmail || null,
       name: u.name || [u.firstName, u.lastName].filter(Boolean).join(' ') || null,
       role: u.role || u.userType || null,
+    }))
+
+    // Enrich with invited/joined state
+    const emails = baseUsers.map(u => u.email).filter(Boolean) as string[]
+
+    const { data: invitedRows } = await supabase
+      .from('invitations')
+      .select('email, status')
+      .eq('account_id', accountId)
+
+    const invitedSet = new Set((invitedRows || []).filter(r => r.status !== 'accepted').map(r => (r.email || '').toLowerCase()))
+
+    const { data: accessRows } = await supabase
+      .from('account_access')
+      .select('user_id')
+      .eq('account_id', accountId)
+      .eq('is_active', true)
+
+    const userIds = (accessRows || []).map(r => r.user_id)
+    let joinedEmails = new Set<string>()
+    if (userIds.length > 0) {
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id,email')
+        .in('id', userIds)
+      joinedEmails = new Set((profiles || []).map(p => (p.email || '').toLowerCase()))
+    }
+
+    const users = baseUsers.map((u: { id: string; email: string | null; name: string | null; role: string | null; }) => ({
+      ...u,
+      invited: u.email ? invitedSet.has(u.email.toLowerCase()) : false,
+      joined: u.email ? joinedEmails.has(u.email.toLowerCase()) : false,
     }))
 
     return NextResponse.json({ users })

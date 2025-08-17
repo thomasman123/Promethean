@@ -309,6 +309,23 @@ export default function ManageAccountsPage() {
 		}
 	}
 
+	const deleteAccount = async (accountId: string) => {
+		if (!confirm('This will permanently delete the account and all its data. Type DELETE to confirm.') ) {
+			// simple confirm; could enhance later
+		}
+		try {
+			const sure = typeof window !== 'undefined' ? prompt('Type DELETE to confirm account deletion') : null;
+			if (sure !== 'DELETE') return;
+			const { error } = await supabase.rpc('admin_delete_account', { p_account_id: accountId })
+			if (error) throw error
+			toast.success('Account deleted')
+			fetchAccounts()
+		} catch (e) {
+			console.error('Error deleting account:', e)
+			toast.error('Failed to delete account')
+		}
+	}
+
 	const getRoleIcon = (role: string) => {
 		// For account-based roles, we don't show admin (app-wide role)
 		if (role === 'admin') return <Shield className="h-3 w-3" />
@@ -452,6 +469,12 @@ export default function ManageAccountsPage() {
 														: "Make Agency"
 												}
 											</Button>
+											{isAdmin() && (
+												<Button variant="destructive" size="sm" onClick={() => deleteAccount(account.id)}>
+													<Trash2 className="h-4 w-4 mr-2" />
+													Delete Account
+												</Button>
+											)}
 											<Dialog open={assignUserOpen && selectedAccount?.id === account.id} onOpenChange={(open) => {
 												setAssignUserOpen(open)
 												if (open) setSelectedAccount(account)
