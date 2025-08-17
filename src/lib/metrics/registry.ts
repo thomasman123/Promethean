@@ -32,6 +32,39 @@ export const METRICS_REGISTRY: Record<string, MetricDefinition> = {
 			select: ['COUNT(*) as value'],
 			where: ["call_outcome = 'show'"]
 		}
+	},
+	// Sales Made: appointments with show_outcome = 'won'
+	'sales_made': {
+		name: 'Sales Made',
+		description: "Count of appointments where the show's outcome is Won",
+		breakdownType: 'total',
+		query: {
+			table: 'appointments',
+			select: ['COUNT(*) as value'],
+			where: ["show_outcome = 'won'"]
+		}
+	},
+	// Cash Collected: sum over appointments
+	'cash_collected': {
+		name: 'Cash Collected',
+		description: 'Sum of cash collected across appointments',
+		breakdownType: 'total',
+		query: {
+			table: 'appointments',
+			select: ['COALESCE(SUM(cash_collected), 0) as value']
+		}
+	},
+	// Appointment to Sale rate: won count / total count within filters
+	'appointment_to_sale_rate': {
+		name: 'Appointment to Sale',
+		description: 'Ratio of won shows to total appointments',
+		breakdownType: 'total',
+		query: {
+			table: 'appointments',
+			select: [
+				"COALESCE(AVG(CASE WHEN show_outcome = 'won' THEN 1.0 ELSE 0.0 END), 0) as value"
+			]
+		}
 	}
 }
 
