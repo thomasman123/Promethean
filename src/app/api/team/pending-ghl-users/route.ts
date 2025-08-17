@@ -20,6 +20,7 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
     const accountId = searchParams.get('accountId')
+    const aggregate = searchParams.get('aggregate') === '1'
     if (!accountId) return NextResponse.json({ error: 'accountId required' }, { status: 400 })
 
     // Verify user authentication and permissions
@@ -61,7 +62,7 @@ export async function GET(request: NextRequest) {
 
     // Determine which account IDs to include
     let accountIds: string[] = [accountId]
-    if (account?.is_agency) {
+    if (aggregate && account?.is_agency) {
       if (isGlobalAdmin) {
         // All active non-agency accounts
         const { data: all } = await supabase
