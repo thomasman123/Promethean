@@ -49,7 +49,7 @@ interface GhlUser {
 }
 
 export default function TeamMembersPage() {
-  const { selectedAccountId, getAccountBasedPermissions, accountChangeTimestamp } = useAuth()
+  const { selectedAccountId, getAccountBasedPermissions, accountChangeTimestamp, isAdmin } = useAuth()
   const permissions = getAccountBasedPermissions()
   const [members, setMembers] = useState<TeamMember[]>([])
   const [ghlUsers, setGhlUsers] = useState<GhlUser[]>([])
@@ -66,6 +66,7 @@ export default function TeamMembersPage() {
   const [convertingUser, setConvertingUser] = useState<string | null>(null)
   const [invitingPendingUser, setInvitingPendingUser] = useState<string | null>(null)
   const [invitingGhlUser, setInvitingGhlUser] = useState<string | null>(null)
+  const [updatingRoleUser, setUpdatingRoleUser] = useState<string | null>(null)
 
   useEffect(() => {
     if (!selectedAccountId) return
@@ -228,6 +229,7 @@ export default function TeamMembersPage() {
 
   const updateRole = async (userId: string, newRole: TeamMember['role']) => {
     if (!selectedAccountId) return
+    setUpdatingRoleUser(userId)
     try {
       const res = await fetch('/api/team/update-role', {
         method: 'POST',
@@ -236,9 +238,13 @@ export default function TeamMembersPage() {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to update role')
+      toast.success('Role updated')
       await fetchMembers()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to update role')
+      toast.error(e instanceof Error ? e.message : 'Failed to update role')
+    } finally {
+      setUpdatingRoleUser(null)
     }
   }
 
@@ -366,7 +372,22 @@ export default function TeamMembersPage() {
                               {m.created_for_data && ' | Created for data linking'}
                             </div>
                           </div>
-                          <div className="flex gap-2">
+                          <div className="flex gap-2 items-center">
+                            <Select
+                              value={m.role}
+                              onValueChange={(v) => updateRole(m.user_id, v as TeamMember['role'])}
+                              disabled={updatingRoleUser === m.user_id}
+                            >
+                              <SelectTrigger className="w-[160px]">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {isAdmin() && <SelectItem value="admin">Admin</SelectItem>}
+                                <SelectItem value="moderator">Moderator</SelectItem>
+                                <SelectItem value="sales_rep">Sales Rep</SelectItem>
+                                <SelectItem value="setter">Setter</SelectItem>
+                              </SelectContent>
+                            </Select>
                             {m.created_for_data ? (
                               <Button 
                                 variant="default" 
