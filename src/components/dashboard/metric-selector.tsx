@@ -14,7 +14,6 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import {
   Collapsible,
   CollapsibleContent,
@@ -82,37 +81,13 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
   const { metricsRegistry, addWidget } = useDashboardStore();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedMetric, setSelectedMetric] = useState<MetricDefinition | null>(null);
+  const [selectedMetrics, setSelectedMetrics] = useState<MetricDefinition[]>([]);
   const [selectedViz, setSelectedViz] = useState<VizType | null>(null);
   const [selectedBreakdown, setSelectedBreakdown] = useState<BreakdownType | null>(null);
   const [customTitle, setCustomTitle] = useState("");
   const [filterMode, setFilterMode] = useState<"all" | "favorites" | "recent">("all");
   const [favoriteMetricNames, setFavoriteMetricNames] = useState<string[]>([]);
   const [recentMetricNames, setRecentMetricNames] = useState<string[]>([]);
-
-  // Advanced display options
-  const [yAxisScale, setYAxisScale] = useState<"linear" | "log">("linear");
-  const [showRollingAvg, setShowRollingAvg] = useState(false);
-  const [rollingAvgDays, setRollingAvgDays] = useState(7);
-  const [compareVsPrevious, setCompareVsPrevious] = useState(false);
-  const [previousPeriodType, setPreviousPeriodType] = useState<"day" | "week" | "month" | "year">("week");
-
-  // Map viz to default breakdown
-  const getDefaultBreakdownForViz = (viz: VizType): BreakdownType => {
-    switch (viz) {
-      case 'kpi':
-        return 'total';
-      case 'line':
-        return 'total'; // Use total breakdown, engine will convert to time automatically
-      case 'bar':
-        return 'total';
-      case 'area':
-        return 'total';
-      case 'radar':
-        return 'total';
-      default:
-        return 'total';
-    }
-  };
 
   // Load favorites/recents from localStorage
   useEffect(() => {
@@ -131,8 +106,9 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
     } catch {}
   };
 
-  const pushRecent = (name: string) => {
-    const next = [name, ...recentMetricNames.filter((n) => n !== name)].slice(0, 8);
+  const pushRecent = (names: string[]) => {
+    const first = names[0];
+    const next = [first, ...recentMetricNames.filter((n) => n !== first)].slice(0, 8);
     setRecentMetricNames(next);
     try {
       localStorage.setItem(RECENTS_KEY, JSON.stringify(next));
@@ -171,12 +147,40 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
     }, {} as Record<string, MetricDefinition[]>);
   }, [groupedMetrics, searchQuery, filterMode, favoriteMetricNames, recentMetricNames]);
 
+  const getDefaultBreakdownForViz = (viz: VizType): BreakdownType => {
+    switch (viz) {
+      case 'kpi':
+        return 'total';
+      case 'line':
+        return 'total'; // Engine can adjust to time
+      case 'bar':
+        return 'total';
+      case 'area':
+        return 'total';
+      case 'radar':
+        return 'total';
+      default:
+        return 'total';
+    }
+  };
+
   const handleMetricSelect = (metric: MetricDefinition) => {
     setSelectedMetric(metric);
     const fallbacks = getRecommendedVizFromBreakdowns(metric.supportedBreakdowns);
     const initialViz = (metric as any).recommendedVisualizations?.[0] || fallbacks[0] || 'kpi';
     setSelectedViz(initialViz as VizType);
     setSelectedBreakdown(getDefaultBreakdownForViz(initialViz as VizType));
+    // Initialize multi-selection with first pick
+    setSelectedMetrics([metric]);
+  };
+
+  const toggleMultiMetric = (metric: MetricDefinition) => {
+    setSelectedMetrics((prev) => {
+      const exists = prev.find((m) => m.name === metric.name);
+      if (exists) return prev.filter((m) => m.name !== metric.name);
+      if (prev.length >= 3) return prev; // cap at 3
+      return [...prev, metric];
+    });
   };
 
   const handleVizChange = (viz: VizType) => {
@@ -187,27 +191,26 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
   const handleAddWidget = () => {
     if (!selectedMetric || !selectedViz || !selectedBreakdown) return;
 
+    const names = (selectedViz === 'kpi') ? [selectedMetric.name] : selectedMetrics.map((m) => m.name);
+
     addWidget({
-      metricName: selectedMetric.name,
+      metricName: names[0],
+      metricNames: names.length > 1 ? names : undefined,
       breakdown: selectedBreakdown,
       vizType: selectedViz,
       settings: {
         title: customTitle || selectedMetric.displayName,
-        yAxisScale,
-        showRollingAvg,
-        rollingAvgDays,
-        compareVsPrevious,
-        previousPeriodType,
       },
       position: { x: 0, y: 0 },
-      size: { w: 4, h: 4 }, // Standard size for 3 widgets per row
+      size: { w: 4, h: 4 },
     });
 
     // Update recents
-    pushRecent(selectedMetric.name);
+    pushRecent(names);
 
     // Reset state
     setSelectedMetric(null);
+    setSelectedMetrics([]);
     setSelectedViz(null);
     setSelectedBreakdown(null);
     setCustomTitle("");
@@ -216,9 +219,7 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
 
   const toggleFavorite = (metricName: string) => {
     const isFav = favoriteMetricNames.includes(metricName);
-    const next = isFav
-      ? favoriteMetricNames.filter((n) => n !== metricName)
-      : [...favoriteMetricNames, metricName];
+    const next = isFav ? favoriteMetricNames.filter((n) => n !== metricName) : [...favoriteMetricNames, metricName];
     saveFavorites(next);
   };
 
@@ -233,7 +234,7 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedMetric, selectedViz, selectedBreakdown, customTitle, yAxisScale, showRollingAvg, rollingAvgDays, compareVsPrevious, previousPeriodType]);
+  }, [selectedMetric, selectedViz, selectedBreakdown, customTitle]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -280,19 +281,20 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
                       }
                     >
                       {metrics.map((metric) => {
-                        const isActive = selectedMetric?.name === metric.name;
+                        const isPrimary = selectedMetric?.name === metric.name;
+                        const isSelected = selectedMetrics.some((m) => m.name === metric.name);
                         const isFav = favoriteMetricNames.includes(metric.name);
                         return (
                           <CommandItem
                             key={metric.name}
                             value={`${metric.displayName} ${metric.description}`}
                             onSelect={() => handleMetricSelect(metric)}
-                            className={cn("flex items-start justify-between gap-3 px-3 py-3 rounded-md", isActive && "bg-primary/5")}
+                            className={cn("flex items-start justify-between gap-3 px-3 py-3 rounded-md", isPrimary && "bg-primary/5")}
                           >
                             <div className="flex-1 text-left">
                               <div className="flex items-center gap-2">
                                 <div className="text-sm font-medium leading-none">{metric.displayName}</div>
-                                {isActive && <Check className="h-3.5 w-3.5 text-primary" />}
+                                {isPrimary && <Check className="h-3.5 w-3.5 text-primary" />}
                               </div>
                               <div className="text-xs text-muted-foreground mt-1 line-clamp-2">{metric.description}</div>
                               {metric.formula && <div className="text-[11px] font-mono text-muted-foreground mt-2">{metric.formula}</div>}
@@ -302,6 +304,18 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
                                     {b}
                                   </Badge>
                                 ))}
+                                {selectedViz && selectedViz !== 'kpi' && (
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant={isSelected ? "default" : "outline"}
+                                    className="h-6 px-2 ml-2"
+                                    onClick={(e) => { e.stopPropagation(); toggleMultiMetric(metric); }}
+                                    disabled={!selectedMetric || (selectedMetrics.length >= 3 && !isSelected)}
+                                  >
+                                    {isSelected ? 'Selected' : 'Add'}
+                                  </Button>
+                                )}
                               </div>
                             </div>
                             <Button
@@ -369,6 +383,13 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
                           </Button>
                         ))}
                       </div>
+
+                      {/* Multi-metric selection helper */}
+                      {selectedViz && selectedViz !== 'kpi' && (
+                        <div className="text-xs text-muted-foreground mt-3">
+                          Select up to 3 metrics to compare. Current: {selectedMetrics.length}
+                        </div>
+                      )}
                     </div>
 
                     {/* Section: Title */}
@@ -377,87 +398,7 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
                       <Input id="title" value={customTitle} onChange={(e) => setCustomTitle(e.target.value)} placeholder={selectedMetric.displayName} />
                     </div>
 
-                    {/* Section: Advanced options */}
-                    <div className="rounded-lg border bg-card">
-                      <Collapsible>
-                        <div className="flex items-center justify-between px-4 py-3">
-                          <div className="text-sm font-medium">Advanced display options</div>
-                          <CollapsibleTrigger asChild>
-                            <Button variant="ghost" size="sm">Toggle</Button>
-                          </CollapsibleTrigger>
-                        </div>
-                        <Separator />
-                        <CollapsibleContent>
-                          <div className="p-4 grid grid-cols-1 gap-4">
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <div className="text-sm font-medium">Logarithmic y-axis</div>
-                                <div className="text-xs text-muted-foreground">Switch to log scale for wide ranges</div>
-                              </div>
-                              <Switch checked={yAxisScale === "log"} onCheckedChange={(v) => setYAxisScale(v ? "log" : "linear")} />
-                            </div>
-                            <Separator />
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <div className="text-sm font-medium">Show rolling average</div>
-                                <div className="text-xs text-muted-foreground">Smooth line and bar charts over time</div>
-                              </div>
-                              <Switch checked={showRollingAvg} onCheckedChange={setShowRollingAvg} />
-                            </div>
-                            <div className="grid grid-cols-2 gap-3">
-                              <div>
-                                <Label htmlFor="ra-days" className="text-xs">Rolling avg days</Label>
-                                <Input
-                                  id="ra-days"
-                                  type="number"
-                                  min={3}
-                                  max={60}
-                                  value={rollingAvgDays}
-                                  onChange={(e) => setRollingAvgDays(Number(e.target.value) || 7)}
-                                />
-                              </div>
-                              <div>
-                                <Label htmlFor="prev-type" className="text-xs">Previous period</Label>
-                                <div className="flex gap-2 mt-1">
-                                  {(["day", "week", "month", "year"] as const).map((p) => (
-                                    <Button
-                                      key={p}
-                                      type="button"
-                                      size="sm"
-                                      variant={previousPeriodType === p ? "default" : "outline"}
-                                      onClick={() => setPreviousPeriodType(p)}
-                                    >
-                                      {p}
-                                    </Button>
-                                  ))}
-                                </div>
-                              </div>
-                            </div>
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <div className="text-sm font-medium">Compare vs previous period</div>
-                                <div className="text-xs text-muted-foreground">Display delta vs selected previous period</div>
-                              </div>
-                              <Switch checked={compareVsPrevious} onCheckedChange={setCompareVsPrevious} />
-                            </div>
-                          </div>
-                        </CollapsibleContent>
-                      </Collapsible>
-                    </div>
-
-                    {/* Section: Preview */}
-                    <div className="rounded-lg border bg-card p-4">
-                      <div className="text-sm font-medium mb-2">Preview</div>
-                      <div className="rounded-md border bg-muted/30 p-4">
-                        <div className="text-sm font-medium mb-1">{customTitle || selectedMetric.displayName}</div>
-                        <div className="text-xs text-muted-foreground mb-3">
-                          {vizTypeLabels[selectedViz as VizType]}
-                        </div>
-                        <div className="h-32 rounded bg-gradient-to-br from-muted to-muted/60 flex items-center justify-center text-xs text-muted-foreground">
-                          Preview placeholder
-                        </div>
-                      </div>
-                    </div>
+                    {/* Advanced options removed as requested */}
                   </div>
                 </ScrollArea>
 
@@ -469,14 +410,10 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
                       variant="ghost"
                       onClick={() => {
                         setSelectedMetric(null);
+                        setSelectedMetrics([]);
                         setSelectedViz(null);
                         setSelectedBreakdown(null);
                         setCustomTitle("");
-                        setYAxisScale("linear");
-                        setShowRollingAvg(false);
-                        setRollingAvgDays(7);
-                        setCompareVsPrevious(false);
-                        setPreviousPeriodType("week");
                       }}
                     >
                       Clear

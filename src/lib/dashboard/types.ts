@@ -31,7 +31,10 @@ export interface WidgetSettings {
 
 export interface DashboardWidget {
   id: string;
+  // Primary metric for backwards compatibility
   metricName: string;
+  // Optional: multiple metrics for comparison (non-KPI visualizations)
+  metricNames?: string[];
   breakdown: BreakdownType;
   vizType: VizType;
   settings?: WidgetSettings;
