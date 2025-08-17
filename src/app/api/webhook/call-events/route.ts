@@ -330,17 +330,18 @@ async function processPhoneCallWebhook(payload: any) {
         });
         
         if (contactResponse.ok) {
-          const contactData = await contactResponse.json();
-          contactName = contactData.name || 
-                       (contactData.firstName && contactData.lastName ? 
-                        `${contactData.firstName} ${contactData.lastName}`.trim() : 
-                        contactData.firstName || contactData.lastName) || null;
-          contactEmail = contactData.email || null;
-          contactPhone = contactData.phone || null;
-          // capture attribution and source
-          dialAttrSource = contactData.attributionSource || null;
-          dialLastAttrSource = contactData.lastAttributionSource || null;
-          contactSource = contactData.source || null;
+          const rawContact = await contactResponse.json();
+          const c: any = rawContact?.contact || rawContact;
+          contactName = c?.name || 
+                       (c?.firstName && c?.lastName ? 
+                        `${c.firstName} ${c.lastName}`.trim() : 
+                        c?.firstName || c?.lastName) || null;
+          contactEmail = c?.email || null;
+          contactPhone = c?.phone || null;
+          // capture attribution and source (same as appointments/discoveries)
+          dialAttrSource = c?.attributionSource || null;
+          dialLastAttrSource = c?.lastAttributionSource || null;
+          contactSource = c?.source || null;
           
           console.log('✅ Successfully fetched contact data:', {
             name: contactName,
