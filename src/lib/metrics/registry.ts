@@ -9,7 +9,8 @@ export const METRICS_REGISTRY: Record<string, MetricDefinition> = {
 		query: {
 			table: 'appointments',
 			select: ['COUNT(*) as value']
-		}
+		},
+		unit: 'count'
 	},
 	// Show Ups (Appointments): count rows where call_outcome is 'Show'
 	'show_ups_appointments': {
@@ -20,7 +21,8 @@ export const METRICS_REGISTRY: Record<string, MetricDefinition> = {
 			table: 'appointments',
 			select: ['COUNT(*) as value'],
 			where: ["call_outcome = 'Show'"]
-		}
+		},
+		unit: 'count'
 	},
 	// Show Ups (Discoveries): count rows where call_outcome is 'show'
 	'show_ups_discoveries': {
@@ -31,7 +33,8 @@ export const METRICS_REGISTRY: Record<string, MetricDefinition> = {
 			table: 'discoveries',
 			select: ['COUNT(*) as value'],
 			where: ["call_outcome = 'show'"]
-		}
+		},
+		unit: 'count'
 	},
 	// Sales Made: appointments with show_outcome = 'won'
 	'sales_made': {
@@ -42,7 +45,8 @@ export const METRICS_REGISTRY: Record<string, MetricDefinition> = {
 			table: 'appointments',
 			select: ['COUNT(*) as value'],
 			where: ["show_outcome = 'won'"]
-		}
+		},
+		unit: 'count'
 	},
 	// Cash Collected: sum over appointments
 	'cash_collected': {
@@ -52,7 +56,8 @@ export const METRICS_REGISTRY: Record<string, MetricDefinition> = {
 		query: {
 			table: 'appointments',
 			select: ['COALESCE(SUM(cash_collected), 0) as value']
-		}
+		},
+		unit: 'currency'
 	},
 	// Appointment to Sale rate: won count / total count within filters
 	'appointment_to_sale_rate': {
@@ -64,7 +69,8 @@ export const METRICS_REGISTRY: Record<string, MetricDefinition> = {
 			select: [
 				"COALESCE(AVG(CASE WHEN show_outcome = 'won' THEN 1.0 ELSE 0.0 END), 0) as value"
 			]
-		}
+		},
+		unit: 'percent'
 	}
 }
 

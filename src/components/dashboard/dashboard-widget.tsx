@@ -111,6 +111,13 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
 
   const hasAnimatedRef = useRef(false);
 
+  // Helper: unit formatting for tooltips/KPI
+  const formatValue = useCallback((val: number, unit?: string) => {
+    if (unit === 'currency') return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(val || 0);
+    if (unit === 'percent') return `${Math.round((val || 0) * 100)}%`;
+    return new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(val || 0);
+  }, []);
+
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
@@ -206,21 +213,25 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
   }, [widgetKey, stableFilters, selectedAccountId, relevantEntities.length, compareMode]);
   
   const renderChart = useCallback(() => {
+    const unit = metricDefinition?.unit;
+
     if (widget.vizType === 'kpi') {
       if (!data) return null;
       const chartKey = `chart-${widget.id}-${widget.vizType}-${widget.size.w}x${widget.size.h}-${isDragging ? 'dragging' : 'static'}`;
       return (
         <KPIChart
           key={chartKey}
-          value={data.data.value}
-          unit={metricDefinition?.unit}
-          comparison={data.data.comparison}
+          value={formatValue(Number((data as any).data.value), unit)}
+          unit={unit === 'percent' ? '' : unit === 'currency' ? '' : ''}
+          comparison={undefined}
         />
       );
     }
 
     // Non-KPI: support up to 3 series
     const names = (widget.metricNames && widget.metricNames.length > 0 ? widget.metricNames : [widget.metricName]).slice(0, 3);
+
+    const formatLabel = (name: string) => metricsRegistry.find(m => m.name === name)?.displayName || name;
 
     if (names.length === 1 && data) {
       // Fallback to legacy single series rendering paths
@@ -229,8 +240,8 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
           const lineData = Array.isArray(data.data) ? data.data.map((it: any) => ({ date: it.date, value: it.value })) : [{ date: 'Current', value: data.data.value || 0 }];
           return (
             <LineChart
-              data={lineData}
-              lines={[{ dataKey: 'value', name: widget.settings?.title || metricDefinition?.displayName || names[0], color: 'var(--primary)' }]}
+              data={lineData.map(d => ({ ...d, value: unit === 'percent' ? Math.round(d.value * 100) : d.value }))}
+              lines={[{ dataKey: 'value', name: widget.settings?.title || formatLabel(names[0]), color: 'var(--primary)' }]}
               xAxisKey="date"
               showLegend={false}
               showGrid
@@ -244,8 +255,8 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
           const barData = Array.isArray(data.data) ? data.data.map((it: any) => ({ date: it.date, value: it.value })) : [{ date: 'Current', value: data.data.value || 0 }];
           return (
             <BarChart
-              data={barData}
-              bars={[{ dataKey: 'value', name: widget.settings?.title || metricDefinition?.displayName || names[0], color: 'var(--primary)' }]}
+              data={barData.map(d => ({ ...d, value: unit === 'percent' ? Math.round(d.value * 100) : d.value }))}
+              bars={[{ dataKey: 'value', name: widget.settings?.title || formatLabel(names[0]), color: 'var(--primary)' }]}
               xAxisKey="date"
               showLegend={false}
               showGrid
@@ -259,8 +270,8 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
           const areaData = Array.isArray(data.data) ? data.data.map((it: any) => ({ date: it.date, value: it.value })) : [{ date: 'Current', value: data.data.value || 0 }];
           return (
             <AreaChart
-              data={areaData}
-              areas={[{ dataKey: 'value', name: widget.settings?.title || metricDefinition?.displayName || names[0], color: 'var(--primary)' }]}
+              data={areaData.map(d => ({ ...d, value: unit === 'percent' ? Math.round(d.value * 100) : d.value }))}
+              areas={[{ dataKey: 'value', name: widget.settings?.title || formatLabel(names[0]), color: 'var(--primary)' }]}
               xAxisKey="date"
               showLegend={false}
               showGrid
@@ -275,8 +286,8 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
           return (
             <RadarChart
               key={`chart-${widget.id}`}
-              data={radarData}
-              radarSeries={[{ dataKey: 'value', name: widget.settings?.title || metricDefinition?.displayName || names[0], color: 'var(--primary)' }]}
+              data={radarData.map(d => ({ ...d, value: unit === 'percent' ? Math.round(d.value * 100) : d.value }))}
+              radarSeries={[{ dataKey: 'value', name: widget.settings?.title || formatLabel(names[0]), color: 'var(--primary)' }]}
               angleKey="date"
               showLegend={false}
               disableTooltip={isDragging}
@@ -289,13 +300,12 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
 
     // Multi-series path
     const merged: Array<Record<string, any>> = [];
-    const allKeys: string[] = [];
     multiSeries.forEach((s, idx) => {
       const key = `series_${idx}`;
-      allKeys.push(key);
       s.series.forEach(point => {
+        const v = point.value;
         const existing = merged.find(m => m.date === point.date);
-        if (existing) existing[key] = point.value; else merged.push({ date: point.date, [key]: point.value });
+        if (existing) existing[key] = v; else merged.push({ date: point.date, [key]: v });
       });
     });
 
@@ -342,7 +352,6 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
           />
         );
       case 'radar': {
-        // Radar expects a single series per key; using merged works similarly with legend
         return (
           <RadarChart
             key={`chart-${widget.id}`}

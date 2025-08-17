@@ -44,6 +44,7 @@ export interface MetricDefinition {
   description: string
   breakdownType: BreakdownType
   query: MetricQuery
+  unit?: 'count' | 'currency' | 'percent' | string
 }
 
 // Result types based on breakdown
