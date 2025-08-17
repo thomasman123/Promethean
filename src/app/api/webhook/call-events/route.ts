@@ -1180,8 +1180,52 @@ async function processAppointmentWebhook(payload: any) {
         // Don't throw - this is not critical to appointment processing
       }
       
-      // Link this appointment back to the originating dial
-      await linkAppointmentToDial(supabase, savedAppointment, contactData, account.id);
+      // New: Link appointment to most recent qualifying dial (within 60 minutes before booking)
+      try {
+        const bookedAtIso = appointmentData.date_booked;
+        if (bookedAtIso) {
+          const bookedAt = new Date(bookedAtIso);
+          const windowStart = new Date(bookedAt.getTime() - 60 * 60 * 1000); // 60 minutes prior
+
+          let dialQuery = supabase
+            .from('dials')
+            .select('id, date_called')
+            .eq('account_id', account.id)
+            .gte('date_called', windowStart.toISOString())
+            .lte('date_called', bookedAt.toISOString())
+            .order('date_called', { ascending: false })
+            .limit(1);
+
+          if (appointmentData.email) {
+            dialQuery = dialQuery.eq('email', appointmentData.email);
+          } else if (appointmentData.phone) {
+            dialQuery = dialQuery.eq('phone', appointmentData.phone);
+          }
+
+          const { data: recent, error: recentErr } = await dialQuery;
+          if (recentErr) {
+            console.error('Error searching recent dials for linking:', recentErr);
+          } else if (recent && recent.length > 0) {
+            const dial = recent[0];
+            const { error: updateErr } = await supabase
+              .from('dials')
+              .update({ booked: true, booked_appointment_id: savedAppointment.id })
+              .eq('id', dial.id);
+            if (updateErr) {
+              console.error('Failed to mark dial as booked/link appointment:', updateErr);
+            } else {
+              console.log('🔗 Linked appointment to dial and marked booked:', { dialId: dial.id, appointmentId: savedAppointment.id });
+            }
+          } else {
+            console.log('ℹ️ No qualifying dial found within 60 minutes for this appointment booking');
+          }
+        }
+      } catch (linkErr) {
+        console.error('Error linking appointment to dial:', linkErr);
+      }
+
+      // Removed old linking mechanism
+      // await linkAppointmentToDial(supabase, savedAppointment, contactData, account.id);
       
     } else if (calendarMapping.target_table === 'discoveries') {
       // Auto-create users for discoveries
@@ -1353,8 +1397,7 @@ async function processAppointmentWebhook(payload: any) {
         // Don't throw - this is not critical to discovery processing
       }
       
-      // Link this discovery back to the originating dial  
-      await linkAppointmentToDial(supabase, savedDiscovery, contactData, account.id);
+      // Removed dial linking for discoveries per new rules
     }
     
   } catch (error) {
