@@ -313,6 +313,10 @@ async function processPhoneCallWebhook(payload: any) {
     let contactName = null;
     let contactEmail = null;
     let contactPhone = null;
+    // Attribution and contact source from contact
+    let dialAttrSource: any = null;
+    let dialLastAttrSource: any = null;
+    let contactSource: string | null = null;
     
     if (payload.contactId && account.ghl_api_key) {
       try {
@@ -333,6 +337,10 @@ async function processPhoneCallWebhook(payload: any) {
                         contactData.firstName || contactData.lastName) || null;
           contactEmail = contactData.email || null;
           contactPhone = contactData.phone || null;
+          // capture attribution and source
+          dialAttrSource = contactData.attributionSource || null;
+          dialLastAttrSource = contactData.lastAttributionSource || null;
+          contactSource = contactData.source || null;
           
           console.log('✅ Successfully fetched contact data:', {
             name: contactName,
@@ -348,6 +356,46 @@ async function processPhoneCallWebhook(payload: any) {
     }
     
     // Prepare dial data (mapped to existing dials schema)
+    const contactAttribution = dialAttrSource || dialLastAttrSource || {};
+    const attributionSource = dialAttrSource || null;
+    const lastAttributionSource = dialLastAttrSource || null;
+
+    let classifiedAttribution: any = null;
+    try {
+      if (contactAttribution && (contactAttribution.utmSource || contactAttribution.utmMedium || contactAttribution.campaign || contactAttribution.referrer || contactAttribution.gclid || contactAttribution.fbclid)) {
+        const { data: attributionResult, error: attributionError } = await supabase
+          .rpc('classify_contact_attribution' as any, {
+            p_utm_source: contactAttribution.utmSource || null,
+            p_utm_medium: contactAttribution.utmMedium || null,
+            p_utm_campaign: contactAttribution.campaign || null,
+            p_referrer: contactAttribution.referrer || null,
+            p_gclid: contactAttribution.gclid || null,
+            p_fbclid: contactAttribution.fbclid || null,
+          });
+        if (!attributionError) {
+          classifiedAttribution = attributionResult;
+        }
+      }
+    } catch {}
+
+    let enhancedClassification: any = null;
+    try {
+      if (attributionSource) {
+        const { data: enhancedResult, error: enhancedError } = await supabase
+          .rpc('classify_enhanced_attribution' as any, {
+            p_utm_source: attributionSource.utmSource || null,
+            p_utm_medium: attributionSource.utmMedium || null,
+            p_utm_campaign: attributionSource.campaign || null,
+            p_session_source: attributionSource.sessionSource || null,
+            p_fbclid: attributionSource.fbclid || null,
+            p_landing_url: attributionSource.url || null
+          });
+        if (!enhancedError) {
+          enhancedClassification = enhancedResult;
+        }
+      }
+    } catch {}
+
     const dialData = {
       account_id: account.id,
       contact_name: contactName || 'Unknown',
@@ -359,6 +407,35 @@ async function processPhoneCallWebhook(payload: any) {
       answered: payload.callDuration > 30 && payload.status === 'completed' && payload.callStatus !== 'voicemail',
       meaningful_conversation: payload.callDuration > 120 && payload.status === 'completed' && payload.callStatus !== 'voicemail',
       date_called: new Date(payload.timestamp || payload.dateAdded || new Date().toISOString()).toISOString(),
+
+      // Attribution mirrors
+      contact_source: contactSource,
+      contact_utm_source: contactAttribution?.utmSource || null,
+      contact_utm_medium: contactAttribution?.utmMedium || null,
+      contact_utm_campaign: contactAttribution?.campaign || null,
+      contact_utm_content: contactAttribution?.utmContent || null,
+      contact_referrer: contactAttribution?.referrer || null,
+      contact_gclid: contactAttribution?.gclid || null,
+      contact_fbclid: contactAttribution?.fbclid || null,
+      contact_campaign_id: contactAttribution?.campaignId || null,
+      last_attribution_source: classifiedAttribution ? JSON.stringify(classifiedAttribution) : null,
+
+      utm_source: attributionSource?.utmSource || null,
+      utm_medium: attributionSource?.utmMedium || null,
+      utm_campaign: attributionSource?.campaign || null,
+      utm_content: attributionSource?.utmContent || null,
+      utm_term: attributionSource?.utmTerm || null,
+      utm_id: attributionSource?.utm_id || null,
+      fbclid: attributionSource?.fbclid || null,
+      fbc: attributionSource?.fbc || null,
+      fbp: attributionSource?.fbp || null,
+      landing_url: attributionSource?.url || null,
+      session_source: attributionSource?.sessionSource || null,
+      medium_id: attributionSource?.mediumId || null,
+      user_agent: attributionSource?.userAgent || null,
+      ip_address: attributionSource?.ip || null,
+      attribution_data: attributionSource ? JSON.stringify(attributionSource) : null,
+      last_attribution_data: lastAttributionSource ? JSON.stringify(lastAttributionSource) : null,
     };
     
     console.log('💾 Saving dial data:', {
