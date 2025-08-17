@@ -1188,13 +1188,11 @@ async function processAppointmentWebhook(payload: any) {
       await linkAppointmentToDial(supabase, savedAppointment, contactData, account.id);
       
     } else if (calendarMapping.target_table === 'discoveries') {
-      // Auto-create users for setter and sales rep if they don't exist
-      // For discoveries: setter = appointment owner (salesRepData), sales_rep = appointment creator (setterData)
-      console.log('👥 Auto-creating users for discovery data (roles swapped):', {
-        setter: baseData.setter, // This is the appointment owner (salesRepData)
-        salesRep: baseData.sales_rep, // This is the appointment creator (setterData)
-        setterGhlId: salesRepData?.id, // Swapped: setter gets salesRepData
-        salesRepGhlId: setterData?.id // Swapped: sales_rep gets setterData
+      // Auto-create users for discoveries
+      // Rule: setter = appointment owner (salesRepData). sales_rep stays blank until a linked appointment is found
+      console.log('👥 Auto-creating users for discovery data (setter from appointment owner, sales_rep blank):', {
+        setter: baseData.setter,
+        setterGhlId: salesRepData?.id,
       });
 
       const { linkExistingUsersToData } = await import('@/lib/auto-user-creation');
@@ -1202,14 +1200,14 @@ async function processAppointmentWebhook(payload: any) {
         supabase,
         account.id,
         baseData.setter, // appointment owner (salesRepData)
-        baseData.sales_rep, // appointment creator (setterData) 
-        salesRepData?.email, // Swapped: setter email comes from salesRepData
-        setterData?.email // Swapped: sales_rep email comes from setterData
+        null, // sales_rep unknown at discovery time
+        salesRepData?.email,
+        null
       );
 
-      console.log('✅ User creation results for discovery (roles swapped):', {
-        setterUserId: userIds.setterUserId || 'None', // This maps to appointment owner
-        salesRepUserId: userIds.salesRepUserId || 'None' // This maps to appointment creator
+      console.log('✅ User creation results for discovery:', {
+        setterUserId: userIds.setterUserId || 'None',
+        salesRepUserId: 'None (deferred until appointment link)'
       });
 
       // Process contact attribution data for discoveries
@@ -1252,9 +1250,9 @@ async function processAppointmentWebhook(payload: any) {
         date_booked_for: payload.appointment.startTime ? 
           new Date(payload.appointment.startTime).toISOString() : null,
         setter_user_id: userIds.setterUserId || null, // appointment owner user ID
-        sales_rep_user_id: userIds.salesRepUserId || null, // appointment creator user ID
-        setter_ghl_id: salesRepData?.id || null, // Swapped: setter gets salesRepData ID
-        sales_rep_ghl_id: setterData?.id || null, // Swapped: sales_rep gets setterData ID
+        sales_rep_user_id: null, // never set from creator at discovery time
+        setter_ghl_id: salesRepData?.id || null, // setter from appointment owner
+        sales_rep_ghl_id: null, // never set from creator at discovery time
         ghl_appointment_id: payload.appointment?.id || null,
         ghl_source: fullAppointmentData?.createdBy?.source || fullAppointmentData?.source || 'unknown', // Add GHL source from createdBy.source
         // Contact attribution fields for discoveries
@@ -1341,29 +1339,18 @@ async function processAppointmentWebhook(payload: any) {
       
       console.log('✅ Discovery saved successfully:', payload.appointment?.id);
       
-      // Refresh GHL user roles now that the discovery is saved and activity counts should be accurate
-      // For discoveries: roles are swapped - salesRepData becomes setter, setterData becomes sales_rep
+      // Refresh GHL user roles now that the discovery is saved
       try {
-        console.log('🔄 Refreshing GHL user roles after discovery save (roles swapped)...');
-        
-        // salesRepData becomes the setter for discoveries (appointment owner)
+        console.log('🔄 Refreshing GHL user roles after discovery save...');
+
+        // Setter is the appointment owner
         if (salesRepData?.id) {
           await supabase.rpc('update_ghl_user_roles_with_context' as any, {
             p_account_id: account.id,
             p_ghl_user_id: salesRepData.id,
             p_current_role: 'setter'
           });
-          console.log('✅ Refreshed setter role (appointment owner):', salesRepData.id);
-        }
-        
-        // setterData becomes the sales_rep for discoveries (appointment creator)
-        if (setterData?.id) {
-          await supabase.rpc('update_ghl_user_roles_with_context' as any, {
-            p_account_id: account.id,
-            p_ghl_user_id: setterData.id,
-            p_current_role: 'sales_rep'
-          });
-          console.log('✅ Refreshed sales rep role (appointment creator):', setterData.id);
+          console.log('✅ Refreshed setter role:', salesRepData.id);
         }
       } catch (refreshError) {
         console.error('⚠️ Failed to refresh GHL user roles (non-critical):', refreshError);
