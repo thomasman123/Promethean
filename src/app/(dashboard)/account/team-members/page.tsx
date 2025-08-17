@@ -39,11 +39,20 @@ interface PendingUser {
   last_seen_at: string
 }
 
+interface GhlUser {
+  id: string
+  email: string | null
+  name: string | null
+  role: string | null
+  invited?: boolean
+  joined?: boolean
+}
+
 export default function TeamMembersPage() {
   const { selectedAccountId, getAccountBasedPermissions, accountChangeTimestamp } = useAuth()
   const permissions = getAccountBasedPermissions()
   const [members, setMembers] = useState<TeamMember[]>([])
-  const [ghlUsers, setGhlUsers] = useState<Array<{ id: string; email: string | null; name: string | null; role: string | null }>>([])
+  const [ghlUsers, setGhlUsers] = useState<GhlUser[]>([])
   const [dataUserPreviews, setDataUserPreviews] = useState<any[]>([])
   const [pendingUsers, setPendingUsers] = useState<PendingUser[]>([])
   const [loading, setLoading] = useState(true)
@@ -56,6 +65,7 @@ export default function TeamMembersPage() {
   const [openInvite, setOpenInvite] = useState(false)
   const [convertingUser, setConvertingUser] = useState<string | null>(null)
   const [invitingPendingUser, setInvitingPendingUser] = useState<string | null>(null)
+  const [invitingGhlUser, setInvitingGhlUser] = useState<string | null>(null)
 
   useEffect(() => {
     if (!selectedAccountId) return
@@ -138,20 +148,12 @@ export default function TeamMembersPage() {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to invite')
-      
-      // Show success message based on response
-      if (data.message) {
-        toast.success(data.message)
-      } else {
-        toast.success('Invitation sent successfully!')
-      }
-      
-      // Clear form and refresh
+      toast.success(data.message || 'Invitation sent successfully!')
       setEmail('')
       setFullName('')
       setRole('setter')
       await fetchMembers()
-      await fetchPendingUsers() // Refresh pending users too
+      await fetchPendingUsers()
       setOpenInvite(false)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to invite')
@@ -165,7 +167,6 @@ export default function TeamMembersPage() {
     setInvitingPendingUser(pendingUser.ghl_user_id)
     setError(null)
     try {
-      // Invite the user through the regular invite endpoint
       const res = await fetch('/api/team/invite', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -178,18 +179,50 @@ export default function TeamMembersPage() {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to invite')
-      
       toast.success(`Successfully invited ${pendingUser.name}!`)
-      
-      // Refresh both lists
       await fetchMembers()
       await fetchPendingUsers()
+      await fetchGhlUsers()
     } catch (e) {
       const errorMessage = e instanceof Error ? e.message : 'Failed to invite user'
       setError(errorMessage)
       toast.error(`Failed to invite ${pendingUser.name}: ${errorMessage}`)
     } finally {
       setInvitingPendingUser(null)
+    }
+  }
+
+  const roleFromGhl = (r?: string | null): TeamMember['role'] => {
+    const s = (r || '').toLowerCase()
+    if (s.includes('sales')) return 'sales_rep'
+    if (s.includes('moderator')) return 'moderator'
+    return 'setter'
+  }
+
+  const inviteGhlUser = async (user: GhlUser) => {
+    if (!selectedAccountId || !user.email) return
+    setInvitingGhlUser(user.id)
+    try {
+      const res = await fetch('/api/team/invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          accountId: selectedAccountId,
+          email: user.email,
+          fullName: user.name || '',
+          role: roleFromGhl(user.role)
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to invite')
+      toast.success(`Invitation sent to ${user.name || user.email}`)
+      await fetchMembers()
+      await fetchPendingUsers()
+      await fetchGhlUsers()
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to invite user')
+    } finally {
+      setInvitingGhlUser(null)
     }
   }
 
@@ -231,7 +264,6 @@ export default function TeamMembersPage() {
     setConvertingUser(userId)
     setError(null)
     
-    // Prompt for real email
     const realEmail = prompt(`Enter the real email address for ${currentName}:`, currentEmail.replace('+data@promethean.ai', '@company.com'))
     if (!realEmail) {
       setConvertingUser(null)
@@ -354,6 +386,46 @@ export default function TeamMembersPage() {
                 )}
               </CardContent>
             </Card>
+
+            {/* GHL Users Section */}
+            {ghlUsers.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    GHL Users
+                    <Badge variant="secondary">{ghlUsers.length}</Badge>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {ghlUsers.map((u) => (
+                    <div key={u.id} className="flex items-center justify-between p-3 border rounded">
+                      <div className="space-y-1">
+                        <div className="font-medium flex items-center gap-2">
+                          {u.name || 'Unknown'}
+                          {u.role && (
+                            <Badge variant="secondary">{u.role}</Badge>
+                          )}
+                          {u.email && <Badge variant="outline" className="text-green-600">✓ Email</Badge>}
+                          {u.joined && <Badge variant="outline">Joined</Badge>}
+                          {u.invited && !u.joined && <Badge variant="outline">Invited</Badge>}
+                        </div>
+                        <div className="text-sm text-muted-foreground">{u.email || 'No email'}</div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={() => inviteGhlUser(u)}
+                          disabled={!u.email || u.invited || u.joined || invitingGhlUser === u.id}
+                        >
+                          {invitingGhlUser === u.id ? 'Inviting...' : u.joined ? 'Already Member' : u.invited ? 'Invited' : 'Invite to App'}
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
 
             {/* Pending GHL Users Section */}
             {pendingUsers.length > 0 && (
