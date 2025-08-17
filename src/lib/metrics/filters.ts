@@ -16,20 +16,23 @@ export interface AppliedFilters {
  * Applies standard filters to any metric query
  * Returns SQL conditions and parameters for safe execution
  */
-export function applyStandardFilters(filters: MetricFilters): AppliedFilters {
+export function applyStandardFilters(filters: MetricFilters, baseTable: string): AppliedFilters {
 	const conditions: FilterCondition[] = []
 	const params: Record<string, any> = {}
 
+	// Choose date field based on base table
+	const dateField = baseTable === 'dials' ? 'date_called' : 'date_booked_for'
+
 	// Date range filter - always applied
 	conditions.push({
-		field: 'date_booked_for',
+		field: dateField,
 		operator: '>=',
 		value: filters.dateRange.start,
 		paramName: 'start_date'
 	})
 	
 	conditions.push({
-		field: 'date_booked_for',
+		field: dateField,
 		operator: '<=', 
 		value: filters.dateRange.end,
 		paramName: 'end_date'
@@ -47,12 +50,15 @@ export function applyStandardFilters(filters: MetricFilters): AppliedFilters {
 	})
 	params.account_id = filters.accountId
 
-	// Rep filter - applied if repIds provided
-	// In this schema, reps are stored as UUIDs in `sales_rep_user_id`
-	if (filters.repIds && filters.repIds.length > 0) {
+	// Determine rep/setter fields based on table
+	const repField = baseTable === 'appointments' ? 'sales_rep_user_id' : null
+	const setterField = baseTable === 'appointments' ? 'setter_user_id' : null
+
+	// Rep filter - applied if repIds provided AND field available on table
+	if (repField && filters.repIds && filters.repIds.length > 0) {
 		if (filters.repIds.length === 1) {
 			conditions.push({
-				field: 'sales_rep_user_id',
+				field: repField,
 				operator: '=',
 				value: filters.repIds[0],
 				paramName: 'rep_user_id'
@@ -60,7 +66,7 @@ export function applyStandardFilters(filters: MetricFilters): AppliedFilters {
 			params.rep_user_id = filters.repIds[0]
 		} else {
 			conditions.push({
-				field: 'sales_rep_user_id',
+				field: repField,
 				operator: 'IN',
 				value: filters.repIds,
 				paramName: 'rep_user_ids'
@@ -69,12 +75,11 @@ export function applyStandardFilters(filters: MetricFilters): AppliedFilters {
 		}
 	}
 
-	// Setter filter - applied if setterIds provided
-	// In this schema, setters are stored as UUIDs in `setter_user_id`
-	if (filters.setterIds && filters.setterIds.length > 0) {
+	// Setter filter - applied if setterIds provided AND field available on table
+	if (setterField && filters.setterIds && filters.setterIds.length > 0) {
 		if (filters.setterIds.length === 1) {
 			conditions.push({
-				field: 'setter_user_id',
+				field: setterField,
 				operator: '=',
 				value: filters.setterIds[0],
 				paramName: 'setter_user_id'
@@ -82,7 +87,7 @@ export function applyStandardFilters(filters: MetricFilters): AppliedFilters {
 			params.setter_user_id = filters.setterIds[0]
 		} else {
 			conditions.push({
-				field: 'setter_user_id',
+				field: setterField,
 				operator: 'IN',
 				value: filters.setterIds,
 				paramName: 'setter_user_ids'

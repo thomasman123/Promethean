@@ -149,6 +149,54 @@ export const METRICS_REGISTRY: Record<string, MetricDefinition> = {
 			]
 		},
 		unit: 'percent'
+	},
+	// Answers (Dials): count rows where answered = true
+	'answers_dials': {
+		name: 'Answers (Dials)',
+		description: 'Total count of dials marked as answered',
+		breakdownType: 'total',
+		query: {
+			table: 'dials',
+			select: ['COUNT(*) as value'],
+			where: ['answered = true']
+		},
+		unit: 'count'
+	},
+	// Meaningful Conversations (Dials): count rows where meaningful_conversation = true
+	'meaningful_conversations_dials': {
+		name: 'Meaningful Conversations (Dials)',
+		description: 'Total count of dials with a meaningful conversation',
+		breakdownType: 'total',
+		query: {
+			table: 'dials',
+			select: ['COUNT(*) as value'],
+			where: ['meaningful_conversation = true']
+		},
+		unit: 'count'
+	},
+	// Booked Calls (Dials): count rows where booked = true
+	'booked_calls_dials': {
+		name: 'Booked Calls (Dials)',
+		description: 'Total count of dials that resulted in a booked call',
+		breakdownType: 'total',
+		query: {
+			table: 'dials',
+			select: ['COUNT(*) as value'],
+			where: ['booked = true']
+		},
+		unit: 'count'
+	},
+	// Meaningful Conversation Average Call Length (Dials): AVG(duration) where meaningful_conversation = true
+	'meaningful_conversation_avg_call_length_dials': {
+		name: 'MC Avg Call Length (Dials)',
+		description: 'Average call duration in seconds for dials with meaningful conversations',
+		breakdownType: 'total',
+		query: {
+			table: 'dials',
+			select: ['COALESCE(AVG(duration), 0) as value'],
+			where: ['meaningful_conversation = true']
+		},
+		unit: 'seconds'
 	}
 }
 

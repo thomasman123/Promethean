@@ -71,8 +71,8 @@ export class MetricsEngine {
    * Execute the SQL query for a specific metric
    */
   private async executeMetricQuery(metric: MetricDefinition, filters: any, options?: { vizType?: string; dynamicBreakdown?: string }): Promise<MetricResult> {
-    // Apply standard filters
-    const appliedFilters = applyStandardFilters(filters)
+    // Apply standard filters using the base table to choose correct date/account fields
+    const appliedFilters = applyStandardFilters(filters, metric.query.table)
     
     // Check if we need to modify the metric for dynamic time aggregation
     let effectiveMetric = metric;
