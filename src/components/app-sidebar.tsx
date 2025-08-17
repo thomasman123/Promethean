@@ -39,11 +39,7 @@ const staticData = {
 			url: "/dashboard",
 			icon: BarChart3,
 			isActive: true,
-			items: [
-				{ title: "Appointments", url: "/dashboard/appointments" },
-				{ title: "Discoveries", url: "/dashboard/discoveries" },
-				{ title: "Dials", url: "/dashboard/dials" },
-			],
+			items: [],
 		},
 		{ title: "Update Data", url: "/dashboard/update-data", icon: ClipboardList, items: [ { title: "Follow Ups", url: "/follow-ups" } ] },
 		{ title: "Ads", url: "/ads", icon: MegaphoneIcon, items: [ { title: "Setup", url: "/ads/setup" }, { title: "Campaigns", url: "/ads/campaigns" } ] },
