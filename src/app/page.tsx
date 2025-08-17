@@ -78,10 +78,10 @@ export default function HomePage() {
           <div className="flex items-center gap-4">
             <ThemeToggle />
             <Button asChild variant="ghost">
-              <Link href="/login">Sign In</Link>
+              <a href={(process.env.NEXT_PUBLIC_APP_URL || '') + '/login'}>Sign In</a>
             </Button>
             <Button asChild>
-              <Link href="/signup">Get Started</Link>
+              <a href={(process.env.NEXT_PUBLIC_APP_URL || '') + '/signup'}>Get Started</a>
             </Button>
           </div>
         </div>
@@ -103,13 +103,13 @@ export default function HomePage() {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button size="lg" asChild>
-              <Link href="/signup">
+              <a href={(process.env.NEXT_PUBLIC_APP_URL || '') + '/signup'}>
                 Start Free Trial
                 <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
+              </a>
             </Button>
             <Button size="lg" variant="outline" asChild>
-              <Link href="/login">Sign In</Link>
+              <a href={(process.env.NEXT_PUBLIC_APP_URL || '') + '/login'}>Sign In</a>
             </Button>
           </div>
         </div>
@@ -294,13 +294,13 @@ export default function HomePage() {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button size="lg" asChild>
-              <Link href="/signup">
+              <a href={(process.env.NEXT_PUBLIC_APP_URL || '') + '/signup'}>
                 Start Your Free Trial
                 <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
+              </a>
             </Button>
             <Button size="lg" variant="outline" asChild>
-              <Link href="/login">Have an Account? Sign In</Link>
+              <a href={(process.env.NEXT_PUBLIC_APP_URL || '') + '/login'}>Have an Account? Sign In</a>
             </Button>
           </div>
         </div>
