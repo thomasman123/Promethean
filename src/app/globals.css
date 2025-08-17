@@ -53,7 +53,7 @@
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  /* Restore neutral app palette */
+  /* Neutral app palette (unchanged) */
   --primary: oklch(0.205 0 0);
   --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.97 0 0);
@@ -66,12 +66,12 @@
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
   --ring: oklch(0.708 0 0);
-  /* Purple chart palette only (distinct shades) */
-  --chart-1: hsl(270 91% 60%);  /* primary purple */
-  --chart-2: hsl(270 84% 66%);  /* lighter */
-  --chart-3: hsl(270 72% 72%);  /* even lighter */
-  --chart-4: hsl(270 95% 55%);  /* deeper */
-  --chart-5: hsl(270 100% 45%); /* deepest */
+  /* Chart palette: Violet, Purple, Fuchsia, Pink (+ deep Violet) */
+  --chart-1: hsl(258 90% 67%);  /* violet-500 */
+  --chart-2: hsl(271 83% 55%);  /* purple-600 */
+  --chart-3: hsl(292 84% 59%);  /* fuchsia-500 */
+  --chart-4: hsl(330 81% 60%);  /* pink-500 */
+  --chart-5: hsl(262 83% 51%);  /* violet-700 (extra series) */
   /* Sidebar (neutral) */
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
@@ -90,7 +90,7 @@
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.985 0 0);
-  /* Restore neutral app palette */
+  /* Neutral app palette (unchanged) */
   --primary: oklch(0.922 0 0);
   --primary-foreground: oklch(0.205 0 0);
   --secondary: oklch(0.269 0 0);
@@ -103,12 +103,12 @@
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.556 0 0);
-  /* Purple chart palette only (distinct shades for dark) */
-  --chart-1: hsl(270 93% 70%);
-  --chart-2: hsl(270 80% 76%);
-  --chart-3: hsl(270 68% 82%);
-  --chart-4: hsl(270 100% 63%);
-  --chart-5: hsl(270 100% 55%);
+  /* Chart palette for dark: slightly lighter for contrast */
+  --chart-1: hsl(258 95% 72%);  /* violet-400/500 mix */
+  --chart-2: hsl(271 90% 62%);  /* purple-500/600 mix */
+  --chart-3: hsl(292 90% 66%);  /* fuchsia-400/500 mix */
+  --chart-4: hsl(330 86% 67%);  /* pink-400/500 mix */
+  --chart-5: hsl(262 90% 58%);  /* violet-600 */
   /* Sidebar (neutral) */
   --sidebar: oklch(0.205 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
