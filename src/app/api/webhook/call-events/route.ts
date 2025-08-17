@@ -463,45 +463,71 @@ async function processPhoneCallWebhook(payload: any) {
       const dialTimeIso = dialData.date_called;
       if (dialTimeIso) {
         const dialTime = new Date(dialTimeIso);
-        const windowEnd = new Date(dialTime.getTime() + 60 * 60 * 1000); // 60 minutes after dial
+        const windowStart = new Date(dialTime.getTime() - 60 * 60 * 1000); // 60 minutes before dial
+        const windowEnd = new Date(dialTime.getTime() + 60 * 60 * 1000);   // 60 minutes after dial
 
-        let apptQuery = supabase
-          .from('appointments')
-          .select('id, date_booked, contact_name, email, phone')
-          .eq('account_id', account.id)
-          .gte('date_booked', dialTime.toISOString())
-          .lte('date_booked', windowEnd.toISOString())
-          .order('date_booked', { ascending: true })
-          .limit(1);
+        // Helper to run a query with additional filters
+        const runApptQuery = async (applyFilters: (q: any) => any) => {
+          let q = supabase
+            .from('appointments')
+            .select('id, date_booked, contact_name, email, phone, metadata')
+            .eq('account_id', account.id)
+            .gte('date_booked', windowStart.toISOString())
+            .lte('date_booked', windowEnd.toISOString())
+            .order('date_booked', { ascending: true })
+            .limit(1);
+          q = applyFilters(q);
+          const { data, error } = await q;
+          if (error) {
+            console.error('Error searching appointments to link dial:', error);
+            return null;
+          }
+          return (data && data.length > 0) ? data[0] : null;
+        };
 
-        if (dialData.email) {
-          apptQuery = apptQuery.eq('email', dialData.email);
-        } else if (dialData.phone) {
-          apptQuery = apptQuery.eq('phone', dialData.phone);
+        // 1) Try via contactId (stored in metadata JSON)
+        let matchedAppt: any = null;
+        if (payload.contactId) {
+          matchedAppt = await runApptQuery(q =>
+            q.or(
+              `metadata->original_webhook_payload->appointment->>contactId.eq.${payload.contactId},metadata->contact_enriched_data->>id.eq.${payload.contactId}`
+            )
+          );
         }
 
-        const { data: appts, error: apptErr } = await apptQuery;
-        if (apptErr) {
-          console.error('Error searching appointments to link dial:', apptErr);
-        } else if (appts && appts.length > 0) {
-          const appt = appts[0];
+        // 2) Try via email
+        if (!matchedAppt && dialData.email) {
+          matchedAppt = await runApptQuery(q => q.eq('email', dialData.email));
+        }
+
+        // 3) Try via phone
+        if (!matchedAppt && dialData.phone) {
+          matchedAppt = await runApptQuery(q => q.eq('phone', dialData.phone));
+        }
+
+        // 4) Try via contact_name as last resort
+        if (!matchedAppt && dialData.contact_name) {
+          matchedAppt = await runApptQuery(q => q.eq('contact_name', dialData.contact_name));
+        }
+
+        if (matchedAppt) {
           const { error: updErr } = await supabase
             .from('dials')
             .update({ 
               booked: true, 
-              booked_appointment_id: appt.id,
-              contact_name: dialData.contact_name || appt.contact_name || 'Unknown',
-              email: dialData.email || appt.email || null,
-              phone: dialData.phone || appt.phone || ''
+              booked_appointment_id: matchedAppt.id,
+              contact_name: dialData.contact_name || matchedAppt.contact_name || 'Unknown',
+              email: dialData.email || matchedAppt.email || null,
+              phone: dialData.phone || matchedAppt.phone || ''
             })
             .eq('id', savedDial.id);
           if (updErr) {
             console.error('Failed to mark dial as booked/link appointment (dial-first path):', updErr);
           } else {
-            console.log('🔗 Linked dial to existing appointment (dial-first path):', { dialId: savedDial.id, appointmentId: appt.id });
+            console.log('🔗 Linked dial to existing appointment (dial-first path):', { dialId: savedDial.id, appointmentId: matchedAppt.id });
           }
         } else {
-          console.log('ℹ️ No appointment found within 60 minutes after dial for linking');
+          console.log('ℹ️ No appointment found within +/- 60 minutes of dial for linking');
         }
       }
     } catch (e) {
@@ -1317,17 +1343,20 @@ async function processAppointmentWebhook(payload: any) {
 
           let dialQuery = supabase
             .from('dials')
-            .select('id, date_called')
+            .select('id, date_called, contact_name, email, phone')
             .eq('account_id', account.id)
             .gte('date_called', windowStart.toISOString())
             .lte('date_called', bookedAt.toISOString())
             .order('date_called', { ascending: false })
             .limit(1);
 
+          // Try email, then phone, then contact_name
           if (appointmentData.email) {
             dialQuery = dialQuery.eq('email', appointmentData.email);
           } else if (appointmentData.phone) {
             dialQuery = dialQuery.eq('phone', appointmentData.phone);
+          } else if (appointmentData.contact_name) {
+            dialQuery = dialQuery.eq('contact_name', appointmentData.contact_name);
           }
 
           const { data: recent, error: recentErr } = await dialQuery;
