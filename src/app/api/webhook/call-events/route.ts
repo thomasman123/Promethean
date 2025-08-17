@@ -350,10 +350,10 @@ async function processPhoneCallWebhook(payload: any) {
     // Prepare dial data (mapped to existing dials schema)
     const dialData = {
       account_id: account.id,
-      contact_name: contactName,
+      contact_name: contactName || 'Unknown',
       email: contactEmail,
-      phone: contactPhone,
-      setter: setterName,
+      phone: contactPhone || '',
+      setter: setterName || 'Unknown',
       duration: payload.callDuration || 0,
       call_recording_link: payload.attachments?.[0] || null,
       answered: payload.callDuration > 30 && payload.status === 'completed' && payload.callStatus !== 'voicemail',
