@@ -389,7 +389,7 @@ async function processPhoneCallWebhook(payload: any) {
 
         let apptQuery = supabase
           .from('appointments')
-          .select('id, date_booked')
+          .select('id, date_booked, contact_name, email, phone')
           .eq('account_id', account.id)
           .gte('date_booked', dialTime.toISOString())
           .lte('date_booked', windowEnd.toISOString())
@@ -409,7 +409,13 @@ async function processPhoneCallWebhook(payload: any) {
           const appt = appts[0];
           const { error: updErr } = await supabase
             .from('dials')
-            .update({ booked: true, booked_appointment_id: appt.id })
+            .update({ 
+              booked: true, 
+              booked_appointment_id: appt.id,
+              contact_name: dialData.contact_name || appt.contact_name || 'Unknown',
+              email: dialData.email || appt.email || null,
+              phone: dialData.phone || appt.phone || ''
+            })
             .eq('id', savedDial.id);
           if (updErr) {
             console.error('Failed to mark dial as booked/link appointment (dial-first path):', updErr);
@@ -1253,7 +1259,13 @@ async function processAppointmentWebhook(payload: any) {
             const dial = recent[0];
             const { error: updateErr } = await supabase
               .from('dials')
-              .update({ booked: true, booked_appointment_id: savedAppointment.id })
+              .update({ 
+                booked: true, 
+                booked_appointment_id: savedAppointment.id,
+                contact_name: (dial as any).contact_name || savedAppointment.contact_name || 'Unknown',
+                email: (dial as any).email || savedAppointment.email || null,
+                phone: (dial as any).phone || savedAppointment.phone || ''
+              })
               .eq('id', dial.id);
             if (updateErr) {
               console.error('Failed to mark dial as booked/link appointment:', updateErr);
