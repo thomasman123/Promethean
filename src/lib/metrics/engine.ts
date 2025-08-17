@@ -78,7 +78,7 @@ export class MetricsEngine {
     let effectiveMetric = metric;
     let useCustomTimeSQL = false;
     
-    if ((options?.vizType === 'line' || options?.vizType === 'bar' || options?.vizType === 'area' || options?.vizType === 'radar') && metric.name === 'Total Appointments') {
+    if ((options?.vizType === 'line' || options?.vizType === 'bar' || options?.vizType === 'area' || options?.vizType === 'radar') && (metric.name === 'Total Appointments' || metric.name === 'Total Dials')) {
       // We'll use custom SQL for complete date range
       useCustomTimeSQL = true;
       effectiveMetric = {
@@ -90,7 +90,7 @@ export class MetricsEngine {
     // Build the complete SQL query
     let sql: string;
     if (useCustomTimeSQL) {
-      sql = this.buildTimeSeriesSQL(appliedFilters);
+      sql = this.buildTimeSeriesSQL(appliedFilters, metric.query.table);
     } else {
       sql = this.buildSQL(effectiveMetric, appliedFilters);
     }
@@ -166,10 +166,16 @@ export class MetricsEngine {
   /**
    * Build time-series SQL with complete date range (including zero values)
    */
-  private buildTimeSeriesSQL(appliedFilters: any): string {
-    // Build WHERE conditions for the appointments table
+  private buildTimeSeriesSQL(appliedFilters: any, baseTable: string): string {
+    // Determine the correct date field for the base table
+    const dateField = baseTable === 'dials' ? 'date_called' : 'date_booked_for';
+
+    // Build WHERE conditions for the base table and qualify the date field
     const whereClause = buildWhereClause(appliedFilters, []);
-    const appointmentConditions = whereClause.replace('WHERE ', '').replace(/\bdate_booked_for\b/g, 'appointments.date_booked_for');
+    const qualifiedDateField = `${baseTable}.${dateField}`;
+    const qualifiedConditions = whereClause
+      .replace('WHERE ', '')
+      .replace(new RegExp(`\\b${dateField}\\b`, 'g'), qualifiedDateField);
     
     // Determine aggregation level based on date range
     const aggregationLevel = this.determineTimeAggregation(appliedFilters);
@@ -182,23 +188,23 @@ export class MetricsEngine {
     switch (aggregationLevel) {
       case 'month':
         dateSeriesInterval = "'1 month'::interval";
-        dateGrouping = "DATE_TRUNC('month', appointments.date_booked_for)";
+        dateGrouping = `DATE_TRUNC('month', ${qualifiedDateField})`;
         dateDisplay = "TO_CHAR(date_series.date, 'Mon YYYY') as date";
         break;
       case 'week':
         dateSeriesInterval = "'1 week'::interval";
-        dateGrouping = "DATE_TRUNC('week', appointments.date_booked_for)";
+        dateGrouping = `DATE_TRUNC('week', ${qualifiedDateField})`;
         dateDisplay = "TO_CHAR(date_series.date, 'YYYY-\"W\"WW') as date";
         break;
       case 'day':
       default:
         dateSeriesInterval = "'1 day'::interval";
-        dateGrouping = "DATE(appointments.date_booked_for)";
+        dateGrouping = `DATE(${qualifiedDateField})`;
         dateDisplay = "TO_CHAR(date_series.date, 'Mon DD') as date";
         break;
     }
     
-    // Generate date series and LEFT JOIN with appointments to get all dates including zeros
+    // Generate date series and LEFT JOIN with baseTable to get all dates including zeros
     const sql = `
       WITH date_series AS (
         SELECT generate_series(
@@ -209,11 +215,11 @@ export class MetricsEngine {
       )
       SELECT 
         ${dateDisplay},
-        COALESCE(COUNT(appointments.id), 0) as value
+        COALESCE(COUNT(${baseTable}.id), 0) as value
       FROM date_series
-      LEFT JOIN appointments ON (
-        DATE_TRUNC('${aggregationLevel}', appointments.date_booked_for) = date_series.date
-        ${appointmentConditions ? ` AND (${appointmentConditions})` : ''}
+      LEFT JOIN ${baseTable} ON (
+        DATE_TRUNC('${aggregationLevel}', ${qualifiedDateField}) = date_series.date
+        ${qualifiedConditions ? ` AND (${qualifiedConditions})` : ''}
       )
       GROUP BY date_series.date
       ORDER BY date_series.date ASC

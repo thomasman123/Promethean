@@ -243,7 +243,7 @@ export function WidgetDetailModal({ widget, data, open, onOpenChange }: WidgetDe
         return (
           <div className="h-[70vh] w-full">
             <LineChart
-              data={series.length ? series.map(d => ({ date: d.date, value: d.value })) : [{ date: 'Current', value: (data as any).data.value || 0 }]}
+              data={series.length ? series.map(d => ({ date: d.date, value: d.value })) : []}
               lines={[{ dataKey: 'value', name: metricDefinition?.displayName || widget.metricName, color: 'var(--primary)' }]}
               xAxisKey="date"
               showLegend={false}
@@ -256,7 +256,7 @@ export function WidgetDetailModal({ widget, data, open, onOpenChange }: WidgetDe
         return (
           <div className="h-[70vh] w-full">
             <BarChart
-              data={series.length ? series.map(d => ({ date: d.date, value: d.value })) : [{ date: 'Current', value: (data as any).data.value || 0 }]}
+              data={series.length ? series.map(d => ({ date: d.date, value: d.value })) : []}
               bars={[{ dataKey: 'value', name: metricDefinition?.displayName || widget.metricName, color: 'var(--primary)' }]}
               xAxisKey="date"
               showLegend={false}
@@ -269,7 +269,7 @@ export function WidgetDetailModal({ widget, data, open, onOpenChange }: WidgetDe
         return (
           <div className="h-[70vh] w-full">
             <AreaChart
-              data={series.length ? series.map(d => ({ date: d.date, value: d.value })) : [{ date: 'Current', value: (data as any).data.value || 0 }]}
+              data={series.length ? series.map(d => ({ date: d.date, value: d.value })) : []}
               areas={[{ dataKey: 'value', name: metricDefinition?.displayName || widget.metricName, color: 'var(--primary)' }]}
               xAxisKey="date"
               showLegend={false}
@@ -282,11 +282,11 @@ export function WidgetDetailModal({ widget, data, open, onOpenChange }: WidgetDe
         return (
           <div className="h-[70vh] w-full">
             <RadarChart
-              data={series.length ? series.map(d => ({ date: d.date, value: d.value })) : [{ date: 'Current', value: (data as any).data.value || 0 }]}
+              key={`chart-${widget.id}`}
+              data={series.length ? series.map(d => ({ date: d.date, value: d.value })) : []}
               radarSeries={[{ dataKey: 'value', name: metricDefinition?.displayName || widget.metricName, color: 'var(--primary)' }]}
               angleKey="date"
               showLegend={false}
-              disableTooltip={false}
               className="h-full w-full"
             />
           </div>
