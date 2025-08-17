@@ -526,6 +526,65 @@ async function processPhoneCallWebhook(payload: any) {
           } else {
             console.log('🔗 Linked dial to existing appointment (dial-first path):', { dialId: savedDial.id, appointmentId: matchedAppt.id });
           }
+
+          // Now try to link a discovery within 60 minutes before the appointment booking
+          try {
+            const bookedAt = new Date(matchedAppt.date_booked);
+            const discWindowStart = new Date(bookedAt.getTime() - 60 * 60 * 1000);
+
+            const runDiscQuery = async (applyFilters: (q: any) => any) => {
+              let q = supabase
+                .from('discoveries')
+                .select('id, date_booked, contact_name, email, phone, linked_appointment_id')
+                .eq('account_id', account.id)
+                .gte('date_booked', discWindowStart.toISOString())
+                .lte('date_booked', bookedAt.toISOString())
+                .order('date_booked', { ascending: false })
+                .limit(1);
+              q = applyFilters(q);
+              const { data, error } = await q;
+              if (error) {
+                console.error('Error searching discovery for linking:', error);
+                return null;
+              }
+              return (data && data.length > 0) ? data[0] : null;
+            };
+
+            // Prefer matching by email, then phone, then name
+            let matchedDisc: any = null;
+            if (dialData.email) matchedDisc = await runDiscQuery(q => q.eq('email', dialData.email));
+            if (!matchedDisc && dialData.phone) matchedDisc = await runDiscQuery(q => q.eq('phone', dialData.phone));
+            if (!matchedDisc && dialData.contact_name) matchedDisc = await runDiscQuery(q => q.eq('contact_name', dialData.contact_name));
+
+            if (matchedDisc && !matchedDisc.linked_appointment_id) {
+              // Link both sides
+              const { error: linkApptErr } = await supabase
+                .from('appointments')
+                .update({ linked_discovery_id: matchedDisc.id })
+                .eq('id', matchedAppt.id);
+              const { error: linkDiscErr } = await supabase
+                .from('discoveries')
+                .update({ linked_appointment_id: matchedAppt.id })
+                .eq('id', matchedDisc.id);
+              if (linkApptErr || linkDiscErr) {
+                console.error('Failed to set discovery<->appointment link:', linkApptErr || linkDiscErr);
+              } else {
+                console.log('🔗 Linked discovery to appointment:', { discoveryId: matchedDisc.id, appointmentId: matchedAppt.id });
+                // Optional: clear dial link if we prefer discovery as canonical
+                const { error: clearDialErr } = await supabase
+                  .from('dials')
+                  .update({ booked: false, booked_appointment_id: null })
+                  .eq('id', savedDial.id);
+                if (clearDialErr) {
+                  console.warn('⚠️ Could not clear dial link after discovery link:', clearDialErr);
+                } else {
+                  console.log('🧹 Cleared dial->appointment link in favor of discovery link');
+                }
+              }
+            }
+          } catch (e2) {
+            console.error('Error linking discovery to appointment after dial:', e2);
+          }
         } else {
           console.log('ℹ️ No appointment found within +/- 60 minutes of dial for linking');
         }
