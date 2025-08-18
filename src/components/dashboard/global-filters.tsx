@@ -18,6 +18,9 @@ interface GlobalFiltersProps {
 
 type Candidate = { id: string; name: string | null; invited: boolean }
 
+const ALL_REPS = '__ALL_REPS__'
+const ALL_SETTERS = '__ALL_SETTERS__'
+
 export function GlobalFilters({ className }: GlobalFiltersProps) {
   const { 
     filters, 
@@ -27,6 +30,10 @@ export function GlobalFilters({ className }: GlobalFiltersProps) {
   const [repOptions, setRepOptions] = useState<MultiSelectOption[]>([])
   const [setterOptions, setSetterOptions] = useState<MultiSelectOption[]>([])
   const { selectedAccountId } = useAuth()
+
+  // UI state to represent "All" selection without polluting store filters
+  const [repAll, setRepAll] = useState<boolean>(!Array.isArray(filters.repIds) || (filters.repIds?.length ?? 0) === 0)
+  const [setterAll, setSetterAll] = useState<boolean>(!Array.isArray(filters.setterIds) || (filters.setterIds?.length ?? 0) === 0)
 
   useEffect(() => {
     const loadCandidates = async () => {
@@ -39,10 +46,13 @@ export function GlobalFilters({ className }: GlobalFiltersProps) {
           label: `${c.name || 'Unknown'}${c.invited ? '' : ' (uninvited)'}`,
           group: groupLabel,
         })
+        // Build options with explicit "All" at the top
         setRepOptions([
+          { value: ALL_REPS, label: 'All Reps (default)', group: 'Quick Select' },
           ...(json.reps || []).map((c: Candidate) => toOption(c, c.invited ? 'Reps' : 'Reps • Uninvited')),
         ])
         setSetterOptions([
+          { value: ALL_SETTERS, label: 'All Setters (default)', group: 'Quick Select' },
           ...(json.setters || []).map((c: Candidate) => toOption(c, c.invited ? 'Setters' : 'Setters • Uninvited')),
         ])
 
@@ -63,6 +73,7 @@ export function GlobalFilters({ className }: GlobalFiltersProps) {
           if (cleanRepIds.length !== filters.repIds.length) {
             console.log('🧹 Cleaned invalid rep IDs from filters')
             setFilters({ repIds: cleanRepIds.length > 0 ? cleanRepIds : undefined })
+            setRepAll(cleanRepIds.length === 0)
           }
         }
 
@@ -73,14 +84,16 @@ export function GlobalFilters({ className }: GlobalFiltersProps) {
           if (cleanSetterIds.length !== filters.setterIds.length) {
             console.log('🧹 Cleaned invalid setter IDs from filters')
             setFilters({ setterIds: cleanSetterIds.length > 0 ? cleanSetterIds : undefined })
+            setSetterAll(cleanSetterIds.length === 0)
           }
         }
       } catch (e) {
         console.warn('Failed to load candidates', e)
       }
     }
+
     loadCandidates()
-  }, [selectedAccountId, filters.repIds, filters.setterIds, setFilters])
+  }, [selectedAccountId])
   
   const handleDateChange = (dateRange: DateRange | undefined) => {
     setFilters({
@@ -89,12 +102,26 @@ export function GlobalFilters({ className }: GlobalFiltersProps) {
     });
   };
   
-  const handleRepChange = (repIds: string[]) => {
-    setFilters({ repIds });
+  const handleRepChange = (newSelected: string[]) => {
+    // Translate UI selection: selecting "All Reps" clears repIds in store
+    if (newSelected.includes(ALL_REPS) || newSelected.length === 0) {
+      setRepAll(true)
+      setFilters({ repIds: undefined })
+    } else {
+      setRepAll(false)
+      // Ensure ALL token is removed
+      setFilters({ repIds: newSelected.filter(v => v !== ALL_REPS) })
+    }
   };
   
-  const handleSetterChange = (setterIds: string[]) => {
-    setFilters({ setterIds });
+  const handleSetterChange = (newSelected: string[]) => {
+    if (newSelected.includes(ALL_SETTERS) || newSelected.length === 0) {
+      setSetterAll(true)
+      setFilters({ setterIds: undefined })
+    } else {
+      setSetterAll(false)
+      setFilters({ setterIds: newSelected.filter(v => v !== ALL_SETTERS) })
+    }
   };
   
   const activeFilterCount = useMemo(() => (
@@ -102,6 +129,10 @@ export function GlobalFilters({ className }: GlobalFiltersProps) {
       v !== undefined && v !== null && (Array.isArray(v) ? v.length > 0 : true)
     ).length
   ), [filters])
+
+  // Compute UI-selected arrays, defaulting to All when no explicit ids are set
+  const uiRepSelected = repAll ? [ALL_REPS] : (filters.repIds || [])
+  const uiSetterSelected = setterAll ? [ALL_SETTERS] : (filters.setterIds || [])
 
   return (
     <div className={cn("flex flex-col gap-4 p-4 border-b", className)}>
@@ -121,18 +152,18 @@ export function GlobalFilters({ className }: GlobalFiltersProps) {
         {/* Rep Selector */}
         <MultiSelect
           options={repOptions}
-          selected={filters.repIds || []}
+          selected={uiRepSelected}
           onChange={handleRepChange}
-          placeholder="Select reps"
+          placeholder="All reps"
           className="w-[220px]"
         />
         
         {/* Setter Selector */}
         <MultiSelect
           options={setterOptions}
-          selected={filters.setterIds || []}
+          selected={uiSetterSelected}
           onChange={handleSetterChange}
-          placeholder="Select setters"
+          placeholder="All setters"
           className="w-[220px]"
         />
         
@@ -148,7 +179,7 @@ export function GlobalFilters({ className }: GlobalFiltersProps) {
             <Button
               variant="ghost"
               size="sm"
-              onClick={clearFilters}
+              onClick={() => { clearFilters(); setRepAll(true); setSetterAll(true); }}
               className="h-6 px-2"
             >
               <X className="h-3 w-3" />
