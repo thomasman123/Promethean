@@ -84,7 +84,7 @@ export async function GET(request: NextRequest) {
     // Build a set of existing team member IDs for fast lookup
     const teamMemberIds = new Set<string>((team || []).map((m: any) => m.user_id))
 
-    // Collect participants from data across roles (appointments, discoveries, dials)
+    // Collect participants separately for reps and setters
     const [apptUsersRes, discUsersRes, dialUsersRes] = await Promise.all([
       supabase
         .from('appointments')
@@ -107,24 +107,22 @@ export async function GET(request: NextRequest) {
     const discUsers = discUsersRes.data || []
     const dialUsers = dialUsersRes.data || []
 
-    const participantIds = new Set<string>()
-    // Include all invited users regardless of their stored role
-    for (const id of teamMemberIds) participantIds.add(id)
+    const repIdsSet = new Set<string>()
+    const setterIdsSet = new Set<string>()
 
     ;(apptUsers as Array<{ setter_user_id: string | null, sales_rep_user_id: string | null }>).forEach(a => {
-      if (a.setter_user_id) participantIds.add(a.setter_user_id)
-      if (a.sales_rep_user_id) participantIds.add(a.sales_rep_user_id)
+      if (a.sales_rep_user_id) repIdsSet.add(a.sales_rep_user_id)
+      if (a.setter_user_id) setterIdsSet.add(a.setter_user_id)
     })
     ;(discUsers as Array<{ setter_user_id: string | null, sales_rep_user_id: string | null }>).forEach(d => {
-      if (d.setter_user_id) participantIds.add(d.setter_user_id)
-      if (d.sales_rep_user_id) participantIds.add(d.sales_rep_user_id)
+      if (d.setter_user_id) setterIdsSet.add(d.setter_user_id)
     })
     ;(dialUsers as Array<{ setter_user_id: string | null }>).forEach(d => {
-      if (d.setter_user_id) participantIds.add(d.setter_user_id)
+      if (d.setter_user_id) setterIdsSet.add(d.setter_user_id)
     })
 
-    // Fetch profiles for non-invited participants
-    const allIds = Array.from(participantIds)
+    // Fetch profiles for non-invited participants used in either list
+    const allIds = Array.from(new Set<string>([...repIdsSet, ...setterIdsSet]))
     const missingIds = allIds.filter(id => !teamMemberIds.has(id))
 
     let missingProfiles: Array<{ id: string; full_name: string | null; email: string | null }> = []
@@ -136,7 +134,7 @@ export async function GET(request: NextRequest) {
       missingProfiles = profilesData || []
     }
 
-    const nameForTeamMember = (id: string) => {
+    const nameForTeamMember = (id: string): string => {
       const m = (team || []).find((tm: any) => tm.user_id === id)
       return (((m?.full_name as string | null)?.trim()) || m?.email || 'Unknown') ?? 'Unknown'
     }
@@ -144,17 +142,18 @@ export async function GET(request: NextRequest) {
     const profileById = new Map<string, { id: string; full_name: string | null; email: string | null }>()
     for (const p of missingProfiles) profileById.set(p.id, p)
 
-    const unifiedCandidates = allIds.map(id => {
-      const invited = teamMemberIds.has(id)
-      const name = invited 
-        ? nameForTeamMember(id) 
-        : ((profileById.get(id)?.full_name?.trim() || profileById.get(id)?.email || 'Unknown') ?? 'Unknown')
-      return { id, name, invited }
-    })
+    const buildName = (id: string): string => teamMemberIds.has(id)
+      ? nameForTeamMember(id)
+      : ((profileById.get(id)?.full_name?.trim() || profileById.get(id)?.email || 'Unknown') ?? 'Unknown')
 
-    // Return the same unified set in both lists so users who do both appear in both dropdowns
-    const reps: Candidate[] = unifiedCandidates.map(c => ({ id: c.id, name: c.name, role: 'rep', invited: c.invited }))
-    const setters: Candidate[] = unifiedCandidates.map(c => ({ id: c.id, name: c.name, role: 'setter', invited: c.invited }))
+    // Map to candidates; sort by name for UX
+    const reps: Candidate[] = Array.from(repIdsSet)
+      .map(id => ({ id, name: buildName(id) as string, role: 'rep' as const, invited: teamMemberIds.has(id) }))
+      .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+
+    const setters: Candidate[] = Array.from(setterIdsSet)
+      .map(id => ({ id, name: buildName(id) as string, role: 'setter' as const, invited: teamMemberIds.has(id) }))
+      .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
 
     return NextResponse.json({ reps, setters })
   } catch (e) {
