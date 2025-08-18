@@ -4,6 +4,86 @@ import { createClient } from '@supabase/supabase-js';
 // Store webhook IDs to prevent replay attacks
 const processedWebhookIds = new Set<string>();
 
+// Helper to ensure we have a valid GHL access token for API calls
+async function getValidGhlAccessToken(account: any, supabase: any): Promise<string | null> {
+  try {
+    const authType = account.ghl_auth_type || 'oauth2';
+    const currentAccessToken = account.ghl_api_key as string | null;
+    const refreshToken = account.ghl_refresh_token as string | null;
+    const expiresAtIso = account.ghl_token_expires_at as string | null;
+
+    // If not OAuth, just return the stored key
+    if (authType !== 'oauth2') {
+      return currentAccessToken || null;
+    }
+
+    const clientId = process.env.GHL_CLIENT_ID;
+    const clientSecret = process.env.GHL_CLIENT_SECRET;
+
+    // If we can't refresh, return what we have
+    if (!clientId || !clientSecret) {
+      console.warn('⚠️ Missing GHL OAuth client credentials; using stored token');
+      return currentAccessToken || null;
+    }
+
+    const now = Date.now();
+    const expiresAtMs = expiresAtIso ? new Date(expiresAtIso).getTime() : 0;
+    const skewMs = 2 * 60 * 1000; // 2 minutes
+    const needsRefresh = !currentAccessToken || !expiresAtMs || now >= (expiresAtMs - skewMs);
+
+    if (!needsRefresh) {
+      return currentAccessToken as string;
+    }
+
+    if (!refreshToken) {
+      console.warn('⚠️ No refresh token available; using stored access token even if possibly expired');
+      return currentAccessToken || null;
+    }
+
+    // Refresh the access token
+    const resp = await fetch('https://services.leadconnectorhq.com/oauth/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        client_id: clientId,
+        client_secret: clientSecret,
+        grant_type: 'refresh_token',
+        refresh_token: refreshToken,
+      }),
+    });
+
+    if (!resp.ok) {
+      const errorText = await resp.text();
+      console.error('❌ Failed to refresh GHL access token:', errorText);
+      return currentAccessToken || null;
+    }
+
+    const tokenData = await resp.json();
+    const newAccessToken = tokenData.access_token as string;
+    const newRefreshToken = (tokenData.refresh_token as string) || refreshToken;
+    const newExpiresAtIso = new Date(Date.now() + (tokenData.expires_in as number) * 1000).toISOString();
+
+    // Persist updated tokens
+    await supabase
+      .from('accounts')
+      .update({
+        ghl_api_key: newAccessToken,
+        ghl_refresh_token: newRefreshToken,
+        ghl_token_expires_at: newExpiresAtIso,
+        ghl_auth_type: 'oauth2',
+      })
+      .eq('id', account.id);
+
+    console.log('🔐 Refreshed GHL access token for account:', account.id);
+    return newAccessToken;
+  } catch (err) {
+    console.error('❌ Error getting valid GHL access token:', err);
+    return account?.ghl_api_key || null;
+  }
+}
+
 export async function POST(request: NextRequest) {
   console.log('📞 Received GHL webhook at /api/webhook/call-events');
   
@@ -618,7 +698,7 @@ async function processAppointmentWebhook(payload: any) {
     // Find account by GHL location ID
     const { data: account, error: accountError } = await supabase
       .from('accounts')
-      .select('id, name, ghl_location_id, ghl_api_key, ghl_refresh_token')
+      .select('id, name, ghl_location_id, ghl_api_key, ghl_refresh_token, ghl_token_expires_at, ghl_auth_type')
       .eq('ghl_location_id', payload.locationId)
       .single();
     
@@ -653,6 +733,9 @@ async function processAppointmentWebhook(payload: any) {
     }
     
     console.log('📍 Found account:', account.name, '(', account.id, ')');
+
+    // Ensure valid access token for GHL API
+    const accessToken = await getValidGhlAccessToken(account, supabase);
     
     // Check if this appointment's calendar is mapped
     const { data: calendarMapping, error: mappingError } = await supabase
@@ -682,14 +765,14 @@ async function processAppointmentWebhook(payload: any) {
     let salesRepData = null;
     let setterData = null;
     
-    if (calendarMapping.target_table === 'appointments' && payload.appointment?.id && account.ghl_api_key) {
+    if (calendarMapping.target_table === 'appointments' && payload.appointment?.id && accessToken) {
       try {
         // 1. Get full appointment details from API
         console.log('📅 Fetching full appointment details for ID:', payload.appointment.id);
         
         const appointmentResponse = await fetch(`https://services.leadconnectorhq.com/calendars/events/appointments/${payload.appointment.id}`, {
           headers: {
-            'Authorization': `Bearer ${account.ghl_api_key}`,
+            'Authorization': `Bearer ${accessToken}`,
             'Version': '2021-07-28',
           },
         });
@@ -727,7 +810,7 @@ async function processAppointmentWebhook(payload: any) {
           
           const contactResponse = await fetch(`https://services.leadconnectorhq.com/contacts/${contactId}`, {
             headers: {
-              'Authorization': `Bearer ${account.ghl_api_key}`,
+              'Authorization': `Bearer ${accessToken}`,
               'Version': '2021-07-28',
             },
           });
@@ -771,7 +854,7 @@ async function processAppointmentWebhook(payload: any) {
           
           const setterResponse = await fetch(`https://services.leadconnectorhq.com/users/${setterId}`, {
             headers: {
-              'Authorization': `Bearer ${account.ghl_api_key}`,
+              'Authorization': `Bearer ${accessToken}`,
               'Version': '2021-07-28',
             },
           });
@@ -802,7 +885,7 @@ async function processAppointmentWebhook(payload: any) {
           
           const salesRepResponse = await fetch(`https://services.leadconnectorhq.com/users/${salesRepId}`, {
             headers: {
-              'Authorization': `Bearer ${account.ghl_api_key}`,
+              'Authorization': `Bearer ${accessToken}`,
               'Version': '2021-07-28',
             },
           });
@@ -837,7 +920,7 @@ async function processAppointmentWebhook(payload: any) {
         
         const appointmentResponse = await fetch(`https://services.leadconnectorhq.com/calendars/events/appointments/${payload.appointment.id}`, {
           headers: {
-            'Authorization': `Bearer ${account.ghl_api_key}`,
+            'Authorization': `Bearer ${accessToken}`,
             'Version': '2021-07-28',
           },
         });
@@ -849,12 +932,12 @@ async function processAppointmentWebhook(payload: any) {
         }
         
         // 2. Enrich with contact data if contactId exists
-        if (payload.appointment?.contactId && account.ghl_api_key) {
+        if (payload.appointment?.contactId && accessToken) {
           console.log('👤 Fetching contact details for ID:', payload.appointment.contactId);
           
           const contactResponse = await fetch(`https://services.leadconnectorhq.com/contacts/${payload.appointment.contactId}`, {
             headers: {
-              'Authorization': `Bearer ${account.ghl_api_key}`,
+              'Authorization': `Bearer ${accessToken}`,
               'Version': '2021-07-28',
             },
           });
@@ -890,7 +973,7 @@ async function processAppointmentWebhook(payload: any) {
           
           const setterResponse = await fetch(`https://services.leadconnectorhq.com/users/${setterId}`, {
             headers: {
-              'Authorization': `Bearer ${account.ghl_api_key}`,
+              'Authorization': `Bearer ${accessToken}`,
               'Version': '2021-07-28',
             },
           });
@@ -921,7 +1004,7 @@ async function processAppointmentWebhook(payload: any) {
           
           const salesRepResponse = await fetch(`https://services.leadconnectorhq.com/users/${salesRepId}`, {
             headers: {
-              'Authorization': `Bearer ${account.ghl_api_key}`,
+              'Authorization': `Bearer ${accessToken}`,
               'Version': '2021-07-28',
             },
           });
