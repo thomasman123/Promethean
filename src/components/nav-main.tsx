@@ -28,6 +28,7 @@ export function NavMain({
     url: string
     icon: LucideIcon
     isActive?: boolean
+    badgeCount?: number
     items?: {
       title: string
       url: string
@@ -44,7 +45,12 @@ export function NavMain({
               <SidebarMenuButton asChild tooltip={item.title}>
                 <Link href={item.url}>
                   <item.icon />
-                  <span>{item.title}</span>
+                  <span className="flex-1">{item.title}</span>
+                  {typeof item.badgeCount === 'number' && item.badgeCount > 0 ? (
+                    <span className="ml-auto text-[10px] leading-none px-1.5 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300">
+                      {item.badgeCount}
+                    </span>
+                  ) : null}
                 </Link>
               </SidebarMenuButton>
               {item.items?.length ? (

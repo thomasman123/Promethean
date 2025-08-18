@@ -23,6 +23,8 @@ interface AppointmentItem {
 	id: string;
 	leadName: string;
 	scheduledAt: string;
+	localDate: string;
+	overdueDays: number;
 	type: "appointment";
 }
 
@@ -30,6 +32,8 @@ interface DiscoveryItem {
 	id: string;
 	leadName: string;
 	scheduledAt: string;
+	localDate: string;
+	overdueDays: number;
 	type: "discovery";
 }
 
@@ -68,6 +72,16 @@ export default function UpdateDataPage() {
 	const [completedItems, setCompletedItems] = useState<Set<string>>(new Set());
 	const [currentIndex, setCurrentIndex] = useState(0);
 	const [isFlowComplete, setIsFlowComplete] = useState(false);
+	const [accountTz, setAccountTz] = useState<string>("UTC");
+
+	useEffect(() => {
+		const loadTz = async () => {
+			if (!selectedAccountId) return
+			const { data } = await supabase.from('accounts').select('business_timezone').eq('id', selectedAccountId).single()
+			setAccountTz(data?.business_timezone || 'UTC')
+		}
+		loadTz()
+	}, [selectedAccountId])
 
 	useEffect(() => {
 		const fetchItems = async () => {
@@ -100,9 +114,17 @@ export default function UpdateDataPage() {
 				return;
 			}
 
+			// Compute today's date in account timezone
+			const parts = new Intl.DateTimeFormat('en-CA', { timeZone: accountTz || 'UTC', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date())
+			const y = parts.find(p => p.type === 'year')?.value || '1970'
+			const m = parts.find(p => p.type === 'month')?.value || '01'
+			const d = parts.find(p => p.type === 'day')?.value || '01'
+			const todayLocal = `${y}-${m}-${d}`
+			const todayMs = Date.parse(`${todayLocal}T00:00:00Z`)
+
 			const { data: appts, error } = await supabase
 				.from('appointments')
-				.select('id, contact_name, date_booked_for, sales_rep_user_id')
+				.select('id, contact_name, date_booked_for, sales_rep_user_id, local_date')
 				.eq('account_id', selectedAccountId)
 				.eq('sales_rep_user_id', effectiveUserId)
 				.eq('data_filled', false)
@@ -114,16 +136,24 @@ export default function UpdateDataPage() {
 				return;
 			}
 
-			const appointments: AppointmentItem[] = (appts || []).map((a) => ({
-				id: a.id,
-				leadName: a.contact_name,
-				scheduledAt: a.date_booked_for,
-				type: 'appointment',
-			}));
+			const appointments: AppointmentItem[] = (appts || []).map((a) => {
+				const ld = (a as any).local_date as string | null
+				const itemLocal = ld || (a as any).date_booked_for?.slice(0,10) || todayLocal
+				const itemMs = Date.parse(`${itemLocal}T00:00:00Z`)
+				const overdueDays = Math.max(0, Math.floor((todayMs - itemMs) / 86400000))
+				return {
+					id: a.id,
+					leadName: a.contact_name,
+					scheduledAt: a.date_booked_for,
+					localDate: itemLocal,
+					overdueDays,
+					type: 'appointment',
+				}
+			});
 
 			const { data: discos, error: discosError } = await supabase
 				.from('discoveries')
-				.select('id, contact_name, date_booked_for, setter_user_id')
+				.select('id, contact_name, date_booked_for, setter_user_id, local_date')
 				.eq('account_id', selectedAccountId)
 				.eq('setter_user_id', effectiveUserId)
 				.eq('data_filled', false)
@@ -133,12 +163,20 @@ export default function UpdateDataPage() {
 				console.warn('Failed to fetch discoveries:', discosError.message);
 			}
 
-			const discoveries: DiscoveryItem[] = (discos || []).map((d) => ({
-				id: d.id,
-				leadName: d.contact_name,
-				scheduledAt: d.date_booked_for,
-				type: 'discovery',
-			}));
+			const discoveries: DiscoveryItem[] = (discos || []).map((d) => {
+				const ld = (d as any).local_date as string | null
+				const itemLocal = ld || (d as any).date_booked_for?.slice(0,10) || todayLocal
+				const itemMs = Date.parse(`${itemLocal}T00:00:00Z`)
+				const overdueDays = Math.max(0, Math.floor((todayMs - itemMs) / 86400000))
+				return {
+					id: d.id,
+					leadName: d.contact_name,
+					scheduledAt: d.date_booked_for,
+					localDate: itemLocal,
+					overdueDays,
+					type: 'discovery',
+				}
+			});
 
 			setAllItems([...appointments, ...discoveries]);
 			setCurrentIndex(0);
@@ -146,9 +184,9 @@ export default function UpdateDataPage() {
 			setIsFlowComplete(false);
 		};
 		fetchItems();
-	}, [selectedAccountId, effectiveUserId, mode]);
+	}, [selectedAccountId, effectiveUserId, mode, accountTz]);
 
-	const currentItem = allItems[currentIndex];
+	const currentItem = allItems[currentIndex] as AppointmentItem | DiscoveryItem | FollowUpItem | undefined;
 	const totalItems = allItems.length;
 	const completedCount = completedItems.size;
 	const progress = totalItems > 0 ? (completedCount / totalItems) * 100 : 0;
@@ -183,7 +221,7 @@ export default function UpdateDataPage() {
 		);
 	}
 
-	const upcoming = allItems.slice(currentIndex + 1, currentIndex + 4);
+	const upcoming = allItems.slice(currentIndex + 1, currentIndex + 4) as (AppointmentItem | DiscoveryItem | FollowUpItem)[];
 
 	return (
 		<div className="p-6 space-y-6">
@@ -232,7 +270,7 @@ export default function UpdateDataPage() {
 							<DataEntryCard
 								mode={mode}
 								item={currentItem}
-								onComplete={() => handleItemComplete(currentItem.id)}
+								onComplete={() => handleItemComplete((currentItem as any).id)}
 							/>
 						)}
 					</div>
@@ -249,20 +287,23 @@ export default function UpdateDataPage() {
 											<div className="text-sm text-muted-foreground">No upcoming items</div>
 										)}
 										{upcoming.map((item) => (
-											<div key={item.id} className="flex items-center gap-3 rounded-md border p-3 bg-background pointer-events-none opacity-80">
+											<div key={(item as any).id} className="flex items-center gap-3 rounded-md border p-3 bg-background pointer-events-none opacity-80">
 												<div className="rounded-md border size-8 grid place-items-center">
-													{item.type === "appointment" ? (
+													{(item as any).type === "appointment" ? (
 														<Calendar className="h-4 w-4" />
 													) : (
 														<ClipboardList className="h-4 w-4" />
 													)}
 												</div>
 												<div className="min-w-0">
-													<div className="truncate text-sm font-medium">{item.leadName}</div>
+													<div className="truncate text-sm font-medium">{(item as any).leadName}</div>
 													<div className="truncate text-xs text-muted-foreground">{('scheduledAt' in item ? new Date((item as any).scheduledAt).toLocaleString() : new Date((item as any).followUpAt).toLocaleString())}</div>
 												</div>
 												<div className="ml-auto flex items-center gap-2">
-													<Badge variant="secondary" className="capitalize">{item.type === 'follow_up' ? 'follow up' : item.type}</Badge>
+													{(item as any).overdueDays > 0 && (
+														<span className="text-[10px] leading-none px-1.5 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300">{(item as any).overdueDays}d</span>
+													)}
+													<Badge variant="secondary" className="capitalize">{(item as any).type === 'follow_up' ? 'follow up' : (item as any).type}</Badge>
 												</div>
 											</div>
 										))}
@@ -284,7 +325,7 @@ function DataEntryCard({ mode, item, onComplete }: { mode: Mode; item: DataItem;
 	if (mode === 'followups') {
 		return <FollowUpEntryCard item={item as FollowUpItem} onComplete={onComplete} />;
 	}
-	if (item.type === "appointment") {
+	if ((item as any).type === "appointment") {
 		return <AppointmentEntryCard item={item as AppointmentItem} onComplete={onComplete} />;
 	} else {
 		return <DiscoveryEntryCard item={item as DiscoveryItem} onComplete={onComplete} />;
@@ -366,7 +407,12 @@ function AppointmentEntryCard({
 							<CardDescription>Scheduled: {new Date(item.scheduledAt).toLocaleString()}</CardDescription>
 						</div>
 					</div>
-					<Badge variant="secondary" className="capitalize">appointment</Badge>
+					<div className="flex items-center gap-2">
+						{item.overdueDays > 0 && (
+							<span className="text-[11px] leading-none px-1.5 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300">{item.overdueDays}d overdue</span>
+						)}
+						<Badge variant="secondary" className="capitalize">appointment</Badge>
+					</div>
 				</div>
 			</CardHeader>
 			<CardContent className="space-y-5">

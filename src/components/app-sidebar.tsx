@@ -31,6 +31,7 @@ import {
 	SelectTrigger,
 } from "@/components/ui/select"
 import { useAuth } from "@/hooks/useAuth"
+import { supabase } from "@/lib/supabase"
 
 const staticData = {
 	navMain: [
@@ -54,7 +55,7 @@ const staticData = {
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-	const { user, loading, selectedAccountId, setSelectedAccountId, getAvailableAccounts, isAdmin, isModerator } = useAuth()
+	const { user, loading, selectedAccountId, setSelectedAccountId, getAvailableAccounts, isAdmin, isModerator, effectiveUserId } = useAuth()
 
 	// Snapshot last known values so UI stays stable during transient loading
 	const lastUserRef = React.useRef<typeof user>(null)
@@ -74,6 +75,49 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 			lastIsModeratorRef.current = lastIsAdminRef.current || !!(user && (user.profile?.role === 'moderator'))
 		}
 	}, [user, loading, selectedAccountId, getAvailableAccounts])
+
+	const [overdueCount, setOverdueCount] = React.useState<number>(0)
+
+	React.useEffect(() => {
+		const fetchOverdue = async () => {
+			try {
+				if (!selectedAccountId || !effectiveUserId) { setOverdueCount(0); return }
+				// Get account timezone
+				const { data: acc } = await supabase
+					.from('accounts')
+					.select('business_timezone')
+					.eq('id', selectedAccountId)
+					.single()
+				const tz = acc?.business_timezone || 'UTC'
+				// Compute today in that timezone (YYYY-MM-DD)
+				const parts = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date())
+				const y = parts.find(p => p.type === 'year')?.value || '1970'
+				const m = parts.find(p => p.type === 'month')?.value || '01'
+				const d = parts.find(p => p.type === 'day')?.value || '01'
+				const todayLocal = `${y}-${m}-${d}`
+				// Count overdue appointments
+				const { count: apptCount } = await supabase
+					.from('appointments')
+					.select('id', { count: 'exact', head: true })
+					.eq('account_id', selectedAccountId)
+					.eq('sales_rep_user_id', effectiveUserId)
+					.eq('data_filled', false)
+					.lt('local_date', todayLocal)
+				// Count overdue discoveries
+				const { count: discoCount } = await supabase
+					.from('discoveries')
+					.select('id', { count: 'exact', head: true })
+					.eq('account_id', selectedAccountId)
+					.eq('setter_user_id', effectiveUserId)
+					.eq('data_filled', false)
+					.lt('local_date', todayLocal)
+				setOverdueCount((apptCount || 0) + (discoCount || 0))
+			} catch (e) {
+				setOverdueCount(0)
+			}
+		}
+		fetchOverdue()
+	}, [selectedAccountId, effectiveUserId])
 
 	const effectiveUser = user || lastUserRef.current
 	const availableAccounts = getAvailableAccounts()
@@ -95,6 +139,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 				return roleIsModerator
 			}
 			return true
+		}).map(item => {
+			if (item.title === 'Update Data') {
+				return { ...item, badgeCount: overdueCount }
+			}
+			return item
 		})
 	}
 
