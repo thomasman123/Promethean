@@ -238,182 +238,171 @@ export default function CalendarMappingPage() {
 
   return (
     <SidebarInset>
-        <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
-          <SidebarTrigger className="-ml-1" />
-          <Separator orientation="vertical" className="mr-2 h-4" />
-          <Breadcrumb>
-            <BreadcrumbList>
-              <BreadcrumbItem className="hidden md:block">
-                <BreadcrumbLink href="/dashboard">Dashboard</BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator className="hidden md:block" />
-              <BreadcrumbItem className="hidden md:block">
-                <BreadcrumbLink href="/account">Account</BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator className="hidden md:block" />
-              <BreadcrumbItem>
-                <BreadcrumbPage>Calendar Mapping</BreadcrumbPage>
-              </BreadcrumbItem>
-            </BreadcrumbList>
-          </Breadcrumb>
-          <div className="ml-auto">
-            <ThemeToggle />
-          </div>
-        </header>
+        {/* Header removed; global PageHeader in layout handles top bar */}
 
         <div className="flex flex-1 flex-col gap-4 p-4">
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-3xl font-bold tracking-tight">Calendar Mapping</h1>
-                <p className="text-muted-foreground">
-                  Map GoHighLevel calendars to your internal appointment and discovery tables
-                </p>
-              </div>
-              <Button
-                onClick={refreshCalendars}
-                disabled={refreshing}
-                variant="outline"
-              >
-                {refreshing ? (
-                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                ) : (
-                  <RefreshCw className="w-4 h-4 mr-2" />
-                )}
-                Refresh Calendars
-              </Button>
-            </div>
-
-            {error && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-            {!error && notice && (
-              <Alert>
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{notice}</AlertDescription>
-              </Alert>
-            )}
-
-            {loading ? (
-              <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-                <p className="text-muted-foreground mt-2">Loading calendars...</p>
-              </div>
-            ) : calendars.length === 0 ? (
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="text-center space-y-4">
-                    <Calendar className="h-12 w-12 mx-auto text-muted-foreground" />
-                    <div>
-                      <h3 className="text-lg font-medium">No Calendars Found</h3>
-                      <p className="text-muted-foreground">
-                        No GoHighLevel calendars were found for this account. 
-                        Make sure your GHL connection is active and you have calendars set up.
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ) : (
+          <Card>
+            <CardHeader>
+              <CardTitle>Calendar Mapping</CardTitle>
+              <CardDescription>
+                Map your GHL calendars to the right tables
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
               <div className="space-y-4">
-                {calendars.map((calendar) => {
-                  const mapping = getCalendarMapping(calendar.id)
-                  const isEnabled = mapping?.is_enabled || false
-
-                  return (
-                    <Card key={calendar.id}>
-                      <CardHeader>
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
-                              <Calendar className="h-5 w-5 text-blue-600" />
-                            </div>
-                            <div>
-                              <CardTitle className="text-lg">{calendar.name}</CardTitle>
-                              {calendar.description && (
-                                <CardDescription>{calendar.description}</CardDescription>
-                              )}
-                            </div>
-                          </div>
-                          {getStatusBadge(calendar)}
-                        </div>
-                      </CardHeader>
-                      <CardContent className="space-y-4">
-                        <div className="flex items-center justify-between">
-                          <div className="space-y-1">
-                            <p className="text-sm font-medium">Enable Calendar Sync</p>
-                            <p className="text-xs text-muted-foreground">
-                              Sync appointments from this calendar to your database
-                            </p>
-                          </div>
-                          <Switch
-                             checked={isEnabled}
-                             onCheckedChange={(checked: boolean) => toggleCalendarEnabled(calendar.id, checked)}
-                           />
-                        </div>
-
-                        {isEnabled && mapping && (
-                          <div className="space-y-3 pt-3 border-t">
-                            <div className="space-y-2">
-                              <p className="text-sm font-medium">Target Table</p>
-                              <Select
-                                value={mapping.target_table}
-                                onValueChange={(value: 'appointments' | 'discoveries') => 
-                                  updateMappingTarget(mapping.id, value)
-                                }
-                              >
-                                <SelectTrigger className="w-48">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="appointments">Appointments</SelectItem>
-                                  <SelectItem value="discoveries">Discoveries</SelectItem>
-                                </SelectContent>
-                              </Select>
-                              <p className="text-xs text-muted-foreground">
-                                Choose which table to store appointments from this calendar
-                              </p>
-                            </div>
-
-                            <div className="bg-muted p-3 rounded-lg text-sm">
-                              <p className="font-medium mb-1">Mapping Details:</p>
-                              <p>Calendar ID: <code className="text-xs">{calendar.id}</code></p>
-                              <p>Target: <code className="text-xs">{mapping.target_table}</code> table</p>
-                              <p>Status: <span className="text-green-600">Active</span></p>
-                            </div>
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  )
-                })}
-              </div>
-            )}
-
-            {/* Information Card */}
-            <Card>
-              <CardHeader>
-                <CardTitle>About Calendar Mapping</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <p className="text-sm text-muted-foreground">
-                  Calendar mapping allows you to automatically sync appointments from your GoHighLevel calendars to your internal database tables.
-                </p>
-                <div className="space-y-2">
-                  <p className="text-sm font-medium">How it works:</p>
-                  <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-                    <li><strong>Enable calendars:</strong> Choose which GHL calendars to sync</li>
-                    <li><strong>Map to tables:</strong> Route appointments to either Appointments or Discoveries tables</li>
-                    <li><strong>Automatic sync:</strong> New appointments are automatically added via webhooks</li>
-                    <li><strong>Contact data:</strong> Includes contact name, email, phone, and appointment details</li>
-                  </ul>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h1 className="text-3xl font-bold tracking-tight">Calendar Mapping</h1>
+                    <p className="text-muted-foreground">
+                      Map GoHighLevel calendars to your internal appointment and discovery tables
+                    </p>
+                  </div>
+                  <Button
+                    onClick={refreshCalendars}
+                    disabled={refreshing}
+                    variant="outline"
+                  >
+                    {refreshing ? (
+                      <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <RefreshCw className="w-4 h-4 mr-2" />
+                    )}
+                    Refresh Calendars
+                  </Button>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
+
+                {error && (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
+                )}
+                {!error && notice && (
+                  <Alert>
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>{notice}</AlertDescription>
+                  </Alert>
+                )}
+
+                {loading ? (
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                    <p className="text-muted-foreground mt-2">Loading calendars...</p>
+                  </div>
+                ) : calendars.length === 0 ? (
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className="text-center space-y-4">
+                        <Calendar className="h-12 w-12 mx-auto text-muted-foreground" />
+                        <div>
+                          <h3 className="text-lg font-medium">No Calendars Found</h3>
+                          <p className="text-muted-foreground">
+                            No GoHighLevel calendars were found for this account. 
+                            Make sure your GHL connection is active and you have calendars set up.
+                          </p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="space-y-4">
+                    {calendars.map((calendar) => {
+                      const mapping = getCalendarMapping(calendar.id)
+                      const isEnabled = mapping?.is_enabled || false
+
+                      return (
+                        <Card key={calendar.id}>
+                          <CardHeader>
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
+                                  <Calendar className="h-5 w-5 text-blue-600" />
+                                </div>
+                                <div>
+                                  <CardTitle className="text-lg">{calendar.name}</CardTitle>
+                                  {calendar.description && (
+                                    <CardDescription>{calendar.description}</CardDescription>
+                                  )}
+                                </div>
+                              </div>
+                              {getStatusBadge(calendar)}
+                            </div>
+                          </CardHeader>
+                          <CardContent className="space-y-4">
+                            <div className="flex items-center justify-between">
+                              <div className="space-y-1">
+                                <p className="text-sm font-medium">Enable Calendar Sync</p>
+                                <p className="text-xs text-muted-foreground">
+                                  Sync appointments from this calendar to your database
+                                </p>
+                              </div>
+                              <Switch
+                                 checked={isEnabled}
+                                 onCheckedChange={(checked: boolean) => toggleCalendarEnabled(calendar.id, checked)}
+                               />
+                            </div>
+
+                            {isEnabled && mapping && (
+                              <div className="space-y-3 pt-3 border-t">
+                                <div className="space-y-2">
+                                  <p className="text-sm font-medium">Target Table</p>
+                                  <Select
+                                    value={mapping.target_table}
+                                    onValueChange={(value: 'appointments' | 'discoveries') => 
+                                      updateMappingTarget(mapping.id, value)
+                                    }
+                                  >
+                                    <SelectTrigger className="w-48">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="appointments">Appointments</SelectItem>
+                                      <SelectItem value="discoveries">Discoveries</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                  <p className="text-xs text-muted-foreground">
+                                    Choose which table to store appointments from this calendar
+                                  </p>
+                                </div>
+
+                                <div className="bg-muted p-3 rounded-lg text-sm">
+                                  <p className="font-medium mb-1">Mapping Details:</p>
+                                  <p>Calendar ID: <code className="text-xs">{calendar.id}</code></p>
+                                  <p>Target: <code className="text-xs">{mapping.target_table}</code> table</p>
+                                  <p>Status: <span className="text-green-600">Active</span></p>
+                                </div>
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
+                      )
+                    })}
+                  </div>
+                )}
+
+                {/* Information Card */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>About Calendar Mapping</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <p className="text-sm text-muted-foreground">
+                      Calendar mapping allows you to automatically sync appointments from your GoHighLevel calendars to your internal database tables.
+                    </p>
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium">How it works:</p>
+                      <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
+                        <li><strong>Enable calendars:</strong> Choose which GHL calendars to sync</li>
+                        <li><strong>Map to tables:</strong> Route appointments to either Appointments or Discoveries tables</li>
+                        <li><strong>Automatic sync:</strong> New appointments are automatically added via webhooks</li>
+                        <li><strong>Contact data:</strong> Includes contact name, email, phone, and appointment details</li>
+                      </ul>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </CardContent>
+          </Card>
         </div>
     </SidebarInset>
   )
