@@ -114,8 +114,7 @@ export async function GET(request: NextRequest) {
       .from('appointments')
       .select('setter_user_id, sales_rep_user_id')
       .eq('account_id', accountId)
-      .not('setter_user_id', 'is', null)
-      .or('sales_rep_user_id.not.is.null')
+      .or('setter_user_id.not.is.null,sales_rep_user_id.not.is.null')
 
     if (apptErr) {
       console.warn('Failed to fetch appointment users:', apptErr)
