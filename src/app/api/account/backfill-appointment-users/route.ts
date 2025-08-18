@@ -48,11 +48,38 @@ export async function POST(request: NextRequest) {
       let setterUserId: string | undefined
       let salesRepUserId: string | undefined
 
+      // Helper to ensure access without overwriting existing role
+      const ensureAccess = async (uId: string, desiredRole: 'setter' | 'sales_rep') => {
+        const { data: existingAccess } = await supabase
+          .from('account_access')
+          .select('id, role, is_active')
+          .eq('user_id', uId)
+          .eq('account_id', accountId)
+          .maybeSingle()
+        if (existingAccess?.id) {
+          if (existingAccess.is_active === false) {
+            await supabase
+              .from('account_access')
+              .update({ is_active: true })
+              .eq('id', (existingAccess as any).id)
+          }
+          // Do not overwrite role here
+          return
+        }
+        await supabase.rpc('grant_account_access' as any, {
+          p_user_id: uId,
+          p_account_id: accountId,
+          p_role: desiredRole,
+          p_granted_by_user_id: user.id
+        })
+      }
+
       // Try email-based match first
       if (a.email) {
         const { data: p } = await supabase.from('profiles').select('id, email').ilike('email', a.email).maybeSingle()
         if (p?.id) {
-          await supabase.rpc('grant_account_access' as any, { p_user_id: p.id, p_account_id: accountId, p_role: 'moderator', p_granted_by_user_id: user.id })
+          // Default to setter for ambiguous email match to avoid manager-level roles
+          await ensureAccess(p.id, 'setter')
           setterUserId = setterUserId || p.id
           salesRepUserId = salesRepUserId || p.id
         }
@@ -62,14 +89,14 @@ export async function POST(request: NextRequest) {
       if (!setterUserId && a.setter) {
         const { data: p } = await supabase.from('profiles').select('id, full_name').ilike('full_name', a.setter).maybeSingle()
         if (p?.id) {
-          await supabase.rpc('grant_account_access' as any, { p_user_id: p.id, p_account_id: accountId, p_role: 'moderator', p_granted_by_user_id: user.id })
+          await ensureAccess(p.id, 'setter')
           setterUserId = p.id
         }
       }
       if (!salesRepUserId && a.sales_rep) {
         const { data: p } = await supabase.from('profiles').select('id, full_name').ilike('full_name', a.sales_rep).maybeSingle()
         if (p?.id) {
-          await supabase.rpc('grant_account_access' as any, { p_user_id: p.id, p_account_id: accountId, p_role: 'moderator', p_granted_by_user_id: user.id })
+          await ensureAccess(p.id, 'sales_rep')
           salesRepUserId = p.id
         }
       }
