@@ -61,9 +61,8 @@ export function applyStandardFilters(filters: MetricFilters, baseTable: string):
 	
 	params.start_date = startStr
 	// Keep original end_date for time-series generation bounds; also provide exclusive params for filtering
-	params.end_date = endStr
-	params.end_date_exclusive = endExclusive
-	params.end_date_plus = endExclusive // alias to avoid prefix-collision with $end_date
+	params.range_end = endStr // renamed to avoid prefix collision
+	params.end_plus = endExclusive
 
 	// Account filter - always applied
 	conditions.push({
