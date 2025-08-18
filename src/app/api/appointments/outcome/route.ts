@@ -81,23 +81,25 @@ export async function POST(req: NextRequest) {
   }
 
   const callOutcomeDb = mapCallOutcome(payload.callOutcome);
-  const showOutcomeDb = payload.shownOutcome ? mapShowOutcome(payload.shownOutcome) : null;
+
+  const updates: any = {
+    call_outcome: callOutcomeDb,
+    lead_quality: payload.leadQuality,
+    data_filled: true,
+    updated_at: new Date().toISOString(),
+  };
+
+  if (typeof payload.watchedAssets !== 'undefined') updates.watched_assets = payload.watchedAssets;
+  if (typeof payload.pitched !== 'undefined') updates.pitched = payload.pitched;
+  if (typeof payload.shownOutcome !== 'undefined') updates.show_outcome = payload.shownOutcome ? mapShowOutcome(payload.shownOutcome) : null;
+  if (typeof payload.cashCollected !== 'undefined') updates.cash_collected = payload.cashCollected;
+  if (typeof payload.totalSalesValue !== 'undefined') updates.total_sales_value = payload.totalSalesValue;
+  if (typeof payload.objections !== 'undefined') updates.objections = payload.objections;
+  if (typeof payload.followUpAt !== 'undefined') updates.follow_up_at = payload.followUpAt ? new Date(payload.followUpAt).toISOString() : null;
 
   const { error: updError } = await supabase
     .from('appointments')
-    .update({
-      call_outcome: callOutcomeDb,
-      watched_assets: payload.watchedAssets ?? null,
-      pitched: payload.pitched ?? null,
-      show_outcome: showOutcomeDb,
-      cash_collected: payload.cashCollected ?? null,
-      total_sales_value: payload.totalSalesValue ?? null,
-      objections: payload.objections ?? null,
-      lead_quality: payload.leadQuality,
-      follow_up_at: payload.followUpAt ? new Date(payload.followUpAt).toISOString() : null,
-      data_filled: true,
-      updated_at: new Date().toISOString(),
-    })
+    .update(updates)
     .eq('id', appointmentId);
 
   if (updError) {

@@ -268,6 +268,7 @@ export default function UpdateDataPage() {
 					<div className="lg:col-span-8">
 						{currentItem && (
 							<DataEntryCard
+								key={(currentItem as any).id}
 								mode={mode}
 								item={currentItem}
 								onComplete={() => handleItemComplete((currentItem as any).id)}

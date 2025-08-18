@@ -62,6 +62,19 @@ export function PaymentPlan({ appointmentId, totalSalesValue, cashCollected }: {
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [initialized]);
 
+	const refresh = async () => {
+		const r = await fetch(`/api/appointments/payments?appointmentId=${appointmentId}`);
+		const j = await r.json();
+		const mapped: PaymentRow[] = (j.payments || []).map((p: any) => ({ id: p.id, payment_date: p.payment_date, amount: String(p.amount ?? ''), paid: !!p.paid }));
+		setRows(mapped);
+		// Persist collected back to appointment for dashboard consistency
+		await fetch('/api/appointments/outcome', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ appointmentId, payload: { callOutcome: 'show', leadQuality: 3, cashCollected: mapped.filter((x:any)=>x.paid).reduce((s:number, x:any)=> s + (Number(x.amount)||0), 0) } })
+		});
+	};
+
 	const addRow = () => {
 		setRows(prev => [...prev, { isNew: true, payment_date: new Date().toISOString(), amount: '', paid: false }]);
 	};
@@ -74,20 +87,13 @@ export function PaymentPlan({ appointmentId, totalSalesValue, cashCollected }: {
 		} else {
 			await fetch('/api/appointments/payments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'create', appointmentId, payment: { payment_date: row.payment_date, amount: Number(row.amount || 0), paid: row.paid } }) });
 		}
-		// reload
-		const r = await fetch(`/api/appointments/payments?appointmentId=${appointmentId}`);
-		const j = await r.json();
-		const mapped: PaymentRow[] = (j.payments || []).map((p: any) => ({ id: p.id, payment_date: p.payment_date, amount: String(p.amount ?? ''), paid: !!p.paid }));
-		setRows(mapped);
+		await refresh();
 	};
 
 	const deleteRow = async (id?: string, idx?: number) => {
 		if (id) {
 			await fetch(`/api/appointments/payments?id=${id}`, { method: 'DELETE' });
-			const r = await fetch(`/api/appointments/payments?appointmentId=${appointmentId}`);
-			const j = await r.json();
-			const mapped: PaymentRow[] = (j.payments || []).map((p: any) => ({ id: p.id, payment_date: p.payment_date, amount: String(p.amount ?? ''), paid: !!p.paid }));
-			setRows(mapped);
+			await refresh();
 		} else if (typeof idx === 'number') {
 			setRows(prev => prev.filter((_, i) => i !== idx));
 		}
