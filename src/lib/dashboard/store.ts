@@ -55,10 +55,10 @@ interface DashboardState {
 
   // Views persistence
   loadViewsForAccount: (accountId: string) => Promise<void>;
-  createView: (name: string, scope: ViewScope, notes: string | undefined, accountId: string) => Promise<void>;
+  createView: (name: string, scope: ViewScope, notes: string | undefined, accountId: string, options?: { copyCurrent?: boolean }) => Promise<void>;
   updateView: (viewId: string, updates: Partial<DashboardView>) => Promise<void>;
   deleteView: (viewId: string) => Promise<void>;
-  duplicateView: (viewId: string) => Promise<void>;
+  duplicateView: (viewId: string, newName: string) => Promise<void>;
   loadView: (viewId: string) => Promise<void>;
   
   // Widget actions
@@ -187,7 +187,7 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
     }
   },
 
-  createView: async (name, scope, notes, accountId) => {
+  createView: async (name, scope, notes, accountId, options) => {
     const { data: userData } = await supabase.auth.getUser();
     const userId = userData.user?.id;
     if (!userId || !accountId) {
@@ -196,16 +196,17 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
     }
 
     const state = get();
+    const copyCurrent = options?.copyCurrent !== false;
     const payload = {
       name,
       account_id: accountId,
       created_by: userId,
       scope,
       notes: notes || '',
-      filters: state.filters,
-      widgets: state.widgets,
-      compare_mode: state.compareMode,
-      compare_entities: state.compareEntities,
+      filters: copyCurrent ? state.filters : {},
+      widgets: copyCurrent ? state.widgets : [],
+      compare_mode: copyCurrent ? state.compareMode : false,
+      compare_entities: copyCurrent ? state.compareEntities : [],
       is_default: false,
     };
 
@@ -313,7 +314,7 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
     }));
   },
 
-  duplicateView: async (viewId, newName) => {
+  duplicateView: async (viewId: string, newName: string) => {
     const { data: view, error: loadError } = await supabase
       .from('dashboard_views')
       .select('*')

@@ -72,6 +72,7 @@ export function ViewsManager({ className }: ViewsManagerProps) {
   const [viewName, setViewName] = useState("");
   const [viewNotes, setViewNotes] = useState("");
   const [viewScope, setViewScope] = useState<ViewScope>("private");
+  const [copyCurrentOnCreate, setCopyCurrentOnCreate] = useState(true);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
   
   const handleSaveAs = () => {
@@ -79,6 +80,16 @@ export function ViewsManager({ className }: ViewsManagerProps) {
     setViewName(currentView ? `${currentView.name} (Copy)` : "New View");
     setViewNotes(currentView?.notes || "");
     setViewScope(currentView?.scope || "private");
+    setCopyCurrentOnCreate(true);
+    setIsSaveDialogOpen(true);
+  };
+
+  const handleNewBlank = () => {
+    setIsNewView(true);
+    setViewName("New View");
+    setViewNotes("");
+    setViewScope("private");
+    setCopyCurrentOnCreate(false);
     setIsSaveDialogOpen(true);
   };
   
@@ -89,7 +100,7 @@ export function ViewsManager({ className }: ViewsManagerProps) {
     if (isNewView) {
       if (!accountId) return alert('No account selected for this view.');
       // Create new view
-      await createView(viewName, viewScope, viewNotes, accountId);
+      await createView(viewName, viewScope, viewNotes, accountId, { copyCurrent: copyCurrentOnCreate });
     } else if (currentView) {
       // Update existing view
       await updateView(currentView.id, {
@@ -159,10 +170,15 @@ export function ViewsManager({ className }: ViewsManagerProps) {
           <DropdownMenuLabel>Dashboard Views</DropdownMenuLabel>
           <DropdownMenuSeparator />
           
-          {/* New View */}
-          <DropdownMenuItem onClick={handleSaveAs}>
+          {/* New View (blank) */}
+          <DropdownMenuItem onClick={handleNewBlank}>
             <Plus className="mr-2 h-4 w-4" />
             New View
+          </DropdownMenuItem>
+          {/* Save as Copy (duplicate current state into new view) */}
+          <DropdownMenuItem onClick={handleSaveAs}>
+            <Copy className="mr-2 h-4 w-4" />
+            Save as Copy
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           
