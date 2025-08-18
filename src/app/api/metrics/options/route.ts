@@ -38,22 +38,6 @@ export async function GET(request: NextRequest) {
 		}
 		Object.keys(selected).forEach(k => { if (!selected[k]?.length) selected[k] = undefined })
 
-		// Build dynamic WHERE based on selected filters
-		const buildWhere = (table: string) => {
-			const clauses: string[] = [`account_id = '${accountId}'`]
-			const add = (col: string, vals?: string[]) => {
-				if (vals && vals.length) clauses.push(`${col} = ANY('{${vals.map(v => v.replace(/'/g, "''")).join(',')}}')`)
-			}
-			add('utm_source', selected.utm_source)
-			add('utm_medium', selected.utm_medium)
-			add('utm_campaign', selected.utm_campaign)
-			add('source_category', selected.source_category)
-			add('specific_source', selected.specific_source)
-			add('session_source', selected.session_source)
-			add('contact_referrer', selected.referrer)
-			return clauses.join(' AND ')
-		}
-
 		// Aggregates per table scoped by current selections
 		const apptSelect = [
 			'array_remove(array_agg(distinct utm_source), null) as utm_source',
@@ -62,8 +46,8 @@ export async function GET(request: NextRequest) {
 			'array_remove(array_agg(distinct utm_content), null) as utm_content',
 			'array_remove(array_agg(distinct utm_term), null) as utm_term',
 			'array_remove(array_agg(distinct utm_id), null) as utm_id',
-			'array_remove(array_agg(distinct source_category), null) as source_category',
-			'array_remove(array_agg(distinct specific_source), null) as specific_source',
+			"array_remove(array_agg(distinct (last_attribution_source->>'source_category')), null) as source_category",
+			"array_remove(array_agg(distinct (last_attribution_source->>'specific_source')), null) as specific_source",
 			'array_remove(array_agg(distinct session_source), null) as session_source',
 			'array_remove(array_agg(distinct contact_referrer), null) as contact_referrer'
 		].join(', ')
@@ -72,6 +56,8 @@ export async function GET(request: NextRequest) {
 			'array_remove(array_agg(distinct utm_source), null) as utm_source',
 			'array_remove(array_agg(distinct utm_medium), null) as utm_medium',
 			'array_remove(array_agg(distinct utm_campaign), null) as utm_campaign',
+			"array_remove(array_agg(distinct (last_attribution_source->>'source_category')), null) as source_category",
+			"array_remove(array_agg(distinct (last_attribution_source->>'specific_source')), null) as specific_source",
 			'array_remove(array_agg(distinct session_source), null) as session_source',
 			'array_remove(array_agg(distinct contact_referrer), null) as contact_referrer'
 		].join(', ')
@@ -80,6 +66,8 @@ export async function GET(request: NextRequest) {
 			'array_remove(array_agg(distinct utm_source), null) as utm_source',
 			'array_remove(array_agg(distinct utm_medium), null) as utm_medium',
 			'array_remove(array_agg(distinct utm_campaign), null) as utm_campaign',
+			"array_remove(array_agg(distinct (last_attribution_source->>'source_category')), null) as source_category",
+			"array_remove(array_agg(distinct (last_attribution_source->>'specific_source')), null) as specific_source",
 			'array_remove(array_agg(distinct session_source), null) as session_source',
 			'array_remove(array_agg(distinct contact_referrer), null) as contact_referrer'
 		].join(', ')
@@ -91,8 +79,8 @@ export async function GET(request: NextRequest) {
 				if (selected.utm_source) q = q.in('utm_source', selected.utm_source)
 				if (selected.utm_medium) q = q.in('utm_medium', selected.utm_medium)
 				if (selected.utm_campaign) q = q.in('utm_campaign', selected.utm_campaign)
-				if (selected.source_category) q = q.in('source_category', selected.source_category)
-				if (selected.specific_source) q = q.in('specific_source', selected.specific_source)
+				if (selected.source_category) q = q.contains('last_attribution_source', { source_category: selected.source_category[0] } as any)
+				if (selected.specific_source) q = q.contains('last_attribution_source', { specific_source: selected.specific_source[0] } as any)
 				if (selected.session_source) q = q.in('session_source', selected.session_source)
 				if (selected.referrer) q = q.in('contact_referrer', selected.referrer)
 				return q.maybeSingle()
@@ -103,8 +91,8 @@ export async function GET(request: NextRequest) {
 				if (selected.utm_source) q = q.in('utm_source', selected.utm_source)
 				if (selected.utm_medium) q = q.in('utm_medium', selected.utm_medium)
 				if (selected.utm_campaign) q = q.in('utm_campaign', selected.utm_campaign)
-				if (selected.source_category) q = q.in('source_category', selected.source_category)
-				if (selected.specific_source) q = q.in('specific_source', selected.specific_source)
+				if (selected.source_category) q = q.contains('last_attribution_source', { source_category: selected.source_category[0] } as any)
+				if (selected.specific_source) q = q.contains('last_attribution_source', { specific_source: selected.specific_source[0] } as any)
 				if (selected.session_source) q = q.in('session_source', selected.session_source)
 				if (selected.referrer) q = q.in('contact_referrer', selected.referrer)
 				return q.maybeSingle()
@@ -115,6 +103,8 @@ export async function GET(request: NextRequest) {
 				if (selected.utm_source) q = q.in('utm_source', selected.utm_source)
 				if (selected.utm_medium) q = q.in('utm_medium', selected.utm_medium)
 				if (selected.utm_campaign) q = q.in('utm_campaign', selected.utm_campaign)
+				if (selected.source_category) q = q.contains('last_attribution_source', { source_category: selected.source_category[0] } as any)
+				if (selected.specific_source) q = q.contains('last_attribution_source', { specific_source: selected.specific_source[0] } as any)
 				if (selected.session_source) q = q.in('session_source', selected.session_source)
 				if (selected.referrer) q = q.in('contact_referrer', selected.referrer)
 				return q.maybeSingle()
@@ -139,11 +129,14 @@ export async function GET(request: NextRequest) {
 			utm_content: readKey(aRow, 'utm_content').slice(0, 200),
 			utm_term: readKey(aRow, 'utm_term').slice(0, 200),
 			utm_id: readKey(aRow, 'utm_id').slice(0, 200),
-			source_category: readKey(aRow, 'source_category').slice(0, 200),
-			specific_source: readKey(aRow, 'specific_source').slice(0, 200),
+			source_category: agg('source_category'),
+			specific_source: agg('specific_source'),
 			session_source: agg('session_source'),
 			referrer: agg('contact_referrer'),
 		}
+
+		// Defensive fallback to keep UI usable
+		Object.keys(result).forEach((k) => { if (!Array.isArray((result as any)[k])) (result as any)[k] = [] })
 
 		return NextResponse.json(result)
 	} catch (e) {

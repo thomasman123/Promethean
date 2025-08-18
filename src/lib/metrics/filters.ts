@@ -90,8 +90,9 @@ export function applyStandardFilters(filters: MetricFilters, baseTable: string):
 		{ key: 'utm_content', column: 'utm_content', param: 'utm_content' },
 		{ key: 'utm_term', column: 'utm_term', param: 'utm_term' },
 		{ key: 'utm_id', column: 'utm_id', param: 'utm_id' },
-		{ key: 'source_category', column: 'source_category', param: 'source_category' },
-		{ key: 'specific_source', column: 'specific_source', param: 'specific_source' },
+		// Use JSON-based fields to be consistent across tables
+		{ key: 'source_category', column: "(last_attribution_source->>'source_category')", param: 'source_category' },
+		{ key: 'specific_source', column: "(last_attribution_source->>'specific_source')", param: 'specific_source' },
 		{ key: 'session_source', column: 'session_source', param: 'session_source' },
 		{ key: 'referrer', column: 'contact_referrer', param: 'referrer' },
 		{ key: 'fbclid', column: 'fbclid', param: 'fbclid' },

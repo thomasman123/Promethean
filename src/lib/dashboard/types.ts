@@ -8,6 +8,21 @@ export interface DashboardFilters {
   endDate?: Date;
   repIds?: string[];
   setterIds?: string[];
+  // Advanced attribution filters
+  utm_source?: string[];
+  utm_medium?: string[];
+  utm_campaign?: string[];
+  utm_content?: string[];
+  utm_term?: string[];
+  utm_id?: string[];
+  source_category?: string[];
+  specific_source?: string[];
+  session_source?: string[];
+  referrer?: string[];
+  fbclid?: string[];
+  fbc?: string[];
+  fbp?: string[];
+  gclid?: string[];
 }
 
 export interface WidgetPosition {

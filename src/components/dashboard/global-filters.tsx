@@ -12,6 +12,7 @@ import { Filter, SlidersHorizontal, X } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import type { DateRange } from 'react-day-picker'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 interface GlobalFiltersProps {
   className?: string
@@ -20,6 +21,8 @@ interface GlobalFiltersProps {
 type Candidate = { id: string; name: string | null; invited: boolean }
 
 type KeyedOptions = Record<string, MultiSelectOption[]>
+
+type FilterPreset = { id: string; name: string; filters: Partial<Record<string, string[]>> }
 
 const ALL_REPS = '__ALL_REPS__'
 const ALL_SETTERS = '__ALL_SETTERS__'
@@ -37,6 +40,15 @@ export function GlobalFilters({ className }: GlobalFiltersProps) {
   // Advanced filter options (loaded on modal open)
   const [advOptions, setAdvOptions] = useState<KeyedOptions>({})
   const [advOpen, setAdvOpen] = useState(false)
+
+  // Presets (local/in-memory until API is added)
+  const [presets, setPresets] = useState<FilterPreset[]>([
+    { id: 'paid_social', name: 'Paid Social', filters: { source_category: ['facebook_ads','instagram_ads'] } },
+    { id: 'paid_search', name: 'Paid Search', filters: { source_category: ['google_ads'] } },
+    { id: 'email', name: 'Email', filters: { source_category: ['email_marketing'] } },
+    { id: 'direct', name: 'Direct', filters: { source_category: ['organic'] } },
+  ])
+  const [selectedPresetId, setSelectedPresetId] = useState<string | undefined>(undefined)
 
   // UI state to represent "All" selection without polluting store filters
   const [repAll, setRepAll] = useState<boolean>(!Array.isArray(filters.repIds) || (filters.repIds?.length ?? 0) === 0)
@@ -131,6 +143,29 @@ export function GlobalFilters({ className }: GlobalFiltersProps) {
   const onAdvChange = (key: keyof typeof filters) => (vals: string[]) => {
     setFilters({ [key]: vals.length > 0 ? vals : undefined } as any)
   }
+
+  const applyPreset = (presetId?: string) => {
+    setSelectedPresetId(presetId)
+    const p = presets.find(pr => pr.id === presetId)
+    if (!p) return
+    // Only apply known advanced keys to avoid clobbering other filters
+    const keys = ['utm_source','utm_medium','utm_campaign','utm_content','utm_term','utm_id','source_category','specific_source','session_source','referrer'] as const
+    const updates: Record<string, string[] | undefined> = {}
+    for (const k of keys) {
+      updates[k] = p.filters[k]
+    }
+    setFilters(updates as any)
+  }
+
+  const savePreset = async () => {
+    const name = prompt('Preset name?')?.trim()
+    if (!name) return
+    const keys = ['utm_source','utm_medium','utm_campaign','utm_content','utm_term','utm_id','source_category','specific_source','session_source','referrer'] as const
+    const current: Record<string, string[] | undefined> = {}
+    for (const k of keys) current[k] = (filters as any)[k]
+    const newPreset: FilterPreset = { id: `${Date.now()}`, name, filters: current }
+    setPresets(prev => [newPreset, ...prev])
+  }
   
   const activeFilterCount = useMemo(() => (
     Object.values(filters).filter(v => 
@@ -184,7 +219,22 @@ export function GlobalFilters({ className }: GlobalFiltersProps) {
           </DialogTrigger>
           <DialogContent className="max-w-3xl">
             <DialogHeader>
-              <DialogTitle>Advanced Filters</DialogTitle>
+              <div className="flex items-center justify-between gap-2">
+                <DialogTitle>Advanced Filters</DialogTitle>
+                <div className="flex items-center gap-2">
+                  <Select value={selectedPresetId} onValueChange={(v) => applyPreset(v)}>
+                    <SelectTrigger size="sm" className="min-w-[180px]">
+                      <SelectValue placeholder="Presets" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {presets.map(p => (
+                        <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button size="sm" variant="outline" onClick={savePreset}>Save as Preset</Button>
+                </div>
+              </div>
             </DialogHeader>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
               <MultiSelect
