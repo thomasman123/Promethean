@@ -1520,6 +1520,29 @@ async function processAppointmentWebhook(payload: any) {
               console.error('Failed to set discovery<->appointment link (appt-side):', linkApptErr || linkDiscErr);
             } else {
               console.log('🔗 Linked discovery to appointment (appt-side):', { discoveryId: matchedDisc.id, appointmentId: savedAppointment.id });
+
+              // Backfill discovery's sales rep IDs from the appointment now that we have the link
+              try {
+                const repUserId = (savedAppointment as any)?.sales_rep_user_id || null;
+                const repGhlId = (savedAppointment as any)?.sales_rep_ghl_id || (salesRepData?.id ?? null);
+                if (repUserId || repGhlId) {
+                  const { error: updateDiscRepErr } = await supabase
+                    .from('discoveries')
+                    .update({ 
+                      sales_rep_user_id: repUserId,
+                      sales_rep_ghl_id: repGhlId,
+                    })
+                    .eq('id', matchedDisc.id);
+                  if (updateDiscRepErr) {
+                    console.warn('⚠️ Failed to backfill discovery sales rep IDs after linking:', updateDiscRepErr);
+                  } else {
+                    console.log('✅ Backfilled discovery sales rep IDs from appointment');
+                  }
+                }
+              } catch (bfErr) {
+                console.warn('⚠️ Exception while backfilling discovery sales rep IDs:', bfErr);
+              }
+
               // Clear any dial link to favor discovery link as canonical
               const { error: clearDialErr } = await supabase
                 .from('dials')
