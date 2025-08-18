@@ -74,25 +74,18 @@ export class MetricsEngine {
     // Apply standard filters using the base table to choose correct date/account fields
     const appliedFilters = applyStandardFilters(filters, metric.query.table)
     
-    // Check if we need to modify the metric for dynamic time aggregation
-    let effectiveMetric = metric;
-    let useCustomTimeSQL = false;
-    
-    if ((options?.vizType === 'line' || options?.vizType === 'bar' || options?.vizType === 'area' || options?.vizType === 'radar') && (metric.name === 'Total Appointments' || metric.name === 'Total Dials')) {
-      // We'll use custom SQL for complete date range
-      useCustomTimeSQL = true;
-      effectiveMetric = {
-        ...metric,
-        breakdownType: 'time'
-      };
-    }
+    // Determine if we should return a time series for chart visualizations
+    const wantsTimeSeries = (options?.vizType === 'line' || options?.vizType === 'bar' || options?.vizType === 'area' || options?.vizType === 'radar')
     
     // Build the complete SQL query
-    let sql: string;
-    if (useCustomTimeSQL) {
-      sql = this.buildTimeSeriesSQL(appliedFilters, metric.query.table);
+    let sql: string
+    let effectiveBreakdown = metric.breakdownType
+
+    if (wantsTimeSeries) {
+      sql = this.buildTimeSeriesSQL(appliedFilters, metric)
+      effectiveBreakdown = 'time'
     } else {
-      sql = this.buildSQL(effectiveMetric, appliedFilters);
+      sql = this.buildSQL(metric, appliedFilters)
     }
     
     // Flatten parameters for Supabase
@@ -115,7 +108,7 @@ export class MetricsEngine {
     // Format results based on breakdown type
     // data is a JSONB array, so we need to parse it
     const results = Array.isArray(data) ? data : (data ? JSON.parse(String(data)) : [])
-    return this.formatResults(effectiveMetric.breakdownType, results)
+    return this.formatResults(effectiveBreakdown, results)
   }
 
   /**
@@ -165,45 +158,55 @@ export class MetricsEngine {
 
   /**
    * Build time-series SQL with complete date range (including zero values)
+   * Applies metric-specific filters in addition to standard filters
    */
-  private buildTimeSeriesSQL(appliedFilters: any, baseTable: string): string {
+  private buildTimeSeriesSQL(appliedFilters: any, metric: MetricDefinition): string {
+    const baseTable = metric.query.table
     // Determine the correct date field for the base table
-    const dateField = baseTable === 'dials' ? 'date_called' : 'date_booked_for';
+    const dateField = baseTable === 'dials' ? 'date_called' : 'date_booked_for'
 
-    // Build WHERE conditions for the base table and qualify the date field
-    const whereClause = buildWhereClause(appliedFilters, []);
-    const qualifiedDateField = `${baseTable}.${dateField}`;
-    const qualifiedConditions = whereClause
+    // Build WHERE conditions for the base table including metric-specific conditions
+    const whereClauseWithMetric = buildWhereClause(appliedFilters, metric.query.where)
+    const qualifiedDateField = `${baseTable}.${dateField}`
+    const qualifiedConditions = whereClauseWithMetric
       .replace('WHERE ', '')
-      .replace(new RegExp(`\\b${dateField}\\b`, 'g'), qualifiedDateField);
-    
+      .replace(new RegExp(`\\b${dateField}\\b`, 'g'), qualifiedDateField)
+      .replace(new RegExp(`\\baccount_id\\b`, 'g'), `${baseTable}.account_id`)
+
     // Determine aggregation level based on date range
-    const aggregationLevel = this.determineTimeAggregation(appliedFilters);
-    console.log('🐛 DEBUG - Using aggregation level:', aggregationLevel);
+    const aggregationLevel = this.determineTimeAggregation(appliedFilters)
+    console.log('🐛 DEBUG - Using aggregation level:', aggregationLevel)
     
-    let dateSeriesInterval: string;
-    let dateGrouping: string;
-    let dateDisplay: string;
+    let dateSeriesInterval: string
+    let dateGrouping: string
+    let dateDisplay: string
     
     switch (aggregationLevel) {
       case 'month':
-        dateSeriesInterval = "'1 month'::interval";
-        dateGrouping = `DATE_TRUNC('month', ${qualifiedDateField})`;
-        dateDisplay = "TO_CHAR(date_series.date, 'Mon YYYY') as date";
-        break;
+        dateSeriesInterval = "'1 month'::interval"
+        dateGrouping = `DATE_TRUNC('month', ${qualifiedDateField})`
+        dateDisplay = "TO_CHAR(date_series.date, 'Mon YYYY') as date"
+        break
       case 'week':
-        dateSeriesInterval = "'1 week'::interval";
-        dateGrouping = `DATE_TRUNC('week', ${qualifiedDateField})`;
-        dateDisplay = "TO_CHAR(date_series.date, 'YYYY-\"W\"WW') as date";
-        break;
+        dateSeriesInterval = "'1 week'::interval"
+        dateGrouping = `DATE_TRUNC('week', ${qualifiedDateField})`
+        dateDisplay = "TO_CHAR(date_series.date, 'YYYY-\"W\"WW') as date"
+        break
       case 'day':
       default:
-        dateSeriesInterval = "'1 day'::interval";
-        dateGrouping = `DATE(${qualifiedDateField})`;
-        dateDisplay = "TO_CHAR(date_series.date, 'Mon DD') as date";
-        break;
+        dateSeriesInterval = "'1 day'::interval"
+        dateGrouping = `DATE(${qualifiedDateField})`
+        dateDisplay = "TO_CHAR(date_series.date, 'Mon DD') as date"
+        break
     }
-    
+
+    // Determine aggregate expression for the metric
+    const rawSelect = (metric.query.select && metric.query.select[0]) ? metric.query.select[0] : 'COUNT(*) as value'
+    const isCount = /count\s*\(/i.test(rawSelect)
+    const valueExpr = isCount
+      ? `COUNT(${baseTable}.id)`
+      : rawSelect.replace(/\s+as\s+value\s*$/i, '')
+
     // Generate date series and LEFT JOIN with baseTable to get all dates including zeros
     const sql = `
       WITH date_series AS (
@@ -215,7 +218,7 @@ export class MetricsEngine {
       )
       SELECT 
         ${dateDisplay},
-        COALESCE(COUNT(${baseTable}.id), 0) as value
+        COALESCE(${valueExpr}, 0) as value
       FROM date_series
       LEFT JOIN ${baseTable} ON (
         DATE_TRUNC('${aggregationLevel}', ${qualifiedDateField}) = date_series.date
@@ -223,9 +226,9 @@ export class MetricsEngine {
       )
       GROUP BY date_series.date
       ORDER BY date_series.date ASC
-    `;
+    `
     
-    return sql.trim();
+    return sql.trim()
   }
 
   /**
@@ -233,17 +236,17 @@ export class MetricsEngine {
    */
   private determineTimeAggregation(appliedFilters: any): 'day' | 'week' | 'month' {
     // Access the date range from the correct location in appliedFilters
-    const startDateStr = appliedFilters.params.start_date;
-    const endDateStr = appliedFilters.params.end_date;
+    const startDateStr = appliedFilters.params.start_date
+    const endDateStr = appliedFilters.params.end_date
     
     if (!startDateStr || !endDateStr) {
-      console.warn('🐛 DEBUG - Missing date parameters, defaulting to daily aggregation');
-      return 'day';
+      console.warn('🐛 DEBUG - Missing date parameters, defaulting to daily aggregation')
+      return 'day'
     }
     
-    const startDate = new Date(startDateStr);
-    const endDate = new Date(endDateStr);
-    const diffInDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+    const startDate = new Date(startDateStr)
+    const endDate = new Date(endDateStr)
+    const diffInDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
     
     console.log('🐛 DEBUG - Time aggregation calculation:', {
       startDateStr,
@@ -258,20 +261,20 @@ export class MetricsEngine {
         isDay: diffInDays < 14
       },
       appliedFiltersParams: appliedFilters.params
-    });
+    })
     
     // 2+ months (60+ days) → monthly aggregation
     if (diffInDays >= 60) {
-      return 'month';
+      return 'month'
     }
     
     // 2+ weeks (14-59 days) → weekly aggregation  
     if (diffInDays >= 14) {
-      return 'week';
+      return 'week'
     }
     
     // ≤ 2 weeks (1-13 days) → daily aggregation
-    return 'day';
+    return 'day'
   }
 
   /**
