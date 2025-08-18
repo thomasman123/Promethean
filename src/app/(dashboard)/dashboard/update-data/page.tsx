@@ -502,18 +502,16 @@ function AppointmentEntryCard({
 							<PaymentPlan appointmentId={item.id} totalSalesValue={Number(totalSalesValue || 0)} cashCollected={Number(cashCollected || 0)} />
 						)}
 
-						{!isFollowUp && (
-							<div className="space-y-2">
-								<Label>Objections (select all that apply)</Label>
-								<MultiSelect
-									options={objectionOptions}
-									selected={objections}
-									onChange={setObjections}
-									placeholder="Select objections"
-									maxItems={3}
-								/>
-							</div>
-						)}
+						<div className="space-y-2">
+							<Label>Objections (select all that apply)</Label>
+							<MultiSelect
+								options={objectionOptions}
+								selected={objections}
+								onChange={setObjections}
+								placeholder="Select objections"
+								maxItems={3}
+							/>
+						</div>
 
 						<LeadQualitySection leadQuality={leadQuality} setLeadQuality={setLeadQuality} />
 					</>
