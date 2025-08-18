@@ -59,7 +59,7 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
   
   const { selectedAccountId } = useAuth();
   
-  const metricDefinition = metricsRegistry.find(m => m.name === widget.metricName);
+  const metricDefinition = metricsRegistry.find(m => m.name === widget.metricName || m.displayName === widget.metricName);
   
   // Multi-line compare state (legacy compare mode disabled)
   const [compareData, setCompareData] = useState<Array<Record<string, any>>>([]);
@@ -93,16 +93,11 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
     return `${y}-${m}-${day}`;
   };
 
-  // Map dashboard metric name to engine metric name based on breakdown
-  const getEngineMetricName = (dashboardMetricName: string, breakdown: string) => {
-    if (dashboardMetricName.includes('appointment')) {
-      if (breakdown === 'total') return 'total_appointments';
-      if (breakdown === 'rep') return 'total_appointments_reps'; 
-      if (breakdown === 'setter') return 'total_appointments_setters';
-      if (breakdown === 'link') return 'appointments_link';
-    }
-    return dashboardMetricName;
-  };
+  // Robust normalization: accept engine keys or display names
+  const resolveEngineMetricName = useCallback((dashboardMetricName: string): string => {
+    const found = metricsRegistry.find(m => m.name === dashboardMetricName || m.displayName === dashboardMetricName);
+    return found ? found.name : dashboardMetricName; // fallback
+  }, [metricsRegistry]);
 
   useEffect(() => {
     setCompareData([]);
@@ -154,11 +149,11 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
 
         // Helper to call metrics API for a single metric name
         const fetchMetric = async (metricName: string): Promise<MetricData> => {
-          const cacheKey = JSON.stringify({ metric: metricName, viz: widget.vizType, breakdown: widgetKey.breakdown, filters: requestFilters });
+          const engineMetricName = resolveEngineMetricName(metricName);
+          const cacheKey = JSON.stringify({ metric: engineMetricName, viz: widget.vizType, breakdown: widgetKey.breakdown, filters: requestFilters });
           const cached = getCachedMetric(cacheKey);
           if (cached) return cached as MetricData;
 
-          const engineMetricName = getEngineMetricName(metricName, widgetKey.breakdown);
           const response = await fetch('/api/metrics', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ metricName: engineMetricName, filters: requestFilters, vizType: widget.vizType, breakdown: widgetKey.breakdown })
@@ -169,9 +164,9 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
 
           let transformed: MetricData;
           if ((widget.vizType === 'line' || widget.vizType === 'bar' || widget.vizType === 'area' || widget.vizType === 'radar') && engineResult?.type === 'time') {
-            transformed = { metricName, breakdown: widgetKey.breakdown, data: Array.isArray(engineResult?.data) ? engineResult.data : [] };
+            transformed = { metricName: engineMetricName, breakdown: widgetKey.breakdown, data: Array.isArray(engineResult?.data) ? engineResult.data : [] };
           } else {
-            transformed = { metricName, breakdown: widgetKey.breakdown, data: { value: (engineResult?.data?.value ?? 0) } };
+            transformed = { metricName: engineMetricName, breakdown: widgetKey.breakdown, data: { value: (engineResult?.data?.value ?? 0) } };
           }
           setCachedMetric(cacheKey, transformed);
           return transformed;
@@ -191,7 +186,7 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
         // Multi-metric fetch and merge as series
         const results = await Promise.all(names.map(fetchMetric));
         const series = results.map(r => ({
-          name: metricsRegistry.find(m => m.name === r.metricName)?.displayName || r.metricName,
+          name: metricsRegistry.find(m => m.name === r.metricName || m.displayName === r.metricName)?.displayName || r.metricName,
           series: Array.isArray(r.data) ? r.data.map((d: any) => ({ date: d.date, value: d.value })) : [{ date: 'Current', value: r.data?.value || 0 }]
         }));
         setMultiSeries(series);
@@ -210,7 +205,7 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
     };
     
     fetchData();
-  }, [widgetKey, stableFilters, selectedAccountId, relevantEntities.length, compareMode]);
+  }, [widgetKey, stableFilters, selectedAccountId, relevantEntities.length, compareMode, resolveEngineMetricName]);
   
   const renderChart = useCallback(() => {
     const unit = metricDefinition?.unit;
@@ -231,7 +226,7 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
     // Non-KPI: support up to 3 series
     const names = (widget.metricNames && widget.metricNames.length > 0 ? widget.metricNames : [widget.metricName]).slice(0, 3);
 
-    const formatLabel = (name: string) => metricsRegistry.find(m => m.name === name)?.displayName || name;
+    const formatLabel = (name: string) => metricsRegistry.find(m => m.name === name || m.displayName === name)?.displayName || name;
 
     if (names.length === 1 && data) {
       // Fallback to legacy single series rendering paths
@@ -241,7 +236,7 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
           return (
             <LineChart
               data={lineData.map(d => ({ ...d, value: unit === 'percent' ? Math.round(d.value * 100) : d.value }))}
-              lines={[{ dataKey: 'value', name: widget.settings?.title || formatLabel(names[0]), color: 'var(--primary)' }]}
+              lines={[{ dataKey: 'value', name: widget.settings?.title || formatLabel(resolveEngineMetricName(names[0])), color: 'var(--primary)' }]}
               xAxisKey="date"
               showLegend={false}
               showGrid
@@ -256,7 +251,7 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
           return (
             <BarChart
               data={barData.map(d => ({ ...d, value: unit === 'percent' ? Math.round(d.value * 100) : d.value }))}
-              bars={[{ dataKey: 'value', name: widget.settings?.title || formatLabel(names[0]), color: 'var(--primary)' }]}
+              bars={[{ dataKey: 'value', name: widget.settings?.title || formatLabel(resolveEngineMetricName(names[0])), color: 'var(--primary)' }]}
               xAxisKey="date"
               showLegend={false}
               showGrid
@@ -271,7 +266,7 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
           return (
             <AreaChart
               data={areaData.map(d => ({ ...d, value: unit === 'percent' ? Math.round(d.value * 100) : d.value }))}
-              areas={[{ dataKey: 'value', name: widget.settings?.title || formatLabel(names[0]), color: 'var(--primary)' }]}
+              areas={[{ dataKey: 'value', name: widget.settings?.title || formatLabel(resolveEngineMetricName(names[0])), color: 'var(--primary)' }]}
               xAxisKey="date"
               showLegend={false}
               showGrid
@@ -287,7 +282,7 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
             <RadarChart
               key={`chart-${widget.id}`}
               data={radarData.map(d => ({ ...d, value: unit === 'percent' ? Math.round(d.value * 100) : d.value }))}
-              radarSeries={[{ dataKey: 'value', name: widget.settings?.title || formatLabel(names[0]), color: 'var(--primary)' }]}
+              radarSeries={[{ dataKey: 'value', name: widget.settings?.title || formatLabel(resolveEngineMetricName(names[0])), color: 'var(--primary)' }]}
               angleKey="date"
               showLegend={false}
               disableTooltip={isDragging}
@@ -367,7 +362,7 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
       default:
         return null;
     }
-  }, [data, multiSeries, widgetKey, widget.settings, metricDefinition, isDragging, compareMode, relevantEntities]);
+  }, [data, multiSeries, widgetKey, widget.settings, metricDefinition, isDragging, compareMode, relevantEntities, resolveEngineMetricName]);
   
   return (
     <>
