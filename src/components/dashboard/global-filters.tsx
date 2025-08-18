@@ -103,15 +103,14 @@ export function GlobalFilters({ className }: GlobalFiltersProps) {
   };
   
   const handleRepChange = (newSelected: string[]) => {
-    // If All + others are selected, drop All and keep the specific selections
-    if (newSelected.includes(ALL_REPS) && newSelected.length > 1) {
-      const withoutAll = newSelected.filter(v => v !== ALL_REPS)
-      setRepAll(false)
-      setFilters({ repIds: withoutAll })
+    // If All selected at any time, prefer All (clear specifics)
+    if (newSelected.includes(ALL_REPS)) {
+      setRepAll(true)
+      setFilters({ repIds: undefined })
       return
     }
-    // Only All or empty => treat as All (clear repIds)
-    if (newSelected.length === 0 || (newSelected.length === 1 && newSelected[0] === ALL_REPS)) {
+    // Empty selection also means All
+    if (newSelected.length === 0) {
       setRepAll(true)
       setFilters({ repIds: undefined })
       return
@@ -122,13 +121,12 @@ export function GlobalFilters({ className }: GlobalFiltersProps) {
   };
   
   const handleSetterChange = (newSelected: string[]) => {
-    if (newSelected.includes(ALL_SETTERS) && newSelected.length > 1) {
-      const withoutAll = newSelected.filter(v => v !== ALL_SETTERS)
-      setSetterAll(false)
-      setFilters({ setterIds: withoutAll })
+    if (newSelected.includes(ALL_SETTERS)) {
+      setSetterAll(true)
+      setFilters({ setterIds: undefined })
       return
     }
-    if (newSelected.length === 0 || (newSelected.length === 1 && newSelected[0] === ALL_SETTERS)) {
+    if (newSelected.length === 0) {
       setSetterAll(true)
       setFilters({ setterIds: undefined })
       return
