@@ -9,7 +9,7 @@ interface Candidate {
   invited: boolean
 }
 
-// Normalize role strings to canonical set
+// Normalize role strings to canonical set (kept for compatibility, not used to hard-lock)
 function normalizeRole(role: string | null | undefined): 'admin' | 'moderator' | 'sales_rep' | 'setter' | null {
   if (!role) return null
   const r = role.trim().toLowerCase().replace(/-/g, '_').replace(/\s+/g, '_')
@@ -84,52 +84,49 @@ export async function GET(request: NextRequest) {
     // Build a set of existing team member IDs for fast lookup
     const teamMemberIds = new Set<string>((team || []).map((m: any) => m.user_id))
 
-    // Split into reps and setters based on normalized role
-    const invitedReps = (team || [])
-      .filter(m => {
-        const nr = normalizeRole((m as any).role)
-        return nr && ['sales_rep', 'admin'].includes(nr)
-      })
-      .map<Candidate>(m => ({ 
-        id: (m as any).user_id, 
-        name: (((m as any).full_name as string | null)?.trim() || (m as any).email || 'Unknown'), 
-        role: 'rep', 
-        invited: true 
-      }))
+    // Collect participants from data across roles (appointments, discoveries, dials)
+    const [apptUsersRes, discUsersRes, dialUsersRes] = await Promise.all([
+      supabase
+        .from('appointments')
+        .select('setter_user_id, sales_rep_user_id')
+        .eq('account_id', accountId)
+        .or('setter_user_id.not.is.null,sales_rep_user_id.not.is.null'),
+      supabase
+        .from('discoveries')
+        .select('setter_user_id, sales_rep_user_id')
+        .eq('account_id', accountId)
+        .or('setter_user_id.not.is.null,sales_rep_user_id.not.is.null'),
+      supabase
+        .from('dials')
+        .select('setter_user_id')
+        .eq('account_id', accountId)
+        .not('setter_user_id', 'is', null as any)
+    ])
 
-    const invitedSetters = (team || [])
-      .filter(m => {
-        const nr = normalizeRole((m as any).role)
-        return nr && ['setter', 'admin'].includes(nr)
-      })
-      .map<Candidate>(m => ({ 
-        id: (m as any).user_id, 
-        name: (((m as any).full_name as string | null)?.trim() || (m as any).email || 'Unknown'), 
-        role: 'setter', 
-        invited: true 
-      }))
+    const apptUsers = apptUsersRes.data || []
+    const discUsers = discUsersRes.data || []
+    const dialUsers = dialUsersRes.data || []
 
-    // Find reps/setters that appear in appointments but are not in team_members
-    const { data: apptUsers, error: apptErr } = await supabase
-      .from('appointments')
-      .select('setter_user_id, sales_rep_user_id')
-      .eq('account_id', accountId)
-      .or('setter_user_id.not.is.null,sales_rep_user_id.not.is.null')
+    const participantIds = new Set<string>()
+    // Include all invited users regardless of their stored role
+    for (const id of teamMemberIds) participantIds.add(id)
 
-    if (apptErr) {
-      console.warn('Failed to fetch appointment users:', apptErr)
-    }
+    ;(apptUsers as Array<{ setter_user_id: string | null, sales_rep_user_id: string | null }>).forEach(a => {
+      if (a.setter_user_id) participantIds.add(a.setter_user_id)
+      if (a.sales_rep_user_id) participantIds.add(a.sales_rep_user_id)
+    })
+    ;(discUsers as Array<{ setter_user_id: string | null, sales_rep_user_id: string | null }>).forEach(d => {
+      if (d.setter_user_id) participantIds.add(d.setter_user_id)
+      if (d.sales_rep_user_id) participantIds.add(d.sales_rep_user_id)
+    })
+    ;(dialUsers as Array<{ setter_user_id: string | null }>).forEach(d => {
+      if (d.setter_user_id) participantIds.add(d.setter_user_id)
+    })
 
-    const missingSetterIds = new Set<string>()
-    const missingRepIds = new Set<string>()
+    // Fetch profiles for non-invited participants
+    const allIds = Array.from(participantIds)
+    const missingIds = allIds.filter(id => !teamMemberIds.has(id))
 
-    for (const a of (apptUsers || []) as Array<{ setter_user_id: string | null, sales_rep_user_id: string | null }>) {
-      if (a.setter_user_id && !teamMemberIds.has(a.setter_user_id)) missingSetterIds.add(a.setter_user_id)
-      if (a.sales_rep_user_id && !teamMemberIds.has(a.sales_rep_user_id)) missingRepIds.add(a.sales_rep_user_id)
-    }
-
-    // Fetch profiles for missing IDs
-    const missingIds = Array.from(new Set<string>([...missingSetterIds, ...missingRepIds]))
     let missingProfiles: Array<{ id: string; full_name: string | null; email: string | null }> = []
     if (missingIds.length > 0) {
       const { data: profilesData } = await supabase
@@ -139,34 +136,27 @@ export async function GET(request: NextRequest) {
       missingProfiles = profilesData || []
     }
 
+    const nameForTeamMember = (id: string) => {
+      const m = (team || []).find((tm: any) => tm.user_id === id)
+      return (((m?.full_name as string | null)?.trim()) || m?.email || 'Unknown') ?? 'Unknown'
+    }
+
     const profileById = new Map<string, { id: string; full_name: string | null; email: string | null }>()
     for (const p of missingProfiles) profileById.set(p.id, p)
 
-    const uninvitedSetters: Candidate[] = Array.from(missingSetterIds).map(id => {
-      const p = profileById.get(id)
-      return {
-        id,
-        name: (p?.full_name?.trim() || p?.email || 'Unknown') ?? 'Unknown',
-        role: 'setter',
-        invited: false,
-      }
+    const unifiedCandidates = allIds.map(id => {
+      const invited = teamMemberIds.has(id)
+      const name = invited 
+        ? nameForTeamMember(id) 
+        : ((profileById.get(id)?.full_name?.trim() || profileById.get(id)?.email || 'Unknown') ?? 'Unknown')
+      return { id, name, invited }
     })
 
-    const uninvitedReps: Candidate[] = Array.from(missingRepIds).map(id => {
-      const p = profileById.get(id)
-      return {
-        id,
-        name: (p?.full_name?.trim() || p?.email || 'Unknown') ?? 'Unknown',
-        role: 'rep',
-        invited: false,
-      }
-    })
+    // Return the same unified set in both lists so users who do both appear in both dropdowns
+    const reps: Candidate[] = unifiedCandidates.map(c => ({ id: c.id, name: c.name, role: 'rep', invited: c.invited }))
+    const setters: Candidate[] = unifiedCandidates.map(c => ({ id: c.id, name: c.name, role: 'setter', invited: c.invited }))
 
-    // Combine and return
-    return NextResponse.json({
-      reps: [...invitedReps, ...uninvitedReps],
-      setters: [...invitedSetters, ...uninvitedSetters]
-    })
+    return NextResponse.json({ reps, setters })
   } catch (e) {
     console.error('team/candidates error', e)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
