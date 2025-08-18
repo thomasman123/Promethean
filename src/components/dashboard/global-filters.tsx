@@ -103,25 +103,38 @@ export function GlobalFilters({ className }: GlobalFiltersProps) {
   };
   
   const handleRepChange = (newSelected: string[]) => {
-    // Translate UI selection: selecting "All Reps" clears repIds in store
-    if (newSelected.includes(ALL_REPS) || newSelected.length === 0) {
+    // If All + others are selected, drop All and keep the specific selections
+    if (newSelected.includes(ALL_REPS) && newSelected.length > 1) {
+      const withoutAll = newSelected.filter(v => v !== ALL_REPS)
+      setRepAll(false)
+      setFilters({ repIds: withoutAll })
+      return
+    }
+    // Only All or empty => treat as All (clear repIds)
+    if (newSelected.length === 0 || (newSelected.length === 1 && newSelected[0] === ALL_REPS)) {
       setRepAll(true)
       setFilters({ repIds: undefined })
-    } else {
-      setRepAll(false)
-      // Ensure ALL token is removed
-      setFilters({ repIds: newSelected.filter(v => v !== ALL_REPS) })
+      return
     }
+    // Only specifics
+    setRepAll(false)
+    setFilters({ repIds: newSelected })
   };
   
   const handleSetterChange = (newSelected: string[]) => {
-    if (newSelected.includes(ALL_SETTERS) || newSelected.length === 0) {
+    if (newSelected.includes(ALL_SETTERS) && newSelected.length > 1) {
+      const withoutAll = newSelected.filter(v => v !== ALL_SETTERS)
+      setSetterAll(false)
+      setFilters({ setterIds: withoutAll })
+      return
+    }
+    if (newSelected.length === 0 || (newSelected.length === 1 && newSelected[0] === ALL_SETTERS)) {
       setSetterAll(true)
       setFilters({ setterIds: undefined })
-    } else {
-      setSetterAll(false)
-      setFilters({ setterIds: newSelected.filter(v => v !== ALL_SETTERS) })
+      return
     }
+    setSetterAll(false)
+    setFilters({ setterIds: newSelected })
   };
   
   const activeFilterCount = useMemo(() => (
