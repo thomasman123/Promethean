@@ -75,7 +75,7 @@ export class MetricsEngine {
     const appliedFilters = applyStandardFilters(filters, metric.query.table)
     
     // Determine if we should return a time series for chart visualizations
-    const wantsTimeSeries = (options?.vizType === 'line' || options?.vizType === 'bar' || options?.vizType === 'area' || options?.vizType === 'radar')
+    const wantsTimeSeries = !!options?.vizType && options?.vizType !== 'kpi'
     
     // Build the complete SQL query
     let sql: string
