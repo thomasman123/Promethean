@@ -211,95 +211,98 @@ export function GlobalFilters({ className }: GlobalFiltersProps) {
         />
 
         {/* Advanced Filters Modal Trigger */}
-        <Dialog open={advOpen} onOpenChange={setAdvOpen}>
-          <DialogTrigger asChild>
-            <Button variant="outline" className="gap-2">
-              <SlidersHorizontal className="h-4 w-4" /> Advanced Filters
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-3xl">
-            <DialogHeader>
-              <div className="flex items-center justify-between gap-2">
-                <DialogTitle>Advanced Filters</DialogTitle>
-                <div className="flex items-center gap-2">
-                  <Select value={selectedPresetId} onValueChange={(v) => applyPreset(v)}>
-                    <SelectTrigger size="sm" className="min-w-[180px]">
-                      <SelectValue placeholder="Presets" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {presets.map(p => (
-                        <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Button size="sm" variant="outline" onClick={savePreset}>Save as Preset</Button>
-                </div>
-              </div>
-            </DialogHeader>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-              <MultiSelect
-                options={advOptions.utm_source || []}
-                selected={(filters as any).utm_source || []}
-                onChange={onAdvChange('utm_source' as any)}
-                placeholder="All UTM Sources"
-              />
-              <MultiSelect
-                options={advOptions.utm_medium || []}
-                selected={(filters as any).utm_medium || []}
-                onChange={onAdvChange('utm_medium' as any)}
-                placeholder="All UTM Mediums"
-              />
-              <MultiSelect
-                options={advOptions.utm_campaign || []}
-                selected={(filters as any).utm_campaign || []}
-                onChange={onAdvChange('utm_campaign' as any)}
-                placeholder="All Campaigns"
-              />
-              <MultiSelect
-                options={advOptions.utm_content || []}
-                selected={(filters as any).utm_content || []}
-                onChange={onAdvChange('utm_content' as any)}
-                placeholder="All UTM Content"
-              />
-              <MultiSelect
-                options={advOptions.utm_term || []}
-                selected={(filters as any).utm_term || []}
-                onChange={onAdvChange('utm_term' as any)}
-                placeholder="All UTM Terms"
-              />
-              <MultiSelect
-                options={advOptions.utm_id || []}
-                selected={(filters as any).utm_id || []}
-                onChange={onAdvChange('utm_id' as any)}
-                placeholder="All UTM IDs"
-              />
-              <MultiSelect
-                options={advOptions.source_category || []}
-                selected={(filters as any).source_category || []}
-                onChange={onAdvChange('source_category' as any)}
-                placeholder="All Categories"
-              />
-              <MultiSelect
-                options={advOptions.specific_source || []}
-                selected={(filters as any).specific_source || []}
-                onChange={onAdvChange('specific_source' as any)}
-                placeholder="All Sources"
-              />
-              <MultiSelect
-                options={advOptions.session_source || []}
-                selected={(filters as any).session_source || []}
-                onChange={onAdvChange('session_source' as any)}
-                placeholder="All Session Sources"
-              />
-              <MultiSelect
-                options={advOptions.referrer || []}
-                selected={(filters as any).referrer || []}
-                onChange={onAdvChange('referrer' as any)}
-                placeholder="All Referrers"
-              />
-            </div>
-          </DialogContent>
-        </Dialog>
+        {/**
+         * Advanced Filters temporarily disabled
+         * <Dialog open={advOpen} onOpenChange={setAdvOpen}>
+         *   <DialogTrigger asChild>
+         *     <Button variant="outline" className="gap-2">
+         *       <SlidersHorizontal className="h-4 w-4" /> Advanced Filters
+         *     </Button>
+         *   </DialogTrigger>
+         *   <DialogContent className="max-w-3xl">
+         *     <DialogHeader>
+         *       <div className="flex items-center justify-between gap-2">
+         *         <DialogTitle>Advanced Filters</DialogTitle>
+         *         <div className="flex items-center gap-2">
+         *           <Select value={selectedPresetId} onValueChange={(v) => applyPreset(v)}>
+         *             <SelectTrigger size="sm" className="min-w-[180px]">
+         *               <SelectValue placeholder="Presets" />
+         *             </SelectTrigger>
+         *             <SelectContent>
+         *               {presets.map(p => (
+         *                 <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+         *               ))}
+         *             </SelectContent>
+         *           </Select>
+         *           <Button size="sm" variant="outline" onClick={savePreset}>Save as Preset</Button>
+         *         </div>
+         *       </div>
+         *     </DialogHeader>
+         *     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+         *       <MultiSelect
+         *         options={advOptions.utm_source || []}
+         *         selected={(filters as any).utm_source || []}
+         *         onChange={onAdvChange('utm_source' as any)}
+         *         placeholder="All UTM Sources"
+         *       />
+         *       <MultiSelect
+         *         options={advOptions.utm_medium || []}
+         *         selected={(filters as any).utm_medium || []}
+         *         onChange={onAdvChange('utm_medium' as any)}
+         *         placeholder="All UTM Mediums"
+         *       />
+         *       <MultiSelect
+         *         options={advOptions.utm_campaign || []}
+         *         selected={(filters as any).utm_campaign || []}
+         *         onChange={onAdvChange('utm_campaign' as any)}
+         *         placeholder="All Campaigns"
+         *       />
+         *       <MultiSelect
+         *         options={advOptions.utm_content || []}
+         *         selected={(filters as any).utm_content || []}
+         *         onChange={onAdvChange('utm_content' as any)}
+         *         placeholder="All UTM Content"
+         *       />
+         *       <MultiSelect
+         *         options={advOptions.utm_term || []}
+         *         selected={(filters as any).utm_term || []}
+         *         onChange={onAdvChange('utm_term' as any)}
+         *         placeholder="All UTM Terms"
+         *       />
+         *       <MultiSelect
+         *         options={advOptions.utm_id || []}
+         *         selected={(filters as any).utm_id || []}
+         *         onChange={onAdvChange('utm_id' as any)}
+         *         placeholder="All UTM IDs"
+         *       />
+         *       <MultiSelect
+         *         options={advOptions.source_category || []}
+         *         selected={(filters as any).source_category || []}
+         *         onChange={onAdvChange('source_category' as any)}
+         *         placeholder="All Categories"
+         *       />
+         *       <MultiSelect
+         *         options={advOptions.specific_source || []}
+         *         selected={(filters as any).specific_source || []}
+         *         onChange={onAdvChange('specific_source' as any)}
+         *         placeholder="All Sources"
+         *       />
+         *       <MultiSelect
+         *         options={advOptions.session_source || []}
+         *         selected={(filters as any).session_source || []}
+         *         onChange={onAdvChange('session_source' as any)}
+         *         placeholder="All Session Sources"
+         *       />
+         *       <MultiSelect
+         *         options={advOptions.referrer || []}
+         *         selected={(filters as any).referrer || []}
+         *         onChange={onAdvChange('referrer' as any)}
+         *         placeholder="All Referrers"
+         *       />
+         *     </div>
+         *   </DialogContent>
+         * </Dialog>
+         */}
 
         <div className="flex-1" />
         
