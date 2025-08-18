@@ -389,6 +389,24 @@ async function processPhoneCallWebhook(payload: any) {
       }
     }
     
+    // Link setter to an existing app user and capture setter_user_id for the dial
+    let linkedSetterUserId: string | null = null;
+    try {
+      const { linkExistingUsersToData } = await import('@/lib/auto-user-creation');
+      const userIds = await linkExistingUsersToData(
+        supabase,
+        account.id,
+        setterName,
+        null,
+        setterEmail,
+        null
+      );
+      linkedSetterUserId = userIds.setterUserId || null;
+      console.log('✅ User link results for dial:', { setterUserId: linkedSetterUserId || 'None' });
+    } catch (linkErr) {
+      console.warn('⚠️ Failed to link setter user for dial (non-critical):', linkErr);
+    }
+    
     // Get contact information by fetching from GHL API
     let contactName = null;
     let contactEmail = null;
@@ -483,6 +501,7 @@ async function processPhoneCallWebhook(payload: any) {
       email: contactEmail,
       phone: contactPhone || '',
       setter: setterName || 'Unknown',
+      setter_user_id: linkedSetterUserId, // NEW: link to setter profile when available
       duration: payload.callDuration || 0,
       call_recording_link: payload.attachments?.[0] || null,
       answered: payload.callDuration > 30 && payload.status === 'completed' && payload.callStatus !== 'voicemail',
