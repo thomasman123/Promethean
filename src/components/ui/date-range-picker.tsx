@@ -37,6 +37,21 @@ export function DateRangePicker({
   
   const [open, setOpen] = React.useState(false);
   const containerRef = React.useRef<HTMLDivElement | null>(null);
+  const [containerWidth, setContainerWidth] = React.useState<number>(0);
+
+  React.useLayoutEffect(() => {
+    if (!containerRef.current) return;
+    const el = containerRef.current;
+    const ro = new ResizeObserver((entries) => {
+      const w = entries[0]?.contentRect.width || 0;
+      setContainerWidth(w);
+    });
+    ro.observe(el);
+    setContainerWidth(el.clientWidth);
+    return () => ro.disconnect();
+  }, []);
+
+  const monthsToShow = containerWidth >= 720 ? 2 : 1;
 
   const quickRanges: Array<{ label: string; get: () => DateRange }> = React.useMemo(() => [
     { label: "Today", get: () => ({ from: startOfDay(new Date()), to: endOfDay(new Date()) }) },
@@ -80,9 +95,17 @@ export function DateRangePicker({
             )}
           </Button>
         </PopoverTrigger>
-        <PopoverContent inPortal={false} side="bottom" align="start" sideOffset={8} collisionPadding={12} className="p-0 max-w-full sm:max-w-[95vw]">
+        <PopoverContent
+          inPortal={false}
+          side="bottom"
+          align="start"
+          sideOffset={8}
+          collisionPadding={12}
+          collisionBoundary={containerRef.current || undefined}
+          className="p-0 w-full overflow-auto sm:w-auto sm:max-w-[95vw]"
+        >
           <div className="flex flex-col sm:flex-row">
-            <div className="w-full sm:w-40 border-b sm:border-b-0 sm:border-r p-2 space-y-1">
+            <div className="w-full sm:w-40 border-b sm:border-b-0 sm:border-r p-2 space-y-1 shrink-0">
               {quickRanges.map((q) => (
                 <Button key={q.label} variant="ghost" className="w-full justify-start" onClick={() => handleQuickSelect(q.get)}>
                   {q.label}
@@ -96,7 +119,7 @@ export function DateRangePicker({
                 defaultMonth={date?.from}
                 selected={date}
                 onSelect={onDateChange}
-                numberOfMonths={2}
+                numberOfMonths={monthsToShow}
               />
             </div>
           </div>

@@ -50,7 +50,7 @@ export function DateTimePicker({ value, onChange, placeholder = "Pick date & tim
 						)}
 					</Button>
 				</PopoverTrigger>
-				<PopoverContent inPortal={false} className="w-auto p-3" align="start">
+				<PopoverContent inPortal={false} className="w-full sm:w-auto p-3 overflow-auto" align="start">
 					<div className="grid gap-3">
 						<Calendar mode="single" selected={date} onSelect={(d) => { setDate(d); emitChange(d, undefined); }} initialFocus />
 						<div className="grid gap-2">
