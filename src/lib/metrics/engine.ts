@@ -213,7 +213,7 @@ export class MetricsEngine {
       WITH date_series AS (
         SELECT generate_series(
           DATE_TRUNC('${aggregationLevel}', $start_date::date),
-          DATE_TRUNC('${aggregationLevel}', $end_date::date),
+          DATE_TRUNC('${aggregationLevel}', $range_end::date),
           ${dateSeriesInterval}
         )::date as date
       )
@@ -223,7 +223,7 @@ export class MetricsEngine {
       FROM date_series
       LEFT JOIN ${baseTable} ON (
         DATE_TRUNC('${aggregationLevel}', ${qualifiedDateField}) = date_series.date
-        ${qualifiedConditions ? ` AND (${qualifiedConditions.replace(/\$end_date_exclusive/g, '$end_date_plus')})` : ''}
+        ${qualifiedConditions ? ` AND (${qualifiedConditions})` : ''}
       )
       GROUP BY date_series.date
       ORDER BY date_series.date ASC

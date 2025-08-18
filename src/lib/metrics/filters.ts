@@ -56,12 +56,12 @@ export function applyStandardFilters(filters: MetricFilters, baseTable: string):
 		field: dateField,
 		operator: '<',
 		value: endExclusive,
-		paramName: 'end_date_exclusive'
+		paramName: 'end_plus'
 	})
 	
 	params.start_date = startStr
 	// Keep original end_date for time-series generation bounds; also provide exclusive params for filtering
-	params.range_end = endStr // renamed to avoid prefix collision
+	params.range_end = endStr
 	params.end_plus = endExclusive
 
 	// Account filter - always applied
