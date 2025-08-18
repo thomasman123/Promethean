@@ -4,21 +4,10 @@ import React from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Separator } from "@/components/ui/separator"
-import {
   SidebarInset,
-  SidebarTrigger,
 } from "@/components/ui/sidebar"
-import { ThemeToggle } from "@/components/theme-toggle"
 import { useAuth } from "@/hooks/useAuth"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Settings, Users, Calendar, Zap, Target } from "lucide-react"
 
 export default function AccountPage() {
@@ -27,7 +16,6 @@ export default function AccountPage() {
   const permissions = getAccountBasedPermissions()
   const selectedAccount = getSelectedAccount()
 
-  // Force re-render when account changes (even though data is reactive, this ensures UI updates)
   const accountData = React.useMemo(() => ({
     permissions,
     selectedAccount,
@@ -36,14 +24,8 @@ export default function AccountPage() {
 
   React.useEffect(() => {
     if (loading) return
-    if (!user) {
-      router.replace('/login')
-      return
-    }
-    if (!permissions.canManageAccount) {
-      router.replace('/dashboard')
-      return
-    }
+    if (!user) { router.replace('/login'); return }
+    if (!permissions.canManageAccount) { router.replace('/dashboard'); return }
   }, [user, loading, permissions.canManageAccount, router])
 
   if (loading || !user || !permissions.canManageAccount) {
@@ -90,7 +72,6 @@ export default function AccountPage() {
       icon: Users,
       href: "/account/team-members",
       available: permissions.canManageTeam,
-
       requiredRole: "Moderator or Admin"
     }
   ]
@@ -101,6 +82,58 @@ export default function AccountPage() {
         <div className="space-y-2">
           <h1 className="text-2xl font-bold">Account</h1>
           <p className="text-muted-foreground">Manage account settings and integrations</p>
+        </div>
+
+        {selectedAccount && (
+          <div className="bg-muted/30 rounded-lg p-4">
+            <h3 className="font-medium">Current Account</h3>
+            <p className="text-sm text-muted-foreground">{selectedAccount.name}</p>
+            {selectedAccount.description && (
+              <p className="text-xs text-muted-foreground mt-1">{selectedAccount.description}</p>
+            )}
+          </div>
+        )}
+
+        <div className="grid gap-4 md:grid-cols-2">
+          {accountSections.map((section) => (
+            <div key={section.title}>
+              {section.available ? (
+                <Link href={section.href}>
+                  <Card className="hover:shadow-md transition-shadow cursor-pointer">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <section.icon className="h-5 w-5" />
+                        {section.title}
+                      </CardTitle>
+                      <CardDescription>
+                        {section.description}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm text-green-600">Available</p>
+                    </CardContent>
+                  </Card>
+                </Link>
+              ) : (
+                <Card className="opacity-50">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <section.icon className="h-5 w-5" />
+                      {section.title}
+                    </CardTitle>
+                    <CardDescription>
+                      {section.description}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground">
+                      Requires {section.requiredRole} role
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          ))}
         </div>
       </div>
     </SidebarInset>
