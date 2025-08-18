@@ -10,32 +10,34 @@ export interface MetricFilters {
   accountId: string
   repIds?: string[]     // Array of sales rep user IDs
   setterIds?: string[]  // Array of setter user IDs
+
+  // Advanced attribution filters (optional, apply when provided)
+  utm_source?: string[]
+  utm_medium?: string[]
+  utm_campaign?: string[]
+  utm_content?: string[]
+  utm_term?: string[]
+  utm_id?: string[]
+  source_category?: string[]
+  specific_source?: string[]
+  session_source?: string[]
+  referrer?: string[]
+  fbclid?: string[]
+  fbc?: string[]
+  fbp?: string[]
+  gclid?: string[]
 }
 
 export interface MetricQuery {
   // Base table to query from
   table: string
-  
-  // Fields to select (can include aggregations)
+  // SELECT clause fields (first one should be the value expression with 'as value' when possible)
   select: string[]
-  
-  // Additional joins if needed
-  joins?: Array<{
-    table: string
-    on: string
-    type?: 'INNER' | 'LEFT' | 'RIGHT'
-  }>
-  
-  // Where conditions beyond the standard filters
+  // Additional WHERE conditions (combined with standard filters)
   where?: string[]
-  
-  // Group by fields (for aggregations)
+  // Optional GROUP BY, HAVING, ORDER BY clauses
   groupBy?: string[]
-  
-  // Having conditions (for grouped queries)
   having?: string[]
-  
-  // Order by
   orderBy?: string[]
 }
 
@@ -44,50 +46,21 @@ export interface MetricDefinition {
   description: string
   breakdownType: BreakdownType
   query: MetricQuery
-  unit?: 'count' | 'currency' | 'percent' | string
+  unit?: 'count' | 'currency' | 'percent' | 'seconds'
 }
-
-// Result types based on breakdown
-export interface TotalResult {
-  value: number
-}
-
-export interface RepResult {
-  repId: string
-  repName?: string
-  value: number
-}
-
-export interface SetterResult {
-  setterId: string
-  setterName?: string
-  value: number
-}
-
-export interface LinkResult {
-  setterId: string
-  setterName?: string
-  repId: string
-  repName?: string
-  value: number
-}
-
-export interface TimeResult {
-  date: string
-  value: number
-}
-
-export type MetricResult = 
-  | { type: 'total'; data: TotalResult }
-  | { type: 'rep'; data: RepResult[] }
-  | { type: 'setter'; data: SetterResult[] }
-  | { type: 'link'; data: LinkResult[] }
-  | { type: 'time'; data: TimeResult[] }
 
 export interface MetricRequest {
   metricName: string
   filters: MetricFilters
 }
+
+export type TotalResult = { type: 'total', data: { value: number } }
+export type RepResult = { type: 'rep', data: Array<{ repId: string, value: number }> }
+export type SetterResult = { type: 'setter', data: Array<{ setterId: string, value: number }> }
+export type LinkResult = { type: 'link', data: Array<{ from: string, to: string, value: number }> }
+export type TimeResult = { type: 'time', data: Array<{ date: string, value: number }> }
+
+export type MetricResult = TotalResult | RepResult | SetterResult | LinkResult | TimeResult
 
 export interface MetricResponse {
   metricName: string

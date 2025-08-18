@@ -82,6 +82,37 @@ export function applyStandardFilters(filters: MetricFilters, baseTable: string):
 		}
 	}
 
+	// Advanced UTM/attribution filters (arrays become IN clauses)
+	const arrayFields: Array<{ key: keyof MetricFilters; column: string; param: string }> = [
+		{ key: 'utm_source', column: 'utm_source', param: 'utm_source' },
+		{ key: 'utm_medium', column: 'utm_medium', param: 'utm_medium' },
+		{ key: 'utm_campaign', column: 'utm_campaign', param: 'utm_campaign' },
+		{ key: 'utm_content', column: 'utm_content', param: 'utm_content' },
+		{ key: 'utm_term', column: 'utm_term', param: 'utm_term' },
+		{ key: 'utm_id', column: 'utm_id', param: 'utm_id' },
+		{ key: 'source_category', column: 'source_category', param: 'source_category' },
+		{ key: 'specific_source', column: 'specific_source', param: 'specific_source' },
+		{ key: 'session_source', column: 'session_source', param: 'session_source' },
+		{ key: 'referrer', column: 'contact_referrer', param: 'referrer' },
+		{ key: 'fbclid', column: 'fbclid', param: 'fbclid' },
+		{ key: 'fbc', column: 'fbc', param: 'fbc' },
+		{ key: 'fbp', column: 'fbp', param: 'fbp' },
+		{ key: 'gclid', column: 'contact_gclid', param: 'gclid' },
+	]
+
+	for (const field of arrayFields) {
+		const values = filters[field.key] as string[] | undefined
+		if (values && values.length > 0) {
+			if (values.length === 1) {
+				conditions.push({ field: field.column, operator: '=', value: values[0], paramName: field.param })
+				params[field.param] = values[0]
+			} else {
+				conditions.push({ field: field.column, operator: 'IN', value: values, paramName: `${field.param}_arr` })
+				params[`${field.param}_arr`] = values
+			}
+		}
+	}
+
 	return { conditions, params }
 }
 

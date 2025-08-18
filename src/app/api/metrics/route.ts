@@ -67,7 +67,21 @@ export async function POST(request: NextRequest) {
         },
         accountId: filters.accountId,
         repIds: filters.repIds,
-        setterIds: filters.setterIds
+        setterIds: filters.setterIds,
+        utm_source: filters.utm_source,
+        utm_medium: filters.utm_medium,
+        utm_campaign: filters.utm_campaign,
+        utm_content: filters.utm_content,
+        utm_term: filters.utm_term,
+        utm_id: filters.utm_id,
+        source_category: filters.source_category,
+        specific_source: filters.specific_source,
+        session_source: filters.session_source,
+        referrer: filters.referrer,
+        fbclid: filters.fbclid,
+        fbc: filters.fbc,
+        fbp: filters.fbp,
+        gclid: filters.gclid,
       }
     }
 
@@ -98,6 +112,9 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
+    const url = new URL(request.url)
+    const path = url.pathname
+
     const supabase = createServerClient<Database>(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -113,12 +130,52 @@ export async function GET(request: NextRequest) {
     )
     
     // Check authentication
-    const { data: { session }, error: authError } = await supabase.auth.getSession()
-    if (authError || !session) {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Return list of available metrics
+    // Options endpoint for distinct filter values
+    if (path.endsWith('/options')) {
+      const accountId = url.searchParams.get('accountId')
+      if (!accountId) return NextResponse.json({ error: 'accountId required' }, { status: 400 })
+
+      // Collect distinct values from appointments, discoveries, and dials (union)
+      const fields = ['utm_source','utm_medium','utm_campaign','utm_content','utm_term','utm_id','source_category','specific_source','session_source','contact_referrer']
+      const result: Record<string, string[]> = {}
+
+      for (const f of fields) {
+        const col = f
+        const sets: string[][] = []
+        // appointments
+        const { data: a } = await supabase
+          .from('appointments')
+          .select(col)
+          .eq('account_id', accountId)
+          .not(col as any, 'is', null as any)
+        if (a) sets.push(Array.from(new Set(a.map((r: any) => r[col]).filter(Boolean))))
+        // discoveries
+        const { data: d } = await supabase
+          .from('discoveries')
+          .select(col)
+          .eq('account_id', accountId)
+          .not(col as any, 'is', null as any)
+        if (d) sets.push(Array.from(new Set(d.map((r: any) => r[col]).filter(Boolean))))
+        // dials (map contact_referrer->referrer, session_source same name, utm_* present)
+        const { data: dl } = await supabase
+          .from('dials')
+          .select(col)
+          .eq('account_id', accountId)
+          .not(col as any, 'is', null as any)
+        if (dl) sets.push(Array.from(new Set(dl.map((r: any) => r[col]).filter(Boolean))))
+
+        result[f === 'contact_referrer' ? 'referrer' : f] = Array.from(new Set((sets.flat()).filter(Boolean))).slice(0, 200)
+      }
+
+      return NextResponse.json(result)
+    }
+
+    // Default: list of available metrics
     const metricNames = getAllMetricNames()
     
     return NextResponse.json({

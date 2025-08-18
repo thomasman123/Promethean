@@ -18,6 +18,8 @@ interface GlobalFiltersProps {
 
 type Candidate = { id: string; name: string | null; invited: boolean }
 
+type KeyedOptions = Record<string, MultiSelectOption[]>
+
 const ALL_REPS = '__ALL_REPS__'
 const ALL_SETTERS = '__ALL_SETTERS__'
 
@@ -30,6 +32,9 @@ export function GlobalFilters({ className }: GlobalFiltersProps) {
   const [repOptions, setRepOptions] = useState<MultiSelectOption[]>([])
   const [setterOptions, setSetterOptions] = useState<MultiSelectOption[]>([])
   const { selectedAccountId } = useAuth()
+
+  // Advanced filter options (loaded lazily from data)
+  const [advOptions, setAdvOptions] = useState<KeyedOptions>({})
 
   // UI state to represent "All" selection without polluting store filters
   const [repAll, setRepAll] = useState<boolean>(!Array.isArray(filters.repIds) || (filters.repIds?.length ?? 0) === 0)
@@ -55,44 +60,30 @@ export function GlobalFilters({ className }: GlobalFiltersProps) {
           { value: ALL_SETTERS, label: 'All Setters (default)', group: 'Quick Select' },
           ...(json.setters || []).map((c: Candidate) => toOption(c, c.invited ? 'Setters' : 'Setters • Uninvited')),
         ])
-
-        // Clean up any invalid IDs (non-UUIDs) from current filters
-        const isValidUUID = (str: string): boolean => {
-          const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-          return uuidRegex.test(str)
-        }
-
-        const validRepIds = json.reps?.map((r: Candidate) => r.id) || []
-        const validSetterIds = json.setters?.map((s: Candidate) => s.id) || []
-
-        // Filter out any invalid IDs from current filters
-        if (filters.repIds) {
-          const cleanRepIds = filters.repIds.filter(id => 
-            isValidUUID(id) && validRepIds.includes(id)
-          )
-          if (cleanRepIds.length !== filters.repIds.length) {
-            console.log('🧹 Cleaned invalid rep IDs from filters')
-            setFilters({ repIds: cleanRepIds.length > 0 ? cleanRepIds : undefined })
-            setRepAll(cleanRepIds.length === 0)
-          }
-        }
-
-        if (filters.setterIds) {
-          const cleanSetterIds = filters.setterIds.filter(id => 
-            isValidUUID(id) && validSetterIds.includes(id)
-          )
-          if (cleanSetterIds.length !== filters.setterIds.length) {
-            console.log('🧹 Cleaned invalid setter IDs from filters')
-            setFilters({ setterIds: cleanSetterIds.length > 0 ? cleanSetterIds : undefined })
-            setSetterAll(cleanSetterIds.length === 0)
-          }
-        }
       } catch (e) {
         console.warn('Failed to load candidates', e)
       }
     }
 
+    const loadAdvancedOptions = async () => {
+      if (!selectedAccountId) return
+      try {
+        const r = await fetch(`/api/metrics/options?accountId=${encodeURIComponent(selectedAccountId)}`)
+        const data = await r.json()
+        const toOpt = (v: string): MultiSelectOption => ({ value: v, label: v })
+        const keyToOptions: KeyedOptions = {}
+        ;['utm_source','utm_medium','utm_campaign','utm_content','utm_term','utm_id','source_category','specific_source','session_source','referrer'].forEach((k) => {
+          const arr = (data?.[k] || []) as string[]
+          keyToOptions[k] = arr.map(toOpt)
+        })
+        setAdvOptions(keyToOptions)
+      } catch (e) {
+        console.warn('Failed to load advanced options', e)
+      }
+    }
+
     loadCandidates()
+    loadAdvancedOptions()
   }, [selectedAccountId])
   
   const handleDateChange = (dateRange: DateRange | undefined) => {
@@ -103,19 +94,16 @@ export function GlobalFilters({ className }: GlobalFiltersProps) {
   };
   
   const handleRepChange = (newSelected: string[]) => {
-    // If All selected at any time, prefer All (clear specifics)
     if (newSelected.includes(ALL_REPS)) {
       setRepAll(true)
       setFilters({ repIds: undefined })
       return
     }
-    // Empty selection also means All
     if (newSelected.length === 0) {
       setRepAll(true)
       setFilters({ repIds: undefined })
       return
     }
-    // Only specifics
     setRepAll(false)
     setFilters({ repIds: newSelected })
   };
@@ -134,6 +122,11 @@ export function GlobalFilters({ className }: GlobalFiltersProps) {
     setSetterAll(false)
     setFilters({ setterIds: newSelected })
   };
+
+  // Advanced handlers (array-or-undefined semantics; empty => undefined)
+  const onAdvChange = (key: keyof typeof filters) => (vals: string[]) => {
+    setFilters({ [key]: vals.length > 0 ? vals : undefined } as any)
+  }
   
   const activeFilterCount = useMemo(() => (
     Object.values(filters).filter(v => 
@@ -148,7 +141,7 @@ export function GlobalFilters({ className }: GlobalFiltersProps) {
   return (
     <div className={cn("flex flex-col gap-4 p-4 border-b", className)}>
       {/* Main Filter Bar */}
-      <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center gap-4">
         {/* Date Range Picker */}
         <DateRangePicker
           date={{
@@ -177,7 +170,45 @@ export function GlobalFilters({ className }: GlobalFiltersProps) {
           placeholder="All setters"
           className="w-[220px]"
         />
-        
+
+        {/* UTM/Attribution filters */}
+        <Separator orientation="vertical" className="h-6" />
+        <MultiSelect
+          options={advOptions.utm_source || []}
+          selected={(filters as any).utm_source || []}
+          onChange={onAdvChange('utm_source' as any)}
+          placeholder="All UTM Sources"
+          className="w-[220px]"
+        />
+        <MultiSelect
+          options={advOptions.utm_medium || []}
+          selected={(filters as any).utm_medium || []}
+          onChange={onAdvChange('utm_medium' as any)}
+          placeholder="All UTM Mediums"
+          className="w-[220px]"
+        />
+        <MultiSelect
+          options={advOptions.utm_campaign || []}
+          selected={(filters as any).utm_campaign || []}
+          onChange={onAdvChange('utm_campaign' as any)}
+          placeholder="All Campaigns"
+          className="w-[220px]"
+        />
+        <MultiSelect
+          options={advOptions.source_category || []}
+          selected={(filters as any).source_category || []}
+          onChange={onAdvChange('source_category' as any)}
+          placeholder="All Categories"
+          className="w-[220px]"
+        />
+        <MultiSelect
+          options={advOptions.specific_source || []}
+          selected={(filters as any).specific_source || []}
+          onChange={onAdvChange('specific_source' as any)}
+          placeholder="All Sources"
+          className="w-[220px]"
+        />
+
         <div className="flex-1" />
         
         {/* Active Filters Display */}
