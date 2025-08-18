@@ -162,44 +162,40 @@ export class MetricsEngine {
    */
   private buildTimeSeriesSQL(appliedFilters: any, metric: MetricDefinition): string {
     const baseTable = metric.query.table
-    // Use denormalized local columns for timezone-correct grouping
-    const dateFieldRaw = 'local_date'
-
     // Build WHERE conditions for the base table including metric-specific conditions
     const whereClauseWithMetric = buildWhereClause(appliedFilters, metric.query.where)
-    const qualifiedDateField = `${baseTable}.${dateFieldRaw}`
-    const qualifiedConditions = whereClauseWithMetric
-      .replace('WHERE ', '')
-      .replace(new RegExp(`\\b${dateFieldRaw}\\b`, 'g'), qualifiedDateField)
-      // Qualify bare account_id but do NOT touch the $account_id placeholder
-      .replace(/(?<!\$)\baccount_id\b/g, `${baseTable}.account_id`)
 
     // Determine aggregation level based on date range
     const aggregationLevel = this.determineTimeAggregation(appliedFilters)
     console.log('🐛 DEBUG - Using aggregation level:', aggregationLevel)
     
     let dateSeriesInterval: string
-    let dateGrouping: string
+    let localColumn: string
     let dateDisplay: string
     
     switch (aggregationLevel) {
       case 'month':
         dateSeriesInterval = "'1 month'::interval"
-        dateGrouping = `${baseTable}.local_month`
+        localColumn = 'local_month'
         dateDisplay = "TO_CHAR(date_series.date, 'Mon YYYY') as date"
         break
       case 'week':
         dateSeriesInterval = "'1 week'::interval"
-        dateGrouping = `${baseTable}.local_week`
+        localColumn = 'local_week'
         dateDisplay = "TO_CHAR(date_series.date, 'YYYY-\"W\"WW') as date"
         break
       case 'day':
       default:
         dateSeriesInterval = "'1 day'::interval"
-        dateGrouping = `${baseTable}.local_date`
+        localColumn = 'local_date'
         dateDisplay = "TO_CHAR(date_series.date, 'Mon DD') as date"
         break
     }
+
+    // Build qualified conditions using the correct local column
+    const qualifiedConditions = whereClauseWithMetric
+      .replace('WHERE ', '')
+      .replace(/(?<!\$)\baccount_id\b/g, `${baseTable}.account_id`)
 
     // Determine aggregate expression for the metric
     const rawSelect = (metric.query.select && metric.query.select[0]) ? metric.query.select[0] : 'COUNT(*) as value'
@@ -222,7 +218,7 @@ export class MetricsEngine {
         COALESCE(${valueExpr}, 0) as value
       FROM date_series
       LEFT JOIN ${baseTable} ON (
-        ${dateGrouping} = date_series.date
+        ${baseTable}.${localColumn} = date_series.date
         ${qualifiedConditions ? ` AND (${qualifiedConditions})` : ''}
       )
       GROUP BY date_series.date
@@ -238,7 +234,7 @@ export class MetricsEngine {
   private determineTimeAggregation(appliedFilters: any): 'day' | 'week' | 'month' {
     // Access the date range from the correct location in appliedFilters
     const startDateStr = appliedFilters.params.start_date
-    const endDateStr = appliedFilters.params.end_date
+    const endDateStr = appliedFilters.params.range_end
     
     if (!startDateStr || !endDateStr) {
       console.warn('🐛 DEBUG - Missing date parameters, defaulting to daily aggregation')

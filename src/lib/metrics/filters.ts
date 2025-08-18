@@ -58,9 +58,9 @@ export function applyStandardFilters(filters: MetricFilters, baseTable: string):
 	conditions.push({ field: 'account_id', operator: '=', value: filters.accountId, paramName: 'account_id' })
 	params.account_id = filters.accountId
 
-	// Rep/Setter filters only exist on appointments; leave behavior as-is
-	const repField = baseTable === 'appointments' ? 'sales_rep_user_id' : null
-	const setterField = baseTable === 'appointments' ? 'setter_user_id' : null
+	// Rep/Setter filters - check which tables have these columns
+	const repField = (baseTable === 'appointments' || baseTable === 'discoveries') ? 'sales_rep_user_id' : null
+	const setterField = (baseTable === 'appointments' || baseTable === 'discoveries' || baseTable === 'dials') ? 'setter_user_id' : null
 
 	if (repField && filters.repIds && filters.repIds.length > 0) {
 		if (filters.repIds.length === 1) {
