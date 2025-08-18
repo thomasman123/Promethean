@@ -12,6 +12,13 @@ export interface AppliedFilters {
 	params: Record<string, any>
 }
 
+function toDateOnlyString(d: Date): string {
+	const y = d.getFullYear()
+	const m = String(d.getMonth() + 1).padStart(2, '0')
+	const day = String(d.getDate()).padStart(2, '0')
+	return `${y}-${m}-${day}`
+}
+
 /**
  * Applies standard filters to any metric query
  * Returns SQL conditions and parameters for safe execution
@@ -23,23 +30,39 @@ export function applyStandardFilters(filters: MetricFilters, baseTable: string):
 	// Choose date field based on base table
 	const dateField = baseTable === 'dials' ? 'date_called' : 'date_booked_for'
 
-	// Date range filter - always applied
+	// Normalize start/end strings and compute exclusive end bound (next day)
+	const startStr = filters.dateRange.start
+	const endStr = filters.dateRange.end
+	const endExclusive = (() => {
+		try {
+			const d = new Date(`${endStr}T00:00:00`)
+			d.setDate(d.getDate() + 1)
+			return toDateOnlyString(d)
+		} catch {
+			return endStr
+		}
+	})()
+
+	// Date range filter - start inclusive
 	conditions.push({
 		field: dateField,
 		operator: '>=',
-		value: filters.dateRange.start,
+		value: startStr,
 		paramName: 'start_date'
 	})
 	
+	// Date range filter - end exclusive (next-day)
 	conditions.push({
 		field: dateField,
-		operator: '<=', 
-		value: filters.dateRange.end,
-		paramName: 'end_date'
+		operator: '<',
+		value: endExclusive,
+		paramName: 'end_date_exclusive'
 	})
 	
-	params.start_date = filters.dateRange.start
-	params.end_date = filters.dateRange.end
+	params.start_date = startStr
+	// Keep original end_date for time-series generation bounds; also provide exclusive param for filtering
+	params.end_date = endStr
+	params.end_date_exclusive = endExclusive
 
 	// Account filter - always applied
 	conditions.push({
