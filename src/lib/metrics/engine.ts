@@ -223,7 +223,7 @@ export class MetricsEngine {
       FROM date_series
       LEFT JOIN ${baseTable} ON (
         DATE_TRUNC('${aggregationLevel}', ${qualifiedDateField}) = date_series.date
-        ${qualifiedConditions ? ` AND (${qualifiedConditions})` : ''}
+        ${qualifiedConditions ? ` AND (${qualifiedConditions.replace(/\$end_date_exclusive/g, '$end_date_plus')})` : ''}
       )
       GROUP BY date_series.date
       ORDER BY date_series.date ASC
