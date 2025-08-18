@@ -9,6 +9,16 @@ interface Candidate {
   invited: boolean
 }
 
+// Normalize role strings to canonical set
+function normalizeRole(role: string | null | undefined): 'admin' | 'moderator' | 'sales_rep' | 'setter' | null {
+  if (!role) return null
+  const r = role.trim().toLowerCase().replace(/-/g, '_').replace(/\s+/g, '_')
+  if (r === 'rep') return 'sales_rep'
+  if (['owner', 'manager', 'team_lead', 'teamlead', 'lead', 'leader'].includes(r)) return 'admin'
+  if (['admin', 'moderator', 'sales_rep', 'setter'].includes(r)) return r as any
+  return null
+}
+
 export async function GET(request: NextRequest) {
   try {
     const supabase = createServerClient<Database>(
@@ -71,28 +81,92 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch team members' }, { status: 500 })
     }
 
-    // Split into reps and setters based on their role (exclude moderators - they're for account management only)
+    // Build a set of existing team member IDs for fast lookup
+    const teamMemberIds = new Set<string>((team || []).map((m: any) => m.user_id))
+
+    // Split into reps and setters based on normalized role
     const invitedReps = (team || [])
-      .filter(m => m.role && ['sales_rep', 'admin'].includes(m.role))
+      .filter(m => {
+        const nr = normalizeRole((m as any).role)
+        return nr && ['sales_rep', 'admin'].includes(nr)
+      })
       .map<Candidate>(m => ({ 
         id: (m as any).user_id, 
-        name: ((m as any).full_name?.trim() || (m as any).email || 'Unknown'), 
+        name: (((m as any).full_name as string | null)?.trim() || (m as any).email || 'Unknown'), 
         role: 'rep', 
         invited: true 
       }))
 
     const invitedSetters = (team || [])
-      .filter(m => m.role && ['setter', 'admin'].includes(m.role))
+      .filter(m => {
+        const nr = normalizeRole((m as any).role)
+        return nr && ['setter', 'admin'].includes(nr)
+      })
       .map<Candidate>(m => ({ 
         id: (m as any).user_id, 
-        name: ((m as any).full_name?.trim() || (m as any).email || 'Unknown'), 
+        name: (((m as any).full_name as string | null)?.trim() || (m as any).email || 'Unknown'), 
         role: 'setter', 
         invited: true 
       }))
 
+    // Find reps/setters that appear in appointments but are not in team_members
+    const { data: apptUsers, error: apptErr } = await supabase
+      .from('appointments')
+      .select('setter_user_id, sales_rep_user_id')
+      .eq('account_id', accountId)
+      .not('setter_user_id', 'is', null)
+      .or('sales_rep_user_id.not.is.null')
+
+    if (apptErr) {
+      console.warn('Failed to fetch appointment users:', apptErr)
+    }
+
+    const missingSetterIds = new Set<string>()
+    const missingRepIds = new Set<string>()
+
+    for (const a of (apptUsers || []) as Array<{ setter_user_id: string | null, sales_rep_user_id: string | null }>) {
+      if (a.setter_user_id && !teamMemberIds.has(a.setter_user_id)) missingSetterIds.add(a.setter_user_id)
+      if (a.sales_rep_user_id && !teamMemberIds.has(a.sales_rep_user_id)) missingRepIds.add(a.sales_rep_user_id)
+    }
+
+    // Fetch profiles for missing IDs
+    const missingIds = Array.from(new Set<string>([...missingSetterIds, ...missingRepIds]))
+    let missingProfiles: Array<{ id: string; full_name: string | null; email: string | null }> = []
+    if (missingIds.length > 0) {
+      const { data: profilesData } = await supabase
+        .from('profiles')
+        .select('id, full_name, email')
+        .in('id', missingIds)
+      missingProfiles = profilesData || []
+    }
+
+    const profileById = new Map<string, { id: string; full_name: string | null; email: string | null }>()
+    for (const p of missingProfiles) profileById.set(p.id, p)
+
+    const uninvitedSetters: Candidate[] = Array.from(missingSetterIds).map(id => {
+      const p = profileById.get(id)
+      return {
+        id,
+        name: (p?.full_name?.trim() || p?.email || 'Unknown') ?? 'Unknown',
+        role: 'setter',
+        invited: false,
+      }
+    })
+
+    const uninvitedReps: Candidate[] = Array.from(missingRepIds).map(id => {
+      const p = profileById.get(id)
+      return {
+        id,
+        name: (p?.full_name?.trim() || p?.email || 'Unknown') ?? 'Unknown',
+        role: 'rep',
+        invited: false,
+      }
+    })
+
+    // Combine and return
     return NextResponse.json({
-      reps: invitedReps,
-      setters: invitedSetters
+      reps: [...invitedReps, ...uninvitedReps],
+      setters: [...invitedSetters, ...uninvitedSetters]
     })
   } catch (e) {
     console.error('team/candidates error', e)
