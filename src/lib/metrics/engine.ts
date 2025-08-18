@@ -162,15 +162,15 @@ export class MetricsEngine {
    */
   private buildTimeSeriesSQL(appliedFilters: any, metric: MetricDefinition): string {
     const baseTable = metric.query.table
-    // Determine the correct date field for the base table
-    const dateField = baseTable === 'dials' ? 'date_called' : 'date_booked_for'
+    // Use denormalized local columns for timezone-correct grouping
+    const dateFieldRaw = 'local_date'
 
     // Build WHERE conditions for the base table including metric-specific conditions
     const whereClauseWithMetric = buildWhereClause(appliedFilters, metric.query.where)
-    const qualifiedDateField = `${baseTable}.${dateField}`
+    const qualifiedDateField = `${baseTable}.${dateFieldRaw}`
     const qualifiedConditions = whereClauseWithMetric
       .replace('WHERE ', '')
-      .replace(new RegExp(`\\b${dateField}\\b`, 'g'), qualifiedDateField)
+      .replace(new RegExp(`\\b${dateFieldRaw}\\b`, 'g'), qualifiedDateField)
       // Qualify bare account_id but do NOT touch the $account_id placeholder
       .replace(/(?<!\$)\baccount_id\b/g, `${baseTable}.account_id`)
 
@@ -185,18 +185,18 @@ export class MetricsEngine {
     switch (aggregationLevel) {
       case 'month':
         dateSeriesInterval = "'1 month'::interval"
-        dateGrouping = `DATE_TRUNC('month', ${qualifiedDateField})`
+        dateGrouping = `${baseTable}.local_month`
         dateDisplay = "TO_CHAR(date_series.date, 'Mon YYYY') as date"
         break
       case 'week':
         dateSeriesInterval = "'1 week'::interval"
-        dateGrouping = `DATE_TRUNC('week', ${qualifiedDateField})`
+        dateGrouping = `${baseTable}.local_week`
         dateDisplay = "TO_CHAR(date_series.date, 'YYYY-\"W\"WW') as date"
         break
       case 'day':
       default:
         dateSeriesInterval = "'1 day'::interval"
-        dateGrouping = `DATE(${qualifiedDateField})`
+        dateGrouping = `${baseTable}.local_date`
         dateDisplay = "TO_CHAR(date_series.date, 'Mon DD') as date"
         break
     }
@@ -222,7 +222,7 @@ export class MetricsEngine {
         COALESCE(${valueExpr}, 0) as value
       FROM date_series
       LEFT JOIN ${baseTable} ON (
-        DATE_TRUNC('${aggregationLevel}', ${qualifiedDateField}) = date_series.date
+        ${dateGrouping} = date_series.date
         ${qualifiedConditions ? ` AND (${qualifiedConditions})` : ''}
       )
       GROUP BY date_series.date
