@@ -1,19 +1,20 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { DateRangePicker } from "@/components/ui/date-range-picker";
-import { MultiSelect, MultiSelectOption } from "@/components/ui/multi-select";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { X, Filter } from "lucide-react";
-import { useDashboardStore } from "@/lib/dashboard/store";
-import { DateRange } from "react-day-picker";
-import { cn } from "@/lib/utils";
-import { useEffect, useMemo, useState } from "react";
-import { useAuth } from "@/hooks/useAuth";
+import { useEffect, useMemo, useState } from 'react'
+import { cn } from '@/lib/utils'
+import { useDashboardStore } from '@/lib/dashboard/store'
+import { DateRangePicker } from '@/components/ui/date-range-picker'
+import { MultiSelect, type MultiSelectOption } from '@/components/ui/multi-select'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Separator } from '@/components/ui/separator'
+import { Filter, SlidersHorizontal, X } from 'lucide-react'
+import { useAuth } from '@/hooks/useAuth'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import type { DateRange } from 'react-day-picker'
 
 interface GlobalFiltersProps {
-  className?: string;
+  className?: string
 }
 
 type Candidate = { id: string; name: string | null; invited: boolean }
@@ -33,8 +34,9 @@ export function GlobalFilters({ className }: GlobalFiltersProps) {
   const [setterOptions, setSetterOptions] = useState<MultiSelectOption[]>([])
   const { selectedAccountId } = useAuth()
 
-  // Advanced filter options (loaded lazily from data)
+  // Advanced filter options (loaded on modal open)
   const [advOptions, setAdvOptions] = useState<KeyedOptions>({})
+  const [advOpen, setAdvOpen] = useState(false)
 
   // UI state to represent "All" selection without polluting store filters
   const [repAll, setRepAll] = useState<boolean>(!Array.isArray(filters.repIds) || (filters.repIds?.length ?? 0) === 0)
@@ -51,7 +53,6 @@ export function GlobalFilters({ className }: GlobalFiltersProps) {
           label: `${c.name || 'Unknown'}${c.invited ? '' : ' (uninvited)'}`,
           group: groupLabel,
         })
-        // Build options with explicit "All" at the top
         setRepOptions([
           { value: ALL_REPS, label: 'All Reps (default)', group: 'Quick Select' },
           ...(json.reps || []).map((c: Candidate) => toOption(c, c.invited ? 'Reps' : 'Reps • Uninvited')),
@@ -65,8 +66,12 @@ export function GlobalFilters({ className }: GlobalFiltersProps) {
       }
     }
 
+    loadCandidates()
+  }, [selectedAccountId])
+
+  useEffect(() => {
     const loadAdvancedOptions = async () => {
-      if (!selectedAccountId) return
+      if (!selectedAccountId || !advOpen) return
       try {
         const r = await fetch(`/api/metrics/options?accountId=${encodeURIComponent(selectedAccountId)}`)
         const data = await r.json()
@@ -82,9 +87,8 @@ export function GlobalFilters({ className }: GlobalFiltersProps) {
       }
     }
 
-    loadCandidates()
     loadAdvancedOptions()
-  }, [selectedAccountId])
+  }, [selectedAccountId, advOpen])
   
   const handleDateChange = (dateRange: DateRange | undefined) => {
     setFilters({
@@ -171,43 +175,81 @@ export function GlobalFilters({ className }: GlobalFiltersProps) {
           className="w-[220px]"
         />
 
-        {/* UTM/Attribution filters */}
-        <Separator orientation="vertical" className="h-6" />
-        <MultiSelect
-          options={advOptions.utm_source || []}
-          selected={(filters as any).utm_source || []}
-          onChange={onAdvChange('utm_source' as any)}
-          placeholder="All UTM Sources"
-          className="w-[220px]"
-        />
-        <MultiSelect
-          options={advOptions.utm_medium || []}
-          selected={(filters as any).utm_medium || []}
-          onChange={onAdvChange('utm_medium' as any)}
-          placeholder="All UTM Mediums"
-          className="w-[220px]"
-        />
-        <MultiSelect
-          options={advOptions.utm_campaign || []}
-          selected={(filters as any).utm_campaign || []}
-          onChange={onAdvChange('utm_campaign' as any)}
-          placeholder="All Campaigns"
-          className="w-[220px]"
-        />
-        <MultiSelect
-          options={advOptions.source_category || []}
-          selected={(filters as any).source_category || []}
-          onChange={onAdvChange('source_category' as any)}
-          placeholder="All Categories"
-          className="w-[220px]"
-        />
-        <MultiSelect
-          options={advOptions.specific_source || []}
-          selected={(filters as any).specific_source || []}
-          onChange={onAdvChange('specific_source' as any)}
-          placeholder="All Sources"
-          className="w-[220px]"
-        />
+        {/* Advanced Filters Modal Trigger */}
+        <Dialog open={advOpen} onOpenChange={setAdvOpen}>
+          <DialogTrigger asChild>
+            <Button variant="outline" className="gap-2">
+              <SlidersHorizontal className="h-4 w-4" /> Advanced Filters
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-3xl">
+            <DialogHeader>
+              <DialogTitle>Advanced Filters</DialogTitle>
+            </DialogHeader>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+              <MultiSelect
+                options={advOptions.utm_source || []}
+                selected={(filters as any).utm_source || []}
+                onChange={onAdvChange('utm_source' as any)}
+                placeholder="All UTM Sources"
+              />
+              <MultiSelect
+                options={advOptions.utm_medium || []}
+                selected={(filters as any).utm_medium || []}
+                onChange={onAdvChange('utm_medium' as any)}
+                placeholder="All UTM Mediums"
+              />
+              <MultiSelect
+                options={advOptions.utm_campaign || []}
+                selected={(filters as any).utm_campaign || []}
+                onChange={onAdvChange('utm_campaign' as any)}
+                placeholder="All Campaigns"
+              />
+              <MultiSelect
+                options={advOptions.utm_content || []}
+                selected={(filters as any).utm_content || []}
+                onChange={onAdvChange('utm_content' as any)}
+                placeholder="All UTM Content"
+              />
+              <MultiSelect
+                options={advOptions.utm_term || []}
+                selected={(filters as any).utm_term || []}
+                onChange={onAdvChange('utm_term' as any)}
+                placeholder="All UTM Terms"
+              />
+              <MultiSelect
+                options={advOptions.utm_id || []}
+                selected={(filters as any).utm_id || []}
+                onChange={onAdvChange('utm_id' as any)}
+                placeholder="All UTM IDs"
+              />
+              <MultiSelect
+                options={advOptions.source_category || []}
+                selected={(filters as any).source_category || []}
+                onChange={onAdvChange('source_category' as any)}
+                placeholder="All Categories"
+              />
+              <MultiSelect
+                options={advOptions.specific_source || []}
+                selected={(filters as any).specific_source || []}
+                onChange={onAdvChange('specific_source' as any)}
+                placeholder="All Sources"
+              />
+              <MultiSelect
+                options={advOptions.session_source || []}
+                selected={(filters as any).session_source || []}
+                onChange={onAdvChange('session_source' as any)}
+                placeholder="All Session Sources"
+              />
+              <MultiSelect
+                options={advOptions.referrer || []}
+                selected={(filters as any).referrer || []}
+                onChange={onAdvChange('referrer' as any)}
+                placeholder="All Referrers"
+              />
+            </div>
+          </DialogContent>
+        </Dialog>
 
         <div className="flex-1" />
         
