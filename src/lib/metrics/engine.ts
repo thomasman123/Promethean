@@ -171,7 +171,8 @@ export class MetricsEngine {
     const qualifiedConditions = whereClauseWithMetric
       .replace('WHERE ', '')
       .replace(new RegExp(`\\b${dateField}\\b`, 'g'), qualifiedDateField)
-      .replace(new RegExp(`\\baccount_id\\b`, 'g'), `${baseTable}.account_id`)
+      // Qualify bare account_id but do NOT touch the $account_id placeholder
+      .replace(/(?<!\$)\baccount_id\b/g, `${baseTable}.account_id`)
 
     // Determine aggregation level based on date range
     const aggregationLevel = this.determineTimeAggregation(appliedFilters)
