@@ -26,7 +26,35 @@ export async function GET(request: NextRequest) {
 		const { data: { session } } = await supabase.auth.getSession()
 		if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-		// Query aggregated distincts per table (minimizes round-trips)
+		// Optional: current selections to intersect results
+		const selected: Record<string, string[] | undefined> = {
+			utm_source: url.searchParams.getAll('utm_source'),
+			utm_medium: url.searchParams.getAll('utm_medium'),
+			utm_campaign: url.searchParams.getAll('utm_campaign'),
+			source_category: url.searchParams.getAll('source_category'),
+			specific_source: url.searchParams.getAll('specific_source'),
+			session_source: url.searchParams.getAll('session_source'),
+			referrer: url.searchParams.getAll('referrer'),
+		}
+		Object.keys(selected).forEach(k => { if (!selected[k]?.length) selected[k] = undefined })
+
+		// Build dynamic WHERE based on selected filters
+		const buildWhere = (table: string) => {
+			const clauses: string[] = [`account_id = '${accountId}'`]
+			const add = (col: string, vals?: string[]) => {
+				if (vals && vals.length) clauses.push(`${col} = ANY('{${vals.map(v => v.replace(/'/g, "''")).join(',')}}')`)
+			}
+			add('utm_source', selected.utm_source)
+			add('utm_medium', selected.utm_medium)
+			add('utm_campaign', selected.utm_campaign)
+			add('source_category', selected.source_category)
+			add('specific_source', selected.specific_source)
+			add('session_source', selected.session_source)
+			add('contact_referrer', selected.referrer)
+			return clauses.join(' AND ')
+		}
+
+		// Aggregates per table scoped by current selections
 		const apptSelect = [
 			'array_remove(array_agg(distinct utm_source), null) as utm_source',
 			'array_remove(array_agg(distinct utm_medium), null) as utm_medium',
@@ -57,9 +85,40 @@ export async function GET(request: NextRequest) {
 		].join(', ')
 
 		const [aRes, dRes, dlRes] = await Promise.all([
-			supabase.from('appointments').select(apptSelect).eq('account_id', accountId).maybeSingle(),
-			supabase.from('discoveries').select(discSelect).eq('account_id', accountId).maybeSingle(),
-			supabase.from('dials').select(dialSelect).eq('account_id', accountId).maybeSingle(),
+			(async () => {
+				let q = supabase.from('appointments').select(apptSelect)
+				  .eq('account_id', accountId)
+				if (selected.utm_source) q = q.in('utm_source', selected.utm_source)
+				if (selected.utm_medium) q = q.in('utm_medium', selected.utm_medium)
+				if (selected.utm_campaign) q = q.in('utm_campaign', selected.utm_campaign)
+				if (selected.source_category) q = q.in('source_category', selected.source_category)
+				if (selected.specific_source) q = q.in('specific_source', selected.specific_source)
+				if (selected.session_source) q = q.in('session_source', selected.session_source)
+				if (selected.referrer) q = q.in('contact_referrer', selected.referrer)
+				return q.maybeSingle()
+			})(),
+			(async () => {
+				let q = supabase.from('discoveries').select(discSelect)
+				  .eq('account_id', accountId)
+				if (selected.utm_source) q = q.in('utm_source', selected.utm_source)
+				if (selected.utm_medium) q = q.in('utm_medium', selected.utm_medium)
+				if (selected.utm_campaign) q = q.in('utm_campaign', selected.utm_campaign)
+				if (selected.source_category) q = q.in('source_category', selected.source_category)
+				if (selected.specific_source) q = q.in('specific_source', selected.specific_source)
+				if (selected.session_source) q = q.in('session_source', selected.session_source)
+				if (selected.referrer) q = q.in('contact_referrer', selected.referrer)
+				return q.maybeSingle()
+			})(),
+			(async () => {
+				let q = supabase.from('dials').select(dialSelect)
+				  .eq('account_id', accountId)
+				if (selected.utm_source) q = q.in('utm_source', selected.utm_source)
+				if (selected.utm_medium) q = q.in('utm_medium', selected.utm_medium)
+				if (selected.utm_campaign) q = q.in('utm_campaign', selected.utm_campaign)
+				if (selected.session_source) q = q.in('session_source', selected.session_source)
+				if (selected.referrer) q = q.in('contact_referrer', selected.referrer)
+				return q.maybeSingle()
+			})(),
 		])
 
 		const aRow = (aRes.data || {}) as AggRow

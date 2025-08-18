@@ -144,7 +144,21 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
           dateRange: { start: formatLocalYMD(startDate), end: formatLocalYMD(endDate) },
           accountId: selectedAccountId,
           repIds: globalFilters.repIds,
-          setterIds: globalFilters.setterIds
+          setterIds: globalFilters.setterIds,
+          utm_source: (globalFilters as any).utm_source,
+          utm_medium: (globalFilters as any).utm_medium,
+          utm_campaign: (globalFilters as any).utm_campaign,
+          utm_content: (globalFilters as any).utm_content,
+          utm_term: (globalFilters as any).utm_term,
+          utm_id: (globalFilters as any).utm_id,
+          source_category: (globalFilters as any).source_category,
+          specific_source: (globalFilters as any).specific_source,
+          session_source: (globalFilters as any).session_source,
+          referrer: (globalFilters as any).referrer,
+          fbclid: (globalFilters as any).fbclid,
+          fbc: (globalFilters as any).fbc,
+          fbp: (globalFilters as any).fbp,
+          gclid: (globalFilters as any).gclid,
         };
 
         // Helper to call metrics API for a single metric name
