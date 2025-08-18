@@ -28,6 +28,28 @@ export default function AccountPage() {
     if (!permissions.canManageAccount) { router.replace('/dashboard'); return }
   }, [user, loading, permissions.canManageAccount, router])
 
+  const [timezone, setTimezone] = React.useState<string>(selectedAccount?.business_timezone || 'UTC')
+  const [savingTz, setSavingTz] = React.useState(false)
+  const allTimezones = React.useMemo(() => [
+    'UTC','America/New_York','America/Chicago','America/Denver','America/Los_Angeles','Europe/London','Europe/Paris','Asia/Tokyo','Australia/Sydney'
+  ], [])
+
+  const saveTimezone = async () => {
+    if (!selectedAccount) return
+    setSavingTz(true)
+    try {
+      const res = await fetch('/api/account/update-timezone', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accountId: selectedAccount.id, timezone })
+      })
+      if (!res.ok) throw new Error(await res.text())
+    } catch (e) {
+      console.warn('Failed to update timezone', e)
+    } finally {
+      setSavingTz(false)
+    }
+  }
+
   if (loading || !user || !permissions.canManageAccount) {
     return (
       <SidebarInset>
@@ -85,12 +107,29 @@ export default function AccountPage() {
         </div>
 
         {selectedAccount && (
-          <div className="bg-muted/30 rounded-lg p-4">
+          <div className="bg-muted/30 rounded-lg p-4 space-y-3">
             <h3 className="font-medium">Current Account</h3>
             <p className="text-sm text-muted-foreground">{selectedAccount.name}</p>
             {selectedAccount.description && (
               <p className="text-xs text-muted-foreground mt-1">{selectedAccount.description}</p>
             )}
+
+            <div className="grid gap-2 md:grid-cols-3 items-end">
+              <div className="md:col-span-2">
+                <label className="text-sm font-medium">Business Timezone</label>
+                <select value={timezone} onChange={(e)=>setTimezone(e.target.value)} className="w-full mt-1 border rounded px-3 py-2 bg-background">
+                  {allTimezones.map(tz => (
+                    <option key={tz} value={tz}>{tz}</option>
+                  ))}
+                </select>
+                <p className="text-xs text-muted-foreground mt-1">Used to compute local dates for metrics and charts.</p>
+              </div>
+              <div>
+                <button onClick={saveTimezone} disabled={savingTz} className="px-3 py-2 rounded bg-primary text-primary-foreground disabled:opacity-50">
+                  {savingTz ? 'Saving…' : 'Save Timezone'}
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
