@@ -19,38 +19,58 @@ export async function linkExistingUsersToData(
     salesRepUserId?: string;
   } = {}
   
+  async function findOrGrantByEmail(email: string): Promise<string | undefined> {
+    const normalized = email.trim()
+    // 1) Try to find existing account access by profile email (case-insensitive)
+    const { data: existingAccess } = await supabase
+      .from('account_access')
+      .select('user_id, profiles!inner(id, email)')
+      .eq('account_id', accountId)
+      .ilike('profiles.email' as any, normalized)
+      .eq('is_active', true)
+      .maybeSingle()
+
+    if (existingAccess?.user_id) return existingAccess.user_id as any
+
+    // 2) Else, try to find a profile by email globally
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('id, email')
+      .ilike('email', normalized)
+      .maybeSingle()
+
+    if (profile?.id) {
+      // Grant access as moderator by default
+      await supabase.rpc('grant_account_access' as any, {
+        p_user_id: profile.id,
+        p_account_id: accountId,
+        p_role: 'moderator',
+        p_granted_by_user_id: null,
+      })
+      return profile.id as any
+    }
+
+    return undefined
+  }
+  
   try {
-    // Process setter - only link if they exist as an app user
+    // Process setter - link or grant
     if (setterEmail) {
-      const { data: existingUserAccess } = await supabase
-        .from('account_access')
-        .select('user_id, profiles!inner(id, email)')
-        .eq('account_id', accountId)
-        .eq('profiles.email', setterEmail)
-        .eq('is_active', true)
-        .single()
-      
-      if (existingUserAccess) {
-        result.setterUserId = existingUserAccess.user_id
-        console.log('✅ Found existing setter user:', setterEmail)
+      const uid = await findOrGrantByEmail(setterEmail)
+      if (uid) {
+        result.setterUserId = uid
+        console.log('✅ Linked/granted setter user:', setterEmail)
       } else {
         console.log('⚠️ Setter not found in app users:', setterName || setterEmail)
       }
     }
 
-    // Process sales rep - only link if they exist as an app user
+    // Process sales rep - link or grant
     if (salesRepEmail) {
-      const { data: existingUserAccess } = await supabase
-        .from('account_access')
-        .select('user_id, profiles!inner(id, email)')
-        .eq('account_id', accountId)
-        .eq('profiles.email', salesRepEmail)
-        .eq('is_active', true)
-        .single()
-      
-      if (existingUserAccess) {
-        result.salesRepUserId = existingUserAccess.user_id
-        console.log('✅ Found existing sales rep user:', salesRepEmail)
+      const uid = await findOrGrantByEmail(salesRepEmail)
+      if (uid) {
+        result.salesRepUserId = uid
+        console.log('✅ Linked/granted sales rep user:', salesRepEmail)
       } else {
         console.log('⚠️ Sales rep not found in app users:', salesRepName || salesRepEmail)
       }

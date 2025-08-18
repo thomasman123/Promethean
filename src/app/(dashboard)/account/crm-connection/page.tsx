@@ -314,6 +314,25 @@ export default function CRMConnectionPage() {
               </p>
             </div>
 
+            <div className="p-3 border rounded-md flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="font-medium">Backfill Appointment Users</div>
+                  <div className="text-sm text-muted-foreground">Fill missing setter/rep IDs by matching emails/names to app users and granting access if needed.</div>
+                </div>
+                <Button variant="outline" onClick={async ()=>{
+                  try {
+                    const res = await fetch('/api/account/backfill-appointment-users', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accountId: selectedAccountId, limit: 200 }) })
+                    const json = await res.json()
+                    if (!res.ok) throw new Error(json?.error || 'Failed')
+                    alert(`Filled: ${json.filled?.length || 0}\nErrors: ${json.errors?.length || 0}`)
+                  } catch (e:any) {
+                    alert(`Backfill failed: ${e?.message || 'Unknown error'}`)
+                  }
+                }}>Run Backfill</Button>
+              </div>
+            </div>
+
             {loading ? (
               <div className="text-center py-8">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
