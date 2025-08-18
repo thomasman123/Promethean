@@ -34,7 +34,9 @@ export function DateRangePicker({
   date,
   onDateChange,
 }: DateRangePickerProps) {
+  
   const [open, setOpen] = React.useState(false);
+  const containerRef = React.useRef<HTMLDivElement | null>(null);
 
   const quickRanges: Array<{ label: string; get: () => DateRange }> = React.useMemo(() => [
     { label: "Today", get: () => ({ from: startOfDay(new Date()), to: endOfDay(new Date()) }) },
@@ -52,7 +54,7 @@ export function DateRangePicker({
   };
 
   return (
-    <div className={cn("grid gap-2", className)}>
+    <div ref={containerRef} className={cn("grid gap-2", className)}>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
@@ -78,7 +80,7 @@ export function DateRangePicker({
             )}
           </Button>
         </PopoverTrigger>
-        <PopoverContent side="bottom" align="start" sideOffset={8} collisionPadding={12} className="p-0 max-w-[95vw]">
+        <PopoverContent inPortal={false} side="bottom" align="start" sideOffset={8} collisionPadding={12} className="p-0 max-w-full sm:max-w-[95vw]">
           <div className="flex flex-col sm:flex-row">
             <div className="w-full sm:w-40 border-b sm:border-b-0 sm:border-r p-2 space-y-1">
               {quickRanges.map((q) => (

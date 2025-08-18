@@ -18,32 +18,20 @@ interface DateTimePickerProps {
 }
 
 export function DateTimePicker({ value, onChange, placeholder = "Pick date & time", className }: DateTimePickerProps) {
+	
 	const [open, setOpen] = React.useState(false);
-	const initialDate = React.useMemo(() => (value ? new Date(value) : undefined), [value]);
-	const [date, setDate] = React.useState<Date | undefined>(initialDate);
-	const [time, setTime] = React.useState<string>(
-		initialDate ? `${String(initialDate.getHours()).padStart(2, "0")}:${String(initialDate.getMinutes()).padStart(2, "0")}` : ""
-	);
+	const [date, setDate] = React.useState<Date | undefined>(() => (value ? new Date(value) : undefined));
+	const [time, setTime] = React.useState<string>(value ? new Date(value).toISOString().slice(11,16) : "");
 
-	React.useEffect(() => {
-		if (value) {
-			const d = new Date(value);
-			if (!isNaN(d.getTime())) {
-				setDate(d);
-				setTime(`${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`);
-			}
-		}
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [value]);
-
-	const emitChange = (d?: Date, t?: string) => {
+	const emitChange = (d?: Date, tt?: string) => {
 		const dd = d ?? date;
-		const tt = t ?? time;
-		if (dd && tt) {
-			const [hh, mm] = tt.split(":").map((v) => parseInt(v || "0", 10));
-			const composed = new Date(dd);
-			composed.setHours(hh || 0, mm || 0, 0, 0);
-			onChange?.(composed.toISOString());
+		const t = tt ?? time;
+		if (dd && t) {
+			const [hh, mm] = t.split(":");
+			const withTime = new Date(dd);
+			withTime.setHours(Number(hh));
+			withTime.setMinutes(Number(mm));
+			onChange?.(withTime.toISOString());
 		} else if (!dd && !tt) {
 			onChange?.(null);
 		}
@@ -62,7 +50,7 @@ export function DateTimePicker({ value, onChange, placeholder = "Pick date & tim
 						)}
 					</Button>
 				</PopoverTrigger>
-				<PopoverContent className="w-auto p-3" align="start">
+				<PopoverContent inPortal={false} className="w-auto p-3" align="start">
 					<div className="grid gap-3">
 						<Calendar mode="single" selected={date} onSelect={(d) => { setDate(d); emitChange(d, undefined); }} initialFocus />
 						<div className="grid gap-2">
