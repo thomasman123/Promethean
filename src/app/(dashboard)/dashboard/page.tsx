@@ -128,8 +128,8 @@ export default function DashboardPage() {
   return (
     <div className="flex flex-col min-h-screen">
       {/* Sticky Controls under breadcrumb header, outside scroll area */}
-      <div className="sticky top-16 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
-        <div className="flex items-center gap-3 p-4">
+      <div className="sticky top-16 z-40 bg-background border-b shadow-sm">
+        <div className="flex items-center gap-3 px-4 py-3">
           <GlobalFilters className="p-0 border-0" />
           <div className="ml-auto flex items-center gap-2">
             <ViewsManager />
@@ -142,7 +142,7 @@ export default function DashboardPage() {
       </div>
         
       {/* Dashboard Grid */}
-      <div className="flex-1 bg-muted/40">
+      <div className="flex-1 bg-muted/40 rounded-tl-xl">
         {widgets.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full">
             <div className="text-center">
