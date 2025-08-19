@@ -127,15 +127,10 @@ export default function DashboardPage() {
   
   return (
     <div className="flex flex-col h-screen overflow-hidden">
-      {/* Header */}
-      <div className="flex items-center justify-between p-6 border-b">
-        <div>
-          <h1 className="text-2xl font-bold">Metrics Dashboard</h1>
-          <p className="text-muted-foreground">
-            Track and analyze your team's performance
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
+      {/* Top Controls: Filters + Views + Add Widget */}
+      <div className="flex items-center gap-3 p-4 border-b">
+        <GlobalFilters className="p-0 border-0" />
+        <div className="ml-auto flex items-center gap-2">
           <ViewsManager />
           <Button onClick={() => setAddWidgetModalOpen(true)} className="gap-2">
             <Plus className="h-4 w-4" />
@@ -143,9 +138,6 @@ export default function DashboardPage() {
           </Button>
         </div>
       </div>
-      
-      {/* Global Filters */}
-      <GlobalFilters />
       
       {/* Dashboard Grid */}
       <div className="flex-1 overflow-auto bg-muted/40">

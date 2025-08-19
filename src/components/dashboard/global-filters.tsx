@@ -178,9 +178,9 @@ export function GlobalFilters({ className }: GlobalFiltersProps) {
   const uiSetterSelected = setterAll ? [ALL_SETTERS] : (filters.setterIds || [])
 
   return (
-    <div className={cn("flex flex-col gap-4 p-4 border-b", className)}>
+    <div className={cn("flex flex-col gap-3", className)}>
       {/* Main Filter Bar */}
-      <div className="flex flex-wrap items-center gap-4">
+      <div className="flex flex-wrap items-center gap-3">
         {/* Date Range Picker */}
         <DateRangePicker
           date={{
@@ -209,8 +209,7 @@ export function GlobalFilters({ className }: GlobalFiltersProps) {
           placeholder="All setters"
           className="w-[220px]"
         />
-
-        {/* Advanced Filters Modal Trigger */}
+        {/* Advanced Filters Modal Trigger (disabled) */}
         {/**
          * Advanced Filters temporarily disabled
          * <Dialog open={advOpen} onOpenChange={setAdvOpen}>
@@ -303,27 +302,6 @@ export function GlobalFilters({ className }: GlobalFiltersProps) {
          *   </DialogContent>
          * </Dialog>
          */}
-
-        <div className="flex-1" />
-        
-        {/* Active Filters Display */}
-        {activeFilterCount > 0 && (
-          <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-muted-foreground" />
-            <Badge variant="secondary">
-              {activeFilterCount} active
-            </Badge>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => { clearFilters(); setRepAll(true); setSetterAll(true); }}
-              className="h-6 px-2"
-            >
-              <X className="h-3 w-3" />
-              Clear
-            </Button>
-          </div>
-        )}
       </div>
     </div>
   );
