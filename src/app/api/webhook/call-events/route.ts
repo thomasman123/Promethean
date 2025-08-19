@@ -576,8 +576,47 @@ async function processPhoneCallWebhook(payload: any) {
       ip_address: attributionSource?.ip || null,
       attribution_data: attributionSource ? JSON.stringify(attributionSource) : null,
       last_attribution_data: lastAttributionSource ? JSON.stringify(lastAttributionSource) : null,
-    };
-    
+    } as any;
+
+    // Upsert/link contact and set contact_id on dial
+    try {
+      const contactUpsert = {
+        account_id: account.id,
+        ghl_contact_id: payload.contactId || null,
+        first_name: contactName?.split(' ')?.[0] || null,
+        last_name: contactName?.split(' ')?.slice(1).join(' ') || null,
+        name: contactName || null,
+        email: contactEmail || null,
+        phone: contactPhone || null,
+        source: contactSource || null,
+        attribution_source: dialAttrSource || null,
+        last_attribution_source: dialLastAttrSource || null,
+      }
+      if (contactUpsert.ghl_contact_id || contactUpsert.email || contactUpsert.phone) {
+        const { data: up } = await supabase
+          .from('contacts')
+          .upsert(contactUpsert, { onConflict: 'account_id,ghl_contact_id' })
+          .select('id')
+          .maybeSingle()
+        if (up?.id) {
+          dialData.contact_id = up.id
+        } else {
+          // fallback by identity
+          const { data: byIdentity } = await supabase
+            .from('contacts')
+            .select('id')
+            .eq('account_id', account.id)
+            .or([
+              contactEmail ? `email.eq.${contactEmail}` : '',
+              contactPhone ? `phone.eq.${contactPhone}` : ''
+            ].filter(Boolean).join(','))
+            .order('updated_at', { ascending: false })
+            .limit(1)
+          if (byIdentity && byIdentity.length > 0) dialData.contact_id = byIdentity[0].id
+        }
+      }
+    } catch {}
+
     console.log('💾 Saving dial data:', {
       ...dialData,
       setter_info: setterName ? { name: setterName, email: setterEmail } : null
@@ -1496,9 +1535,29 @@ async function processAppointmentWebhook(payload: any) {
         }
       }
 
+      // Resolve contact_id for appointment
+      let appointmentContactId: string | null = null
+      try {
+        const up = await supabase
+          .from('contacts')
+          .upsert({
+            account_id: account.id,
+            ghl_contact_id: payload.appointment?.contactId || contactData?.id || null,
+            name: appointmentData.contact_name || null,
+            email: appointmentData.email || null,
+            phone: appointmentData.phone || null,
+          }, { onConflict: 'account_id,ghl_contact_id' })
+          .select('id')
+          .maybeSingle()
+        appointmentContactId = up?.data?.id || null
+      } catch {}
+
       const { data: savedAppointment, error: saveError } = await supabase
         .from('appointments')
-        .insert(appointmentData)
+        .insert({
+          ...appointmentData,
+          contact_id: appointmentContactId,
+        })
         .select()
         .single();
       
@@ -1757,9 +1816,29 @@ async function processAppointmentWebhook(payload: any) {
         }
       }
 
+      // Resolve contact_id for discovery
+      let discoveryContactId: string | null = null
+      try {
+        const up = await supabase
+          .from('contacts')
+          .upsert({
+            account_id: account.id,
+            ghl_contact_id: payload.appointment?.contactId || contactData?.id || null,
+            name: discoveryData.contact_name || null,
+            email: discoveryData.email || null,
+            phone: discoveryData.phone || null,
+          }, { onConflict: 'account_id,ghl_contact_id' })
+          .select('id')
+          .maybeSingle()
+        discoveryContactId = up?.data?.id || null
+      } catch {}
+
       const { data: savedDiscovery, error: saveError } = await supabase
         .from('discoveries')
-        .insert(discoveryData)
+        .insert({
+          ...discoveryData,
+          contact_id: discoveryContactId,
+        })
         .select()
         .single();
       

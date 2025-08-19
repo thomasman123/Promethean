@@ -275,6 +275,22 @@ export async function POST(request: NextRequest) {
           ghl_source: fullAppointment?.createdBy?.source || fullAppointment?.source || null,
         }
 
+        // Resolve contact_id and include in updates
+        try {
+          const up = await supabase
+            .from('contacts')
+            .upsert({
+              account_id: row.account_id,
+              ghl_contact_id: fullAppointment?.contactId || contactData?.id || null,
+              name: row.contact_name || null,
+              email: row.email || null,
+              phone: row.phone || null,
+            }, { onConflict: 'account_id,ghl_contact_id' })
+            .select('id')
+            .maybeSingle()
+          if (up?.data?.id) updates.contact_id = up.data.id
+        } catch {}
+
         await supabase
           .from('appointments')
           .update(updates)
