@@ -111,19 +111,58 @@ export async function POST(request: NextRequest) {
 		const accessToken = await getValidGhlAccessToken(account, supabase)
 		if (!accessToken) return NextResponse.json({ error: 'No valid GHL access token available' }, { status: 400 })
 
-		const headers: Record<string, string> = {
+		const baseHeaders: Record<string, string> = {
 			Authorization: `Bearer ${accessToken}`,
 			Version: '2021-07-28',
 			Accept: 'application/json',
 		}
-		if (account.ghl_location_id) headers['Location'] = account.ghl_location_id
+		const locationId = account.ghl_location_id || ''
 
-		// Pagination through contacts
+		// Helper to fetch a contacts page with multiple strategies
+		const fetchContactsPage = async (page: number, pageLimit: number, useLocationId?: string) => {
+			const headers = { ...baseHeaders }
+			if (useLocationId) headers['Location'] = useLocationId
+
+			const qs = new URLSearchParams({ page: String(page), limit: String(pageLimit) })
+			if (since) qs.set('dateUpdated[gt]', since)
+
+			// 1) Try location path if we have a locationId
+			if (useLocationId) {
+				const pathUrl = `https://services.leadconnectorhq.com/locations/${encodeURIComponent(useLocationId)}/contacts/?${qs.toString()}`
+				const resp1 = await fetch(pathUrl, { headers })
+				if (resp1.ok) return resp1
+				if (![403, 422, 404].includes(resp1.status)) return resp1
+			}
+
+			// 2) Try generic endpoint with Location header
+			const genericUrl = `https://services.leadconnectorhq.com/contacts/?${qs.toString()}`
+			let resp2 = await fetch(genericUrl, { headers })
+			if (resp2.ok) return resp2
+
+			// 3) Try generic with explicit query locationId
+			const withQuery = new URL('https://services.leadconnectorhq.com/contacts/')
+			withQuery.searchParams.set('page', String(page))
+			withQuery.searchParams.set('limit', String(pageLimit))
+			if (since) withQuery.searchParams.set('dateUpdated[gt]', since)
+			if (useLocationId) withQuery.searchParams.set('locationId', useLocationId)
+			const resp3 = await fetch(withQuery.toString(), { headers: baseHeaders })
+			return resp3
+		}
+
+		// Discover a valid location if current one fails
+		const discoverLocation = async () => {
+			const resp = await fetch('https://services.leadconnectorhq.com/locations', { headers: baseHeaders })
+			if (!resp.ok) return null
+			const data = await resp.json().catch(() => ({}))
+			const locations: Array<{ id: string; name?: string }> = data.locations || data.data || []
+			return locations
+		}
+
 		let totalFetched = 0
 		let insertedOrUpdated = 0
 		let page = 1
 		let hasMore = true
-		const pageLimit = Math.min(200, Math.max(10, Math.floor(limit / 5))) // chunk requests
+		const pageLimit = Math.min(100, Math.max(10, Math.floor(limit / 5)))
 
 		const mapContact = (c: any) => {
 			const firstName = c.firstName || null
@@ -159,18 +198,38 @@ export async function POST(request: NextRequest) {
 			return { count: batch.length }
 		}
 
-		while (hasMore && totalFetched < limit) {
-			const url = new URL('https://services.leadconnectorhq.com/contacts/');
-			url.searchParams.set('page', String(page))
-			url.searchParams.set('limit', String(pageLimit))
-			if (since) url.searchParams.set('dateUpdated[gt]', since)
+		let activeLocationId = locationId || ''
+		let triedDiscovery = false
 
-			const resp = await fetch(url.toString(), { headers })
+		while (hasMore && totalFetched < limit) {
+			let resp = await fetchContactsPage(page, pageLimit, activeLocationId || undefined)
+			if (!resp.ok && (resp.status === 403 || resp.status === 422 || resp.status === 404)) {
+				// Try discovering a valid location and retry once
+				if (!triedDiscovery) {
+					triedDiscovery = true
+					const locations = await discoverLocation()
+					if (Array.isArray(locations) && locations.length > 0) {
+						for (const loc of locations) {
+							const tryResp = await fetchContactsPage(page, pageLimit, loc.id)
+							if (tryResp.ok) {
+								resp = tryResp
+								if (loc.id !== activeLocationId) {
+									await supabase.from('accounts').update({ ghl_location_id: loc.id }).eq('id', accountId)
+									activeLocationId = loc.id
+								}
+								break
+							}
+						}
+					}
+				}
+			}
+
 			if (!resp.ok) {
 				const text = await resp.text().catch(() => '')
-				return NextResponse.json({ error: `GHL contacts fetch failed ${resp.status}`, details: text }, { status: 502 })
+				return NextResponse.json({ error: `GHL contacts fetch failed`, status: resp.status, details: text }, { status: 502 })
 			}
-			const data = await resp.json()
+
+			const data = await resp.json().catch(() => ({}))
 			const list: any[] = data.contacts || data.items || data.data || []
 			hasMore = Boolean(data.hasMore) || (Array.isArray(list) && list.length === pageLimit)
 			totalFetched += list.length
