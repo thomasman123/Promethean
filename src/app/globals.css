@@ -132,3 +132,9 @@
     scrollbar-gutter: stable both-edges;
   }
 }
+
+/* Ensure dashboard sticky sub-bar sticks to the scroll container by preventing
+   react-grid-layout from creating its own scrolling context. */
+.layout {
+  overflow: visible !important;
+}
