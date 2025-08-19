@@ -128,7 +128,7 @@ export default function DashboardPage() {
   return (
     <div className="flex flex-col h-screen overflow-hidden">
       {/* Top Controls: Filters + Views + Add Widget */}
-      <div className="flex items-center gap-3 p-4 border-b">
+      <div className="sticky top-16 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 flex items-center gap-3 p-4 border-b">
         <GlobalFilters className="p-0 border-0" />
         <div className="ml-auto flex items-center gap-2">
           <ViewsManager />
