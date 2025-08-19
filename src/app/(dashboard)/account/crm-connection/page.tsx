@@ -124,6 +124,22 @@ export default function CRMConnectionPage() {
     }
   }
 
+  async function syncContacts() {
+		try {
+			const res = await fetch('/api/ghl/contacts', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ accountId: selectedAccountId }),
+			})
+			const data = await res.json()
+			// eslint-disable-next-line no-alert
+			alert(res.ok ? `Synced ${data.insertedOrUpdated} contacts` : `Failed: ${data.error}`)
+		} catch (e: any) {
+			// eslint-disable-next-line no-alert
+			alert(e?.message || 'Error')
+		}
+	}
+
   if (!permissions.canManageAccount) {
     return (
       <div className="flex items-center justify-center min-h-96">
@@ -338,6 +354,9 @@ export default function CRMConnectionPage() {
                 </div>
               </CardContent>
             </Card>
+            <div className="flex gap-2">
+				<Button onClick={syncContacts}>Sync Contacts</Button>
+			</div>
           </div>
         )}
       </div>

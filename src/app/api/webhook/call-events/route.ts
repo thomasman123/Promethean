@@ -279,6 +279,46 @@ export async function POST(request: NextRequest) {
           { status: 500 }
         );
       }
+    }
+    // Process ContactCreate webhooks
+    else if (payload.type === 'ContactCreate') {
+      console.log('👤 Processing contact creation webhook')
+      try {
+        await processContactUpsertWebhook(payload)
+        if (webhookId) {
+          processedWebhookIds.add(webhookId)
+          if (processedWebhookIds.size > 1000) {
+            const idsArray = Array.from(processedWebhookIds)
+            const toKeep = idsArray.slice(-800)
+            processedWebhookIds.clear()
+            toKeep.forEach(id => processedWebhookIds.add(id))
+          }
+        }
+        return NextResponse.json({ message: 'Contact create processed' })
+      } catch (e) {
+        console.error('Failed to process contact create:', e)
+        return NextResponse.json({ error: 'Failed to process contact create' }, { status: 500 })
+      }
+    }
+    // Process ContactUpdate webhooks
+    else if (payload.type === 'ContactUpdate') {
+      console.log('📝 Processing contact update webhook')
+      try {
+        await processContactUpsertWebhook(payload)
+        if (webhookId) {
+          processedWebhookIds.add(webhookId)
+          if (processedWebhookIds.size > 1000) {
+            const idsArray = Array.from(processedWebhookIds)
+            const toKeep = idsArray.slice(-800)
+            processedWebhookIds.clear()
+            toKeep.forEach(id => processedWebhookIds.add(id))
+          }
+        }
+        return NextResponse.json({ message: 'Contact update processed' })
+      } catch (e) {
+        console.error('Failed to process contact update:', e)
+        return NextResponse.json({ error: 'Failed to process contact update' }, { status: 500 })
+      }
     } else {
       console.log('📋 Non-supported webhook received:', {
         type: payload.type,
@@ -2062,3 +2102,82 @@ export async function GET(request: NextRequest) {
     timestamp: new Date().toISOString()
   });
 } 
+
+async function processContactUpsertWebhook(payload: any) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+  const supabase = createClient(supabaseUrl, serviceKey)
+
+  const locationId = payload.locationId || payload.location_id
+  if (!locationId) {
+    console.warn('Contact webhook missing locationId')
+    return
+  }
+
+  // Find account
+  const { data: account } = await supabase
+    .from('accounts')
+    .select('id, name, ghl_api_key')
+    .eq('ghl_location_id', locationId)
+    .single()
+
+  let resolvedAccount: any = account
+  if (!resolvedAccount) {
+    console.warn('Contact webhook for unknown location:', locationId)
+    const recovered = await tryRecoverLocationId(supabase, locationId)
+    if (!recovered) return
+    resolvedAccount = recovered
+  }
+
+  const accountId: string = resolvedAccount.id as string
+
+  // Prefer fetching the full contact from API for consistency
+  let contact: any = null
+  try {
+    const contactId = payload.contactId || payload.id || payload.contact?.id
+    if (contactId && account?.ghl_api_key) {
+      const resp = await fetch(`https://services.leadconnectorhq.com/contacts/${contactId}`, {
+        headers: {
+          'Authorization': `Bearer ${account.ghl_api_key}`,
+          'Version': '2021-07-28',
+        },
+      })
+      if (resp.ok) {
+        const json = await resp.json()
+        contact = json.contact || json
+      }
+    }
+  } catch (e) {
+    console.warn('Fetch contact by id failed, will fallback to payload mapping')
+  }
+
+  const c = contact || payload.contact || payload
+  if (!c) return
+
+  const firstName = c.firstName || null
+  const lastName = c.lastName || null
+  const name = c.name || [firstName, lastName].filter(Boolean).join(' ') || null
+
+  const row = {
+    account_id: accountId,
+    ghl_contact_id: c.id,
+    first_name: firstName,
+    last_name: lastName,
+    name,
+    email: c.email || null,
+    phone: c.phone || null,
+    source: c.source || null,
+    timezone: c.timezone || null,
+    assigned_to: c.assignedTo || null,
+    date_added: c.dateAdded ? new Date(c.dateAdded).toISOString() : null,
+    date_updated: c.dateUpdated ? new Date(c.dateUpdated).toISOString() : null,
+    tags: Array.isArray(c.tags) ? c.tags : [],
+    attribution_source: c.attributionSource || null,
+    last_attribution_source: c.lastAttributionSource || null,
+    custom_fields: c.customFields || c.customField || null,
+  }
+
+  await supabase
+    .from('contacts')
+    .upsert(row, { onConflict: 'account_id,ghl_contact_id' })
+}

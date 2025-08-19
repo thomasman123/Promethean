@@ -47,21 +47,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Missing location ID for account' }, { status: 400 })
     }
 
+    const events = ['OutboundMessage', 'AppointmentCreate', 'AppointmentUpdate', 'AppointmentDelete', 'ContactCreate', 'ContactUpdate']
+
     const webhookAttempts = [
       {
         name: 'Location-based endpoint',
         url: `https://services.leadconnectorhq.com/locations/${locationId}/webhooks`,
-        body: { url: target, events: ['OutboundMessage', 'AppointmentCreate', 'AppointmentUpdate', 'AppointmentDelete'] }
+        body: { url: target, events }
       },
       {
         name: 'V2 webhooks with locationId',
         url: 'https://services.leadconnectorhq.com/v2/webhooks',
-        body: { locationId, url: target, events: ['OutboundMessage', 'AppointmentCreate', 'AppointmentUpdate', 'AppointmentDelete'] }
+        body: { locationId, url: target, events }
       },
       {
         name: 'V1 webhooks endpoint', 
         url: 'https://services.leadconnectorhq.com/webhooks',
-        body: { locationId, url: target, events: ['OutboundMessage', 'AppointmentCreate', 'AppointmentUpdate', 'AppointmentDelete'] }
+        body: { locationId, url: target, events }
       }
     ]
 
