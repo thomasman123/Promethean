@@ -75,7 +75,8 @@ export async function POST(request: NextRequest) {
 		const body = await request.json().catch(() => ({}))
 		const accountId: string | undefined = body.accountId
 		const since: string | undefined = body.since // ISO string optional for incremental
-		const limit: number = Math.min(5000, Math.max(1, Number(body.limit) || 1000))
+		const rawLimit = Number(body.limit)
+		const maxTotal: number = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(100000, rawLimit) : 100000
 		const dryRun: boolean = Boolean(body.dryRun)
 
 		if (!accountId) return NextResponse.json({ error: 'accountId required' }, { status: 400 })
@@ -162,7 +163,7 @@ export async function POST(request: NextRequest) {
 		let insertedOrUpdated = 0
 		let page = 1
 		let hasMore = true
-		const pageLimit = Math.min(100, Math.max(10, Math.floor(limit / 5)))
+		const pageLimit = Math.min(100, Math.max(10, Math.floor(((maxTotal || 1000) as number) / 5)))
 
 		const mapContact = (c: any) => {
 			const firstName = c.firstName || null
@@ -201,7 +202,7 @@ export async function POST(request: NextRequest) {
 		let activeLocationId = locationId || ''
 		let triedDiscovery = false
 
-		while (hasMore && totalFetched < limit) {
+		while (hasMore && totalFetched < maxTotal) {
 			let resp = await fetchContactsPage(page, pageLimit, activeLocationId || undefined)
 			if (!resp.ok && (resp.status === 403 || resp.status === 422 || resp.status === 404)) {
 				// Try discovering a valid location and retry once
@@ -244,6 +245,7 @@ export async function POST(request: NextRequest) {
 			accountId,
 			totalFetched,
 			insertedOrUpdated,
+			maxTotal,
 			dryRun,
 		})
 	} catch (e: any) {
