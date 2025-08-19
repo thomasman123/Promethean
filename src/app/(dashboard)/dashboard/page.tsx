@@ -142,23 +142,27 @@ export default function DashboardPage() {
       </div>
         
       {/* Dashboard Grid */}
-      <div className="flex-1 bg-muted/40 rounded-tl-xl">
-        {widgets.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full">
-            <div className="text-center">
-              <h3 className="text-lg font-semibold mb-2">No widgets yet</h3>
-              <p className="text-muted-foreground mb-4">
-                Add your first widget to start tracking metrics
-              </p>
-              <Button onClick={() => setAddWidgetModalOpen(true)} className="gap-2">
-                <Plus className="h-4 w-4" />
-                Add Widget
-              </Button>
-            </div>
+      <div className="flex-1">
+        <div className="px-4">
+          <div className="bg-muted/40 rounded-tl-xl">
+            {widgets.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full p-4">
+                <div className="text-center">
+                  <h3 className="text-lg font-semibold mb-2">No widgets yet</h3>
+                  <p className="text-muted-foreground mb-4">
+                    Add your first widget to start tracking metrics
+                  </p>
+                  <Button onClick={() => setAddWidgetModalOpen(true)} className="gap-2">
+                    <Plus className="h-4 w-4" />
+                    Add Widget
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <DashboardGrid className="p-4" />
+            )}
           </div>
-        ) : (
-          <DashboardGrid className="p-4" />
-        )}
+        </div>
       </div>
        
       {/* Metric Selector Modal */}
