@@ -127,20 +127,21 @@ export default function DashboardPage() {
   
   return (
     <div className="flex flex-col h-screen overflow-hidden">
-      {/* Top Controls: Filters + Views + Add Widget */}
-      <div className="sticky top-16 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 flex items-center gap-3 p-4 border-b">
-        <GlobalFilters className="p-0 border-0" />
-        <div className="ml-auto flex items-center gap-2">
-          <ViewsManager />
-          <Button onClick={() => setAddWidgetModalOpen(true)} className="gap-2">
-            <Plus className="h-4 w-4" />
-            Add Widget
-          </Button>
-        </div>
-      </div>
-      
       {/* Dashboard Grid */}
       <div className="flex-1 overflow-auto bg-muted/40">
+        {/* Sticky Controls inside scroll area */}
+        <div className="sticky top-0 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
+          <div className="flex items-center gap-3 p-4">
+            <GlobalFilters className="p-0 border-0" />
+            <div className="ml-auto flex items-center gap-2">
+              <ViewsManager />
+              <Button onClick={() => setAddWidgetModalOpen(true)} className="gap-2">
+                <Plus className="h-4 w-4" />
+                Add Widget
+              </Button>
+            </div>
+          </div>
+        </div>
         {widgets.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full">
             <div className="text-center">
