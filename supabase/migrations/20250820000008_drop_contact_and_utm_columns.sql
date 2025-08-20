@@ -3,6 +3,7 @@
 -- Drop dependent views first
 DROP VIEW IF EXISTS source_attribution_summary;
 DROP VIEW IF EXISTS deprecated_mappings_summary;
+DROP VIEW IF EXISTS attribution_monitoring;
 
 -- Appointments: remove contact identity and attribution fields
 ALTER TABLE appointments 

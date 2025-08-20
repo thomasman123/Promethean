@@ -146,3 +146,30 @@ SELECT
 FROM ghl_source_mappings gsm
 WHERE is_deprecated = true
 GROUP BY account_id; 
+
+-- attribution_monitoring updated to reference contact attribution from contacts
+DROP VIEW IF EXISTS attribution_monitoring;
+CREATE OR REPLACE VIEW attribution_monitoring AS
+SELECT 
+  a.id as account_id,
+  a.name as account_name,
+  aas.auto_attribution_enabled,
+  aas.auto_create_utm_mappings,
+  aas.require_manual_approval,
+  aas.auto_confidence_threshold,
+  -- Count of auto-created mappings
+  (SELECT COUNT(*) FROM utm_attribution_mappings uam 
+   WHERE uam.account_id = a.id AND uam.auto_created = true AND uam.mapping_status = 'active') as auto_mappings_active,
+  -- Count of pending mappings
+  (SELECT COUNT(*) FROM utm_attribution_mappings uam 
+   WHERE uam.account_id = a.id AND uam.mapping_status = 'pending_approval') as mappings_pending,
+  -- Recent activity (using contacts attribution data on recent appointments)
+  (SELECT COUNT(*) FROM appointments apt 
+   LEFT JOIN contacts c ON c.id = apt.contact_id
+   WHERE apt.account_id = a.id 
+   AND apt.created_at > NOW() - INTERVAL '7 days'
+   AND COALESCE((c.attribution_source->>'mapping_type'), (c.last_attribution_source->>'mapping_type')) LIKE 'auto%') as auto_attributed_last_week,
+  aas.updated_at as settings_last_updated
+FROM accounts a
+LEFT JOIN account_attribution_settings aas ON aas.account_id = a.id
+WHERE a.is_active = true; 
