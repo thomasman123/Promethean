@@ -580,7 +580,7 @@ async function processPhoneCallWebhook(payload: any) {
     // Save to dials table
     const { data: savedDial, error: dialError } = await supabase
       .from('dials')
-      .insert(dialData)
+      .insert(sanitizeRecord(dialData))
       .select()
       .single();
     
@@ -1416,10 +1416,10 @@ async function processAppointmentWebhook(payload: any) {
 
       const { data: savedAppointment, error: saveError } = await supabase
         .from('appointments')
-        .insert({
+        .insert(sanitizeRecord({
           ...appointmentData,
           contact_id: appointmentContactId,
-        })
+        }))
         .select()
         .single();
       
@@ -1697,10 +1697,10 @@ async function processAppointmentWebhook(payload: any) {
 
       const { data: savedDiscovery, error: saveError } = await supabase
         .from('discoveries')
-        .insert({
+        .insert(sanitizeRecord({
           ...discoveryData,
           contact_id: discoveryContactId,
-        })
+        }))
         .select()
         .single();
       
@@ -2121,4 +2121,20 @@ async function processContactUpsertWebhook(payload: any) {
   await supabase
     .from('contacts')
     .upsert(row, { onConflict: 'account_id,ghl_contact_id' })
+}
+
+// Helper to remove dropped columns to avoid schema errors after migration
+function sanitizeRecord<T extends Record<string, any>>(obj: T): T {
+  const droppedKeys = new Set([
+    'contact_name','email','phone',
+    'contact_source','contact_utm_source','contact_utm_medium','contact_utm_campaign','contact_utm_content','contact_referrer','contact_gclid','contact_fbclid','contact_campaign_id','last_attribution_source',
+    'utm_source','utm_medium','utm_campaign','utm_content','utm_term','utm_id',
+    'fbclid','fbc','fbp','landing_url','session_source','medium_id','user_agent','ip_address',
+    'attribution_data','last_attribution_data'
+  ])
+  const cleaned: any = {}
+  for (const [k, v] of Object.entries(obj)) {
+    if (!droppedKeys.has(k)) cleaned[k] = v
+  }
+  return cleaned
 }
