@@ -47,6 +47,7 @@ export async function POST(request: NextRequest) {
         accountId: filters.accountId,
         repIds: filters.repIds,
         setterIds: filters.setterIds,
+        // UTM and referrer filters will be applied via contacts joins in the underlying SQL/view layer
         utm_source: filters.utm_source,
         utm_medium: filters.utm_medium,
         utm_campaign: filters.utm_campaign,
@@ -111,35 +112,12 @@ export async function GET(request: NextRequest) {
       const accountId = url.searchParams.get('accountId')
       if (!accountId) return NextResponse.json({ error: 'accountId required' }, { status: 400 })
 
-      const fields = ['utm_source','utm_medium','utm_campaign','utm_content','utm_term','utm_id','source_category','specific_source','session_source','contact_referrer']
-      const result: Record<string, string[]> = {}
-
-      for (const f of fields) {
-        const col = f
-        const sets: string[][] = []
-        const { data: a } = await supabase
-          .from('appointments')
-          .select(col)
-          .eq('account_id', accountId)
-          .not(col as any, 'is', null as any)
-        if (a) sets.push(Array.from(new Set(a.map((r: any) => r[col]).filter(Boolean))))
-        const { data: d } = await supabase
-          .from('discoveries')
-          .select(col)
-          .eq('account_id', accountId)
-          .not(col as any, 'is', null as any)
-        if (d) sets.push(Array.from(new Set(d.map((r: any) => r[col]).filter(Boolean))))
-        const { data: dl } = await supabase
-          .from('dials')
-          .select(col)
-          .eq('account_id', accountId)
-          .not(col as any, 'is', null as any)
-        if (dl) sets.push(Array.from(new Set(dl.map((r: any) => r[col]).filter(Boolean))))
-
-        result[f === 'contact_referrer' ? 'referrer' : f] = Array.from(new Set((sets.flat()).filter(Boolean))).slice(0, 200)
-      }
-
-      return NextResponse.json(result)
+      // Delegate to contacts-based options by calling the sibling route directly
+      const reqUrl = new URL(request.url)
+      reqUrl.pathname = '/api/metrics/options'
+      const res = await fetch(reqUrl.toString(), { headers: { cookie: request.headers.get('cookie') || '' } })
+      const json = await res.json()
+      return NextResponse.json(json, { status: res.status })
     }
 
     const metricNames = getAllMetricNames()

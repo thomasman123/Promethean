@@ -16,9 +16,7 @@ export interface Database {
           account_id: string
           setter: string
           sales_rep: string | null
-          contact_name: string
-          phone: string | null
-          email: string | null
+          contact_id: string | null
           call_outcome: string | null
           show_outcome: string | null
           cash_collected: number | null
@@ -40,34 +38,6 @@ export interface Database {
           ghl_source: string | null
           source_category: string | null
           specific_source: string | null
-          // Existing contact attribution fields
-          contact_source: string | null
-          contact_utm_source: string | null
-          contact_utm_medium: string | null
-          contact_utm_campaign: string | null
-          contact_utm_content: string | null
-          contact_referrer: string | null
-          contact_gclid: string | null
-          contact_fbclid: string | null
-          contact_campaign_id: string | null
-          last_attribution_source: Json | null
-          // Enhanced attribution fields
-          utm_source: string | null
-          utm_medium: string | null
-          utm_campaign: string | null
-          utm_content: string | null
-          utm_term: string | null
-          utm_id: string | null
-          fbclid: string | null
-          fbc: string | null
-          fbp: string | null
-          landing_url: string | null
-          session_source: string | null
-          medium_id: string | null
-          user_agent: string | null
-          ip_address: string | null
-          attribution_data: Json | null
-          last_attribution_data: Json | null
           lead_value: string | null
           lead_path: string | null
           business_type: string | null
@@ -77,9 +47,7 @@ export interface Database {
           account_id: string
           setter: string
           sales_rep?: string | null
-          contact_name: string
-          phone?: string | null
-          email?: string | null
+          contact_id?: string | null
           call_outcome?: string | null
           show_outcome?: string | null
           cash_collected?: number | null
@@ -101,34 +69,6 @@ export interface Database {
           ghl_source?: string | null
           source_category?: string | null
           specific_source?: string | null
-          // Existing contact attribution fields
-          contact_source?: string | null
-          contact_utm_source?: string | null
-          contact_utm_medium?: string | null
-          contact_utm_campaign?: string | null
-          contact_utm_content?: string | null
-          contact_referrer?: string | null
-          contact_gclid?: string | null
-          contact_fbclid?: string | null
-          contact_campaign_id?: string | null
-          last_attribution_source?: Json | null
-          // Enhanced attribution fields
-          utm_source?: string | null
-          utm_medium?: string | null
-          utm_campaign?: string | null
-          utm_content?: string | null
-          utm_term?: string | null
-          utm_id?: string | null
-          fbclid?: string | null
-          fbc?: string | null
-          fbp?: string | null
-          landing_url?: string | null
-          session_source?: string | null
-          medium_id?: string | null
-          user_agent?: string | null
-          ip_address?: string | null
-          attribution_data?: Json | null
-          last_attribution_data?: Json | null
           lead_value?: string | null
           lead_path?: string | null
           business_type?: string | null
@@ -138,9 +78,7 @@ export interface Database {
           account_id?: string
           setter?: string
           sales_rep?: string | null
-          contact_name?: string
-          phone?: string | null
-          email?: string | null
+          contact_id?: string | null
           call_outcome?: string | null
           show_outcome?: string | null
           cash_collected?: number | null
@@ -162,34 +100,6 @@ export interface Database {
           ghl_source?: string | null
           source_category?: string | null
           specific_source?: string | null
-          // Existing contact attribution fields
-          contact_source?: string | null
-          contact_utm_source?: string | null
-          contact_utm_medium?: string | null
-          contact_utm_campaign?: string | null
-          contact_utm_content?: string | null
-          contact_referrer?: string | null
-          contact_gclid?: string | null
-          contact_fbclid?: string | null
-          contact_campaign_id?: string | null
-          last_attribution_source?: Json | null
-          // Enhanced attribution fields
-          utm_source?: string | null
-          utm_medium?: string | null
-          utm_campaign?: string | null
-          utm_content?: string | null
-          utm_term?: string | null
-          utm_id?: string | null
-          fbclid?: string | null
-          fbc?: string | null
-          fbp?: string | null
-          landing_url?: string | null
-          session_source?: string | null
-          medium_id?: string | null
-          user_agent?: string | null
-          ip_address?: string | null
-          attribution_data?: Json | null
-          last_attribution_data?: Json | null
           lead_value?: string | null
           lead_path?: string | null
           business_type?: string | null
@@ -201,9 +111,7 @@ export interface Database {
           id: string
           account_id: string
           setter: string
-          contact_name: string
-          phone: string | null
-          email: string | null
+          contact_id: string | null
           date_booked_for: string
           date_booked: string
           sales_rep: string | null
@@ -217,34 +125,6 @@ export interface Database {
           ghl_source: string | null
           source_category: string | null
           specific_source: string | null
-          // Existing contact attribution fields
-          contact_source: string | null
-          contact_utm_source: string | null
-          contact_utm_medium: string | null
-          contact_utm_campaign: string | null
-          contact_utm_content: string | null
-          contact_referrer: string | null
-          contact_gclid: string | null
-          contact_fbclid: string | null
-          contact_campaign_id: string | null
-          last_attribution_source: Json | null
-          // Enhanced attribution fields
-          utm_source: string | null
-          utm_medium: string | null
-          utm_campaign: string | null
-          utm_content: string | null
-          utm_term: string | null
-          utm_id: string | null
-          fbclid: string | null
-          fbc: string | null
-          fbp: string | null
-          landing_url: string | null
-          session_source: string | null
-          medium_id: string | null
-          user_agent: string | null
-          ip_address: string | null
-          attribution_data: Json | null
-          last_attribution_data: Json | null
           lead_value: string | null
           lead_path: string | null
           business_type: string | null
@@ -253,9 +133,7 @@ export interface Database {
           id?: string
           account_id: string
           setter: string
-          contact_name: string
-          phone?: string | null
-          email?: string | null
+          contact_id?: string | null
           date_booked_for: string
           date_booked?: string
           sales_rep?: string | null
@@ -269,34 +147,6 @@ export interface Database {
           ghl_source?: string | null
           source_category?: string | null
           specific_source?: string | null
-          // Existing contact attribution fields
-          contact_source?: string | null
-          contact_utm_source?: string | null
-          contact_utm_medium?: string | null
-          contact_utm_campaign?: string | null
-          contact_utm_content?: string | null
-          contact_referrer?: string | null
-          contact_gclid?: string | null
-          contact_fbclid?: string | null
-          contact_campaign_id?: string | null
-          last_attribution_source?: Json | null
-          // Enhanced attribution fields
-          utm_source?: string | null
-          utm_medium?: string | null
-          utm_campaign?: string | null
-          utm_content?: string | null
-          utm_term?: string | null
-          utm_id?: string | null
-          fbclid?: string | null
-          fbc?: string | null
-          fbp?: string | null
-          landing_url?: string | null
-          session_source?: string | null
-          medium_id?: string | null
-          user_agent?: string | null
-          ip_address?: string | null
-          attribution_data?: Json | null
-          last_attribution_data?: Json | null
           lead_value?: string | null
           lead_path?: string | null
           business_type?: string | null
@@ -305,9 +155,7 @@ export interface Database {
           id?: string
           account_id?: string
           setter?: string
-          contact_name?: string
-          phone?: string | null
-          email?: string | null
+          contact_id?: string | null
           date_booked_for?: string
           date_booked?: string
           sales_rep?: string | null
@@ -321,34 +169,6 @@ export interface Database {
           ghl_source?: string | null
           source_category?: string | null
           specific_source?: string | null
-          // Existing contact attribution fields
-          contact_source?: string | null
-          contact_utm_source?: string | null
-          contact_utm_medium?: string | null
-          contact_utm_campaign?: string | null
-          contact_utm_content?: string | null
-          contact_referrer?: string | null
-          contact_gclid?: string | null
-          contact_fbclid?: string | null
-          contact_campaign_id?: string | null
-          last_attribution_source?: Json | null
-          // Enhanced attribution fields
-          utm_source?: string | null
-          utm_medium?: string | null
-          utm_campaign?: string | null
-          utm_content?: string | null
-          utm_term?: string | null
-          utm_id?: string | null
-          fbclid?: string | null
-          fbc?: string | null
-          fbp?: string | null
-          landing_url?: string | null
-          session_source?: string | null
-          medium_id?: string | null
-          user_agent?: string | null
-          ip_address?: string | null
-          attribution_data?: Json | null
-          last_attribution_data?: Json | null
           lead_value?: string | null
           lead_path?: string | null
           business_type?: string | null
@@ -362,11 +182,8 @@ export interface Database {
     }
     Functions: {
       // ... existing functions ...
-      
       extract_attribution_from_contact: {
-        Args: {
-          contact_data: Json
-        }
+        Args: { contact_data: Json }
         Returns: {
           utm_source: string | null
           utm_medium: string | null
@@ -402,12 +219,8 @@ export interface Database {
         Returns: Json
       }
     }
-    Enums: {
-      // ... existing enums ...
-    }
-    CompositeTypes: {
-      // ... existing composite types ...
-    }
+    Enums: { }
+    CompositeTypes: { }
   }
 }
 

@@ -4,6 +4,8 @@ import type { Database } from '@/lib/database.types'
 
 type AggRow = Partial<Record<string, string[]>>
 
+function pushIf<T>(arr: T[], v: T | null | undefined) { if (v != null && v !== '' && (String(v)).toLowerCase() !== 'null') arr.push(v) }
+
 export async function GET(request: NextRequest) {
 	try {
 		const url = new URL(request.url)
@@ -26,117 +28,63 @@ export async function GET(request: NextRequest) {
 		const { data: { session } } = await supabase.auth.getSession()
 		if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-		// Optional: current selections to intersect results
-		const selected: Record<string, string[] | undefined> = {
-			utm_source: url.searchParams.getAll('utm_source'),
-			utm_medium: url.searchParams.getAll('utm_medium'),
-			utm_campaign: url.searchParams.getAll('utm_campaign'),
-			source_category: url.searchParams.getAll('source_category'),
-			specific_source: url.searchParams.getAll('specific_source'),
-			session_source: url.searchParams.getAll('session_source'),
-			referrer: url.searchParams.getAll('referrer'),
+		// Pull attribution JSON from contacts and extract unique values
+		const { data: contacts, error } = await supabase
+			.from('contacts')
+			.select('attribution_source, last_attribution_source')
+			.eq('account_id', accountId)
+
+		if (error) throw error
+
+		const utm_source: string[] = []
+		const utm_medium: string[] = []
+		const utm_campaign: string[] = []
+		const utm_content: string[] = []
+		const utm_term: string[] = []
+		const utm_id: string[] = []
+		const session_source: string[] = []
+		const referrer: string[] = []
+		const fbclid: string[] = []
+		const fbc: string[] = []
+		const fbp: string[] = []
+		const gclid: string[] = []
+
+		for (const row of contacts || []) {
+			const a = (row as any).attribution_source || {}
+			const l = (row as any).last_attribution_source || {}
+			pushIf(utm_source, a.utmSource || l.utmSource)
+			pushIf(utm_medium, a.utmMedium || l.utmMedium)
+			pushIf(utm_campaign, a.campaign || l.campaign)
+			pushIf(utm_content, a.utmContent || l.utmContent)
+			pushIf(utm_term, a.utmTerm || l.utmTerm)
+			pushIf(utm_id, a.utm_id || l.utm_id)
+			pushIf(session_source, a.sessionSource || l.sessionSource)
+			pushIf(referrer, a.referrer || l.referrer)
+			pushIf(fbclid, a.fbclid || l.fbclid)
+			pushIf(fbc, a.fbc || l.fbc)
+			pushIf(fbp, a.fbp || l.fbp)
+			pushIf(gclid, a.gclid || l.gclid)
 		}
-		Object.keys(selected).forEach(k => { if (!selected[k]?.length) selected[k] = undefined })
 
-		// Aggregates per table scoped by current selections
-		const apptSelect = [
-			'array_remove(array_agg(distinct utm_source), null) as utm_source',
-			'array_remove(array_agg(distinct utm_medium), null) as utm_medium',
-			'array_remove(array_agg(distinct utm_campaign), null) as utm_campaign',
-			'array_remove(array_agg(distinct utm_content), null) as utm_content',
-			'array_remove(array_agg(distinct utm_term), null) as utm_term',
-			'array_remove(array_agg(distinct utm_id), null) as utm_id',
-			"array_remove(array_agg(distinct (last_attribution_source->>'source_category')), null) as source_category",
-			"array_remove(array_agg(distinct (last_attribution_source->>'specific_source')), null) as specific_source",
-			'array_remove(array_agg(distinct session_source), null) as session_source',
-			'array_remove(array_agg(distinct contact_referrer), null) as contact_referrer'
-		].join(', ')
-
-		const discSelect = [
-			'array_remove(array_agg(distinct utm_source), null) as utm_source',
-			'array_remove(array_agg(distinct utm_medium), null) as utm_medium',
-			'array_remove(array_agg(distinct utm_campaign), null) as utm_campaign',
-			"array_remove(array_agg(distinct (last_attribution_source->>'source_category')), null) as source_category",
-			"array_remove(array_agg(distinct (last_attribution_source->>'specific_source')), null) as specific_source",
-			'array_remove(array_agg(distinct session_source), null) as session_source',
-			'array_remove(array_agg(distinct contact_referrer), null) as contact_referrer'
-		].join(', ')
-
-		const dialSelect = [
-			'array_remove(array_agg(distinct utm_source), null) as utm_source',
-			'array_remove(array_agg(distinct utm_medium), null) as utm_medium',
-			'array_remove(array_agg(distinct utm_campaign), null) as utm_campaign',
-			"array_remove(array_agg(distinct (last_attribution_source->>'source_category')), null) as source_category",
-			"array_remove(array_agg(distinct (last_attribution_source->>'specific_source')), null) as specific_source",
-			'array_remove(array_agg(distinct session_source), null) as session_source',
-			'array_remove(array_agg(distinct contact_referrer), null) as contact_referrer'
-		].join(', ')
-
-		const [aRes, dRes, dlRes] = await Promise.all([
-			(async () => {
-				let q = supabase.from('appointments').select(apptSelect)
-				  .eq('account_id', accountId)
-				if (selected.utm_source) q = q.in('utm_source', selected.utm_source)
-				if (selected.utm_medium) q = q.in('utm_medium', selected.utm_medium)
-				if (selected.utm_campaign) q = q.in('utm_campaign', selected.utm_campaign)
-				if (selected.source_category) q = q.contains('last_attribution_source', { source_category: selected.source_category[0] } as any)
-				if (selected.specific_source) q = q.contains('last_attribution_source', { specific_source: selected.specific_source[0] } as any)
-				if (selected.session_source) q = q.in('session_source', selected.session_source)
-				if (selected.referrer) q = q.in('contact_referrer', selected.referrer)
-				return q.maybeSingle()
-			})(),
-			(async () => {
-				let q = supabase.from('discoveries').select(discSelect)
-				  .eq('account_id', accountId)
-				if (selected.utm_source) q = q.in('utm_source', selected.utm_source)
-				if (selected.utm_medium) q = q.in('utm_medium', selected.utm_medium)
-				if (selected.utm_campaign) q = q.in('utm_campaign', selected.utm_campaign)
-				if (selected.source_category) q = q.contains('last_attribution_source', { source_category: selected.source_category[0] } as any)
-				if (selected.specific_source) q = q.contains('last_attribution_source', { specific_source: selected.specific_source[0] } as any)
-				if (selected.session_source) q = q.in('session_source', selected.session_source)
-				if (selected.referrer) q = q.in('contact_referrer', selected.referrer)
-				return q.maybeSingle()
-			})(),
-			(async () => {
-				let q = supabase.from('dials').select(dialSelect)
-				  .eq('account_id', accountId)
-				if (selected.utm_source) q = q.in('utm_source', selected.utm_source)
-				if (selected.utm_medium) q = q.in('utm_medium', selected.utm_medium)
-				if (selected.utm_campaign) q = q.in('utm_campaign', selected.utm_campaign)
-				if (selected.source_category) q = q.contains('last_attribution_source', { source_category: selected.source_category[0] } as any)
-				if (selected.specific_source) q = q.contains('last_attribution_source', { specific_source: selected.specific_source[0] } as any)
-				if (selected.session_source) q = q.in('session_source', selected.session_source)
-				if (selected.referrer) q = q.in('contact_referrer', selected.referrer)
-				return q.maybeSingle()
-			})(),
-		])
-
-		const aRow = (aRes.data || {}) as AggRow
-		const dRow = (dRes.data || {}) as AggRow
-		const dlRow = (dlRes.data || {}) as AggRow
-
-		const readKey = (row: AggRow, key: string): string[] => (row[key] as string[] | undefined) || []
-		const agg = (key: string) => Array.from(new Set([
-			...readKey(aRow, key),
-			...readKey(dRow, key),
-			...readKey(dlRow, key),
-		])).slice(0, 200)
+		const uniq = (arr: string[]) => Array.from(new Set(arr.filter(Boolean))).slice(0, 200)
 
 		const result: Record<string, string[]> = {
-			utm_source: agg('utm_source'),
-			utm_medium: agg('utm_medium'),
-			utm_campaign: agg('utm_campaign'),
-			utm_content: readKey(aRow, 'utm_content').slice(0, 200),
-			utm_term: readKey(aRow, 'utm_term').slice(0, 200),
-			utm_id: readKey(aRow, 'utm_id').slice(0, 200),
-			source_category: agg('source_category'),
-			specific_source: agg('specific_source'),
-			session_source: agg('session_source'),
-			referrer: agg('contact_referrer'),
+			utm_source: uniq(utm_source),
+			utm_medium: uniq(utm_medium),
+			utm_campaign: uniq(utm_campaign),
+			utm_content: uniq(utm_content),
+			utm_term: uniq(utm_term),
+			utm_id: uniq(utm_id),
+			session_source: uniq(session_source),
+			referrer: uniq(referrer),
+			// Not available post-refactor from raw contacts without reclassification
+			source_category: [],
+			specific_source: [],
+			fbclid: uniq(fbclid),
+			fbc: uniq(fbc),
+			fbp: uniq(fbp),
+			gclid: uniq(gclid),
 		}
-
-		// Defensive fallback to keep UI usable
-		Object.keys(result).forEach((k) => { if (!Array.isArray((result as any)[k])) (result as any)[k] = [] })
 
 		return NextResponse.json(result)
 	} catch (e) {
