@@ -111,14 +111,23 @@ export function GlobalFilters({ className }: GlobalFiltersProps) {
   
   const handleRepChange = (newSelected: string[]) => {
     if (newSelected.includes(ALL_REPS)) {
-      // If ONLY the "All" option is present, treat as All
-      if (newSelected.length === 1) {
+      if (repAll) {
+        // Previously in "All" mode; selecting a specific rep should switch to specific
+        const cleaned = newSelected.filter(v => v !== ALL_REPS)
+        if (cleaned.length === 0) {
+          setRepAll(true)
+          setFilters({ repIds: undefined })
+          return
+        }
+        setRepAll(false)
+        setFilters({ repIds: cleaned })
+        return
+      } else {
+        // Previously had specific reps; clicking "All Reps" should reset to All
         setRepAll(true)
         setFilters({ repIds: undefined })
         return
       }
-      // Otherwise, remove the "All" sentinel and use the remaining selections
-      newSelected = newSelected.filter(v => v !== ALL_REPS)
     }
 
     if (newSelected.length === 0) {
@@ -133,14 +142,23 @@ export function GlobalFilters({ className }: GlobalFiltersProps) {
   
   const handleSetterChange = (newSelected: string[]) => {
     if (newSelected.includes(ALL_SETTERS)) {
-      // If ONLY the "All" option is present, treat as All
-      if (newSelected.length === 1) {
+      if (setterAll) {
+        // Previously in "All" mode; selecting a specific setter should switch to specific
+        const cleaned = newSelected.filter(v => v !== ALL_SETTERS)
+        if (cleaned.length === 0) {
+          setSetterAll(true)
+          setFilters({ setterIds: undefined })
+          return
+        }
+        setSetterAll(false)
+        setFilters({ setterIds: cleaned })
+        return
+      } else {
+        // Previously had specific setters; clicking "All Setters" should reset to All
         setSetterAll(true)
         setFilters({ setterIds: undefined })
         return
       }
-      // Otherwise, remove the "All" sentinel and use the remaining selections
-      newSelected = newSelected.filter(v => v !== ALL_SETTERS)
     }
 
     if (newSelected.length === 0) {
