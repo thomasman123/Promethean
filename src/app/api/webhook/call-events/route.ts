@@ -1463,29 +1463,24 @@ async function processAppointmentWebhook(payload: any) {
           const bookedAt = new Date(bookedAtIso);
           const discWindowStart = new Date(bookedAt.getTime() - 60 * 60 * 1000);
 
-          const runDiscQuery = async (applyFilters: (q: any) => any) => {
-            let q = supabase
+          // Match discovery by contact_id within the window
+          let matchedDisc: any = null;
+          if (appointmentContactId) {
+            const { data: discs, error: discErr } = await supabase
               .from('discoveries')
-              .select('id, date_booked_for, contact_name, email, phone, linked_appointment_id')
+              .select('id, date_booked_for, contact_id, linked_appointment_id')
               .eq('account_id', account.id)
+              .eq('contact_id', appointmentContactId)
               .gte('date_booked_for', discWindowStart.toISOString())
               .lte('date_booked_for', bookedAt.toISOString())
               .order('date_booked_for', { ascending: false })
-              .limit(1);
-            q = applyFilters(q);
-            const { data, error } = await q;
-            if (error) {
-              console.error('Error searching discoveries for appointment-side linking:', error);
-              return null;
+              .limit(1)
+            if (discErr) {
+              console.error('Error searching discoveries for appointment-side linking:', discErr);
+            } else if (discs && discs.length > 0) {
+              matchedDisc = discs[0]
             }
-            return (data && data.length > 0) ? data[0] : null;
-          };
-
-          // Prefer matching by email, then phone, then name
-          let matchedDisc: any = null;
-          if (appointmentData.email) matchedDisc = await runDiscQuery(q => q.eq('email', appointmentData.email));
-          if (!matchedDisc && appointmentData.phone) matchedDisc = await runDiscQuery(q => q.eq('phone', appointmentData.phone));
-          if (!matchedDisc && appointmentData.contact_name) matchedDisc = await runDiscQuery(q => q.eq('contact_name', appointmentData.contact_name));
+          }
 
           if (matchedDisc && !matchedDisc.linked_appointment_id) {
             const { error: linkApptErr } = await supabase

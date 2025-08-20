@@ -111,30 +111,44 @@ export function GlobalFilters({ className }: GlobalFiltersProps) {
   
   const handleRepChange = (newSelected: string[]) => {
     if (newSelected.includes(ALL_REPS)) {
-      setRepAll(true)
-      setFilters({ repIds: undefined })
-      return
+      // If ONLY the "All" option is present, treat as All
+      if (newSelected.length === 1) {
+        setRepAll(true)
+        setFilters({ repIds: undefined })
+        return
+      }
+      // Otherwise, remove the "All" sentinel and use the remaining selections
+      newSelected = newSelected.filter(v => v !== ALL_REPS)
     }
+
     if (newSelected.length === 0) {
       setRepAll(true)
       setFilters({ repIds: undefined })
       return
     }
+
     setRepAll(false)
     setFilters({ repIds: newSelected })
   };
   
   const handleSetterChange = (newSelected: string[]) => {
     if (newSelected.includes(ALL_SETTERS)) {
-      setSetterAll(true)
-      setFilters({ setterIds: undefined })
-      return
+      // If ONLY the "All" option is present, treat as All
+      if (newSelected.length === 1) {
+        setSetterAll(true)
+        setFilters({ setterIds: undefined })
+        return
+      }
+      // Otherwise, remove the "All" sentinel and use the remaining selections
+      newSelected = newSelected.filter(v => v !== ALL_SETTERS)
     }
+
     if (newSelected.length === 0) {
       setSetterAll(true)
       setFilters({ setterIds: undefined })
       return
     }
+
     setSetterAll(false)
     setFilters({ setterIds: newSelected })
   };
