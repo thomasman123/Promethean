@@ -1,5 +1,9 @@
 -- Phase: Drop contact identity and UTM columns now that contact_id is canonical
 
+-- Drop dependent views first
+DROP VIEW IF EXISTS source_attribution_summary;
+DROP VIEW IF EXISTS deprecated_mappings_summary;
+
 -- Appointments: remove contact identity and attribution fields
 ALTER TABLE appointments 
   DROP COLUMN IF EXISTS contact_name,

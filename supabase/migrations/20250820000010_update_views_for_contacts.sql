@@ -109,3 +109,40 @@ GROUP BY
   contact_source,
   enhanced_primary_source, enhanced_source_category, attribution_type, attribution_confidence,
   utm_source, utm_medium, utm_campaign; 
+
+-- deprecated_mappings_summary updated to check usage via contacts
+DROP VIEW IF EXISTS deprecated_mappings_summary;
+CREATE OR REPLACE VIEW deprecated_mappings_summary AS
+SELECT 
+  account_id,
+  'contact_source' as mapping_type,
+  COUNT(*) as deprecated_count,
+  SUM(CASE WHEN EXISTS (
+    SELECT 1 FROM appointments a
+    LEFT JOIN contacts c ON c.id = a.contact_id
+    WHERE a.account_id = csm.account_id AND c.source = csm.contact_source
+    UNION
+    SELECT 1 FROM discoveries d
+    LEFT JOIN contacts c ON c.id = d.contact_id
+    WHERE d.account_id = csm.account_id AND c.source = csm.contact_source
+  ) THEN 1 ELSE 0 END) as with_data_count,
+  NOW() as last_checked
+FROM contact_source_mappings csm
+WHERE is_deprecated = true
+GROUP BY account_id
+
+UNION ALL
+
+SELECT 
+  account_id,
+  'ghl_source' as mapping_type,
+  COUNT(*) as deprecated_count,
+  SUM(CASE WHEN EXISTS (
+    SELECT 1 FROM appointments WHERE account_id = gsm.account_id AND ghl_source = gsm.ghl_source
+    UNION
+    SELECT 1 FROM discoveries WHERE account_id = gsm.account_id AND ghl_source = gsm.ghl_source
+  ) THEN 1 ELSE 0 END) as with_data_count,
+  NOW() as last_checked
+FROM ghl_source_mappings gsm
+WHERE is_deprecated = true
+GROUP BY account_id; 
