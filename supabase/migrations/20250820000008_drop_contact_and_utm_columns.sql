@@ -4,6 +4,7 @@
 DROP VIEW IF EXISTS source_attribution_summary;
 DROP VIEW IF EXISTS deprecated_mappings_summary;
 DROP VIEW IF EXISTS attribution_monitoring;
+DROP VIEW IF EXISTS discovery_appointment_flow;
 
 -- Appointments: remove contact identity and attribution fields
 ALTER TABLE appointments 
