@@ -173,3 +173,26 @@ SELECT
 FROM accounts a
 LEFT JOIN account_attribution_settings aas ON aas.account_id = a.id
 WHERE a.is_active = true; 
+
+-- discovery_appointment_flow updated to use contacts identity
+DROP VIEW IF EXISTS discovery_appointment_flow;
+CREATE OR REPLACE VIEW discovery_appointment_flow AS
+SELECT 
+    d.id as discovery_id,
+    COALESCE(c.name, 'Unknown') as contact_name,
+    c.phone,
+    c.email,
+    d.setter as booked_user,
+    d.date_booked_for as discovery_date,
+    d.show_outcome,
+    d.linked_appointment_id,
+    a.id as appointment_id,
+    a.setter as appointment_setter,
+    a.sales_rep as appointment_sales_rep,
+    a.date_booked_for as appointment_date,
+    a.call_outcome as appointment_outcome,
+    d.account_id
+FROM discoveries d
+LEFT JOIN appointments a ON d.linked_appointment_id = a.id
+LEFT JOIN contacts c ON c.id = d.contact_id
+ORDER BY d.date_booked_for DESC; 
