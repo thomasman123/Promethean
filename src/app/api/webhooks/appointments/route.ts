@@ -80,7 +80,7 @@ async function testAppointmentIdMapping(appointmentId: string, locationId?: stri
 
     if (!response.ok) {
       const errorText = await response.text()
-      console.error(`[APPOINTMENT TEST] API Error Response: ${errorText}`)
+      console.error(`[APPOINTEMENT TEST] API Error Response: ${errorText}`)
       return
     }
 
@@ -140,29 +140,41 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Prepare contact information
-    const contact = appointment.contact
-    const contactName = contact?.name || 
-      `${contact?.firstName || ''} ${contact?.lastName || ''}`.trim() || 
-      'Unknown'
+    // Upsert contact and get contact_id
+    let contactId: string | null = null
+    try {
+      const c = appointment.contact
+      const up = await supabaseService
+        .from('contacts')
+        .upsert({
+          account_id: mapping.account_id,
+          ghl_contact_id: appointment.contactId || c?.id || null,
+          first_name: c?.firstName || null,
+          last_name: c?.lastName || null,
+          name: c?.name || [c?.firstName, c?.lastName].filter(Boolean).join(' ') || null,
+          email: c?.email || null,
+          phone: c?.phone || null,
+        }, { onConflict: 'account_id,ghl_contact_id' })
+        .select('id')
+        .maybeSingle()
+      contactId = up?.data?.id || null
+    } catch {}
 
     // Prepare appointment data based on target table
-    const appointmentData = {
+    const baseData: any = {
       account_id: mapping.account_id,
-      contact_name: contactName,
-      email: contact?.email || null,
-      phone: contact?.phone || null,
       date_booked: new Date().toISOString(),
       date_booked_for: appointment.startTime,
       setter: 'Webhook',
       sales_rep: null,
+      contact_id: contactId,
     }
 
     if (mapping.target_table === 'appointments') {
       const { error: insertError } = await supabaseService
         .from('appointments')
         .insert({
-          ...appointmentData,
+          ...baseData,
           call_outcome: null,
           cash_collected: null,
           lead_quality: null,
@@ -180,7 +192,7 @@ export async function POST(request: NextRequest) {
       const { error: insertError } = await supabaseService
         .from('discoveries')
         .insert({
-          ...appointmentData,
+          ...baseData,
           call_outcome: null,
           show_outcome: null,
         })

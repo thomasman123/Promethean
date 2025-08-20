@@ -50,7 +50,7 @@ export function FollowUpsPanel() {
 			if (!selectedAccountId || !effectiveUserId) return;
 			const { data, error } = await supabase
 				.from('appointments')
-				.select('id, contact_name, follow_up_at')
+				.select('id, contact_id, follow_up_at')
 				.eq('account_id', selectedAccountId)
 				.eq('sales_rep_user_id', effectiveUserId)
 				.eq('show_outcome', 'follow up')
@@ -63,7 +63,7 @@ export function FollowUpsPanel() {
 			}
 			const mapped: FollowUpItem[] = (data || []).map((a) => ({
 				id: a.id as string,
-				leadName: (a as any).contact_name as string,
+				leadName: (a as any).contact_id as string,
 				followUpAt: (a as any).follow_up_at as string,
 			}));
 			setItems(mapped);

@@ -122,7 +122,7 @@ export async function POST(request: NextRequest) {
     // Select candidate appointments
     let q = supabase
       .from('appointments')
-      .select('id, account_id, contact_name, email, phone, date_booked, date_booked_for, setter, sales_rep, metadata, ghl_appointment_id')
+      .select('id, account_id, contact_id, date_booked, date_booked_for, setter, sales_rep, metadata, ghl_appointment_id')
       .eq('account_id', accountId)
       .order('date_booked', { ascending: false })
       .limit(Math.min(200, Math.max(1, limit)))
@@ -282,9 +282,9 @@ export async function POST(request: NextRequest) {
             .upsert({
               account_id: row.account_id,
               ghl_contact_id: fullAppointment?.contactId || contactData?.id || null,
-              name: row.contact_name || null,
-              email: row.email || null,
-              phone: row.phone || null,
+              name: (contactData?.firstName || contactData?.lastName) ? `${contactData?.firstName || ''} ${contactData?.lastName || ''}`.trim() : null,
+              email: contactData?.email || null,
+              phone: contactData?.phone || null,
             }, { onConflict: 'account_id,ghl_contact_id' })
             .select('id')
             .maybeSingle()
