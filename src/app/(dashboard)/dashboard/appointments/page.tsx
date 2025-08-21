@@ -6,15 +6,12 @@ import { ColumnDef } from "@tanstack/react-table";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { supabase, Appointments } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
 
 interface AppointmentRow {
 	id: string;
 	date_booked_for: string;
-	contact_name: string;
-	email: string | null;
-	phone: string | null;
 	setter: string | null;
 	sales_rep: string | null;
 	sales_rep_user_id: string | null;
@@ -25,6 +22,11 @@ interface AppointmentRow {
 	lead_quality: number | null;
 	linked_discovery_id: string | null;
 	contact_id: string | null;
+	contacts?: {
+		name: string | null;
+		email: string | null;
+		phone: string | null;
+	} | null;
 }
 
 export default function AppointmentsTablePage() {
@@ -39,15 +41,33 @@ export default function AppointmentsTablePage() {
 			if (!selectedAccountId) return;
 			setLoading(true);
 			try {
-				const { data, error } = await supabase
+				const { data: appts, error } = await supabase
 					.from("appointments")
 					.select(
-						"id,date_booked_for,contact_name,email,phone,setter,sales_rep,sales_rep_user_id,call_outcome,show_outcome,cash_collected,total_sales_value,lead_quality,linked_discovery_id,contact_id"
+						"id,date_booked_for,setter,sales_rep,sales_rep_user_id,call_outcome,show_outcome,cash_collected,total_sales_value,lead_quality,linked_discovery_id,contact_id"
 					)
 					.eq("account_id", selectedAccountId)
 					.order("date_booked_for", { ascending: false });
 				if (error) throw error;
-				setRows((data as any) || []);
+				const baseRows: AppointmentRow[] = (appts as any) || [];
+
+				// Fetch contacts in batch and map by id
+				const contactIds = Array.from(new Set(baseRows.map(r => r.contact_id).filter(Boolean))) as string[];
+				let contactMap: Record<string, { name: string | null; email: string | null; phone: string | null }> = {};
+				if (contactIds.length > 0) {
+					const { data: contactsData } = await supabase
+						.from("contacts")
+						.select("id,name,email,phone")
+						.in("id", contactIds);
+					for (const c of contactsData || []) {
+						contactMap[(c as any).id] = { name: (c as any).name, email: (c as any).email, phone: (c as any).phone };
+					}
+				}
+
+				setRows(baseRows.map(r => ({
+					...r,
+					contacts: r.contact_id ? contactMap[r.contact_id] || null : null,
+				})));
 
 				// Load sales reps for filter (from profiles with access to account or via team view)
 				const resp = await fetch(`/api/team?accountId=${selectedAccountId}`);
@@ -74,9 +94,21 @@ export default function AppointmentsTablePage() {
 			header: "When",
 			cell: ({ row }) => new Date(row.original.date_booked_for).toLocaleString(),
 		},
-		{ accessorKey: "contact_name", header: "Contact" },
-		{ accessorKey: "email", header: "Email" },
-		{ accessorKey: "phone", header: "Phone" },
+		{
+			accessorKey: "contacts.name",
+			header: "Contact",
+			cell: ({ row }) => row.original.contacts?.name || "-",
+		},
+		{
+			accessorKey: "contacts.email",
+			header: "Email",
+			cell: ({ row }) => row.original.contacts?.email || "-",
+		},
+		{
+			accessorKey: "contacts.phone",
+			header: "Phone",
+			cell: ({ row }) => row.original.contacts?.phone || "-",
+		},
 		{ accessorKey: "setter", header: "Setter" },
 		{
 			accessorKey: "sales_rep",
