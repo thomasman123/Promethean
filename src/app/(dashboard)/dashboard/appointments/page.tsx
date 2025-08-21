@@ -145,8 +145,8 @@ export default function AppointmentsTablePage() {
 	];
 
 	return (
-		<div className="p-6 space-y-4">
-			<Card>
+		<div className="p-6 space-y-4 overflow-x-hidden">
+			<Card className="overflow-x-hidden">
 				<CardHeader className="flex flex-row items-center justify-between">
 					<div>
 						<CardTitle>Appointments</CardTitle>
