@@ -12,7 +12,7 @@ export default function DashboardLayout({
   return (
     <SidebarProvider>
       <AppSidebar />
-      <SidebarInset>
+      <SidebarInset className="max-w-full overflow-x-hidden">
         <PageHeader />
         {children}
       </SidebarInset>

@@ -164,7 +164,7 @@ export default function AppointmentsTablePage() {
 						</Select>
 					</div>
 				</CardHeader>
-				<CardContent className="overflow-x-auto">
+				<CardContent className="relative max-w-full">
 					<DataTable columns={columns} data={filteredRows} globalFilterPlaceholder="Search appointments..." />
 				</CardContent>
 			</Card>
