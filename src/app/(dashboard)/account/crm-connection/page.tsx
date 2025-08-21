@@ -20,6 +20,9 @@ export default function CRMConnectionPage() {
   const [showUninstallDialog, setShowUninstallDialog] = useState(false)
   const [showWipeDialog, setShowWipeDialog] = useState(false)
   const [backfilling, setBackfilling] = useState(false)
+  const [backfillStart, setBackfillStart] = useState<string>("")
+  const [backfillEnd, setBackfillEnd] = useState<string>("")
+  const [rangeBackfilling, setRangeBackfilling] = useState(false)
 
   useEffect(() => {
     if (!selectedAccountId) return
@@ -124,6 +127,25 @@ export default function CRMConnectionPage() {
     }
   }
 
+  const runRangeBackfill = async () => {
+    if (!selectedAccountId || !backfillStart || !backfillEnd) return
+    setRangeBackfilling(true)
+    try {
+      const res = await fetch('/api/ghl/appointments/backfill', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accountId: selectedAccountId, startIso: backfillStart, endIso: backfillEnd })
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json?.error || 'Failed')
+      toast.success(`Processed ${json.processed}, created ${json.created}`)
+    } catch (e: any) {
+      toast.error(`Backfill failed: ${e?.message || 'Unknown error'}`)
+    } finally {
+      setRangeBackfilling(false)
+    }
+  }
+
   async function syncContacts() {
 		try {
 			const res = await fetch('/api/ghl/contacts', {
@@ -174,7 +196,7 @@ export default function CRMConnectionPage() {
           </p>
         </div>
 
-        <div className="p-3 border rounded-md flex flex-col gap-2">
+        <div className="p-3 border rounded-md flex flex-col gap-3">
           <div className="flex items-center justify-between">
             <div>
               <div className="font-medium">Backfill Appointment Users</div>
@@ -183,6 +205,24 @@ export default function CRMConnectionPage() {
             <Button variant="outline" onClick={runBackfill} disabled={backfilling}>
               {backfilling ? 'Running...' : 'Run Backfill'}
             </Button>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-5 gap-2 items-end">
+            <div className="sm:col-span-2">
+              <div className="text-sm font-medium">Start</div>
+              <input type="datetime-local" className="w-full border rounded px-2 py-1 bg-background" value={backfillStart} onChange={(e)=>setBackfillStart(e.target.value)} />
+            </div>
+            <div className="sm:col-span-2">
+              <div className="text-sm font-medium">End</div>
+              <input type="datetime-local" className="w-full border rounded px-2 py-1 bg-background" value={backfillEnd} onChange={(e)=>setBackfillEnd(e.target.value)} />
+            </div>
+            <div className="sm:col-span-1">
+              <Button onClick={runRangeBackfill} disabled={rangeBackfilling || !backfillStart || !backfillEnd} className="w-full">
+                {rangeBackfilling ? 'Syncing…' : 'Sync range'}
+              </Button>
+            </div>
+            <div className="sm:col-span-5 text-xs text-muted-foreground">
+              Uses your calendar mappings, fetches from GHL API for the range, and saves appointments/discoveries with the same linking/user/contact logic as live webhooks.
+            </div>
           </div>
         </div>
 
