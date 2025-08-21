@@ -24,6 +24,7 @@ interface DataTableProps<TData, TValue> {
   data: TData[];
   globalFilterPlaceholder?: string;
   initialPageSize?: number;
+  bodyMaxHeight?: string | number;
 }
 
 export function DataTable<TData, TValue>({
@@ -31,6 +32,7 @@ export function DataTable<TData, TValue>({
   data,
   globalFilterPlaceholder = "Search...",
   initialPageSize = 25,
+  bodyMaxHeight = "70vh",
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
@@ -92,7 +94,7 @@ export function DataTable<TData, TValue>({
         </DropdownMenu>
       </div>
 
-      <div className="rounded-md border">
+      <div className="rounded-md border overflow-x-auto overflow-y-auto" style={{ maxHeight: bodyMaxHeight }}>
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (

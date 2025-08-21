@@ -145,7 +145,7 @@ export default function AppointmentsTablePage() {
 	];
 
 	return (
-		<div className="p-6 space-y-4 max-w-full overflow-x-hidden">
+		<div className="p-6 space-y-4 max-w-full overflow-x-hidden min-h-0">
 			<Card className="max-w-full overflow-hidden">
 				<CardHeader className="flex flex-row items-center justify-between">
 					<div>
@@ -164,8 +164,8 @@ export default function AppointmentsTablePage() {
 						</Select>
 					</div>
 				</CardHeader>
-				<CardContent className="relative max-w-full">
-					<DataTable columns={columns} data={filteredRows} globalFilterPlaceholder="Search appointments..." />
+				<CardContent className="relative max-w-full min-h-0">
+					<DataTable columns={columns} data={filteredRows} globalFilterPlaceholder="Search appointments..." bodyMaxHeight="65vh" />
 				</CardContent>
 			</Card>
 		</div>
