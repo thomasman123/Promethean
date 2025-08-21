@@ -121,6 +121,7 @@ export default function UpdateDataPage() {
 			const d = parts.find(p => p.type === 'day')?.value || '01'
 			const todayLocal = `${y}-${m}-${d}`
 			const todayMs = Date.parse(`${todayLocal}T00:00:00Z`)
+			const nowIso = new Date().toISOString()
 
 			const { data: appts, error } = await supabase
 				.from('appointments')
@@ -128,6 +129,7 @@ export default function UpdateDataPage() {
 				.eq('account_id', selectedAccountId)
 				.eq('sales_rep_user_id', effectiveUserId)
 				.eq('data_filled', false)
+				.lte('date_booked_for', nowIso)
 				.order('date_booked_for', { ascending: true });
 
 			if (error) {
@@ -157,6 +159,7 @@ export default function UpdateDataPage() {
 				.eq('account_id', selectedAccountId)
 				.eq('setter_user_id', effectiveUserId)
 				.eq('data_filled', false)
+				.lte('date_booked_for', nowIso)
 				.order('date_booked_for', { ascending: true });
 
 			if (discosError) {
