@@ -40,9 +40,10 @@ const staticData = {
 			url: "/dashboard",
 			icon: BarChart3,
 			isActive: true,
-			items: [],
+			items: [
+				{ title: "Appointments", url: "/dashboard/appointments" },
+			],
 		},
-		{ title: "Appointments", url: "/dashboard/appointments", icon: ClipboardList, items: [] },
 		{ title: "Update Data", url: "/dashboard/update-data", icon: ClipboardList, items: [ { title: "Follow Ups", url: "/follow-ups" } ] },
 		{ title: "Ads", url: "/ads", icon: MegaphoneIcon, items: [ { title: "Setup", url: "/ads/setup" }, { title: "Campaigns", url: "/ads/campaigns" } ] },
 		{ title: "AI Tools", url: "/ai-tools", icon: Bot, items: [ { title: "Call Analysis", url: "/ai-tools/call-analysis" }, { title: "KPI Breakdown", url: "/ai-tools/kpi-breakdown" } ] },
