@@ -1109,9 +1109,6 @@ async function processAppointmentWebhook(payload: any) {
     // Create base data appropriate for the target table
     const commonData = {
       account_id: account.id,
-      contact_name: getContactName(),
-      email: contactData?.email || null,
-      phone: contactData?.phone || null,
       setter: getSetterName(),
       sales_rep: getSalesRepName(),
       call_outcome: null,
@@ -1283,6 +1280,23 @@ async function processAppointmentWebhook(payload: any) {
         }
       }
 
+      // Resolve contact_id EARLY for duplicate detection
+      let appointmentContactId: string | null = null
+      try {
+        const up = await supabase
+          .from('contacts')
+          .upsert({
+            account_id: account.id,
+            ghl_contact_id: payload.appointment?.contactId || contactData?.id || null,
+            name: (contactData?.name || ((contactData?.firstName || '') || '') || '').toString() || null,
+            email: contactData?.email || null,
+            phone: contactData?.phone || null,
+          }, { onConflict: 'account_id,ghl_contact_id' })
+          .select('id')
+          .maybeSingle()
+        appointmentContactId = up?.data?.id || null
+      } catch {}
+
       const appointmentData = {
         ...baseData,
         date_booked: webhookTimestamp, // When appointment was booked (webhook received)
@@ -1297,59 +1311,8 @@ async function processAppointmentWebhook(payload: any) {
         sales_rep_ghl_id: salesRepData?.id || null,
         ghl_appointment_id: payload.appointment?.id || null,
         ghl_source: fullAppointmentData?.createdBy?.source || fullAppointmentData?.source || 'unknown', // Add GHL source from createdBy.source
-        
-        // Legacy contact attribution fields (keep for compatibility)
-        contact_source: contactData?.source || null,
-        contact_utm_source: contactAttribution.utmSource || null,
-        contact_utm_medium: contactAttribution.utmMedium || null,
-        contact_utm_campaign: contactAttribution.campaign || null,
-        contact_utm_content: contactAttribution.utmContent || null,
-        contact_referrer: contactAttribution.referrer || null,
-        contact_gclid: contactAttribution.gclid || null,
-        contact_fbclid: contactAttribution.fbclid || null,
-        contact_campaign_id: contactAttribution.campaignId || null,
-        last_attribution_source: classifiedAttribution ? JSON.stringify(classifiedAttribution) : null,
-        
-        // Enhanced attribution fields
-        utm_source: attributionSource?.utmSource || null,
-        utm_medium: attributionSource?.utmMedium || null,
-        utm_campaign: attributionSource?.campaign || null,
-        utm_content: attributionSource?.utmContent || null,
-        utm_term: attributionSource?.utmTerm || null,
-        utm_id: attributionSource?.utm_id || null,
-        fbclid: attributionSource?.fbclid || null,
-        fbc: attributionSource?.fbc || null,
-        fbp: attributionSource?.fbp || null,
-        landing_url: attributionSource?.url || null,
-        session_source: attributionSource?.sessionSource || null,
-        medium_id: attributionSource?.mediumId || null,
-        user_agent: attributionSource?.userAgent || null,
-        ip_address: attributionSource?.ip || null,
-        attribution_data: attributionSource ? JSON.stringify(attributionSource) : null,
-        last_attribution_data: lastAttributionSource ? JSON.stringify(lastAttributionSource) : null,
-        
-        // Business intelligence fields
-        lead_value: leadValue,
-        lead_path: leadPath,
-        business_type: businessType
+        contact_id: appointmentContactId,
       };
-      
-      // Resolve contact_id EARLY for duplicate detection
-      let appointmentContactId: string | null = null
-      try {
-        const up = await supabase
-          .from('contacts')
-          .upsert({
-            account_id: account.id,
-            ghl_contact_id: payload.appointment?.contactId || contactData?.id || null,
-            name: appointmentData.contact_name || null,
-            email: appointmentData.email || null,
-            phone: appointmentData.phone || null,
-          }, { onConflict: 'account_id,ghl_contact_id' })
-          .select('id')
-          .maybeSingle()
-        appointmentContactId = up?.data?.id || null
-      } catch {}
       
       // Check for existing appointment to prevent duplicates
       // Use GHL appointment ID as primary unique identifier, with fallback to comprehensive matching
@@ -1373,7 +1336,7 @@ async function processAppointmentWebhook(payload: any) {
           console.log('📋 Duplicate appointment detected by GHL ID, skipping:', {
             existingId: existingByGhlId.id,
             ghlAppointmentId: ghlAppointmentId,
-            contactName: appointmentData.contact_name,
+            contactId: appointmentContactId,
             scheduledTime: appointmentData.date_booked_for
           });
           return;
@@ -1399,7 +1362,7 @@ async function processAppointmentWebhook(payload: any) {
           if ((sameRep || sameSetter) && !hasGhlId) {
             console.log('📋 Duplicate appointment detected by comprehensive matching, skipping:', {
               existingId: existingComprehensive.id,
-              contactName: appointmentData.contact_name,
+              contactId: appointmentContactId,
               scheduledTime: appointmentData.date_booked_for,
               reason: sameRep ? 'same sales rep' : 'same setter'
             });
@@ -1593,6 +1556,23 @@ async function processAppointmentWebhook(payload: any) {
         }
       }
 
+      // Resolve contact_id EARLY for duplicate detection
+      let discoveryContactId: string | null = null
+      try {
+        const up = await supabase
+          .from('contacts')
+          .upsert({
+            account_id: account.id,
+            ghl_contact_id: payload.appointment?.contactId || contactData?.id || null,
+            name: (contactData?.name || ((contactData?.firstName || '') || '') || '').toString() || null,
+            email: contactData?.email || null,
+            phone: contactData?.phone || null,
+          }, { onConflict: 'account_id,ghl_contact_id' })
+          .select('id')
+          .maybeSingle()
+        discoveryContactId = up?.data?.id || null
+      } catch {}
+
       const discoveryData = {
         ...baseData,
         date_booked_for: payload.appointment.startTime ? 
@@ -1603,35 +1583,8 @@ async function processAppointmentWebhook(payload: any) {
         sales_rep_ghl_id: null, // never set from creator at discovery time
         ghl_appointment_id: payload.appointment?.id || null,
         ghl_source: fullAppointmentData?.createdBy?.source || fullAppointmentData?.source || 'unknown', // Add GHL source from createdBy.source
-        // Contact attribution fields for discoveries
-        contact_source: contactData?.source || null,
-        contact_utm_source: contactAttribution.utmSource || null,
-        contact_utm_medium: contactAttribution.utmMedium || null,
-        contact_utm_campaign: contactAttribution.campaign || null,
-        contact_utm_content: contactAttribution.utmContent || null,
-        contact_referrer: contactAttribution.referrer || null,
-        contact_gclid: contactAttribution.gclid || null,
-        contact_fbclid: contactAttribution.fbclid || null,
-        contact_campaign_id: contactAttribution.campaignId || null,
-        last_attribution_source: classifiedAttribution ? JSON.stringify(classifiedAttribution) : null
+        contact_id: discoveryContactId,
       };
-      
-      // Resolve contact_id EARLY for duplicate detection
-      let discoveryContactId: string | null = null
-      try {
-        const up = await supabase
-          .from('contacts')
-          .upsert({
-            account_id: account.id,
-            ghl_contact_id: payload.appointment?.contactId || contactData?.id || null,
-            name: discoveryData.contact_name || null,
-            email: discoveryData.email || null,
-            phone: discoveryData.phone || null,
-          }, { onConflict: 'account_id,ghl_contact_id' })
-          .select('id')
-          .maybeSingle()
-        discoveryContactId = up?.data?.id || null
-      } catch {}
       
       // Check for existing discovery to prevent duplicates
       // Use GHL appointment ID as primary unique identifier, with fallback to comprehensive matching
@@ -1647,12 +1600,12 @@ async function processAppointmentWebhook(payload: any) {
           .maybeSingle();
         
         if (existingByGhlId) {
-          console.log('📋 Duplicate discovery detected by GHL ID, skipping:', {
-            existingId: existingByGhlId.id,
-            ghlAppointmentId: ghlAppointmentId,
-            contactName: discoveryData.contact_name,
-            scheduledTime: discoveryData.date_booked_for
-          });
+                      console.log('📋 Duplicate discovery detected by GHL ID, skipping:', {
+              existingId: existingByGhlId.id,
+              ghlAppointmentId: ghlAppointmentId,
+              contactId: discoveryContactId,
+              scheduledTime: discoveryData.date_booked_for
+            });
           return;
         }
       }
@@ -1676,7 +1629,7 @@ async function processAppointmentWebhook(payload: any) {
           if ((sameRep || sameSetter) && !hasGhlId) {
             console.log('📋 Duplicate discovery detected by comprehensive matching, skipping:', {
               existingId: existingComprehensive.id,
-              contactName: discoveryData.contact_name,
+              contactId: discoveryContactId,
               scheduledTime: discoveryData.date_booked_for,
               reason: sameRep ? 'same sales rep' : 'same setter'
             });
