@@ -84,14 +84,14 @@ export function MultiSelect({
           {selectedOptions.length === 0 ? (
             <span className="text-muted-foreground">{placeholder}</span>
           ) : (
-            <div className="flex flex-wrap gap-1">
+            <div className="flex items-center gap-1 min-w-0 overflow-hidden whitespace-nowrap">
               {selectedOptions.slice(0, 2).map((option) => (
                 <Badge
                   key={option.value}
                   variant="secondary"
-                  className="mr-1"
+                  className="mr-1 flex-shrink-0 max-w-[50%] overflow-hidden"
                 >
-                  {option.label}
+                  <span className="truncate">{option.label}</span>
                   <span
                     role="button"
                     tabIndex={0}
@@ -112,7 +112,7 @@ export function MultiSelect({
                 </Badge>
               ))}
               {selectedOptions.length > 2 && (
-                <Badge variant="secondary" className="mr-1">
+                <Badge variant="secondary" className="mr-1 flex-shrink-0">
                   +{selectedOptions.length - 2} more
                 </Badge>
               )}
