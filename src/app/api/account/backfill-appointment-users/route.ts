@@ -41,38 +41,49 @@ export async function POST(request: NextRequest) {
 
     if (selErr) return NextResponse.json({ error: selErr.message }, { status: 400 })
 
-    const filled: Array<{ id: string; setterUserId?: string; salesRepUserId?: string }> = []
-    const errors: Array<{ id: string; reason: string }> = []
+    // Also find discoveries missing setter/sales rep user IDs
+    const { data: discos, error: discErr } = await supabase
+      .from('discoveries')
+      .select('id, setter, sales_rep, contact_id, contacts(email)')
+      .eq('account_id', accountId)
+      .is('setter_user_id', null)
+      .limit(limit)
 
+    if (discErr) return NextResponse.json({ error: discErr.message }, { status: 400 })
+
+    const filled: Array<{ id: string; table: string; setterUserId?: string; salesRepUserId?: string }> = []
+    const errors: Array<{ id: string; table: string; reason: string }> = []
+
+    // Helper to ensure access without overwriting existing role
+    const ensureAccess = async (uId: string, desiredRole: 'setter' | 'sales_rep') => {
+      const { data: existingAccess } = await supabase
+        .from('account_access')
+        .select('id, role, is_active')
+        .eq('user_id', uId)
+        .eq('account_id', accountId)
+        .maybeSingle()
+      if (existingAccess?.id) {
+        if (existingAccess.is_active === false) {
+          await supabase
+            .from('account_access')
+            .update({ is_active: true })
+            .eq('id', (existingAccess as any).id)
+        }
+        // Do not overwrite role here
+        return
+      }
+      await supabase.rpc('grant_account_access' as any, {
+        p_user_id: uId,
+        p_account_id: accountId,
+        p_role: desiredRole,
+        p_granted_by_user_id: user.id
+      })
+    }
+
+    // Process appointments
     for (const a of appts || []) {
       let setterUserId: string | undefined
       let salesRepUserId: string | undefined
-
-      // Helper to ensure access without overwriting existing role
-      const ensureAccess = async (uId: string, desiredRole: 'setter' | 'sales_rep') => {
-        const { data: existingAccess } = await supabase
-          .from('account_access')
-          .select('id, role, is_active')
-          .eq('user_id', uId)
-          .eq('account_id', accountId)
-          .maybeSingle()
-        if (existingAccess?.id) {
-          if (existingAccess.is_active === false) {
-            await supabase
-              .from('account_access')
-              .update({ is_active: true })
-              .eq('id', (existingAccess as any).id)
-          }
-          // Do not overwrite role here
-          return
-        }
-        await supabase.rpc('grant_account_access' as any, {
-          p_user_id: uId,
-          p_account_id: accountId,
-          p_role: desiredRole,
-          p_granted_by_user_id: user.id
-        })
-      }
 
       // Try email-based match first (from linked contact)
       const contactEmail = (a as any).contacts?.email
@@ -107,10 +118,54 @@ export async function POST(request: NextRequest) {
           .from('appointments')
           .update({ setter_user_id: setterUserId || null, sales_rep_user_id: salesRepUserId || null })
           .eq('id', a.id)
-        if (!updErr) filled.push({ id: a.id, setterUserId, salesRepUserId })
-        else errors.push({ id: a.id, reason: updErr.message })
+        if (!updErr) filled.push({ id: a.id, table: 'appointments', setterUserId, salesRepUserId })
+        else errors.push({ id: a.id, table: 'appointments', reason: updErr.message })
       } else {
-        errors.push({ id: a.id, reason: 'No matching user by email/name' })
+        errors.push({ id: a.id, table: 'appointments', reason: 'No matching user by email/name' })
+      }
+    }
+
+    // Process discoveries
+    for (const d of discos || []) {
+      let setterUserId: string | undefined
+      let salesRepUserId: string | undefined
+
+      // Try email-based match first (from linked contact)
+      const contactEmail = (d as any).contacts?.email
+      if (contactEmail) {
+        const { data: p } = await supabase.from('profiles').select('id, email').ilike('email', contactEmail).maybeSingle()
+        if (p?.id) {
+          await ensureAccess(p.id, 'setter')
+          setterUserId = setterUserId || p.id
+          salesRepUserId = salesRepUserId || p.id
+        }
+      }
+
+      // If still missing, try names (best-effort)
+      if (!setterUserId && d.setter) {
+        const { data: p } = await supabase.from('profiles').select('id, full_name').ilike('full_name', d.setter).maybeSingle()
+        if (p?.id) {
+          await ensureAccess(p.id, 'setter')
+          setterUserId = p.id
+        }
+      }
+      if (!salesRepUserId && d.sales_rep) {
+        const { data: p } = await supabase.from('profiles').select('id, full_name').ilike('full_name', d.sales_rep).maybeSingle()
+        if (p?.id) {
+          await ensureAccess(p.id, 'sales_rep')
+          salesRepUserId = p.id
+        }
+      }
+
+      if (setterUserId || salesRepUserId) {
+        const { error: updErr } = await supabase
+          .from('discoveries')
+          .update({ setter_user_id: setterUserId || null, sales_rep_user_id: salesRepUserId || null })
+          .eq('id', d.id)
+        if (!updErr) filled.push({ id: d.id, table: 'discoveries', setterUserId, salesRepUserId })
+        else errors.push({ id: d.id, table: 'discoveries', reason: updErr.message })
+      } else {
+        errors.push({ id: d.id, table: 'discoveries', reason: 'No matching user by email/name' })
       }
     }
 
