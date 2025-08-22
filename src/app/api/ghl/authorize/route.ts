@@ -30,16 +30,27 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const { data: access } = await supabase
-    .from('account_access')
+  // Check if user is global admin OR has any account access
+  const { data: profile } = await supabase
+    .from('profiles')
     .select('role')
-    .eq('user_id', user.id)
-    .eq('account_id', accountId)
-    .eq('is_active', true)
+    .eq('id', user.id)
     .single()
 
-  if (!access || !['admin', 'moderator'].includes(access.role)) {
-    return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
+  const isGlobalAdmin = profile?.role === 'admin'
+  
+  if (!isGlobalAdmin) {
+    const { data: access } = await supabase
+      .from('account_access')
+      .select('role')
+      .eq('user_id', user.id)
+      .eq('account_id', accountId)
+      .eq('is_active', true)
+      .single()
+
+    if (!access) {
+      return NextResponse.json({ error: 'No access to this account' }, { status: 403 })
+    }
   }
 
   const baseUrl = request.nextUrl.origin
