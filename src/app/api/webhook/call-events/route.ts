@@ -1640,19 +1640,42 @@ async function processAppointmentWebhook(payload: any) {
         // First check: Look for existing discovery with same GHL ID
         const { data: existingByGhlId } = await supabase
           .from('discoveries')
-          .select('id, ghl_appointment_id')
+          .select('id, ghl_appointment_id, call_outcome, show_outcome, lead_quality')
           .eq('account_id', account.id)
           .eq('ghl_appointment_id', ghlAppointmentId)
           .maybeSingle();
         
         if (existingByGhlId) {
-                      console.log('📋 Duplicate discovery detected by GHL ID, skipping:', {
-              existingId: existingByGhlId.id,
-              ghlAppointmentId: ghlAppointmentId,
-              contactId: discoveryContactId,
-              scheduledTime: discoveryData.date_booked_for
-            });
-          return;
+          console.log('📋 Existing discovery found, updating linking fields only:', {
+            existingId: existingByGhlId.id,
+            ghlAppointmentId: ghlAppointmentId,
+            contactId: discoveryContactId
+          });
+          
+          // Update only linking fields, preserve outcome data
+          const linkingUpdate = {
+            contact_id: discoveryContactId,
+            setter_user_id: userIds.setterUserId || null,
+            sales_rep_user_id: userIds.salesRepUserId || null,
+            setter_ghl_id: salesRepData?.id || null, // setter from appointment owner
+            sales_rep_ghl_id: setterData?.id || null, // sales rep from setter
+            setter: getSetterName(),
+            sales_rep: getSalesRepName(),
+            updated_at: new Date().toISOString(),
+          };
+          
+          const { error: updateError } = await supabase
+            .from('discoveries')
+            .update(linkingUpdate)
+            .eq('id', existingByGhlId.id);
+            
+          if (updateError) {
+            console.error('Failed to update discovery linking:', updateError);
+          } else {
+            console.log('✅ Updated discovery linking fields:', existingByGhlId.id);
+          }
+          
+          return; // Skip creating new discovery
         }
       }
       
