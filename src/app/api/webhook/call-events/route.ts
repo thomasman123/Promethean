@@ -1318,28 +1318,74 @@ async function processAppointmentWebhook(payload: any) {
       // Use GHL appointment ID as primary unique identifier, with fallback to comprehensive matching
       const ghlAppointmentId = payload.appointment?.id;
       
-      let duplicateQuery = supabase
-        .from('appointments')
-        .select('id, ghl_appointment_id, sales_rep_ghl_id, setter_ghl_id')
-        .eq('account_id', account.id);
-      
       if (ghlAppointmentId) {
         // First check: Look for existing appointment with same GHL ID
         const { data: existingByGhlId } = await supabase
           .from('appointments')
-          .select('id, ghl_appointment_id')
+          .select('id, ghl_appointment_id, call_outcome, show_outcome, cash_collected, total_sales_value, pitched, watched_assets, objections, lead_quality')
           .eq('account_id', account.id)
           .eq('ghl_appointment_id', ghlAppointmentId)
           .maybeSingle();
         
         if (existingByGhlId) {
-          console.log('📋 Duplicate appointment detected by GHL ID, skipping:', {
+          console.log('📋 Existing appointment found, updating linking fields only:', {
             existingId: existingByGhlId.id,
             ghlAppointmentId: ghlAppointmentId,
-            contactId: appointmentContactId,
-            scheduledTime: appointmentData.date_booked_for
+            contactId: appointmentContactId
           });
-          return;
+          
+          // Update only linking fields, preserve outcome data
+          const linkingUpdate = {
+            contact_id: appointmentContactId,
+            setter_user_id: userIds.setterUserId || null,
+            sales_rep_user_id: userIds.salesRepUserId || null,
+            setter_ghl_id: setterData?.id || null,
+            sales_rep_ghl_id: salesRepData?.id || null,
+            setter: getSetterName(),
+            sales_rep: getSalesRepName(),
+            updated_at: new Date().toISOString(),
+          };
+          
+          const { error: updateError } = await supabase
+            .from('appointments')
+            .update(linkingUpdate)
+            .eq('id', existingByGhlId.id);
+            
+          if (updateError) {
+            console.error('Failed to update appointment linking:', updateError);
+          } else {
+            console.log('✅ Updated appointment linking fields:', existingByGhlId.id);
+            
+            // Also update discovery linking if contact_id changed
+            if (appointmentContactId) {
+              try {
+                const bookedAt = new Date(existingByGhlId.id ? new Date() : new Date()); // Use current time for existing
+                const discWindowStart = new Date(bookedAt.getTime() - 60 * 60 * 1000);
+
+                const { data: matchedDisc } = await supabase
+                  .from('discoveries')
+                  .select('id, linked_appointment_id')
+                  .eq('account_id', account.id)
+                  .eq('contact_id', appointmentContactId)
+                  .gte('date_booked_for', discWindowStart.toISOString())
+                  .lte('date_booked_for', bookedAt.toISOString())
+                  .is('linked_appointment_id', null)
+                  .order('date_booked_for', { ascending: false })
+                  .limit(1)
+                  .maybeSingle();
+
+                if (matchedDisc) {
+                  await supabase.from('appointments').update({ linked_discovery_id: matchedDisc.id }).eq('id', existingByGhlId.id);
+                  await supabase.from('discoveries').update({ linked_appointment_id: existingByGhlId.id, show_outcome: 'booked' }).eq('id', matchedDisc.id);
+                  console.log('🔗 Updated discovery link for existing appointment:', { discoveryId: matchedDisc.id, appointmentId: existingByGhlId.id });
+                }
+              } catch (e) {
+                console.warn('Failed to update discovery link:', e);
+              }
+            }
+          }
+          
+          return; // Skip creating new appointment
         }
       }
       
