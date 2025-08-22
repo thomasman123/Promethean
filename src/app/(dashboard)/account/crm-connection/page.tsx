@@ -9,6 +9,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { CheckCircle, Clock, XCircle, AlertTriangle, Zap, ExternalLink, AlertCircle } from "lucide-react"
 import { useAuth } from "@/hooks/useAuth"
 import { toast } from "sonner"
+import { Label } from "@/components/ui/label"
+import { DateTimePicker } from "@/components/ui/date-time-picker"
 
 export default function CRMConnectionPage() {
   const { selectedAccountId, getAccountBasedPermissions, accountChangeTimestamp } = useAuth()
@@ -206,14 +208,14 @@ export default function CRMConnectionPage() {
               {backfilling ? 'Running...' : 'Run Backfill'}
             </Button>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-5 gap-2 items-end">
-            <div className="sm:col-span-2">
-              <div className="text-sm font-medium">Start</div>
-              <input type="datetime-local" className="w-full border rounded px-2 py-1 bg-background" value={backfillStart} onChange={(e)=>setBackfillStart(e.target.value)} />
+          <div className="grid grid-cols-1 sm:grid-cols-5 gap-3 items-end">
+            <div className="sm:col-span-2 space-y-2">
+              <Label>Start</Label>
+              <DateTimePicker value={backfillStart || null} onChange={(iso) => setBackfillStart(iso || "")} />
             </div>
-            <div className="sm:col-span-2">
-              <div className="text-sm font-medium">End</div>
-              <input type="datetime-local" className="w-full border rounded px-2 py-1 bg-background" value={backfillEnd} onChange={(e)=>setBackfillEnd(e.target.value)} />
+            <div className="sm:col-span-2 space-y-2">
+              <Label>End</Label>
+              <DateTimePicker value={backfillEnd || null} onChange={(iso) => setBackfillEnd(iso || "")} />
             </div>
             <div className="sm:col-span-1">
               <Button onClick={runRangeBackfill} disabled={rangeBackfilling || !backfillStart || !backfillEnd} className="w-full">
