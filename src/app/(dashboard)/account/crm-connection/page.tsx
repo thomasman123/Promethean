@@ -59,7 +59,7 @@ export default function CRMConnectionPage() {
       const nonce = Math.random().toString(36).substring(2, 15)
       const state = JSON.stringify({ accountId: selectedAccountId, nonce })
       
-      const authUrl = new URL('https://marketplace.gohighlevel.com/oauth/chooselocation')
+      const authUrl = new URL('https://marketplace.gohighlevel.com/oauth/authorize')
       authUrl.searchParams.set('response_type', 'code')
       authUrl.searchParams.set('client_id', clientId || '')
       authUrl.searchParams.set('redirect_uri', redirectUri)
