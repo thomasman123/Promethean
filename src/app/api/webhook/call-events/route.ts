@@ -2088,3 +2088,6 @@ function sanitizeRecord<T extends Record<string, any>>(obj: T): T {
   }
   return cleaned
 }
+
+// Export for use by backfill API
+export { processAppointmentWebhook }
