@@ -4,7 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const code = searchParams.get('code');
-  const state = searchParams.get('state'); // This is our accountId
+  const state = searchParams.get('state');
   const error = searchParams.get('error');
   
   // Get the base URL for absolute redirects
@@ -17,6 +17,24 @@ export async function GET(request: NextRequest) {
   if (!code || !state) {
     return NextResponse.redirect(`${baseUrl}/account/crm-connection?error=missing_parameters`);
   }
+
+  // Parse and validate state
+  let stateData: { accountId: string; nonce: string; userId: string };
+  try {
+    stateData = JSON.parse(state);
+    if (!stateData.accountId || !stateData.nonce || !stateData.userId) {
+      throw new Error('Invalid state structure');
+    }
+  } catch (e) {
+    // Fallback for legacy state format (just accountId)
+    if (typeof state === 'string' && state.length > 10) {
+      stateData = { accountId: state, nonce: '', userId: '' };
+    } else {
+      return NextResponse.redirect(`${baseUrl}/account/crm-connection?error=invalid_state`);
+    }
+  }
+
+  // TODO: Validate nonce against stored value for full CSRF protection
   
   const clientId = process.env.GHL_CLIENT_ID;
   const clientSecret = process.env.GHL_CLIENT_SECRET;
@@ -129,11 +147,11 @@ export async function GET(request: NextRequest) {
     // Store the OAuth tokens in the accounts table
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-    const supabase = createClient(supabaseUrl, serviceKey);
+    const supabaseService = createClient(supabaseUrl, serviceKey);
     
-    console.log('Updating account:', state, 'with OAuth tokens');
+    console.log('Updating account:', stateData.accountId, 'with OAuth tokens');
     
-    const { error: updateError } = await supabase
+    const { error: updateError } = await supabaseService
       .from('accounts')
       .update({
         ghl_api_key: tokenData.access_token, // Store access token
@@ -145,7 +163,7 @@ export async function GET(request: NextRequest) {
         future_sync_enabled: true, // Automatically enable future sync
         future_sync_started_at: new Date().toISOString(), // Record when sync started
       })
-      .eq('id', state); // state contains the accountId
+      .eq('id', stateData.accountId);
     
     if (updateError) {
       console.error('Database update error:', updateError);
