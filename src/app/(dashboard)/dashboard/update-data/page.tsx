@@ -90,7 +90,12 @@ export default function UpdateDataPage() {
 			if (mode === 'followups') {
 				const { data, error } = await supabase
 					.from('appointments')
-					.select('id, contact_id, follow_up_at')
+					.select(`
+						id, 
+						contact_id, 
+						follow_up_at,
+						contacts!inner(name)
+					`)
 					.eq('account_id', selectedAccountId)
 					.eq('sales_rep_user_id', effectiveUserId)
 					.eq('show_outcome', 'follow up')
@@ -103,7 +108,7 @@ export default function UpdateDataPage() {
 				}
 				const items: FollowUpItem[] = (data || []).map((a) => ({
 					id: a.id,
-					leadName: (a as any).contact_name,
+					leadName: (a as any).contacts?.name || 'Unknown',
 					followUpAt: (a as any).follow_up_at,
 					type: 'follow_up',
 				}));
@@ -125,7 +130,14 @@ export default function UpdateDataPage() {
 
 			const { data: appts, error } = await supabase
 				.from('appointments')
-				.select('id, contact_id, date_booked_for, sales_rep_user_id, local_date')
+				.select(`
+					id, 
+					contact_id, 
+					date_booked_for, 
+					sales_rep_user_id, 
+					local_date,
+					contacts!inner(name)
+				`)
 				.eq('account_id', selectedAccountId)
 				.eq('sales_rep_user_id', effectiveUserId)
 				.eq('data_filled', false)
@@ -145,7 +157,7 @@ export default function UpdateDataPage() {
 				const overdueDays = Math.max(0, Math.floor((todayMs - itemMs) / 86400000))
 				return {
 					id: a.id,
-					leadName: (a as any).contact_name,
+					leadName: (a as any).contacts?.name || 'Unknown',
 					scheduledAt: a.date_booked_for,
 					localDate: itemLocal,
 					overdueDays,
@@ -155,7 +167,14 @@ export default function UpdateDataPage() {
 
 			const { data: discos, error: discosError } = await supabase
 				.from('discoveries')
-				.select('id, contact_id, date_booked_for, setter_user_id, local_date')
+				.select(`
+					id, 
+					contact_id, 
+					date_booked_for, 
+					setter_user_id, 
+					local_date,
+					contacts!inner(name)
+				`)
 				.eq('account_id', selectedAccountId)
 				.eq('setter_user_id', effectiveUserId)
 				.eq('data_filled', false)
@@ -173,7 +192,7 @@ export default function UpdateDataPage() {
 				const overdueDays = Math.max(0, Math.floor((todayMs - itemMs) / 86400000))
 				return {
 					id: d.id,
-					leadName: (d as any).contact_name,
+					leadName: (d as any).contacts?.name || 'Unknown',
 					scheduledAt: d.date_booked_for,
 					localDate: itemLocal,
 					overdueDays,
