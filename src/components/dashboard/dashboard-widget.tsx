@@ -244,9 +244,17 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
 
     if (names.length === 1 && data) {
       // Fallback to legacy single series rendering paths
+      const primaryName = (names[0] || '').toLowerCase();
+      const shouldCumulative = !!widget.settings?.cumulative && (primaryName.includes('revenue') || primaryName.includes('cash'));
+      const makeCumulative = (arr: Array<{ date: string; value: number }>) => {
+        let running = 0;
+        return arr.map(p => ({ ...p, value: (running += (Number(p.value) || 0)) }));
+      };
+
       switch (widget.vizType) {
         case 'line': {
-          const lineData = Array.isArray(data.data) ? data.data.map((it: any) => ({ date: it.date, value: it.value })) : [{ date: 'Current', value: data.data.value || 0 }];
+          const base = Array.isArray(data.data) ? data.data.map((it: any) => ({ date: it.date, value: it.value })) : [{ date: 'Current', value: (data as any).data.value || 0 }];
+          const lineData = shouldCumulative ? makeCumulative(base) : base;
           return (
             <LineChart
               data={lineData.map(d => ({ ...d, value: unit === 'percent' ? Math.round(d.value * 100) : d.value }))}
@@ -261,7 +269,8 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
           );
         }
         case 'bar': {
-          const barData = Array.isArray(data.data) ? data.data.map((it: any) => ({ date: it.date, value: it.value })) : [{ date: 'Current', value: data.data.value || 0 }];
+          const base = Array.isArray(data.data) ? data.data.map((it: any) => ({ date: it.date, value: it.value })) : [{ date: 'Current', value: (data as any).data.value || 0 }];
+          const barData = shouldCumulative ? makeCumulative(base) : base;
           return (
             <BarChart
               data={barData.map(d => ({ ...d, value: unit === 'percent' ? Math.round(d.value * 100) : d.value }))}
@@ -276,7 +285,8 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
           );
         }
         case 'area': {
-          const areaData = Array.isArray(data.data) ? data.data.map((it: any) => ({ date: it.date, value: it.value })) : [{ date: 'Current', value: data.data.value || 0 }];
+          const base = Array.isArray(data.data) ? data.data.map((it: any) => ({ date: it.date, value: it.value })) : [{ date: 'Current', value: (data as any).data.value || 0 }];
+          const areaData = shouldCumulative ? makeCumulative(base) : base;
           return (
             <AreaChart
               data={areaData.map(d => ({ ...d, value: unit === 'percent' ? Math.round(d.value * 100) : d.value }))}
@@ -291,7 +301,7 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
           );
         }
         case 'radar': {
-          const radarData = Array.isArray(data.data) ? data.data.map((it: any) => ({ date: it.date, value: it.value })) : [{ date: 'Current', value: data.data.value || 0 }];
+          const radarData = Array.isArray(data.data) ? data.data.map((it: any) => ({ date: it.date, value: it.value })) : [{ date: 'Current', value: (data as any).data.value || 0 }];
           return (
             <RadarChart
               key={`chart-${widget.id}`}

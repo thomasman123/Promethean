@@ -28,6 +28,8 @@ import {
   CommandList,
   CommandSeparator,
 } from "@/components/ui/command";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import {
   Search,
   TrendingUp,
@@ -88,6 +90,7 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
   const [filterMode, setFilterMode] = useState<"all" | "favorites" | "recent">("all");
   const [favoriteMetricNames, setFavoriteMetricNames] = useState<string[]>([]);
   const [recentMetricNames, setRecentMetricNames] = useState<string[]>([]);
+  const [isCumulative, setIsCumulative] = useState(false);
 
   // Load favorites/recents from localStorage
   useEffect(() => {
@@ -172,6 +175,7 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
     setSelectedBreakdown(getDefaultBreakdownForViz(initialViz as VizType));
     // Initialize multi-selection with first pick
     setSelectedMetrics([metric]);
+    setIsCumulative(false);
   };
 
   const toggleMultiMetric = (metric: MetricDefinition) => {
@@ -186,6 +190,8 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
   const handleVizChange = (viz: VizType) => {
     setSelectedViz(viz);
     setSelectedBreakdown(getDefaultBreakdownForViz(viz));
+    // Reset cumulative if switching to KPI
+    if (viz === 'kpi') setIsCumulative(false);
   };
 
   const handleAddWidget = () => {
@@ -200,6 +206,7 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
       vizType: selectedViz,
       settings: {
         title: customTitle || selectedMetric.displayName,
+        cumulative: isCumulative,
       },
       position: { x: 0, y: 0 },
       size: { w: 4, h: 4 },
@@ -214,6 +221,7 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
     setSelectedViz(null);
     setSelectedBreakdown(null);
     setCustomTitle("");
+    setIsCumulative(false);
     onOpenChange(false);
   };
 
@@ -256,16 +264,17 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
                   <CommandInput placeholder="Search metrics..." value={searchQuery} onValueChange={setSearchQuery} />
                 </div>
                 <CommandSeparator />
-                <div className="px-3 py-2 flex gap-2 flex-wrap">
-                  <Button size="sm" variant={filterMode === "all" ? "default" : "outline"} onClick={() => setFilterMode("all")}>
-                    All
-                  </Button>
-                  <Button size="sm" variant={filterMode === "favorites" ? "default" : "outline"} onClick={() => setFilterMode("favorites")} className="gap-1">
-                    <Star className="h-3 w-3" /> Favorites
-                  </Button>
-                  <Button size="sm" variant={filterMode === "recent" ? "default" : "outline"} onClick={() => setFilterMode("recent")}>
-                    Recent
-                  </Button>
+                <div className="px-3 py-2 flex gap-2 flex-wrap items-center justify-between">
+                  <div className="flex gap-2">
+                    <Button size="sm" variant={filterMode === "all" ? "default" : "outline"} onClick={() => setFilterMode("all")}>All</Button>
+                    <Button size="sm" variant={filterMode === "favorites" ? "default" : "outline"} onClick={() => setFilterMode("favorites")} className="gap-1">
+                      <Star className="h-3 w-3" /> Favorites
+                    </Button>
+                    <Button size="sm" variant={filterMode === "recent" ? "default" : "outline"} onClick={() => setFilterMode("recent")}>Recent</Button>
+                  </div>
+                  {selectedViz && selectedViz !== 'kpi' && (
+                    <div className="text-xs text-muted-foreground">Selected {selectedMetrics.length} / 3</div>
+                  )}
                 </div>
                 <CommandSeparator />
                 <CommandList className="flex-1 overflow-auto">
@@ -284,6 +293,7 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
                         const isPrimary = selectedMetric?.name === metric.name;
                         const isSelected = selectedMetrics.some((m) => m.name === metric.name);
                         const isFav = favoriteMetricNames.includes(metric.name);
+                        const canMulti = selectedViz && selectedViz !== 'kpi';
                         return (
                           <CommandItem
                             key={metric.name}
@@ -291,31 +301,31 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
                             onSelect={() => handleMetricSelect(metric)}
                             className={cn("flex items-start justify-between gap-3 px-3 py-3 rounded-md", isPrimary && "bg-primary/5")}
                           >
-                            <div className="flex-1 text-left">
-                              <div className="flex items-center gap-2">
-                                <div className="text-sm font-medium leading-none">{metric.displayName}</div>
-                                {isPrimary && <Check className="h-3.5 w-3.5 text-primary" />}
-                              </div>
-                              <div className="text-xs text-muted-foreground mt-1 line-clamp-2">{metric.description}</div>
-                              {metric.formula && <div className="text-[11px] font-mono text-muted-foreground mt-2">{metric.formula}</div>}
-                              <div className="mt-2 flex flex-wrap gap-1">
-                                {metric.supportedBreakdowns.map((b) => (
-                                  <Badge key={b} variant="secondary" className="text-[10px]">
-                                    {b}
-                                  </Badge>
-                                ))}
-                                {selectedViz && selectedViz !== 'kpi' && (
-                                  <Button
-                                    type="button"
-                                    size="sm"
-                                    variant={isSelected ? "default" : "outline"}
-                                    className="h-6 px-2 ml-2"
-                                    onClick={(e) => { e.stopPropagation(); toggleMultiMetric(metric); }}
-                                    disabled={!selectedMetric || (selectedMetrics.length >= 3 && !isSelected)}
-                                  >
-                                    {isSelected ? 'Selected' : 'Add'}
-                                  </Button>
-                                )}
+                            <div className="flex items-start gap-3 flex-1">
+                              {canMulti ? (
+                                <Checkbox
+                                  checked={isSelected}
+                                  onCheckedChange={(checked) => {
+                                    // Prevent row select when toggling checkbox
+                                    toggleMultiMetric(metric);
+                                  }}
+                                  disabled={!isSelected && selectedMetrics.length >= 3}
+                                />
+                              ) : null}
+                              <div className="flex-1 text-left">
+                                <div className="flex items-center gap-2">
+                                  <div className="text-sm font-medium leading-none">{metric.displayName}</div>
+                                  {isPrimary && <Check className="h-3.5 w-3.5 text-primary" />}
+                                </div>
+                                <div className="text-xs text-muted-foreground mt-1 line-clamp-2">{metric.description}</div>
+                                {metric.formula && <div className="text-[11px] font-mono text-muted-foreground mt-2">{metric.formula}</div>}
+                                <div className="mt-2 flex flex-wrap gap-1">
+                                  {metric.supportedBreakdowns.map((b) => (
+                                    <Badge key={b} variant="secondary" className="text-[10px]">
+                                      {b}
+                                    </Badge>
+                                  ))}
+                                </div>
                               </div>
                             </div>
                             <Button
@@ -384,13 +394,48 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
                         ))}
                       </div>
 
-                      {/* Multi-metric selection helper */}
+                      {/* Multi-metric hint and selected list */}
                       {selectedViz && selectedViz !== 'kpi' && (
-                        <div className="text-xs text-muted-foreground mt-3">
-                          Select up to 3 metrics to compare. Current: {selectedMetrics.length}
+                        <div className="mt-3 space-y-2">
+                          <div className="text-xs text-muted-foreground">Select up to 3 metrics to compare.</div>
+                          {selectedMetrics.length > 0 && (
+                            <div className="flex flex-wrap gap-2">
+                              {selectedMetrics.map((m) => (
+                                <Badge key={m.name} variant="secondary" className="flex items-center gap-1">
+                                  {m.displayName}
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-5 w-5 ml-1"
+                                    onClick={() => toggleMultiMetric(m)}
+                                  >
+                                    ×
+                                  </Button>
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
+
+                    {/* Section: Behavior (Cumulative) */}
+                    {(() => {
+                      const primaryName = selectedMetric?.name?.toLowerCase() || '';
+                      const eligible = selectedViz && selectedViz !== 'kpi' && (primaryName.includes('revenue') || primaryName.includes('cash')) && selectedMetrics.length === 1;
+                      return eligible ? (
+                        <div className="rounded-lg border bg-card p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <div className="text-sm font-medium">Cumulative (compound)</div>
+                              <div className="text-xs text-muted-foreground">Show running total over time for this metric.</div>
+                            </div>
+                            <Switch checked={isCumulative} onCheckedChange={(v) => setIsCumulative(!!v)} />
+                          </div>
+                        </div>
+                      ) : null;
+                    })()}
 
                     {/* Section: Title */}
                     <div className="rounded-lg border bg-card p-4">
@@ -414,6 +459,7 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
                         setSelectedViz(null);
                         setSelectedBreakdown(null);
                         setCustomTitle("");
+                        setIsCumulative(false);
                       }}
                     >
                       Clear
