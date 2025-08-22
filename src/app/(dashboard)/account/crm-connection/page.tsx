@@ -37,6 +37,7 @@ export default function CRMConnectionPage() {
     try {
       const res = await fetch(`/api/ghl/calendars?accountId=${encodeURIComponent(selectedAccountId)}`)
       const json = await res.json()
+      console.log('🔍 Connection check response:', { ok: res.ok, status: res.status, data: json })
       if (!res.ok) throw new Error(json?.error || 'Failed')
       // Treat a successful calendars fetch as a valid connection
       setConnection({ ghl_auth_type: 'oauth2', ghl_api_key: 'present', ghl_location_id: json?.locationId || null })
@@ -59,7 +60,8 @@ export default function CRMConnectionPage() {
       const nonce = Math.random().toString(36).substring(2, 15)
       const state = JSON.stringify({ accountId: selectedAccountId, nonce })
       
-      const authUrl = new URL('https://marketplace.gohighlevel.com/oauth/authorize')
+      // Try marketplace.gohighlevel.com first, user can manually try leadconnectorhq.com if needed
+      const authUrl = new URL('https://marketplace.gohighlevel.com/oauth/chooselocation')
       authUrl.searchParams.set('response_type', 'code')
       authUrl.searchParams.set('client_id', clientId || '')
       authUrl.searchParams.set('redirect_uri', redirectUri)
@@ -67,6 +69,7 @@ export default function CRMConnectionPage() {
       authUrl.searchParams.set('state', state)
       authUrl.searchParams.set('loginWindowOpenMode', 'self')
       
+      console.log('🔍 Redirecting to GHL OAuth:', authUrl.toString())
       window.location.href = authUrl.toString()
     } catch (e) {
       console.error('Failed to initiate connection', e)

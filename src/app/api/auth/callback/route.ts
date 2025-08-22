@@ -7,28 +7,40 @@ export async function GET(request: NextRequest) {
   const state = searchParams.get('state');
   const error = searchParams.get('error');
   
+  console.log('🔍 OAuth callback received:', { 
+    hasCode: !!code, 
+    hasState: !!state, 
+    error,
+    fullUrl: request.url 
+  });
+  
   // Get the base URL for absolute redirects
   const baseUrl = request.nextUrl.origin;
   
   if (error) {
+    console.log('❌ OAuth error from GHL:', error);
     return NextResponse.redirect(`${baseUrl}/account/crm-connection?error=${error}`);
   }
   
   if (!code || !state) {
+    console.log('❌ Missing code or state:', { code: !!code, state: !!state });
     return NextResponse.redirect(`${baseUrl}/account/crm-connection?error=missing_parameters`);
   }
 
   // Parse and validate state
-  let stateData: { accountId: string; nonce: string; userId: string };
+  let stateData: { accountId: string; nonce: string; userId?: string };
   try {
     stateData = JSON.parse(state);
-    if (!stateData.accountId || !stateData.nonce || !stateData.userId) {
+    console.log('🔍 Parsed state:', { accountId: stateData.accountId, hasNonce: !!stateData.nonce });
+    if (!stateData.accountId || !stateData.nonce) {
       throw new Error('Invalid state structure');
     }
   } catch (e) {
+    console.log('❌ State parsing failed, trying legacy format:', e);
     // Fallback for legacy state format (just accountId)
     if (typeof state === 'string' && state.length > 10) {
-      stateData = { accountId: state, nonce: '', userId: '' };
+      stateData = { accountId: state, nonce: '' };
+      console.log('✅ Using legacy state format:', stateData.accountId);
     } else {
       return NextResponse.redirect(`${baseUrl}/account/crm-connection?error=invalid_state`);
     }
@@ -40,11 +52,19 @@ export async function GET(request: NextRequest) {
   const clientSecret = process.env.GHL_CLIENT_SECRET;
   const redirectUri = process.env.GHL_REDIRECT_URI || `${baseUrl}/api/auth/callback`;
   
+  console.log('🔍 OAuth config:', { 
+    hasClientId: !!clientId, 
+    hasClientSecret: !!clientSecret, 
+    redirectUri 
+  });
+  
   if (!clientId || !clientSecret) {
+    console.log('❌ Missing OAuth config');
     return NextResponse.redirect(`${baseUrl}/account/crm-connection?error=configuration_error`);
   }
   
   try {
+    console.log('🔄 Exchanging code for tokens...');
     // Exchange authorization code for access token
     const tokenResponse = await fetch('https://services.leadconnectorhq.com/oauth/token', {
       method: 'POST',
@@ -62,16 +82,17 @@ export async function GET(request: NextRequest) {
     
     if (!tokenResponse.ok) {
       const errorData = await tokenResponse.json();
-      console.error('Token exchange failed:', errorData);
+      console.error('❌ Token exchange failed:', errorData);
       return NextResponse.redirect(`${baseUrl}/account/crm-connection?error=token_exchange_failed`);
     }
     
     const tokenData = await tokenResponse.json();
-    console.log('Token exchange successful:', {
+    console.log('✅ Token exchange successful:', {
       locationId: tokenData.locationId,
       hasAccessToken: !!tokenData.access_token,
       hasRefreshToken: !!tokenData.refresh_token,
-      expiresIn: tokenData.expires_in
+      expiresIn: tokenData.expires_in,
+      userType: tokenData.userType
     });
     
     // Auto-subscribe to webhooks for phone call and appointment capture
@@ -149,7 +170,7 @@ export async function GET(request: NextRequest) {
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
     const supabaseService = createClient(supabaseUrl, serviceKey);
     
-    console.log('Updating account:', stateData.accountId, 'with OAuth tokens');
+    console.log('💾 Updating account:', stateData.accountId, 'with OAuth tokens');
     
     const { error: updateError } = await supabaseService
       .from('accounts')
@@ -166,7 +187,7 @@ export async function GET(request: NextRequest) {
       .eq('id', stateData.accountId);
     
     if (updateError) {
-      console.error('Database update error:', updateError);
+      console.error('❌ Database update error:', updateError);
       return NextResponse.redirect(`${baseUrl}/account/crm-connection?error=database_error&detail=${encodeURIComponent(updateError.message)}`);
     }
     
