@@ -35,9 +35,11 @@ export default function CRMConnectionPage() {
     if (!selectedAccountId) return
     setLoading(true)
     try {
-      const { data, error } = await fetch(`/api/ghl/calendars?accountId=${encodeURIComponent(selectedAccountId)}`).then(r => r.json())
-      if (error) throw new Error(error)
-      setConnection(data?.connection || null)
+      const res = await fetch(`/api/ghl/calendars?accountId=${encodeURIComponent(selectedAccountId)}`)
+      const json = await res.json()
+      if (!res.ok) throw new Error(json?.error || 'Failed')
+      // Treat a successful calendars fetch as a valid connection
+      setConnection({ ghl_auth_type: 'oauth2', ghl_api_key: 'present', ghl_location_id: json?.locationId || null })
     } catch (e) {
       console.warn('Failed to load connection', e)
       setConnection(null)
@@ -204,7 +206,7 @@ export default function CRMConnectionPage() {
               <div className="font-medium">Backfill Appointment Users</div>
               <div className="text-sm text-muted-foreground">Fill missing setter/rep IDs by matching emails/names to app users and granting access if needed.</div>
             </div>
-            <Button variant="outline" onClick={runBackfill} disabled={backfilling}>
+            <Button variant="outline" onClick={runBackfill} disabled={backfilling || !(connection && connection.ghl_auth_type === 'oauth2' && connection.ghl_api_key)}>
               {backfilling ? 'Running...' : 'Run Backfill'}
             </Button>
           </div>
@@ -218,10 +220,15 @@ export default function CRMConnectionPage() {
               <DateTimePicker value={backfillEnd || null} onChange={(iso) => setBackfillEnd(iso || "")} />
             </div>
             <div className="sm:col-span-1">
-              <Button onClick={runRangeBackfill} disabled={rangeBackfilling || !backfillStart || !backfillEnd} className="w-full">
+              <Button onClick={runRangeBackfill} disabled={rangeBackfilling || !backfillStart || !backfillEnd || !(connection && connection.ghl_auth_type === 'oauth2' && connection.ghl_api_key)} className="w-full">
                 {rangeBackfilling ? 'Syncing…' : 'Sync range'}
               </Button>
             </div>
+            {!(connection && connection.ghl_auth_type === 'oauth2' && connection.ghl_api_key) && (
+              <div className="sm:col-span-5 text-xs text-muted-foreground">
+                Connect to GoHighLevel first to enable backfill.
+              </div>
+            )}
             <div className="sm:col-span-5 text-xs text-muted-foreground">
               Uses your calendar mappings, fetches from GHL API for the range, and saves appointments/discoveries with the same linking/user/contact logic as live webhooks.
             </div>
