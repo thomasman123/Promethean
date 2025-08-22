@@ -38,6 +38,12 @@ export async function POST(request: NextRequest) {
 		let processed = 0
 		let created = 0
 		const errors: any[] = []
+		const calendarsTried: string[] = []
+		const perCalendar: Record<string, number> = {}
+
+		if (!mappings || mappings.length === 0) {
+			return NextResponse.json({ processed: 0, created: 0, mappingCount: 0, errors: [{ message: 'No calendar mappings found for this account' }] })
+		}
 
 		// For each mapping, fetch appointments in range and feed through processAppointmentWebhook logic
 		for (const mapping of mappings || []) {
@@ -46,13 +52,16 @@ export async function POST(request: NextRequest) {
 				url.searchParams.set('calendarId', mapping.ghl_calendar_id)
 				url.searchParams.set('startTime', startIso)
 				url.searchParams.set('endTime', endIso)
+				calendarsTried.push(mapping.ghl_calendar_id)
 				const resp = await fetch(url.toString(), { headers })
 				if (!resp.ok) {
-					errors.push({ calendar: mapping.ghl_calendar_id, status: resp.status })
+					const txt = await resp.text().catch(()=> '')
+					errors.push({ calendar: mapping.ghl_calendar_id, status: resp.status, body: txt?.slice(0, 500) })
 					continue
 				}
 				const json = await resp.json()
 				const list = json.appointments || json.data || []
+				perCalendar[mapping.ghl_calendar_id] = list.length
 				for (const appt of list) {
 					processed++
 					try {
@@ -85,7 +94,7 @@ export async function POST(request: NextRequest) {
 			}
 		}
 
-		return NextResponse.json({ processed, created, errors })
+		return NextResponse.json({ processed, created, mappingCount: mappings?.length || 0, calendarsTried, perCalendar, errors })
 	} catch (e) {
 		return NextResponse.json({ error: 'Internal error' }, { status: 500 })
 	}
