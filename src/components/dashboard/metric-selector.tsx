@@ -247,7 +247,7 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[98vw] w-[98vw] h-[95vh] flex flex-col p-0 gap-0">
+      <DialogContent className="max-w-none sm:max-w-[98vw] md:max-w-[98vw] lg:max-w-[98vw] xl:max-w-[98vw] 2xl:max-w-[98vw] w-[98vw] h-[96vh] flex flex-col p-0 gap-0">
         {/* Header */}
         <div className="px-8 py-6 border-b bg-gradient-to-r from-background to-muted/20">
           <DialogHeader>
