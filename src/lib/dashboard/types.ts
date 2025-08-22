@@ -42,6 +42,7 @@ export interface WidgetSettings {
   rollingAvgDays?: number;
   compareVsPrevious?: boolean;
   previousPeriodType?: 'day' | 'week' | 'month' | 'year';
+  cumulative?: boolean;
 }
 
 export interface DashboardWidget {
