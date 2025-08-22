@@ -56,7 +56,7 @@ export default function CRMConnectionPage() {
       const baseUrl = window.location.origin
       const clientId = process.env.NEXT_PUBLIC_GHL_CLIENT_ID
       const redirectUri = `${baseUrl}/api/auth/callback`
-      const scope = 'locations.readonly calendars.readonly contacts.readonly'
+      const scope = 'locations.readonly calendars.readonly calendars/events.readonly contacts.readonly'
       const nonce = Math.random().toString(36).substring(2, 15)
       const state = JSON.stringify({ accountId: selectedAccountId, nonce })
       
