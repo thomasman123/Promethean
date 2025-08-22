@@ -52,7 +52,22 @@ export default function CRMConnectionPage() {
     if (!selectedAccountId) return
     setConnecting(true)
     try {
-      window.location.href = `/api/ghl/authorize?accountId=${encodeURIComponent(selectedAccountId)}`
+      const baseUrl = window.location.origin
+      const clientId = process.env.NEXT_PUBLIC_GHL_CLIENT_ID
+      const redirectUri = `${baseUrl}/api/auth/callback`
+      const scope = 'locations.readonly calendars.readonly contacts.readonly webhooks.write'
+      const nonce = Math.random().toString(36).substring(2, 15)
+      const state = JSON.stringify({ accountId: selectedAccountId, nonce })
+      
+      const authUrl = new URL('https://marketplace.gohighlevel.com/oauth/chooselocation')
+      authUrl.searchParams.set('response_type', 'code')
+      authUrl.searchParams.set('client_id', clientId || '')
+      authUrl.searchParams.set('redirect_uri', redirectUri)
+      authUrl.searchParams.set('scope', scope)
+      authUrl.searchParams.set('state', state)
+      authUrl.searchParams.set('loginWindowOpenMode', 'self')
+      
+      window.location.href = authUrl.toString()
     } catch (e) {
       console.error('Failed to initiate connection', e)
       setConnecting(false)
