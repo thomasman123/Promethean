@@ -25,12 +25,14 @@ export async function GET(request: NextRequest) {
   )
 
   // Verify user has access to this account
-  const { data: { user } } = await supabase.auth.getUser()
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  console.log('🔍 Auth debug:', { hasUser: !!user, authError: authError?.message, userId: user?.id })
+  
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  // Check if user is global admin OR has any account access
+  // Check if user is global admin OR has admin/moderator account access
   const { data: profile } = await supabase
     .from('profiles')
     .select('role')
@@ -38,6 +40,7 @@ export async function GET(request: NextRequest) {
     .single()
 
   const isGlobalAdmin = profile?.role === 'admin'
+  console.log('🔍 Profile debug:', { userId: user.id, profileRole: profile?.role, isGlobalAdmin })
   
   if (!isGlobalAdmin) {
     const { data: access } = await supabase
@@ -48,8 +51,10 @@ export async function GET(request: NextRequest) {
       .eq('is_active', true)
       .single()
 
-    if (!access) {
-      return NextResponse.json({ error: 'No access to this account' }, { status: 403 })
+    console.log('🔍 Account access debug:', { userId: user.id, accountId, access: access?.role })
+
+    if (!access || !['admin', 'moderator'].includes(access.role)) {
+      return NextResponse.json({ error: 'Insufficient permissions - need admin or moderator role' }, { status: 403 })
     }
   }
 
