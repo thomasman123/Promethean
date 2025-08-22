@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
     // Find appointments missing setter/sales rep user IDs
     const { data: appts, error: selErr } = await supabase
       .from('appointments')
-      .select('id, email, setter, sales_rep')
+      .select('id, setter, sales_rep, contact_id, contacts(email)')
       .eq('account_id', accountId)
       .is('setter_user_id', null)
       .limit(limit)
@@ -74,9 +74,10 @@ export async function POST(request: NextRequest) {
         })
       }
 
-      // Try email-based match first
-      if (a.email) {
-        const { data: p } = await supabase.from('profiles').select('id, email').ilike('email', a.email).maybeSingle()
+      // Try email-based match first (from linked contact)
+      const contactEmail = (a as any).contacts?.email
+      if (contactEmail) {
+        const { data: p } = await supabase.from('profiles').select('id, email').ilike('email', contactEmail).maybeSingle()
         if (p?.id) {
           // Default to setter for ambiguous email match to avoid manager-level roles
           await ensureAccess(p.id, 'setter')
