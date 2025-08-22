@@ -87,7 +87,16 @@ async function getValidGhlAccessToken(account: any, supabase: any): Promise<stri
 export async function POST(request: NextRequest) {
   console.log('📞 Received GHL webhook at /api/webhook/call-events');
   
+  const startTime = Date.now();
+  let webhookLogId: string | null = null;
+  let supabase: any = null;
+  
   try {
+    // Initialize Supabase client early for logging
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+    supabase = createClient(supabaseUrl, serviceKey);
+    
     // Log all headers for debugging
     const allHeaders: Record<string, string> = {};
     request.headers.forEach((value, key) => {
@@ -102,6 +111,76 @@ export async function POST(request: NextRequest) {
     const contentType = request.headers.get('content-type');
     const userAgent = request.headers.get('user-agent');
     
+    // Parse the payload
+    let payload: any;
+    try {
+      payload = JSON.parse(body);
+    } catch (parseError) {
+      console.error('Failed to parse webhook payload:', parseError);
+      
+      // Log failed webhook
+      try {
+        await supabase
+          .from('webhook_logs')
+          .insert({
+            method: request.method,
+            url: request.url,
+            user_agent: userAgent,
+            headers: allHeaders,
+            raw_body: body,
+            body_length: body.length,
+            processing_status: 'failed',
+            processing_error: 'Invalid JSON payload',
+            response_status: 400,
+            webhook_type: 'unknown',
+            source: 'ghl',
+            processing_duration_ms: Date.now() - startTime,
+          });
+      } catch (logError) {
+        console.error('Failed to log webhook error:', logError);
+      }
+      
+      return NextResponse.json(
+        { error: 'Invalid JSON payload' },
+        { status: 400 }
+      );
+    }
+    
+    // Create comprehensive webhook log entry
+    try {
+      const { data: logEntry } = await supabase
+        .from('webhook_logs')
+        .insert({
+          method: request.method,
+          url: request.url,
+          user_agent: userAgent,
+          headers: allHeaders,
+          raw_body: body,
+          parsed_body: payload,
+          body_length: body.length,
+          processing_status: 'received',
+          webhook_type: payload.type || 'unknown',
+          source: 'ghl',
+          location_id: payload.locationId || null,
+          metadata: {
+            messageType: payload.messageType,
+            contactId: payload.contactId,
+            appointmentId: payload.appointment?.id,
+            callDuration: payload.callDuration,
+            callStatus: payload.callStatus,
+            direction: payload.direction,
+          },
+        })
+        .select('id')
+        .single();
+        
+      webhookLogId = logEntry?.id || null;
+      console.log('📝 Webhook logged with ID:', webhookLogId);
+    } catch (logError) {
+      console.error('Failed to create webhook log entry:', logError);
+      // Continue processing even if logging fails
+    }
+    
     console.log('📊 Webhook details:', {
       signature: signature ? 'present' : 'missing',
       timestamp: timestamp ? 'present' : 'missing',
@@ -115,18 +194,6 @@ export async function POST(request: NextRequest) {
     // Validate content type
     if (contentType && !contentType.includes('application/json')) {
       console.warn('⚠️ Unexpected content-type:', contentType);
-    }
-    
-    // Parse the payload
-    let payload: any;
-    try {
-      payload = JSON.parse(body);
-    } catch (parseError) {
-      console.error('Failed to parse webhook payload:', parseError);
-      return NextResponse.json(
-        { error: 'Invalid JSON payload' },
-        { status: 400 }
-      );
     }
     
     console.log('Webhook payload:', {
@@ -149,6 +216,24 @@ export async function POST(request: NextRequest) {
     const webhookId = payload.webhookId || payload.messageId;
     if (webhookId && processedWebhookIds.has(webhookId)) {
       console.log('Duplicate webhook ID detected, ignoring:', webhookId);
+      
+      // Update webhook log status
+      if (webhookLogId) {
+        try {
+          await supabase
+            .from('webhook_logs')
+            .update({
+              processing_status: 'processed',
+              response_status: 200,
+              processing_duration_ms: Date.now() - startTime,
+              processing_error: 'Duplicate webhook ID - already processed',
+            })
+            .eq('id', webhookLogId);
+        } catch (updateError) {
+          console.error('Failed to update webhook log:', updateError);
+        }
+      }
+      
       return NextResponse.json({ message: 'Webhook already processed' });
     }
     
@@ -179,11 +264,45 @@ export async function POST(request: NextRequest) {
           }
         }
         
+        // Update webhook log as processed successfully
+        if (webhookLogId) {
+          try {
+            await supabase
+              .from('webhook_logs')
+              .update({
+                processing_status: 'processed',
+                response_status: 200,
+                processing_duration_ms: Date.now() - startTime,
+              })
+              .eq('id', webhookLogId);
+          } catch (updateError) {
+            console.error('Failed to update webhook log:', updateError);
+          }
+        }
+        
         console.log('✅ Phone call webhook processed successfully');
         return NextResponse.json({ message: 'Phone call webhook processed successfully' });
         
       } catch (error) {
         console.error('Failed to process phone call webhook:', error);
+        
+        // Update webhook log as failed
+        if (webhookLogId) {
+          try {
+            await supabase
+              .from('webhook_logs')
+              .update({
+                processing_status: 'failed',
+                response_status: 500,
+                processing_duration_ms: Date.now() - startTime,
+                processing_error: error instanceof Error ? error.message : String(error),
+              })
+              .eq('id', webhookLogId);
+          } catch (updateError) {
+            console.error('Failed to update webhook log:', updateError);
+          }
+        }
+        
         return NextResponse.json(
           { error: 'Failed to process phone call webhook' },
           { status: 500 }
@@ -209,11 +328,45 @@ export async function POST(request: NextRequest) {
           }
         }
         
+        // Update webhook log as processed successfully
+        if (webhookLogId) {
+          try {
+            await supabase
+              .from('webhook_logs')
+              .update({
+                processing_status: 'processed',
+                response_status: 200,
+                processing_duration_ms: Date.now() - startTime,
+              })
+              .eq('id', webhookLogId);
+          } catch (updateError) {
+            console.error('Failed to update webhook log:', updateError);
+          }
+        }
+        
         console.log('✅ Appointment webhook processed successfully');
         return NextResponse.json({ message: 'Appointment webhook processed successfully' });
         
       } catch (error) {
         console.error('Failed to process appointment webhook:', error);
+        
+        // Update webhook log as failed
+        if (webhookLogId) {
+          try {
+            await supabase
+              .from('webhook_logs')
+              .update({
+                processing_status: 'failed',
+                response_status: 500,
+                processing_duration_ms: Date.now() - startTime,
+                processing_error: error instanceof Error ? error.message : String(error),
+              })
+              .eq('id', webhookLogId);
+          } catch (updateError) {
+            console.error('Failed to update webhook log:', updateError);
+          }
+        }
+        
         return NextResponse.json(
           { error: 'Failed to process appointment webhook' },
           { status: 500 }
@@ -239,11 +392,45 @@ export async function POST(request: NextRequest) {
           }
         }
         
+        // Update webhook log as processed successfully
+        if (webhookLogId) {
+          try {
+            await supabase
+              .from('webhook_logs')
+              .update({
+                processing_status: 'processed',
+                response_status: 200,
+                processing_duration_ms: Date.now() - startTime,
+              })
+              .eq('id', webhookLogId);
+          } catch (updateError) {
+            console.error('Failed to update webhook log:', updateError);
+          }
+        }
+        
         console.log('✅ Appointment update webhook processed successfully');
         return NextResponse.json({ message: 'Appointment update webhook processed successfully' });
         
       } catch (error) {
         console.error('Failed to process appointment update webhook:', error);
+        
+        // Update webhook log as failed
+        if (webhookLogId) {
+          try {
+            await supabase
+              .from('webhook_logs')
+              .update({
+                processing_status: 'failed',
+                response_status: 500,
+                processing_duration_ms: Date.now() - startTime,
+                processing_error: error instanceof Error ? error.message : String(error),
+              })
+              .eq('id', webhookLogId);
+          } catch (updateError) {
+            console.error('Failed to update webhook log:', updateError);
+          }
+        }
+        
         return NextResponse.json(
           { error: 'Failed to process appointment update webhook' },
           { status: 500 }
@@ -269,11 +456,45 @@ export async function POST(request: NextRequest) {
           }
         }
         
+        // Update webhook log as processed successfully
+        if (webhookLogId) {
+          try {
+            await supabase
+              .from('webhook_logs')
+              .update({
+                processing_status: 'processed',
+                response_status: 200,
+                processing_duration_ms: Date.now() - startTime,
+              })
+              .eq('id', webhookLogId);
+          } catch (updateError) {
+            console.error('Failed to update webhook log:', updateError);
+          }
+        }
+        
         console.log('✅ Appointment deletion webhook processed successfully');
         return NextResponse.json({ message: 'Appointment deletion webhook processed successfully' });
         
       } catch (error) {
         console.error('Failed to process appointment deletion webhook:', error);
+        
+        // Update webhook log as failed
+        if (webhookLogId) {
+          try {
+            await supabase
+              .from('webhook_logs')
+              .update({
+                processing_status: 'failed',
+                response_status: 500,
+                processing_duration_ms: Date.now() - startTime,
+                processing_error: error instanceof Error ? error.message : String(error),
+              })
+              .eq('id', webhookLogId);
+          } catch (updateError) {
+            console.error('Failed to update webhook log:', updateError);
+          }
+        }
+        
         return NextResponse.json(
           { error: 'Failed to process appointment deletion webhook' },
           { status: 500 }
@@ -294,9 +515,44 @@ export async function POST(request: NextRequest) {
             toKeep.forEach(id => processedWebhookIds.add(id))
           }
         }
+        
+        // Update webhook log as processed successfully
+        if (webhookLogId) {
+          try {
+            await supabase
+              .from('webhook_logs')
+              .update({
+                processing_status: 'processed',
+                response_status: 200,
+                processing_duration_ms: Date.now() - startTime,
+              })
+              .eq('id', webhookLogId);
+          } catch (updateError) {
+            console.error('Failed to update webhook log:', updateError);
+          }
+        }
+        
         return NextResponse.json({ message: 'Contact create processed' })
       } catch (e) {
         console.error('Failed to process contact create:', e)
+        
+        // Update webhook log as failed
+        if (webhookLogId) {
+          try {
+            await supabase
+              .from('webhook_logs')
+              .update({
+                processing_status: 'failed',
+                response_status: 500,
+                processing_duration_ms: Date.now() - startTime,
+                processing_error: e instanceof Error ? e.message : String(e),
+              })
+              .eq('id', webhookLogId);
+          } catch (updateError) {
+            console.error('Failed to update webhook log:', updateError);
+          }
+        }
+        
         return NextResponse.json({ error: 'Failed to process contact create' }, { status: 500 })
       }
     }
@@ -314,9 +570,44 @@ export async function POST(request: NextRequest) {
             toKeep.forEach(id => processedWebhookIds.add(id))
           }
         }
+        
+        // Update webhook log as processed successfully
+        if (webhookLogId) {
+          try {
+            await supabase
+              .from('webhook_logs')
+              .update({
+                processing_status: 'processed',
+                response_status: 200,
+                processing_duration_ms: Date.now() - startTime,
+              })
+              .eq('id', webhookLogId);
+          } catch (updateError) {
+            console.error('Failed to update webhook log:', updateError);
+          }
+        }
+        
         return NextResponse.json({ message: 'Contact update processed' })
       } catch (e) {
         console.error('Failed to process contact update:', e)
+        
+        // Update webhook log as failed
+        if (webhookLogId) {
+          try {
+            await supabase
+              .from('webhook_logs')
+              .update({
+                processing_status: 'failed',
+                response_status: 500,
+                processing_duration_ms: Date.now() - startTime,
+                processing_error: e instanceof Error ? e.message : String(e),
+              })
+              .eq('id', webhookLogId);
+          } catch (updateError) {
+            console.error('Failed to update webhook log:', updateError);
+          }
+        }
+        
         return NextResponse.json({ error: 'Failed to process contact update' }, { status: 500 })
       }
     } else {
@@ -324,11 +615,47 @@ export async function POST(request: NextRequest) {
         type: payload.type,
         messageType: payload.messageType
       });
+      
+      // Update webhook log for unsupported webhook type
+      if (webhookLogId) {
+        try {
+          await supabase
+            .from('webhook_logs')
+            .update({
+              processing_status: 'processed',
+              response_status: 200,
+              processing_duration_ms: Date.now() - startTime,
+              processing_error: 'Webhook type not supported',
+            })
+            .eq('id', webhookLogId);
+        } catch (updateError) {
+          console.error('Failed to update webhook log:', updateError);
+        }
+      }
+      
       return NextResponse.json({ message: 'Webhook received but not supported' });
     }
     
   } catch (error) {
     console.error('GHL webhook processing error:', error);
+    
+    // Update webhook log as failed if we have the ID
+    if (webhookLogId && supabase) {
+      try {
+        await supabase
+          .from('webhook_logs')
+          .update({
+            processing_status: 'failed',
+            response_status: 500,
+            processing_duration_ms: Date.now() - startTime,
+            processing_error: error instanceof Error ? error.message : String(error),
+          })
+          .eq('id', webhookLogId);
+      } catch (updateError) {
+        console.error('Failed to update webhook log:', updateError);
+      }
+    }
+    
     return NextResponse.json(
       { error: error instanceof Error ? error.message : String(error) },
       { status: 500 }
