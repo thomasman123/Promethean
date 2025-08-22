@@ -247,7 +247,7 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl w-[90vw] h-[85vh] flex flex-col p-0 gap-0">
+      <DialogContent className="max-w-7xl w-[95vw] h-[90vh] flex flex-col p-0 gap-0">
         {/* Header */}
         <div className="px-6 py-4 border-b bg-gradient-to-r from-background to-muted/20">
           <DialogHeader>
@@ -262,14 +262,14 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
           {/* Left Panel: Metric Selection */}
           <div className="flex-1 flex flex-col border-r bg-background">
             {/* Search and Filters */}
-            <div className="p-4 border-b bg-muted/20">
-              <div className="relative mb-3">
+            <div className="p-6 border-b bg-muted/20">
+              <div className="relative mb-4">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Search metrics..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
+                  className="pl-10 h-10"
                 />
               </div>
               <div className="flex gap-2">
@@ -301,14 +301,14 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
 
             {/* Metrics List */}
             <ScrollArea className="flex-1">
-              <div className="p-4 space-y-4">
+              <div className="p-6 space-y-6">
                 {Object.entries(filteredGroupedMetrics).map(([category, metrics]) => (
-                  <div key={category} className="space-y-2">
-                    <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                  <div key={category} className="space-y-3">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
                       {categoryIcons[category]}
                       <span>{category}</span>
                     </div>
-                    <div className="grid gap-2">
+                    <div className="grid gap-3">
                       {metrics.map((metric) => {
                         const isPrimary = selectedMetric?.name === metric.name;
                         const isSelected = selectedMetrics.some((m) => m.name === metric.name);
@@ -324,30 +324,30 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
                             )}
                             onClick={() => handleMetricSelect(metric)}
                           >
-                            <CardContent className="p-4">
-                              <div className="flex items-start gap-3">
+                            <CardContent className="p-5">
+                              <div className="flex items-start gap-4">
                                 {canMultiSelect && (
                                   <Checkbox
                                     checked={isSelected}
                                     onCheckedChange={() => toggleMultiMetric(metric)}
                                     disabled={!isSelected && selectedMetrics.length >= 3}
                                     onClick={(e) => e.stopPropagation()}
-                                    className="mt-0.5"
+                                    className="mt-1"
                                   />
                                 )}
                                 
                                 <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-2 mb-1">
-                                    <h4 className="font-medium text-sm leading-none">{metric.displayName}</h4>
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <h4 className="font-semibold text-base leading-none">{metric.displayName}</h4>
                                     {isPrimary && <Check className="h-4 w-4 text-primary" />}
                                   </div>
-                                  <p className="text-xs text-muted-foreground mb-2 line-clamp-2">
+                                  <p className="text-sm text-muted-foreground mb-3 leading-relaxed">
                                     {metric.description}
                                   </p>
                                   <div className="flex items-center gap-2">
                                     <div className="flex gap-1">
                                       {metric.supportedBreakdowns.map((breakdown) => (
-                                        <Badge key={breakdown} variant="outline" className="text-[10px] px-1 py-0">
+                                        <Badge key={breakdown} variant="outline" className="text-xs px-2 py-1">
                                           {breakdown}
                                         </Badge>
                                       ))}
@@ -358,7 +358,7 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
                                 <Button
                                   variant={isFav ? "default" : "ghost"}
                                   size="icon"
-                                  className="h-8 w-8 shrink-0"
+                                  className="h-9 w-9 shrink-0"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     toggleFavorite(metric.name);
@@ -376,8 +376,8 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
                 ))}
                 
                 {Object.keys(filteredGroupedMetrics).length === 0 && (
-                  <div className="text-center py-12">
-                    <div className="text-muted-foreground mb-2">No metrics found</div>
+                  <div className="text-center py-16">
+                    <div className="text-lg text-muted-foreground mb-2">No metrics found</div>
                     <div className="text-sm text-muted-foreground">Try adjusting your search or filter</div>
                   </div>
                 )}
@@ -386,16 +386,16 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
           </div>
 
           {/* Right Panel: Configuration */}
-          <div className="w-96 flex flex-col bg-muted/20">
+          <div className="w-[420px] flex flex-col bg-muted/20">
             {!selectedMetric ? (
               <div className="flex-1 flex items-center justify-center p-8">
-                <div className="text-center space-y-3">
-                  <div className="w-16 h-16 mx-auto rounded-full bg-muted flex items-center justify-center">
-                    <Plus className="h-8 w-8 text-muted-foreground" />
+                <div className="text-center space-y-4">
+                  <div className="w-20 h-20 mx-auto rounded-full bg-muted flex items-center justify-center">
+                    <Plus className="h-10 w-10 text-muted-foreground" />
                   </div>
                   <div>
-                    <h3 className="font-medium">Select a metric</h3>
-                    <p className="text-sm text-muted-foreground mt-1">
+                    <h3 className="text-lg font-medium">Select a metric</h3>
+                    <p className="text-sm text-muted-foreground mt-2">
                       Choose a metric from the left to configure your widget
                     </p>
                   </div>
@@ -406,8 +406,8 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
                 {/* Selected Metric Header */}
                 <div className="p-6 border-b bg-gradient-to-br from-background to-primary/5">
                   <div className="text-sm text-muted-foreground mb-1">Configuring</div>
-                  <h3 className="text-lg font-semibold text-foreground">{selectedMetric.displayName}</h3>
-                  <p className="text-sm text-muted-foreground mt-1">{selectedMetric.description}</p>
+                  <h3 className="text-xl font-semibold text-foreground">{selectedMetric.displayName}</h3>
+                  <p className="text-sm text-muted-foreground mt-2 leading-relaxed">{selectedMetric.description}</p>
                 </div>
 
                 <ScrollArea className="flex-1">
@@ -415,21 +415,21 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
                     {/* Selected Metrics (Multi-select) */}
                     {selectedViz && selectedViz !== 'kpi' && selectedMetrics.length > 0 && (
                       <Card>
-                        <CardHeader className="pb-3">
-                          <CardTitle className="text-sm">Selected Metrics ({selectedMetrics.length}/3)</CardTitle>
-                          <CardDescription className="text-xs">
+                        <CardHeader className="pb-4">
+                          <CardTitle className="text-base">Selected Metrics ({selectedMetrics.length}/3)</CardTitle>
+                          <CardDescription>
                             Compare multiple metrics on the same chart
                           </CardDescription>
                         </CardHeader>
                         <CardContent className="pt-0">
                           <div className="flex flex-wrap gap-2">
                             {selectedMetrics.map((metric) => (
-                              <Badge key={metric.name} variant="secondary" className="flex items-center gap-1 px-2 py-1">
-                                <span className="text-xs">{metric.displayName}</span>
+                              <Badge key={metric.name} variant="secondary" className="flex items-center gap-2 px-3 py-2 text-sm">
+                                <span>{metric.displayName}</span>
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  className="h-4 w-4 hover:bg-destructive hover:text-destructive-foreground"
+                                  className="h-5 w-5 hover:bg-destructive hover:text-destructive-foreground rounded-full"
                                   onClick={() => toggleMultiMetric(metric)}
                                 >
                                   <X className="h-3 w-3" />
@@ -443,26 +443,26 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
 
                     {/* Visualization Type */}
                     <Card>
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-sm">Visualization Type</CardTitle>
-                        <CardDescription className="text-xs">
+                      <CardHeader className="pb-4">
+                        <CardTitle className="text-base">Visualization Type</CardTitle>
+                        <CardDescription>
                           How should this metric be displayed?
                         </CardDescription>
                       </CardHeader>
                       <CardContent className="pt-0">
-                        <div className="grid grid-cols-1 gap-2">
+                        <div className="grid grid-cols-1 gap-3">
                           {(Object.entries(vizTypeConfig) as [VizType, typeof vizTypeConfig[VizType]][]).map(([viz, config]) => (
                             <Button
                               key={viz}
                               variant={selectedViz === viz ? "default" : "outline"}
-                              className="justify-start h-auto p-3"
+                              className="justify-start h-auto p-4"
                               onClick={() => handleVizChange(viz)}
                             >
                               <div className="flex items-center gap-3">
                                 {config.icon}
                                 <div className="text-left">
-                                  <div className="font-medium text-sm">{config.label}</div>
-                                  <div className="text-xs text-muted-foreground">{config.description}</div>
+                                  <div className="font-medium">{config.label}</div>
+                                  <div className="text-sm text-muted-foreground">{config.description}</div>
                                 </div>
                               </div>
                             </Button>
@@ -474,11 +474,11 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
                     {/* Cumulative Toggle */}
                     {isCumulativeEligible && (
                       <Card>
-                        <CardContent className="p-4">
+                        <CardContent className="p-5">
                           <div className="flex items-center justify-between">
                             <div className="space-y-1">
-                              <div className="text-sm font-medium">Cumulative Mode</div>
-                              <div className="text-xs text-muted-foreground">
+                              <div className="text-base font-medium">Cumulative Mode</div>
+                              <div className="text-sm text-muted-foreground">
                                 Show running total that compounds over time
                               </div>
                             </div>
@@ -493,9 +493,9 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
 
                     {/* Custom Title */}
                     <Card>
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-sm">Widget Title</CardTitle>
-                        <CardDescription className="text-xs">
+                      <CardHeader className="pb-4">
+                        <CardTitle className="text-base">Widget Title</CardTitle>
+                        <CardDescription>
                           Customize the title that appears on your widget
                         </CardDescription>
                       </CardHeader>
@@ -504,7 +504,7 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
                           value={customTitle} 
                           onChange={(e) => setCustomTitle(e.target.value)} 
                           placeholder={selectedMetric.displayName}
-                          className="w-full"
+                          className="w-full h-10"
                         />
                       </CardContent>
                     </Card>
@@ -513,13 +513,14 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
 
                 {/* Footer Actions */}
                 <div className="p-6 border-t bg-background/80 backdrop-blur">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="text-xs text-muted-foreground">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="text-sm text-muted-foreground">
                       Press Enter to add quickly
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-3">
                       <Button
                         variant="outline"
+                        size="lg"
                         onClick={() => {
                           setSelectedMetric(null);
                           setSelectedMetrics([]);
@@ -535,6 +536,7 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
                         onClick={handleAddWidget} 
                         disabled={!selectedViz || !selectedBreakdown}
                         className="gap-2"
+                        size="lg"
                       >
                         <Plus className="h-4 w-4" />
                         Add Widget
