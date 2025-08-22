@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@supabase/ssr'
 import { createClient } from '@supabase/supabase-js'
 import { randomBytes } from 'crypto'
 
@@ -10,48 +9,58 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'accountId required' }, { status: 400 })
   }
 
-  const supabase = createServerClient(
+  // Use service role to bypass RLS for user validation
+  const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return request.cookies.get(name)?.value
-        },
-        set() {},
-        remove() {},
-      },
-    }
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
 
-  // Verify user has access to this account
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
-  console.log('🔍 Auth debug:', { hasUser: !!user, authError: authError?.message, userId: user?.id })
-  
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  // Get user from Authorization header or session
+  const authHeader = request.headers.get('authorization')
+  const sessionToken = request.cookies.get('sb-access-token')?.value || 
+                      request.cookies.get('supabase-auth-token')?.value ||
+                      authHeader?.replace('Bearer ', '')
+
+  if (!sessionToken) {
+    console.log('🔍 No session token found in cookies or auth header')
+    return NextResponse.json({ error: 'No session token' }, { status: 401 })
+  }
+
+  // Verify the JWT token
+  let userId: string
+  try {
+    const { data: { user }, error } = await supabase.auth.getUser(sessionToken)
+    if (error || !user) {
+      console.log('🔍 Token validation failed:', error?.message)
+      return NextResponse.json({ error: 'Invalid session' }, { status: 401 })
+    }
+    userId = user.id
+    console.log('🔍 Auth success:', { userId })
+  } catch (e) {
+    console.log('🔍 Auth exception:', e)
+    return NextResponse.json({ error: 'Auth validation failed' }, { status: 401 })
   }
 
   // Check if user is global admin OR has admin/moderator account access
   const { data: profile } = await supabase
     .from('profiles')
     .select('role')
-    .eq('id', user.id)
+    .eq('id', userId)
     .single()
 
   const isGlobalAdmin = profile?.role === 'admin'
-  console.log('🔍 Profile debug:', { userId: user.id, profileRole: profile?.role, isGlobalAdmin })
+  console.log('🔍 Profile debug:', { userId, profileRole: profile?.role, isGlobalAdmin })
   
   if (!isGlobalAdmin) {
     const { data: access } = await supabase
       .from('account_access')
       .select('role')
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .eq('account_id', accountId)
       .eq('is_active', true)
       .single()
 
-    console.log('🔍 Account access debug:', { userId: user.id, accountId, access: access?.role })
+    console.log('🔍 Account access debug:', { userId, accountId, access: access?.role })
 
     if (!access || !['admin', 'moderator'].includes(access.role)) {
       return NextResponse.json({ error: 'Insufficient permissions - need admin or moderator role' }, { status: 403 })
@@ -68,7 +77,7 @@ export async function GET(request: NextRequest) {
 
   // Generate CSRF nonce and store it temporarily
   const nonce = randomBytes(16).toString('hex')
-  const state = JSON.stringify({ accountId, nonce, userId: user.id })
+  const state = JSON.stringify({ accountId, nonce, userId })
 
   // TODO: Store nonce in cache/session for verification in callback
   // For now, we'll include userId in state for basic validation
@@ -85,5 +94,6 @@ export async function GET(request: NextRequest) {
   authUrl.searchParams.set('state', state)
   authUrl.searchParams.set('loginWindowOpenMode', 'self')
 
+  console.log('🔍 Redirecting to:', authUrl.toString())
   return NextResponse.redirect(authUrl.toString())
 } 
