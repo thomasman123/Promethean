@@ -75,10 +75,10 @@ export default function CRMConnectionPage() {
     if (!selectedAccountId) return
     setLoading(true)
     try {
-      const res = await fetch('/api/admin/toggle-agency-status', {
+      const res = await fetch('/api/admin/ghl/disconnect', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ accountId: selectedAccountId, action: 'disconnect_and_delete' })
+        body: JSON.stringify({ accountId: selectedAccountId })
       })
       if (!res.ok) throw new Error(await res.text())
       setShowUninstallDialog(true)
@@ -99,7 +99,7 @@ export default function CRMConnectionPage() {
       const res = await fetch('/api/admin/toggle-agency-status', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ accountId: selectedAccountId, action: 'wipe_data' })
+        body: JSON.stringify({ accountId: selectedAccountId, isAgency: false })
       })
       if (!res.ok) throw new Error(await res.text())
       setShowWipeDialog(false)
