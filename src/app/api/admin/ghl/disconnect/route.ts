@@ -26,14 +26,27 @@ export async function POST(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    // Admin check
+    // Check if user is global admin OR account admin/moderator
     const { data: profile } = await supabase
       .from('profiles')
       .select('role')
       .eq('id', user.id)
       .single()
-    if (!profile || profile.role !== 'admin') {
-      return NextResponse.json({ error: 'Only global admins can disconnect GHL' }, { status: 403 })
+
+    const isGlobalAdmin = profile?.role === 'admin'
+    
+    if (!isGlobalAdmin) {
+      const { data: access } = await supabase
+        .from('account_access')
+        .select('role')
+        .eq('user_id', user.id)
+        .eq('account_id', accountId)
+        .eq('is_active', true)
+        .single()
+
+      if (!access || !['admin', 'moderator'].includes(access.role)) {
+        return NextResponse.json({ error: 'Only account admins/moderators can disconnect GHL' }, { status: 403 })
+      }
     }
 
     // Fetch account to get current webhook and token
@@ -50,7 +63,7 @@ export async function POST(request: NextRequest) {
           method: 'DELETE',
           headers: {
             Authorization: `Bearer ${account.ghl_api_key}`,
-            Version: '2021-07-28',
+            Version: '2021-04-15',
             Accept: 'application/json'
           }
         })
