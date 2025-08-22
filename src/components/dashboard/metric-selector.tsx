@@ -14,20 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Label } from "@/components/ui/label";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-  CommandSeparator,
-} from "@/components/ui/command";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -40,6 +27,12 @@ import {
   Star,
   Plus,
   Check,
+  X,
+  BarChart3,
+  LineChart,
+  PieChart,
+  Activity,
+  Zap,
 } from "lucide-react";
 import { useDashboardStore } from "@/lib/dashboard/store";
 import { MetricDefinition, VizType, BreakdownType } from "@/lib/dashboard/types";
@@ -58,15 +51,16 @@ const categoryIcons: Record<string, React.ReactNode> = {
   Quality: <Target className="h-4 w-4" />,
   Team: <Users className="h-4 w-4" />,
   "Compare Mode": <Users className="h-4 w-4" />,
+  General: <Activity className="h-4 w-4" />,
 };
 
-// Visualization type labels
-const vizTypeLabels: Record<VizType, string> = {
-  kpi: "KPI Tile",
-  line: "Line Chart",
-  bar: "Bar Chart",
-  area: "Area Chart",
-  radar: "Radar Chart",
+// Visualization type labels and icons
+const vizTypeConfig: Record<VizType, { label: string; icon: React.ReactNode; description: string }> = {
+  kpi: { label: "KPI Tile", icon: <Zap className="h-4 w-4" />, description: "Single value display" },
+  line: { label: "Line Chart", icon: <LineChart className="h-4 w-4" />, description: "Trends over time" },
+  bar: { label: "Bar Chart", icon: <BarChart3 className="h-4 w-4" />, description: "Compare values" },
+  area: { label: "Area Chart", icon: <Activity className="h-4 w-4" />, description: "Filled line chart" },
+  radar: { label: "Radar Chart", icon: <PieChart className="h-4 w-4" />, description: "Multi-dimensional" },
 };
 
 // Derive sensible visualization defaults when none are provided by the registry
@@ -244,229 +238,308 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedMetric, selectedViz, selectedBreakdown, customTitle]);
 
+  // Check if metric is eligible for cumulative mode
+  const isCumulativeEligible = useMemo(() => {
+    if (!selectedMetric || selectedViz === 'kpi' || selectedMetrics.length > 1) return false;
+    const primaryName = selectedMetric.name.toLowerCase();
+    return primaryName.includes('revenue') || primaryName.includes('cash');
+  }, [selectedMetric, selectedViz, selectedMetrics.length]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[96vw] h-[94vh] max-w-none sm:w-[96vw] sm:h-[94vh] sm:max-w-[96vw] md:max-w-[96vw] lg:max-w-[96vw] xl:max-w-[96vw] 2xl:max-w-[1600px] flex flex-col p-0 overflow-hidden rounded-xl">
-        <div className="border-b px-6 py-5 bg-gradient-to-br from-background to-muted/40">
-          <DialogHeader className="space-y-1">
-            <DialogTitle className="text-xl">Add Metric Widget</DialogTitle>
-            <DialogDescription className="text-muted-foreground">Select a metric, then configure how it appears.</DialogDescription>
+      <DialogContent className="max-w-6xl w-[90vw] h-[85vh] flex flex-col p-0 gap-0">
+        {/* Header */}
+        <div className="px-6 py-4 border-b bg-gradient-to-r from-background to-muted/20">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-semibold">Add Metric Widget</DialogTitle>
+            <DialogDescription>
+              Choose a metric and configure how you want to visualize it on your dashboard.
+            </DialogDescription>
           </DialogHeader>
         </div>
 
-        <div className="flex-1 grid grid-cols-12 gap-0 overflow-hidden">
-          {/* Left: Metric Browser */}
-          <div className="col-span-7 border-r flex flex-col bg-background min-h-0">
-            <div className="px-4 pt-4 pb-3 flex-1 min-h-0 flex flex-col">
-              <Command shouldFilter={false} className="rounded-lg border flex-1 min-h-0">
-                <div className="flex items-center px-2">
-                  <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
-                  <CommandInput placeholder="Search metrics..." value={searchQuery} onValueChange={setSearchQuery} />
-                </div>
-                <CommandSeparator />
-                <div className="px-3 py-2 flex gap-2 flex-wrap items-center justify-between">
-                  <div className="flex gap-2">
-                    <Button size="sm" variant={filterMode === "all" ? "default" : "outline"} onClick={() => setFilterMode("all")}>All</Button>
-                    <Button size="sm" variant={filterMode === "favorites" ? "default" : "outline"} onClick={() => setFilterMode("favorites")} className="gap-1">
-                      <Star className="h-3 w-3" /> Favorites
-                    </Button>
-                    <Button size="sm" variant={filterMode === "recent" ? "default" : "outline"} onClick={() => setFilterMode("recent")}>Recent</Button>
-                  </div>
-                  {selectedViz && selectedViz !== 'kpi' && (
-                    <div className="text-xs text-muted-foreground">Selected {selectedMetrics.length} / 3</div>
-                  )}
-                </div>
-                <CommandSeparator />
-                <CommandList className="flex-1 overflow-auto">
-                  <CommandEmpty>No metrics found.</CommandEmpty>
-                  {Object.entries(filteredGroupedMetrics).map(([category, metrics]) => (
-                    <CommandGroup
-                      key={category}
-                      heading={
-                        <div className="flex items-center gap-2 text-sm">
-                          {categoryIcons[category]}
-                          <span>{category}</span>
-                        </div>
-                      }
-                    >
+        <div className="flex-1 flex overflow-hidden">
+          {/* Left Panel: Metric Selection */}
+          <div className="flex-1 flex flex-col border-r bg-background">
+            {/* Search and Filters */}
+            <div className="p-4 border-b bg-muted/20">
+              <div className="relative mb-3">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search metrics..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button 
+                  size="sm" 
+                  variant={filterMode === "all" ? "default" : "outline"} 
+                  onClick={() => setFilterMode("all")}
+                >
+                  All
+                </Button>
+                <Button 
+                  size="sm" 
+                  variant={filterMode === "favorites" ? "default" : "outline"} 
+                  onClick={() => setFilterMode("favorites")}
+                  className="gap-1"
+                >
+                  <Star className="h-3 w-3" />
+                  Favorites
+                </Button>
+                <Button 
+                  size="sm" 
+                  variant={filterMode === "recent" ? "default" : "outline"} 
+                  onClick={() => setFilterMode("recent")}
+                >
+                  Recent
+                </Button>
+              </div>
+            </div>
+
+            {/* Metrics List */}
+            <ScrollArea className="flex-1">
+              <div className="p-4 space-y-4">
+                {Object.entries(filteredGroupedMetrics).map(([category, metrics]) => (
+                  <div key={category} className="space-y-2">
+                    <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                      {categoryIcons[category]}
+                      <span>{category}</span>
+                    </div>
+                    <div className="grid gap-2">
                       {metrics.map((metric) => {
                         const isPrimary = selectedMetric?.name === metric.name;
                         const isSelected = selectedMetrics.some((m) => m.name === metric.name);
                         const isFav = favoriteMetricNames.includes(metric.name);
-                        const canMulti = selectedViz && selectedViz !== 'kpi';
+                        const canMultiSelect = selectedViz && selectedViz !== 'kpi';
+                        
                         return (
-                          <CommandItem
+                          <Card 
                             key={metric.name}
-                            value={`${metric.displayName} ${metric.description}`}
-                            onSelect={() => handleMetricSelect(metric)}
-                            className={cn("flex items-start justify-between gap-3 px-3 py-3 rounded-md", isPrimary && "bg-primary/5")}
+                            className={cn(
+                              "cursor-pointer transition-all hover:shadow-md border-2",
+                              isPrimary ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
+                            )}
+                            onClick={() => handleMetricSelect(metric)}
                           >
-                            <div className="flex items-start gap-3 flex-1">
-                              {canMulti ? (
-                                <Checkbox
-                                  checked={isSelected}
-                                  onCheckedChange={(checked) => {
-                                    // Prevent row select when toggling checkbox
-                                    toggleMultiMetric(metric);
+                            <CardContent className="p-4">
+                              <div className="flex items-start gap-3">
+                                {canMultiSelect && (
+                                  <Checkbox
+                                    checked={isSelected}
+                                    onCheckedChange={() => toggleMultiMetric(metric)}
+                                    disabled={!isSelected && selectedMetrics.length >= 3}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="mt-0.5"
+                                  />
+                                )}
+                                
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <h4 className="font-medium text-sm leading-none">{metric.displayName}</h4>
+                                    {isPrimary && <Check className="h-4 w-4 text-primary" />}
+                                  </div>
+                                  <p className="text-xs text-muted-foreground mb-2 line-clamp-2">
+                                    {metric.description}
+                                  </p>
+                                  <div className="flex items-center gap-2">
+                                    <div className="flex gap-1">
+                                      {metric.supportedBreakdowns.map((breakdown) => (
+                                        <Badge key={breakdown} variant="outline" className="text-[10px] px-1 py-0">
+                                          {breakdown}
+                                        </Badge>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <Button
+                                  variant={isFav ? "default" : "ghost"}
+                                  size="icon"
+                                  className="h-8 w-8 shrink-0"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleFavorite(metric.name);
                                   }}
-                                  disabled={!isSelected && selectedMetrics.length >= 3}
-                                />
-                              ) : null}
-                              <div className="flex-1 text-left">
-                                <div className="flex items-center gap-2">
-                                  <div className="text-sm font-medium leading-none">{metric.displayName}</div>
-                                  {isPrimary && <Check className="h-3.5 w-3.5 text-primary" />}
-                                </div>
-                                <div className="text-xs text-muted-foreground mt-1 line-clamp-2">{metric.description}</div>
-                                {metric.formula && <div className="text-[11px] font-mono text-muted-foreground mt-2">{metric.formula}</div>}
-                                <div className="mt-2 flex flex-wrap gap-1">
-                                  {metric.supportedBreakdowns.map((b) => (
-                                    <Badge key={b} variant="secondary" className="text-[10px]">
-                                      {b}
-                                    </Badge>
-                                  ))}
-                                </div>
+                                >
+                                  <Star className={cn("h-4 w-4", isFav && "fill-current")} />
+                                </Button>
                               </div>
-                            </div>
-                            <Button
-                              type="button"
-                              variant={isFav ? "default" : "ghost"}
-                              size="icon"
-                              className={cn("h-7 w-7 shrink-0", isFav ? "" : "text-muted-foreground")}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                toggleFavorite(metric.name);
-                              }}
-                              aria-label={isFav ? "Remove from favorites" : "Add to favorites"}
-                            >
-                              <Star className={cn("h-4 w-4", isFav && "fill-current")} />
-                            </Button>
-                          </CommandItem>
+                            </CardContent>
+                          </Card>
                         );
                       })}
-                    </CommandGroup>
-                  ))}
-                </CommandList>
-              </Command>
-            </div>
+                    </div>
+                  </div>
+                ))}
+                
+                {Object.keys(filteredGroupedMetrics).length === 0 && (
+                  <div className="text-center py-12">
+                    <div className="text-muted-foreground mb-2">No metrics found</div>
+                    <div className="text-sm text-muted-foreground">Try adjusting your search or filter</div>
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
           </div>
 
-          {/* Right: Configuration & Preview */}
-          <div className="col-span-5 flex flex-col bg-background">
+          {/* Right Panel: Configuration */}
+          <div className="w-96 flex flex-col bg-muted/20">
             {!selectedMetric ? (
-              <div className="h-full flex items-center justify-center text-center p-8">
-                <div>
-                  <div className="mx-auto mb-3 h-10 w-10 rounded-full bg-muted flex items-center justify-center shadow-sm">
-                    <Plus className="h-5 w-5 text-muted-foreground" />
+              <div className="flex-1 flex items-center justify-center p-8">
+                <div className="text-center space-y-3">
+                  <div className="w-16 h-16 mx-auto rounded-full bg-muted flex items-center justify-center">
+                    <Plus className="h-8 w-8 text-muted-foreground" />
                   </div>
-                  <div className="font-medium">Pick a metric to configure</div>
-                  <div className="text-sm text-muted-foreground mt-1">Search or browse on the left. Press Enter to add when ready.</div>
+                  <div>
+                    <h3 className="font-medium">Select a metric</h3>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Choose a metric from the left to configure your widget
+                    </p>
+                  </div>
                 </div>
               </div>
             ) : (
-              <div className="h-full flex flex-col">
-                <div className="px-6 pt-5 pb-4 border-b bg-gradient-to-br from-background to-muted/30">
-                  <div className="text-sm text-muted-foreground">Configuring</div>
-                  <div className="text-lg font-semibold leading-tight">{selectedMetric.displayName}</div>
+              <div className="flex-1 flex flex-col">
+                {/* Selected Metric Header */}
+                <div className="p-6 border-b bg-gradient-to-br from-background to-primary/5">
+                  <div className="text-sm text-muted-foreground mb-1">Configuring</div>
+                  <h3 className="text-lg font-semibold text-foreground">{selectedMetric.displayName}</h3>
+                  <p className="text-sm text-muted-foreground mt-1">{selectedMetric.description}</p>
                 </div>
 
                 <ScrollArea className="flex-1">
-                  <div className="px-6 py-5 space-y-6">
-                    {/* Section: Visualization */}
-                    <div className="rounded-lg border bg-card p-4">
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="text-sm font-medium">Visualization</div>
-                      </div>
-
-                      {/* All Visualizations */}
-                      <div className="flex flex-wrap gap-2">
-                        {(["kpi", "line", "bar", "area", "radar"] as VizType[]).map((viz) => (
-                          <Button
-                            key={`all-${viz}`}
-                            type="button"
-                            variant={selectedViz === viz ? "default" : "outline"}
-                            size="sm"
-                            className="rounded-md"
-                            onClick={() => handleVizChange(viz)}
-                          >
-                            {vizTypeLabels[viz]}
-                          </Button>
-                        ))}
-                      </div>
-
-                      {/* Multi-metric hint and selected list */}
-                      {selectedViz && selectedViz !== 'kpi' && (
-                        <div className="mt-3 space-y-2">
-                          <div className="text-xs text-muted-foreground">Select up to 3 metrics to compare.</div>
-                          {selectedMetrics.length > 0 && (
-                            <div className="flex flex-wrap gap-2">
-                              {selectedMetrics.map((m) => (
-                                <Badge key={m.name} variant="secondary" className="flex items-center gap-1">
-                                  {m.displayName}
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-5 w-5 ml-1"
-                                    onClick={() => toggleMultiMetric(m)}
-                                  >
-                                    ×
-                                  </Button>
-                                </Badge>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Section: Behavior (Cumulative) */}
-                    {(() => {
-                      const primaryName = selectedMetric?.name?.toLowerCase() || '';
-                      const eligible = selectedViz && selectedViz !== 'kpi' && (primaryName.includes('revenue') || primaryName.includes('cash')) && selectedMetrics.length === 1;
-                      return eligible ? (
-                        <div className="rounded-lg border bg-card p-4">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <div className="text-sm font-medium">Cumulative (compound)</div>
-                              <div className="text-xs text-muted-foreground">Show running total over time for this metric.</div>
-                            </div>
-                            <Switch checked={isCumulative} onCheckedChange={(v) => setIsCumulative(!!v)} />
+                  <div className="p-6 space-y-6">
+                    {/* Selected Metrics (Multi-select) */}
+                    {selectedViz && selectedViz !== 'kpi' && selectedMetrics.length > 0 && (
+                      <Card>
+                        <CardHeader className="pb-3">
+                          <CardTitle className="text-sm">Selected Metrics ({selectedMetrics.length}/3)</CardTitle>
+                          <CardDescription className="text-xs">
+                            Compare multiple metrics on the same chart
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent className="pt-0">
+                          <div className="flex flex-wrap gap-2">
+                            {selectedMetrics.map((metric) => (
+                              <Badge key={metric.name} variant="secondary" className="flex items-center gap-1 px-2 py-1">
+                                <span className="text-xs">{metric.displayName}</span>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-4 w-4 hover:bg-destructive hover:text-destructive-foreground"
+                                  onClick={() => toggleMultiMetric(metric)}
+                                >
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              </Badge>
+                            ))}
                           </div>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {/* Visualization Type */}
+                    <Card>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-sm">Visualization Type</CardTitle>
+                        <CardDescription className="text-xs">
+                          How should this metric be displayed?
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="pt-0">
+                        <div className="grid grid-cols-1 gap-2">
+                          {(Object.entries(vizTypeConfig) as [VizType, typeof vizTypeConfig[VizType]][]).map(([viz, config]) => (
+                            <Button
+                              key={viz}
+                              variant={selectedViz === viz ? "default" : "outline"}
+                              className="justify-start h-auto p-3"
+                              onClick={() => handleVizChange(viz)}
+                            >
+                              <div className="flex items-center gap-3">
+                                {config.icon}
+                                <div className="text-left">
+                                  <div className="font-medium text-sm">{config.label}</div>
+                                  <div className="text-xs text-muted-foreground">{config.description}</div>
+                                </div>
+                              </div>
+                            </Button>
+                          ))}
                         </div>
-                      ) : null;
-                    })()}
+                      </CardContent>
+                    </Card>
 
-                    {/* Section: Title */}
-                    <div className="rounded-lg border bg-card p-4">
-                      <Label htmlFor="title" className="text-sm font-medium mb-2 block">Custom Title (optional)</Label>
-                      <Input id="title" value={customTitle} onChange={(e) => setCustomTitle(e.target.value)} placeholder={selectedMetric.displayName} />
-                    </div>
+                    {/* Cumulative Toggle */}
+                    {isCumulativeEligible && (
+                      <Card>
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div className="space-y-1">
+                              <div className="text-sm font-medium">Cumulative Mode</div>
+                              <div className="text-xs text-muted-foreground">
+                                Show running total that compounds over time
+                              </div>
+                            </div>
+                            <Switch 
+                              checked={isCumulative} 
+                              onCheckedChange={setIsCumulative}
+                            />
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
 
-                    {/* Advanced options removed as requested */}
+                    {/* Custom Title */}
+                    <Card>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-sm">Widget Title</CardTitle>
+                        <CardDescription className="text-xs">
+                          Customize the title that appears on your widget
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="pt-0">
+                        <Input 
+                          value={customTitle} 
+                          onChange={(e) => setCustomTitle(e.target.value)} 
+                          placeholder={selectedMetric.displayName}
+                          className="w-full"
+                        />
+                      </CardContent>
+                    </Card>
                   </div>
                 </ScrollArea>
 
-                <div className="px-6 py-4 border-t mt-auto flex items-center justify-between gap-3 bg-background/60 backdrop-blur supports-[backdrop-filter]:bg-background/50">
-                  <div className="text-xs text-muted-foreground">Press Enter to add quickly</div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      onClick={() => {
-                        setSelectedMetric(null);
-                        setSelectedMetrics([]);
-                        setSelectedViz(null);
-                        setSelectedBreakdown(null);
-                        setCustomTitle("");
-                        setIsCumulative(false);
-                      }}
-                    >
-                      Clear
-                    </Button>
-                    <Button onClick={handleAddWidget} disabled={!selectedViz || !selectedBreakdown}>
-                      Add Widget
-                    </Button>
+                {/* Footer Actions */}
+                <div className="p-6 border-t bg-background/80 backdrop-blur">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="text-xs text-muted-foreground">
+                      Press Enter to add quickly
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setSelectedMetric(null);
+                          setSelectedMetrics([]);
+                          setSelectedViz(null);
+                          setSelectedBreakdown(null);
+                          setCustomTitle("");
+                          setIsCumulative(false);
+                        }}
+                      >
+                        Clear
+                      </Button>
+                      <Button 
+                        onClick={handleAddWidget} 
+                        disabled={!selectedViz || !selectedBreakdown}
+                        className="gap-2"
+                      >
+                        <Plus className="h-4 w-4" />
+                        Add Widget
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>
