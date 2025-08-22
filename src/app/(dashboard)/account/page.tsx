@@ -73,6 +73,14 @@ export default function AccountPage() {
       requiredRole: "Moderator or Admin"
     },
     {
+      title: "Data",
+      description: "Dashboard to audit data completeness and overdue items",
+      icon: Settings,
+      href: "/account/data",
+      available: permissions.canManageAccount,
+      requiredRole: "Moderator or Admin"
+    },
+    {
       title: "Calendar Mapping", 
       description: "Map your calendar for appointment scheduling",
       icon: Calendar,
