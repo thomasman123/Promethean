@@ -258,9 +258,9 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
           </DialogHeader>
         </div>
 
-        <div className="flex-1 flex overflow-hidden">
+        <div className="flex-1 flex overflow-hidden min-h-0">
           {/* Left Panel: Metric Selection */}
-          <div className="flex-1 flex flex-col border-r bg-background">
+          <div className="flex-1 flex flex-col border-r bg-background min-h-0">
             {/* Search and Filters */}
             <div className="p-5 border-b bg-muted/20">
               <div className="relative mb-4">
@@ -302,7 +302,7 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
             </div>
 
             {/* Metrics List */}
-            <ScrollArea className="flex-1">
+            <ScrollArea className="flex-1 min-h-0">
               <div className="p-5 space-y-5">
                 {Object.entries(filteredGroupedMetrics).map(([category, metrics]) => (
                   <div key={category} className="space-y-3">
@@ -388,7 +388,7 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
           </div>
 
           {/* Right Panel: Configuration */}
-          <div className="w-[420px] flex flex-col bg-muted/20">
+          <div className="w-[420px] flex flex-col bg-muted/20 min-h-0">
             {!selectedMetric ? (
               <div className="flex-1 flex items-center justify-center p-8">
                 <div className="text-center space-y-4">
@@ -412,7 +412,7 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
                   <p className="text-sm text-muted-foreground mt-1 leading-relaxed">{selectedMetric.description}</p>
                 </div>
 
-                <ScrollArea className="flex-1">
+                <ScrollArea className="flex-1 min-h-0">
                   <div className="p-6 space-y-6">
                     {/* Selected Metrics (Multi-select) */}
                     {selectedViz && selectedViz !== 'kpi' && selectedMetrics.length > 0 && (
