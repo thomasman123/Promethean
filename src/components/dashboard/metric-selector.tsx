@@ -33,6 +33,9 @@ import {
   PieChart,
   Activity,
   Zap,
+  ArrowRight,
+  ArrowLeft,
+  ChevronRight,
 } from "lucide-react";
 import { useDashboardStore } from "@/lib/dashboard/store";
 import { MetricDefinition, VizType, BreakdownType } from "@/lib/dashboard/types";
@@ -56,11 +59,11 @@ const categoryIcons: Record<string, React.ReactNode> = {
 
 // Visualization type labels and icons
 const vizTypeConfig: Record<VizType, { label: string; icon: React.ReactNode; description: string }> = {
-  kpi: { label: "KPI Tile", icon: <Zap className="h-4 w-4" />, description: "Single value display" },
-  line: { label: "Line Chart", icon: <LineChart className="h-4 w-4" />, description: "Trends over time" },
-  bar: { label: "Bar Chart", icon: <BarChart3 className="h-4 w-4" />, description: "Compare values" },
-  area: { label: "Area Chart", icon: <Activity className="h-4 w-4" />, description: "Filled line chart" },
-  radar: { label: "Radar Chart", icon: <PieChart className="h-4 w-4" />, description: "Multi-dimensional" },
+  kpi: { label: "KPI Tile", icon: <Zap className="h-5 w-5" />, description: "Single value display" },
+  line: { label: "Line Chart", icon: <LineChart className="h-5 w-5" />, description: "Trends over time" },
+  bar: { label: "Bar Chart", icon: <BarChart3 className="h-5 w-5" />, description: "Compare values" },
+  area: { label: "Area Chart", icon: <Activity className="h-5 w-5" />, description: "Filled line chart" },
+  radar: { label: "Radar Chart", icon: <PieChart className="h-5 w-5" />, description: "Multi-dimensional" },
 };
 
 // Derive sensible visualization defaults when none are provided by the registry
@@ -267,323 +270,401 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
     return primaryName.includes('revenue') || primaryName.includes('cash');
   }, [selectedMetric, selectedViz, selectedMetrics.length]);
 
+  const steps = [
+    { number: 1, title: "Visualization", description: "Choose chart type" },
+    { number: 2, title: "Metrics", description: "Select data" },
+    { number: 3, title: "Settings", description: "Configure options" },
+    { number: 4, title: "Review", description: "Confirm & publish" },
+  ];
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-none sm:max-w-[92vw] md:max-w-[92vw] lg:max-w-[92vw] xl:max-w-[90vw] 2xl:max-w-[88vw] w-[90vw] h-[85vh] flex flex-col p-0 gap-0">
-        {/* Header */}
-        <div className="px-6 py-3 border-b bg-gradient-to-r from-background to-muted/20">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-semibold">Add Metric Widget</DialogTitle>
-            <DialogDescription className="text-xs">
-              Choose a metric and configure how you want to visualize it on your dashboard.
+      <DialogContent className="max-w-4xl w-[90vw] h-[80vh] flex flex-col p-0 gap-0">
+        {/* Header with modern stepper */}
+        <div className="px-8 py-6 border-b bg-gradient-to-r from-background via-muted/20 to-background">
+          <DialogHeader className="mb-6">
+            <DialogTitle className="text-2xl font-bold">Create Widget</DialogTitle>
+            <DialogDescription className="text-base text-muted-foreground">
+              Follow the steps below to add a new metric widget to your dashboard.
             </DialogDescription>
           </DialogHeader>
-          {/* Stepper */}
-          <div className="mt-2 flex items-center gap-2 text-xs">
-            {[
-              { n: 1, label: 'Visualization' },
-              { n: 2, label: 'Metrics' },
-              { n: 3, label: 'Settings' },
-              { n: 4, label: 'Review' },
-            ].map((s) => (
-              <div key={s.n} className={cn('flex items-center gap-2', s.n !== 4 && 'pr-2 border-r')}
-                   onClick={() => setStep(s.n as 1|2|3|4)}>
-                <div className={cn('h-5 w-5 rounded-full flex items-center justify-center text-[10px]', step >= s.n ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground')}>{s.n}</div>
-                <span className={cn('font-medium', step === s.n ? 'text-foreground' : 'text-muted-foreground')}>{s.label}</span>
+          
+          {/* Modern Stepper */}
+          <div className="flex items-center justify-center space-x-4">
+            {steps.map((s, idx) => (
+              <div key={s.number} className="flex items-center">
+                <div 
+                  className={cn(
+                    "flex flex-col items-center cursor-pointer group",
+                    step >= s.number ? "text-primary" : "text-muted-foreground"
+                  )}
+                  onClick={() => setStep(s.number as 1|2|3|4)}
+                >
+                  <div className={cn(
+                    "w-10 h-10 rounded-full border-2 flex items-center justify-center font-semibold text-sm transition-all",
+                    step > s.number ? "bg-primary border-primary text-primary-foreground" :
+                    step === s.number ? "border-primary bg-primary/10 text-primary" :
+                    "border-muted-foreground/30 group-hover:border-primary/50"
+                  )}>
+                    {step > s.number ? <Check className="h-5 w-5" /> : s.number}
+                  </div>
+                  <div className="mt-2 text-center">
+                    <div className="font-medium text-sm">{s.title}</div>
+                    <div className="text-xs text-muted-foreground">{s.description}</div>
+                  </div>
+                </div>
+                {idx < steps.length - 1 && (
+                  <ChevronRight className="h-5 w-5 mx-4 text-muted-foreground" />
+                )}
               </div>
             ))}
           </div>
         </div>
 
-        <div className="flex-1 flex overflow-hidden min-h-0">
-          {/* Left Panel (varies by step) */}
-          <div className="flex-1 flex flex-col border-r bg-background min-h-0">
-            {/* Step 2: Search and Metrics */}
-            {step === 2 && (
-            <div className="p-4 border-b bg-muted/20">
-              <div className="relative mb-3">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search metrics..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 h-9 text-sm"
-                />
-              </div>
-              <div className="flex gap-2">
-                <Button 
-                  size="sm" 
-                  variant={filterMode === "all" ? "default" : "outline"} 
-                  onClick={() => setFilterMode("all")}
-                  className="h-7"
-                >
-                  All
-                </Button>
-                <Button 
-                  size="sm" 
-                  variant={filterMode === "favorites" ? "default" : "outline"} 
-                  onClick={() => setFilterMode("favorites")}
-                  className="gap-1.5 h-7"
-                >
-                  <Star className="h-3.5 w-3.5" />
-                  Favorites
-                </Button>
-                <Button 
-                  size="sm" 
-                  variant={filterMode === "recent" ? "default" : "outline"} 
-                  onClick={() => setFilterMode("recent")}
-                  className="h-7"
-                >
-                  Recent
-                </Button>
-              </div>
-            </div>
-            )}
-
-            {/* Step 1: Visualization picker (left side placeholder to balance layout) */}
+        {/* Main Content Area */}
+        <div className="flex-1 flex flex-col min-h-0">
+          <div className="flex-1 p-8">
+            {/* Step 1: Visualization Selection */}
             {step === 1 && (
-              <div className="flex-1 flex items-center justify-center p-6 text-sm text-muted-foreground">Choose a visualization on the right to continue.</div>
+              <div className="max-w-2xl mx-auto">
+                <div className="text-center mb-8">
+                  <h3 className="text-xl font-semibold mb-2">Choose Your Visualization</h3>
+                  <p className="text-muted-foreground">Select how you want to display your data</p>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {(Object.entries(vizTypeConfig) as [VizType, typeof vizTypeConfig[VizType]][]).map(([viz, config]) => (
+                    <Card 
+                      key={viz} 
+                      className={cn(
+                        "cursor-pointer transition-all hover:shadow-lg border-2",
+                        selectedViz === viz ? "border-primary bg-primary/5 shadow-md" : "border-border hover:border-primary/50"
+                      )}
+                      onClick={() => handleVizChange(viz)}
+                    >
+                      <CardContent className="p-6">
+                        <div className="flex items-center space-x-4">
+                          <div className={cn(
+                            "p-3 rounded-lg",
+                            selectedViz === viz ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
+                          )}>
+                            {config.icon}
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="font-semibold text-lg">{config.label}</h4>
+                            <p className="text-sm text-muted-foreground mt-1">{config.description}</p>
+                            <div className="mt-2">
+                              <Badge variant="secondary" className="text-xs">
+                                {viz === 'kpi' ? 'Single metric' : 'Up to 3 metrics'}
+                              </Badge>
+                            </div>
+                          </div>
+                          {selectedViz === viz && (
+                            <Check className="h-6 w-6 text-primary" />
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
             )}
 
-            {/* Step 3: Settings (left takes full area for compact layout) */}
-            {step === 3 && (
-              <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                {/* Cumulative Toggle */}
-                {isCumulativeEligible && (
-                  <Card>
-                    <CardContent className="p-3">
+            {/* Step 2: Metric Selection */}
+            {step === 2 && (
+              <div className="max-w-4xl mx-auto">
+                <div className="text-center mb-6">
+                  <h3 className="text-xl font-semibold mb-2">Select Your Metrics</h3>
+                  <p className="text-muted-foreground">
+                    {selectedViz === 'kpi' ? 'Choose one metric to display' : 'Choose up to 3 metrics to compare'}
+                  </p>
+                </div>
+
+                {/* Selected Metrics Bar */}
+                {selectedMetrics.length > 0 && (
+                  <Card className="mb-6 bg-primary/5 border-primary/20">
+                    <CardContent className="p-4">
                       <div className="flex items-center justify-between">
-                        <div className="space-y-1">
-                          <div className="text-sm font-medium">Cumulative Mode</div>
-                          <div className="text-xs text-muted-foreground">Show running total that compounds over time</div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium">Selected:</span>
+                          <div className="flex flex-wrap gap-2">
+                            {selectedMetrics.map((metric) => (
+                              <Badge key={metric.name} variant="default" className="flex items-center gap-1.5">
+                                {metric.displayName}
+                                {selectedViz !== 'kpi' && (
+                                  <X 
+                                    className="h-3 w-3 cursor-pointer hover:bg-primary-foreground/20 rounded-full p-0.5" 
+                                    onClick={() => toggleMultiMetric(metric)}
+                                  />
+                                )}
+                              </Badge>
+                            ))}
+                          </div>
                         </div>
-                        <Switch checked={isCumulative} onCheckedChange={setIsCumulative} />
+                        <span className="text-xs text-muted-foreground">
+                          {selectedMetrics.length}/{selectedViz === 'kpi' ? 1 : 3}
+                        </span>
                       </div>
                     </CardContent>
                   </Card>
                 )}
-                {/* Title */}
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm">Widget Title</CardTitle>
-                    <CardDescription className="text-xs">Customize the title for your widget</CardDescription>
-                  </CardHeader>
-                  <CardContent className="pt-0 pb-3">
-                    <Input value={customTitle} onChange={(e) => setCustomTitle(e.target.value)} placeholder={selectedMetric?.displayName || 'Title'} className="w-full h-9 text-sm" />
-                  </CardContent>
-                </Card>
+
+                {/* Search and Filter */}
+                <div className="flex gap-4 mb-6">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search metrics..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button 
+                      size="sm" 
+                      variant={filterMode === "all" ? "default" : "outline"} 
+                      onClick={() => setFilterMode("all")}
+                    >
+                      All
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant={filterMode === "favorites" ? "default" : "outline"} 
+                      onClick={() => setFilterMode("favorites")}
+                      className="gap-1.5"
+                    >
+                      <Star className="h-3.5 w-3.5" />
+                      Favorites
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant={filterMode === "recent" ? "default" : "outline"} 
+                      onClick={() => setFilterMode("recent")}
+                    >
+                      Recent
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Metrics Grid */}
+                <ScrollArea className="h-[300px]">
+                  <div className="space-y-6">
+                    {Object.entries(filteredGroupedMetrics).map(([category, metrics]) => (
+                      <div key={category}>
+                        <div className="flex items-center gap-2 mb-3">
+                          {categoryIcons[category]}
+                          <h4 className="font-medium text-sm">{category}</h4>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {metrics.map((metric) => {
+                            const isSelected = selectedMetrics.some((m) => m.name === metric.name);
+                            const isFav = favoriteMetricNames.includes(metric.name);
+                            const canSelect = selectedViz === 'kpi' ? !isSelected && selectedMetrics.length === 0 : selectedMetrics.length < 3;
+                            
+                            return (
+                              <Card 
+                                key={metric.name}
+                                className={cn(
+                                  "cursor-pointer transition-all border-2",
+                                  isSelected ? "border-primary bg-primary/5" : "border-border hover:border-primary/50",
+                                  !canSelect && !isSelected && "opacity-50 cursor-not-allowed"
+                                )}
+                                onClick={() => {
+                                  if (canSelect || isSelected) {
+                                    if (selectedViz === 'kpi') {
+                                      handleMetricSelect(metric);
+                                    } else {
+                                      toggleMultiMetric(metric);
+                                    }
+                                  }
+                                }}
+                              >
+                                <CardContent className="p-4">
+                                  <div className="flex items-start justify-between">
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-2 mb-1">
+                                        {selectedViz !== 'kpi' && (
+                                          <Checkbox 
+                                            checked={isSelected} 
+                                            disabled={!canSelect && !isSelected}
+                                            onClick={(e) => e.stopPropagation()}
+                                          />
+                                        )}
+                                        <h5 className="font-medium text-sm">{metric.displayName}</h5>
+                                        {isSelected && <Check className="h-4 w-4 text-primary" />}
+                                      </div>
+                                      <p className="text-xs text-muted-foreground mb-2 line-clamp-2">
+                                        {metric.description}
+                                      </p>
+                                      <div className="flex gap-1">
+                                        {metric.supportedBreakdowns.map((breakdown) => (
+                                          <Badge key={breakdown} variant="outline" className="text-[10px] px-1 py-0">
+                                            {breakdown}
+                                          </Badge>
+                                        ))}
+                                      </div>
+                                    </div>
+                                    <Button
+                                      variant={isFav ? "default" : "ghost"}
+                                      size="icon"
+                                      className="h-6 w-6 shrink-0"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        toggleFavorite(metric.name);
+                                      }}
+                                    >
+                                      <Star className={cn("h-3 w-3", isFav && "fill-current")} />
+                                    </Button>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              </div>
+            )}
+
+            {/* Step 3: Settings */}
+            {step === 3 && (
+              <div className="max-w-xl mx-auto">
+                <div className="text-center mb-8">
+                  <h3 className="text-xl font-semibold mb-2">Configure Settings</h3>
+                  <p className="text-muted-foreground">Customize your widget appearance and behavior</p>
+                </div>
+                <div className="space-y-6">
+                  {/* Widget Title */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base">Widget Title</CardTitle>
+                      <CardDescription>Choose a custom title for your widget</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <Input 
+                        value={customTitle} 
+                        onChange={(e) => setCustomTitle(e.target.value)} 
+                        placeholder={selectedMetric?.displayName || 'Enter widget title'}
+                        className="text-base"
+                      />
+                    </CardContent>
+                  </Card>
+
+                  {/* Cumulative Toggle */}
+                  {isCumulativeEligible && (
+                    <Card>
+                      <CardContent className="p-6">
+                        <div className="flex items-start justify-between">
+                          <div className="space-y-1">
+                            <div className="font-medium">Cumulative Mode</div>
+                            <div className="text-sm text-muted-foreground">
+                              Show running total that compounds over time periods
+                            </div>
+                          </div>
+                          <Switch 
+                            checked={isCumulative} 
+                            onCheckedChange={setIsCumulative}
+                          />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
               </div>
             )}
 
             {/* Step 4: Review */}
             {step === 4 && (
-              <div className="flex-1 overflow-y-auto p-4">
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm">Review</CardTitle>
-                    <CardDescription className="text-xs">Confirm your configuration before adding</CardDescription>
+              <div className="max-w-xl mx-auto">
+                <div className="text-center mb-8">
+                  <h3 className="text-xl font-semibold mb-2">Review & Publish</h3>
+                  <p className="text-muted-foreground">Confirm your widget configuration</p>
+                </div>
+                <Card className="border-2">
+                  <CardHeader className="pb-4">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      Widget Preview
+                      <Badge variant="secondary">{customTitle || selectedMetric?.displayName}</Badge>
+                    </CardTitle>
                   </CardHeader>
-                  <CardContent className="pt-0 space-y-2 text-sm">
-                    <div><span className="text-muted-foreground">Visualization:</span> <span className="ml-1 font-medium">{selectedViz || '-'}</span></div>
-                    <div><span className="text-muted-foreground">Metrics:</span> <span className="ml-1 font-medium">{(selectedViz === 'kpi' ? (selectedMetrics[0]?.displayName || '-') : selectedMetrics.map(m=>m.displayName).join(', ') ) || '-'}</span></div>
-                    <div><span className="text-muted-foreground">Cumulative:</span> <span className="ml-1 font-medium">{isCumulative ? 'On' : 'Off'}</span></div>
-                    <div><span className="text-muted-foreground">Title:</span> <span className="ml-1 font-medium">{customTitle || selectedMetric?.displayName || '-'}</span></div>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="font-medium text-muted-foreground">Visualization:</span>
+                        <div className="mt-1 flex items-center gap-2">
+                          {selectedViz && vizTypeConfig[selectedViz].icon}
+                          <span className="font-medium">{selectedViz && vizTypeConfig[selectedViz].label}</span>
+                        </div>
+                      </div>
+                      <div>
+                        <span className="font-medium text-muted-foreground">Metrics:</span>
+                        <div className="mt-1 font-medium">
+                          {selectedViz === 'kpi' 
+                            ? selectedMetrics[0]?.displayName 
+                            : `${selectedMetrics.length} metric${selectedMetrics.length !== 1 ? 's' : ''}`
+                          }
+                        </div>
+                      </div>
+                      {isCumulativeEligible && (
+                        <div>
+                          <span className="font-medium text-muted-foreground">Cumulative:</span>
+                          <div className="mt-1 font-medium">{isCumulative ? 'Enabled' : 'Disabled'}</div>
+                        </div>
+                      )}
+                    </div>
+                    {selectedViz !== 'kpi' && selectedMetrics.length > 0 && (
+                      <div>
+                        <span className="font-medium text-muted-foreground text-sm">Selected Metrics:</span>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {selectedMetrics.map((metric) => (
+                            <Badge key={metric.name} variant="outline">{metric.displayName}</Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </div>
             )}
-
-            {/* Step 2 Metrics List body */}
-            {step === 2 && (
-            <div className="flex-1 overflow-y-auto">
-              <div className="p-4 space-y-4">
-                {Object.entries(filteredGroupedMetrics).map(([category, metrics]) => (
-                  <div key={category} className="space-y-2">
-                    <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                      {categoryIcons[category]}
-                      <span>{category}</span>
-                    </div>
-                    <div className="grid gap-2">
-                      {metrics.map((metric) => {
-                        const isPrimary = selectedMetric?.name === metric.name;
-                        const isSelected = selectedMetrics.some((m) => m.name === metric.name);
-                        const isFav = favoriteMetricNames.includes(metric.name);
-                        const canMultiSelect = selectedViz && selectedViz !== 'kpi';
-                        
-                        return (
-                          <Card 
-                            key={metric.name}
-                            className={cn(
-                              "cursor-pointer transition-all hover:shadow-md border-2",
-                              isPrimary ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
-                            )}
-                            onClick={() => handleMetricSelect(metric)}
-                          >
-                            <CardContent className="p-3">
-                              <div className="flex items-start gap-3">
-                                {canMultiSelect && (
-                                  <Checkbox
-                                    checked={isSelected}
-                                    onCheckedChange={() => toggleMultiMetric(metric)}
-                                    disabled={!isSelected && selectedMetrics.length >= 3}
-                                    onClick={(e) => e.stopPropagation()}
-                                    className="mt-0.5"
-                                  />
-                                )}
-                                
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-2 mb-0.5">
-                                    <h4 className="font-medium text-sm leading-none">{metric.displayName}</h4>
-                                    {isPrimary && <Check className="h-4 w-4 text-primary" />}
-                                  </div>
-                                  <p className="text-xs text-muted-foreground mb-1.5 leading-relaxed">
-                                    {metric.description}
-                                  </p>
-                                  <div className="flex items-center gap-2">
-                                    <div className="flex gap-1">
-                                      {metric.supportedBreakdowns.map((breakdown) => (
-                                        <Badge key={breakdown} variant="outline" className="text-[10px] px-1.5 py-0.5">
-                                          {breakdown}
-                                        </Badge>
-                                      ))}
-                                    </div>
-                                  </div>
-                                </div>
-
-                                <Button
-                                  variant={isFav ? "default" : "ghost"}
-                                  size="icon"
-                                  className="h-7 w-7 shrink-0"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    toggleFavorite(metric.name);
-                                  }}
-                                >
-                                  <Star className={cn("h-4 w-4", isFav && "fill-current")} />
-                                </Button>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
-                
-                {Object.keys(filteredGroupedMetrics).length === 0 && (
-                  <div className="text-center py-8">
-                    <div className="text-base text-muted-foreground mb-2">No metrics found</div>
-                    <div className="text-sm text-muted-foreground">Try adjusting your search or filter</div>
-                  </div>
-                )}
-              </div>
-            </div>
-            )}
           </div>
 
-          {/* Right Panel: varies by step */}
-          <div className="w-[380px] flex flex-col bg-muted/20 min-h-0">
-            <div className="flex-1 flex flex-col">
-              {/* Header varies by step */}
-              <div className="p-4 border-b bg-gradient-to-br from-background to-primary/5">
-                <div className="text-xs text-muted-foreground mb-1">
-                  {step === 1 ? 'Step 1' : step === 2 ? 'Step 2' : step === 3 ? 'Step 3' : 'Step 4'}
-                </div>
-                <h3 className="text-base font-semibold text-foreground">
-                  {step === 1 && 'Choose Visualization'}
-                  {step === 2 && 'Select Metrics'}
-                  {step === 3 && 'Settings'}
-                  {step === 4 && 'Review'}
-                </h3>
-                {step >= 2 && selectedMetric && (
-                  <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{selectedMetric.description}</p>
+          {/* Footer */}
+          <div className="border-t bg-muted/10 px-8 py-4">
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-muted-foreground">
+                Step {step} of {steps.length}
+              </div>
+              <div className="flex gap-3">
+                <Button 
+                  variant="outline" 
+                  onClick={gotoBack} 
+                  disabled={step === 1}
+                  className="gap-2"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  Back
+                </Button>
+                {step < 4 ? (
+                  <Button 
+                    onClick={gotoNext} 
+                    disabled={(step === 1 && !isStep1Valid) || (step === 2 && !isStep2Valid)}
+                    className="gap-2"
+                  >
+                    Continue
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+                ) : (
+                  <Button 
+                    onClick={gotoPublish} 
+                    disabled={!selectedViz || !selectedBreakdown || !selectedMetric}
+                    className="gap-2"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Create Widget
+                  </Button>
                 )}
-              </div>
-
-              <div className="flex-1 overflow-y-auto">
-                <div className="p-4 space-y-4">
-                  {/* Step 1: Visualization Type */}
-                  {step === 1 && (
-                    <Card>
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-sm">Visualization Type</CardTitle>
-                        <CardDescription className="text-xs">How should this metric be displayed?</CardDescription>
-                      </CardHeader>
-                      <CardContent className="pt-0 pb-3">
-                        <div className="grid grid-cols-1 gap-1.5">
-                          {(Object.entries(vizTypeConfig) as [VizType, typeof vizTypeConfig[VizType]][]).map(([viz, config]) => (
-                            <Button key={viz} variant={selectedViz === viz ? 'default' : 'outline'} className="justify-start h-auto p-2.5" onClick={() => handleVizChange(viz)}>
-                              <div className="flex items-center gap-2.5">
-                                {config.icon}
-                                <div className="text-left">
-                                  <div className="font-medium text-sm">{config.label}</div>
-                                  <div className="text-xs text-muted-foreground">{config.description}</div>
-                                </div>
-                              </div>
-                            </Button>
-                          ))}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )}
-
-                  {/* Step 2: Selected Metrics (Multi-select) */}
-                  {step === 2 && selectedViz && selectedViz !== 'kpi' && selectedMetrics.length > 0 && (
-                    <Card>
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-sm">Selected Metrics ({selectedMetrics.length}/3)</CardTitle>
-                        <CardDescription className="text-xs">Compare multiple metrics on the same chart</CardDescription>
-                      </CardHeader>
-                      <CardContent className="pt-0 pb-3">
-                        <div className="flex flex-wrap gap-2">
-                          {selectedMetrics.map((metric) => (
-                            <Badge key={metric.name} variant="secondary" className="flex items-center gap-1.5 px-2 py-1 text-xs">
-                              <span>{metric.displayName}</span>
-                              <Button variant="ghost" size="icon" className="h-4 w-4 hover:bg-destructive hover:text-destructive-foreground rounded-full" onClick={() => toggleMultiMetric(metric)}>
-                                <X className="h-3 w-3" />
-                              </Button>
-                            </Badge>
-                          ))}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )}
-
-                  {/* Step 3 Settings summary (details on left) */}
-                  {step === 3 && (
-                    <Card>
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-sm">Settings Summary</CardTitle>
-                      </CardHeader>
-                      <CardContent className="pt-0 space-y-1 text-xs text-muted-foreground">
-                        <div>Title: <span className="text-foreground font-medium">{customTitle || selectedMetric?.displayName || '-'}</span></div>
-                        {isTimeViz && <div>Cumulative: <span className="text-foreground font-medium">{isCumulative ? 'On' : 'Off'}</span></div>}
-                      </CardContent>
-                    </Card>
-                  )}
-
-                  {/* Step 4: Final note */}
-                  {step === 4 && (
-                    <div className="text-xs text-muted-foreground">Review your choices on the left, then publish.</div>
-                  )}
-                </div>
-              </div>
-
-              {/* Footer Actions */}
-              <div className="p-4 border-t bg-background/80 backdrop-blur">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="text-xs text-muted-foreground">{step < 4 ? 'Press Enter to continue' : 'Press Enter to publish'}</div>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" className="h-8 px-3" onClick={gotoBack} disabled={step === 1}>Back</Button>
-                    {step < 4 ? (
-                      <Button onClick={gotoNext} disabled={(step === 1 && !isStep1Valid) || (step === 2 && !isStep2Valid)} className="gap-2 h-8 px-4" size="sm">Next</Button>
-                    ) : (
-                      <Button onClick={gotoPublish} disabled={!selectedViz || !selectedBreakdown || !selectedMetric} className="gap-2 h-8 px-4" size="sm">
-                        <Plus className="h-4 w-4" /> Publish
-                      </Button>
-                    )}
-                  </div>
-                </div>
               </div>
             </div>
           </div>
