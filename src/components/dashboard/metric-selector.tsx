@@ -483,122 +483,109 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
 
           {/* Right Panel: varies by step */}
           <div className="w-[380px] flex flex-col bg-muted/20 min-h-0">
-            {!selectedMetric ? (
-              <div className="flex-1 flex items-center justify-center p-6">
-                <div className="text-center space-y-3">
-                  <div className="w-12 h-12 mx-auto rounded-full bg-muted flex items-center justify-center">
-                    <Plus className="h-8 w-8 text-muted-foreground" />
-                  </div>
-                  <div>
-                    <h3 className="text-base font-medium">Select a metric</h3>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Choose a metric from the left to configure your widget
-                    </p>
-                  </div>
+            <div className="flex-1 flex flex-col">
+              {/* Header varies by step */}
+              <div className="p-4 border-b bg-gradient-to-br from-background to-primary/5">
+                <div className="text-xs text-muted-foreground mb-1">
+                  {step === 1 ? 'Step 1' : step === 2 ? 'Step 2' : step === 3 ? 'Step 3' : 'Step 4'}
                 </div>
+                <h3 className="text-base font-semibold text-foreground">
+                  {step === 1 && 'Choose Visualization'}
+                  {step === 2 && 'Select Metrics'}
+                  {step === 3 && 'Settings'}
+                  {step === 4 && 'Review'}
+                </h3>
+                {step >= 2 && selectedMetric && (
+                  <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{selectedMetric.description}</p>
+                )}
               </div>
-            ) : (
-              <div className="flex-1 flex flex-col">
-                {/* Selected Metric Header */}
-                <div className="p-4 border-b bg-gradient-to-br from-background to-primary/5">
-                  <div className="text-xs text-muted-foreground mb-1">Configuring</div>
-                  <h3 className="text-base font-semibold text-foreground">{selectedMetric.displayName}</h3>
-                  <p className="text-sm text-muted-foreground mt-1 leading-relaxed">{selectedMetric.description}</p>
-                </div>
 
-                <div className="flex-1 overflow-y-auto">
-                  <div className="p-4 space-y-4">
-                    {/* Step 2: Selected Metrics (Multi-select) */}
-                    {step === 2 && selectedViz && selectedViz !== 'kpi' && selectedMetrics.length > 0 && (
-                      <Card>
-                        <CardHeader className="pb-2">
-                          <CardTitle className="text-sm">Selected Metrics ({selectedMetrics.length}/3)</CardTitle>
-                          <CardDescription className="text-xs">
-                            Compare multiple metrics on the same chart
-                          </CardDescription>
-                        </CardHeader>
-                        <CardContent className="pt-0 pb-3">
-                          <div className="flex flex-wrap gap-2">
-                            {selectedMetrics.map((metric) => (
-                              <Badge key={metric.name} variant="secondary" className="flex items-center gap-1.5 px-2 py-1 text-xs">
-                                <span>{metric.displayName}</span>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-4 w-4 hover:bg-destructive hover:text-destructive-foreground rounded-full"
-                                  onClick={() => toggleMultiMetric(metric)}
-                                >
-                                  <X className="h-3 w-3" />
-                                </Button>
-                              </Badge>
-                            ))}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    )}
-
-                    {/* Step 1: Visualization Type */}
-                    {step === 1 && (
-                      <Card>
-                        <CardHeader className="pb-2">
-                          <CardTitle className="text-sm">Visualization Type</CardTitle>
-                          <CardDescription className="text-xs">How should this metric be displayed?</CardDescription>
-                        </CardHeader>
-                        <CardContent className="pt-0 pb-3">
-                          <div className="grid grid-cols-1 gap-1.5">
-                            {(Object.entries(vizTypeConfig) as [VizType, typeof vizTypeConfig[VizType]][]).map(([viz, config]) => (
-                              <Button key={viz} variant={selectedViz === viz ? 'default' : 'outline'} className="justify-start h-auto p-2.5" onClick={() => handleVizChange(viz)}>
-                                <div className="flex items-center gap-2.5">
-                                  {config.icon}
-                                  <div className="text-left">
-                                    <div className="font-medium text-sm">{config.label}</div>
-                                    <div className="text-xs text-muted-foreground">{config.description}</div>
-                                  </div>
+              <div className="flex-1 overflow-y-auto">
+                <div className="p-4 space-y-4">
+                  {/* Step 1: Visualization Type */}
+                  {step === 1 && (
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm">Visualization Type</CardTitle>
+                        <CardDescription className="text-xs">How should this metric be displayed?</CardDescription>
+                      </CardHeader>
+                      <CardContent className="pt-0 pb-3">
+                        <div className="grid grid-cols-1 gap-1.5">
+                          {(Object.entries(vizTypeConfig) as [VizType, typeof vizTypeConfig[VizType]][]).map(([viz, config]) => (
+                            <Button key={viz} variant={selectedViz === viz ? 'default' : 'outline'} className="justify-start h-auto p-2.5" onClick={() => handleVizChange(viz)}>
+                              <div className="flex items-center gap-2.5">
+                                {config.icon}
+                                <div className="text-left">
+                                  <div className="font-medium text-sm">{config.label}</div>
+                                  <div className="text-xs text-muted-foreground">{config.description}</div>
                                 </div>
+                              </div>
+                            </Button>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Step 2: Selected Metrics (Multi-select) */}
+                  {step === 2 && selectedViz && selectedViz !== 'kpi' && selectedMetrics.length > 0 && (
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm">Selected Metrics ({selectedMetrics.length}/3)</CardTitle>
+                        <CardDescription className="text-xs">Compare multiple metrics on the same chart</CardDescription>
+                      </CardHeader>
+                      <CardContent className="pt-0 pb-3">
+                        <div className="flex flex-wrap gap-2">
+                          {selectedMetrics.map((metric) => (
+                            <Badge key={metric.name} variant="secondary" className="flex items-center gap-1.5 px-2 py-1 text-xs">
+                              <span>{metric.displayName}</span>
+                              <Button variant="ghost" size="icon" className="h-4 w-4 hover:bg-destructive hover:text-destructive-foreground rounded-full" onClick={() => toggleMultiMetric(metric)}>
+                                <X className="h-3 w-3" />
                               </Button>
-                            ))}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    )}
+                            </Badge>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
 
-                    {/* Step 3 Settings live on left; show a compact summary here instead */}
-                    {step === 3 && (
-                      <Card>
-                        <CardHeader className="pb-2">
-                          <CardTitle className="text-sm">Settings Summary</CardTitle>
-                        </CardHeader>
-                        <CardContent className="pt-0 space-y-1 text-xs text-muted-foreground">
-                          <div>Title: <span className="text-foreground font-medium">{customTitle || selectedMetric.displayName}</span></div>
-                          {isTimeViz && <div>Cumulative: <span className="text-foreground font-medium">{isCumulative ? 'On' : 'Off'}</span></div>}
-                        </CardContent>
-                      </Card>
-                    )}
+                  {/* Step 3 Settings summary (details on left) */}
+                  {step === 3 && (
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm">Settings Summary</CardTitle>
+                      </CardHeader>
+                      <CardContent className="pt-0 space-y-1 text-xs text-muted-foreground">
+                        <div>Title: <span className="text-foreground font-medium">{customTitle || selectedMetric?.displayName || '-'}</span></div>
+                        {isTimeViz && <div>Cumulative: <span className="text-foreground font-medium">{isCumulative ? 'On' : 'Off'}</span></div>}
+                      </CardContent>
+                    </Card>
+                  )}
 
-                    {step === 4 && (
-                      <div className="text-xs text-muted-foreground">Review your choices on the left, then publish.</div>
-                    )}
-                  </div>
+                  {/* Step 4: Final note */}
+                  {step === 4 && (
+                    <div className="text-xs text-muted-foreground">Review your choices on the left, then publish.</div>
+                  )}
                 </div>
+              </div>
 
-                {/* Footer Actions */}
-                <div className="p-4 border-t bg-background/80 backdrop-blur">
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="text-xs text-muted-foreground">{step < 4 ? 'Press Enter to continue' : 'Press Enter to publish'}</div>
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="sm" className="h-8 px-3" onClick={gotoBack} disabled={step === 1}>Back</Button>
-                      {step < 4 ? (
-                        <Button onClick={gotoNext} disabled={(step === 1 && !isStep1Valid) || (step === 2 && !isStep2Valid)} className="gap-2 h-8 px-4" size="sm">Next</Button>
-                      ) : (
-                        <Button onClick={gotoPublish} disabled={!selectedViz || !selectedBreakdown || !selectedMetric} className="gap-2 h-8 px-4" size="sm">
-                          <Plus className="h-4 w-4" /> Publish
-                        </Button>
-                      )}
-                    </div>
+              {/* Footer Actions */}
+              <div className="p-4 border-t bg-background/80 backdrop-blur">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="text-xs text-muted-foreground">{step < 4 ? 'Press Enter to continue' : 'Press Enter to publish'}</div>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" className="h-8 px-3" onClick={gotoBack} disabled={step === 1}>Back</Button>
+                    {step < 4 ? (
+                      <Button onClick={gotoNext} disabled={(step === 1 && !isStep1Valid) || (step === 2 && !isStep2Valid)} className="gap-2 h-8 px-4" size="sm">Next</Button>
+                    ) : (
+                      <Button onClick={gotoPublish} disabled={!selectedViz || !selectedBreakdown || !selectedMetric} className="gap-2 h-8 px-4" size="sm">
+                        <Plus className="h-4 w-4" /> Publish
+                      </Button>
+                    )}
                   </div>
                 </div>
               </div>
-            )}
+            </div>
           </div>
         </div>
       </DialogContent>
