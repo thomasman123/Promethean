@@ -1455,11 +1455,22 @@ async function processAppointmentWebhook(payload: any) {
     if (calendarMapping.target_table === 'appointments') {
       // Enhanced data mapping for appointments table
       const appointmentStartTime = fullAppointmentData?.startTime || payload.appointment?.startTime;
+      
+      // Use actual appointment creation time from GHL, fallback to webhook received time
+      const actualBookingTime = fullAppointmentData?.dateAdded || 
+                               payload.timestamp || 
+                               payload.dateAdded || 
+                               new Date().toISOString();
       const webhookTimestamp = new Date().toISOString(); // When webhook was received
       
       // Create comprehensive metadata
       const metadata = {
         webhook_received_at: webhookTimestamp,
+        actual_booking_time: actualBookingTime,
+        booking_time_source: fullAppointmentData?.dateAdded ? 'fullAppointmentData.dateAdded' : 
+                            payload.timestamp ? 'payload.timestamp' : 
+                            payload.dateAdded ? 'payload.dateAdded' : 
+                            'webhook_received_fallback',
         appointment_api_data: fullAppointmentData ? {
           id: fullAppointmentData.id,
           title: fullAppointmentData.title,
@@ -1626,7 +1637,7 @@ async function processAppointmentWebhook(payload: any) {
 
       const appointmentData = {
         ...baseData,
-        date_booked: webhookTimestamp, // When appointment was booked (webhook received)
+        date_booked: actualBookingTime, // When appointment was actually booked in GHL
         date_booked_for: appointmentStartTime ? 
           new Date(appointmentStartTime).toISOString() : null, // When appointment is scheduled
         cash_collected: null,
