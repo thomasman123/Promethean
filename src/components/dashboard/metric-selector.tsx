@@ -372,7 +372,7 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
 
               {/* Step 2: Metric Selection */}
               {step === 2 && (
-                <div className="max-w-5xl mx-auto">
+                <div className="w-full max-w-none">
                   <div className="text-center mb-4">
                     <h3 className="text-lg font-semibold mb-2">Select Your Metrics</h3>
                     <p className="text-sm text-muted-foreground">
@@ -382,31 +382,29 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
 
                   {/* Selected Metrics Bar */}
                   {selectedMetrics.length > 0 && (
-                    <Card className="mb-4 bg-primary/5 border-primary/20">
-                      <CardContent className="p-3">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-medium">Selected:</span>
-                            <div className="flex flex-wrap gap-1">
-                              {selectedMetrics.map((metric) => (
-                                <Badge key={metric.name} variant="default" className="flex items-center gap-1 text-xs">
-                                  {metric.displayName}
-                                  {selectedViz !== 'kpi' && (
-                                    <X 
-                                      className="h-3 w-3 cursor-pointer hover:bg-primary-foreground/20 rounded-full p-0.5" 
-                                      onClick={() => toggleMultiMetric(metric)}
-                                    />
-                                  )}
-                                </Badge>
-                              ))}
-                            </div>
+                    <div className="mb-4 p-3 bg-primary/5 border border-primary/20 rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-medium">Selected:</span>
+                          <div className="flex flex-wrap gap-1">
+                            {selectedMetrics.map((metric) => (
+                              <Badge key={metric.name} variant="default" className="flex items-center gap-1 text-xs">
+                                {metric.displayName}
+                                {selectedViz !== 'kpi' && (
+                                  <X 
+                                    className="h-3 w-3 cursor-pointer hover:bg-primary-foreground/20 rounded-full p-0.5" 
+                                    onClick={() => toggleMultiMetric(metric)}
+                                  />
+                                )}
+                              </Badge>
+                            ))}
                           </div>
-                          <span className="text-xs text-muted-foreground">
-                            {selectedMetrics.length}/{selectedViz === 'kpi' ? 1 : 3}
-                          </span>
                         </div>
-                      </CardContent>
-                    </Card>
+                        <span className="text-xs text-muted-foreground">
+                          {selectedMetrics.length}/{selectedViz === 'kpi' ? 1 : 3}
+                        </span>
+                      </div>
+                    </div>
                   )}
 
                   {/* Search and Filter */}
@@ -450,15 +448,15 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
                   </div>
 
                   {/* Metrics Grid */}
-                  <div className="max-h-[300px] overflow-y-auto">
-                    <div className="space-y-4">
+                  <div className="max-h-[320px] overflow-y-auto border rounded-lg">
+                    <div className="p-4 space-y-4">
                       {Object.entries(filteredGroupedMetrics).map(([category, metrics]) => (
                         <div key={category}>
-                          <div className="flex items-center gap-2 mb-2">
+                          <div className="flex items-center gap-2 mb-3">
                             {categoryIcons[category]}
                             <h4 className="font-medium text-sm">{category}</h4>
                           </div>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                             {metrics.map((metric) => {
                               const isSelected = selectedMetrics.some((m) => m.name === metric.name);
                               const isFav = favoriteMetricNames.includes(metric.name);
@@ -468,8 +466,8 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
                                 <Card 
                                   key={metric.name}
                                   className={cn(
-                                    "cursor-pointer transition-all border-2",
-                                    isSelected ? "border-primary bg-primary/5" : "border-border hover:border-primary/50",
+                                    "cursor-pointer transition-all hover:shadow-sm",
+                                    isSelected ? "ring-2 ring-primary bg-primary/5" : "hover:ring-2 hover:ring-primary/50",
                                     !canSelect && !isSelected && "opacity-50 cursor-not-allowed"
                                   )}
                                   onClick={() => {
