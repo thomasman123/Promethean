@@ -1771,8 +1771,8 @@ async function processAppointmentWebhook(payload: any) {
       try {
         if (appointmentContactId && savedAppointment.date_booked) {
           const bookedAt = new Date(savedAppointment.date_booked as string);
-          const dialWindowStart = new Date(bookedAt.getTime() - 30 * 60 * 1000); // 30 minutes before
-          const dialWindowEnd = new Date(bookedAt.getTime() + 30 * 60 * 1000); // 30 minutes after
+          const dialWindowStart = new Date(bookedAt.getTime() - 48 * 60 * 60 * 1000); // 48 hours before
+          const dialWindowEnd = new Date(bookedAt.getTime() + 2 * 60 * 60 * 1000); // 2 hours after
 
           const { data: matchingDials, error: dialSearchErr } = await supabase
             .from('dials')
@@ -1808,7 +1808,7 @@ async function processAppointmentWebhook(payload: any) {
               });
             }
           } else {
-            console.log('ℹ️ No matching dials found within 30-minute window for appointment linking');
+            console.log('ℹ️ No matching dials found within 48-hour window for appointment linking');
           }
         }
       } catch (dialLinkError) {
