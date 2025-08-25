@@ -2268,13 +2268,24 @@ async function linkAppointmentToDial(
       contact: contactData.email || contactData.phone
     });
 
-    // Note: Since dials table doesn't have booked_appointment_id column in current schema,
-    // we'll log this for now but not attempt to update the dials table
-    console.log('📝 Would link dial to appointment:', {
-      dialId: relevantDial.id,
-      appointmentId: appointmentOrDiscovery.id,
-      setter: relevantDial.setter
-    });
+    // Link the dial to the appointment by updating booked status
+    const { error: linkError } = await supabase
+      .from('dials')
+      .update({ 
+        booked: true, 
+        booked_appointment_id: appointmentOrDiscovery.id
+      })
+      .eq('id', relevantDial.id);
+
+    if (linkError) {
+      console.error('Failed to link dial to appointment:', linkError);
+    } else {
+      console.log('🔗 Successfully linked dial to appointment:', {
+        dialId: relevantDial.id,
+        appointmentId: appointmentOrDiscovery.id,
+        setter: relevantDial.setter
+      });
+    }
 
     // Update the appointment/discovery with setter information from the dial if missing
     if (relevantDial.setter && !appointmentOrDiscovery.setter) {

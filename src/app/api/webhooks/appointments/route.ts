@@ -171,7 +171,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (mapping.target_table === 'appointments') {
-      const { error: insertError } = await supabaseService
+      const { data: newAppointment, error: insertError } = await supabaseService
         .from('appointments')
         .insert({
           ...baseData,
@@ -184,9 +184,50 @@ export async function POST(request: NextRequest) {
           total_sales_value: null,
           watched_assets: null,
         })
+        .select('id, date_booked, contact_id')
+        .single()
 
       if (insertError) {
         return NextResponse.json({ success: false, error: 'Failed to save appointment' }, { status: 500 })
+      }
+
+      // Link dials to appointment based on memory: find most recent dial with same contact email within 60 minutes before date_booked
+      if (newAppointment && contactId) {
+        try {
+          const appointmentTime = new Date(newAppointment.date_booked)
+          const windowStart = new Date(appointmentTime.getTime() - 60 * 60 * 1000) // 60 minutes before
+
+          const { data: matchingDials } = await supabaseService
+            .from('dials')
+            .select('id, date_called')
+            .eq('account_id', mapping.account_id)
+            .eq('contact_id', contactId)
+            .eq('booked', false) // Only unbooked dials
+            .gte('date_called', windowStart.toISOString())
+            .lte('date_called', appointmentTime.toISOString())
+            .order('date_called', { ascending: false })
+            .limit(1)
+
+          if (matchingDials && matchingDials.length > 0) {
+            const dialToLink = matchingDials[0]
+            const { error: updateError } = await supabaseService
+              .from('dials')
+              .update({ 
+                booked: true, 
+                booked_appointment_id: newAppointment.id
+              })
+              .eq('id', dialToLink.id)
+
+            if (updateError) {
+              console.error('Failed to link dial to appointment:', updateError)
+            } else {
+              console.log('🔗 Linked dial to appointment:', { dialId: dialToLink.id, appointmentId: newAppointment.id })
+            }
+          }
+        } catch (linkError) {
+          console.error('Error linking dial to appointment:', linkError)
+          // Don't fail the appointment creation if linking fails
+        }
       }
     } else if (mapping.target_table === 'discoveries') {
       const { error: insertError } = await supabaseService
