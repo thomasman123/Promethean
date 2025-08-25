@@ -4,6 +4,78 @@ import { createClient } from '@supabase/supabase-js';
 // Store webhook IDs to prevent replay attacks
 const processedWebhookIds = new Set<string>();
 
+// Helper function to fetch GHL user details with fallback mechanisms
+async function fetchGhlUserDetails(userId: string, accessToken: string, locationId: string): Promise<any | null> {
+  try {
+    console.log('🔍 Fetching user details from GHL for userId:', userId);
+    
+    // Try individual user endpoint first
+    let userResponse = await fetch(`https://services.leadconnectorhq.com/users/${userId}`, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Version': '2021-07-28',
+      },
+    });
+    
+    if (userResponse.ok) {
+      const userData = await userResponse.json();
+      console.log('✅ User data retrieved via individual endpoint:', {
+        name: userData?.name,
+        email: userData?.email,
+        firstName: userData?.firstName,
+        lastName: userData?.lastName
+      });
+      return userData;
+    }
+    
+    console.log('⚠️ Individual user endpoint failed, trying location users endpoint...');
+    
+    // Fallback: Fetch all users from location and find the specific user
+    const locationUsersResponse = await fetch(`https://services.leadconnectorhq.com/locations/${locationId}/users/`, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Version': '2021-07-28',
+      },
+    });
+    
+    if (locationUsersResponse.ok) {
+      const locationUsersData = await locationUsersResponse.json();
+      const users = locationUsersData.users || locationUsersData;
+      
+      // Find the specific user by ID
+      const userData = Array.isArray(users) ? users.find((user: any) => user.id === userId) : null;
+      
+      if (userData) {
+        console.log('✅ User data retrieved via location users endpoint:', {
+          name: userData?.name,
+          email: userData?.email,
+          firstName: userData?.firstName,
+          lastName: userData?.lastName
+        });
+        return userData;
+      } else {
+        console.log('⚠️ User not found in location users list');
+      }
+    } else {
+      console.error('Failed to fetch location users for user lookup');
+    }
+    
+    // Log the original error for debugging
+    const errorText = await userResponse.text();
+    console.error('Original user fetch error:', {
+      status: userResponse.status,
+      statusText: userResponse.statusText,
+      error: errorText,
+      userId: userId
+    });
+    
+    return null;
+  } catch (error) {
+    console.error('❌ Error fetching user from GHL:', error);
+    return null;
+  }
+}
+
 // Helper to ensure we have a valid GHL access token for API calls
 async function getValidGhlAccessToken(account: any, supabase: any): Promise<string | null> {
   try {
@@ -709,50 +781,37 @@ async function processPhoneCallWebhook(payload: any) {
     let setterEmail = null;
     
     if (payload.userId && account.ghl_api_key) {
-      try {
-        console.log('🔍 Fetching user details from GHL for userId:', payload.userId);
+      const userData = await fetchGhlUserDetails(payload.userId, account.ghl_api_key, account.ghl_location_id || '');
+      
+      if (userData) {
+        setterName = userData.name || `${userData.firstName || ''} ${userData.lastName || ''}`.trim();
+        setterEmail = userData.email || null;
         
-        // Fetch user from GHL API
-        const userResponse = await fetch(`https://services.leadconnectorhq.com/users/${payload.userId}`, {
-          headers: {
-            'Authorization': `Bearer ${account.ghl_api_key}`,
-            'Version': '2021-07-28',
-          },
+        console.log('✅ Successfully fetched user data:', {
+          name: setterName,
+          email: setterEmail,
+          phone: userData.phone
         });
         
-        if (userResponse.ok) {
-          const userData = await userResponse.json();
-          setterName = userData.name || `${userData.firstName || ''} ${userData.lastName || ''}`.trim();
-          setterEmail = userData.email || null;
+        // Try to match to existing platform user by email
+        if (userData.email) {
+          const { data: platformUser } = await supabase
+            .from('users')
+            .select('id')
+            .eq('account_id', account.id)
+            .eq('email', userData.email)
+            .single();
           
-          console.log('✅ Successfully fetched user data:', {
-            name: setterName,
-            email: setterEmail,
-            phone: userData.phone
-          });
+          callerUserId = platformUser?.id || null;
           
-          // Try to match to existing platform user by email
-          if (userData.email) {
-            const { data: platformUser } = await supabase
-              .from('users')
-              .select('id')
-              .eq('account_id', account.id)
-              .eq('email', userData.email)
-              .single();
-            
-            callerUserId = platformUser?.id || null;
-            
-            if (callerUserId) {
-              console.log('✅ Matched GHL user to platform user:', callerUserId);
-            } else {
-              console.log('⚠️ GHL user not found in platform users table');
-            }
+          if (callerUserId) {
+            console.log('✅ Matched GHL user to platform user:', callerUserId);
+          } else {
+            console.log('⚠️ GHL user not found in platform users table');
           }
-        } else {
-          console.log('⚠️ User not found in GHL API');
         }
-      } catch (error) {
-        console.error('❌ Error fetching user from GHL:', error);
+      } else {
+        console.log('⚠️ User not found in GHL API');
       }
     }
     
@@ -1257,16 +1316,9 @@ async function processAppointmentWebhook(payload: any) {
         
         if (setterId) {
           console.log('👨‍🎯 Fetching setter details for ID:', setterId);
+          setterData = await fetchGhlUserDetails(setterId, accessToken, account.ghl_location_id || '');
           
-          const setterResponse = await fetch(`https://services.leadconnectorhq.com/users/${setterId}`, {
-            headers: {
-              'Authorization': `Bearer ${accessToken}`,
-              'Version': '2021-07-28',
-            },
-          });
-          
-          if (setterResponse.ok) {
-            setterData = await setterResponse.json();
+          if (setterData) {
             console.log('👨‍🎯 Setter data retrieved:', {
               name: setterData?.name,
               email: setterData?.email,
@@ -1274,13 +1326,7 @@ async function processAppointmentWebhook(payload: any) {
               lastName: setterData?.lastName
             });
           } else {
-            const errorText = await setterResponse.text();
-            console.error('Failed to fetch setter details:', {
-              status: setterResponse.status,
-              statusText: setterResponse.statusText,
-              error: errorText,
-              userId: setterId
-            });
+            console.error('Failed to fetch setter details for userId:', setterId);
           }
         }
         
