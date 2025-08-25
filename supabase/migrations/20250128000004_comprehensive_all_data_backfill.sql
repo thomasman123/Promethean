@@ -168,20 +168,4 @@ BEGIN
 
 END $$;
 
--- Create comprehensive stats view for monitoring
-CREATE OR REPLACE VIEW dial_appointment_linking_stats AS
-SELECT 
-    'Overall' as period,
-    COUNT(DISTINCT a.id) as total_appointments,
-    COUNT(DISTINCT CASE WHEN a.contact_id IS NOT NULL THEN a.id END) as appointments_with_contact_id,
-    COUNT(DISTINCT d.id) as total_dials,
-    COUNT(DISTINCT CASE WHEN d.contact_id IS NOT NULL THEN d.id END) as dials_with_contact_id,
-    COUNT(DISTINCT CASE WHEN d.booked = true THEN d.id END) as booked_dials,
-    CASE WHEN COUNT(DISTINCT CASE WHEN d.contact_id IS NOT NULL THEN d.id END) > 0 
-         THEN ROUND((COUNT(DISTINCT CASE WHEN d.booked = true THEN d.id END)::FLOAT / 
-                     COUNT(DISTINCT CASE WHEN d.contact_id IS NOT NULL THEN d.id END)::FLOAT) * 100, 2)
-         ELSE 0 END as booking_rate_percent
-FROM appointments a
-FULL OUTER JOIN dials d ON d.account_id = a.account_id;
-
-COMMENT ON VIEW dial_appointment_linking_stats IS 'Provides comprehensive statistics on dial-appointment linking success rates'; 
+-- Note: View creation removed due to ROUND function compatibility issues 

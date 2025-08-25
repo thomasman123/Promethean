@@ -1855,15 +1855,9 @@ async function processAppointmentWebhook(payload: any) {
                 console.warn('⚠️ Exception while backfilling discovery sales rep IDs:', bfErr);
               }
 
-              // Clear any dial link to favor discovery link as canonical
-              const { error: clearDialErr } = await supabase
-                .from('dials')
-                .update({ booked: false, booked_appointment_id: null })
-                .eq('account_id', account.id)
-                .eq('booked_appointment_id', savedAppointment.id);
-              if (clearDialErr) {
-                console.warn('⚠️ Could not clear dial link after appt-side discovery link:', clearDialErr);
-              }
+              // Note: Keeping dial links for "booked calls from dials" metrics
+              // Previously this code cleared dial links, but we need them for dashboard metrics
+              console.log('🔗 Discovery linked - maintaining dial links for metrics compatibility');
             }
           }
         }
