@@ -1,1 +1,1 @@
-export { GET, POST } from "../../appointments/route"; 
+export { GET, POST } from "../../../webhook/call-events/route"; 
