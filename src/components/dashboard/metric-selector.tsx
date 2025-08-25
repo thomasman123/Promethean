@@ -94,6 +94,7 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
   const isTimeViz = selectedViz && selectedViz !== 'kpi';
   const isStep1Valid = !!selectedViz;
   const isStep2Valid = selectedViz === 'kpi' ? selectedMetrics.length === 1 : selectedMetrics.length >= 1 && selectedMetrics.length <= 3;
+  const isStep4Valid = !!selectedViz && !!selectedBreakdown && selectedMetrics.length > 0;
 
   const gotoNext = () => {
     if (step === 1 && !isStep1Valid) return;
@@ -215,9 +216,9 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
   };
 
   const handleAddWidget = () => {
-    if (!selectedMetric || !selectedViz || !selectedBreakdown) return;
+    if (!selectedViz || !selectedBreakdown || selectedMetrics.length === 0) return;
 
-    const names = (selectedViz === 'kpi') ? [selectedMetric.name] : selectedMetrics.map((m) => m.name);
+    const names = selectedMetrics.map((m) => m.name);
 
     addWidget({
       metricName: names[0],
@@ -225,7 +226,7 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
       breakdown: selectedBreakdown,
       vizType: selectedViz,
       settings: {
-        title: customTitle || selectedMetric.displayName,
+        title: customTitle || selectedMetrics[0]?.displayName,
         cumulative: isCumulative,
       },
       position: { x: 0, y: 0 },
@@ -261,14 +262,14 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, selectedMetric, selectedViz, selectedBreakdown, customTitle, isStep1Valid, isStep2Valid]);
+  }, [step, selectedMetrics, selectedViz, selectedBreakdown, customTitle, isStep1Valid, isStep2Valid, isStep4Valid]);
 
   // Check if metric is eligible for cumulative mode
   const isCumulativeEligible = useMemo(() => {
-    if (!selectedMetric || selectedViz === 'kpi' || selectedMetrics.length > 1) return false;
-    const primaryName = selectedMetric.name.toLowerCase();
+    if (selectedViz === 'kpi' || selectedMetrics.length !== 1) return false;
+    const primaryName = selectedMetrics[0]?.name.toLowerCase() || '';
     return primaryName.includes('revenue') || primaryName.includes('cash');
-  }, [selectedMetric, selectedViz, selectedMetrics.length]);
+  }, [selectedViz, selectedMetrics]);
 
   const steps = [
     { number: 1, title: "Visualization", description: "Choose chart type" },
@@ -548,7 +549,7 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
                         <Input 
                           value={customTitle} 
                           onChange={(e) => setCustomTitle(e.target.value)} 
-                          placeholder={selectedMetric?.displayName || 'Enter widget title'}
+                          placeholder={selectedMetrics[0]?.displayName || 'Enter widget title'}
                           className="text-sm"
                         />
                       </CardContent>
@@ -588,7 +589,7 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
                     <CardHeader className="pb-3">
                       <CardTitle className="text-base flex items-center gap-2">
                         Widget Preview
-                        <Badge variant="secondary" className="text-xs">{customTitle || selectedMetric?.displayName}</Badge>
+                        <Badge variant="secondary" className="text-xs">{customTitle || selectedMetrics[0]?.displayName}</Badge>
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-3">
@@ -665,7 +666,7 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
                 <Button 
                   size="sm"
                   onClick={gotoPublish} 
-                  disabled={!selectedViz || !selectedBreakdown || !selectedMetric}
+                  disabled={!isStep4Valid}
                   className="gap-1.5 h-8"
                 >
                   <Plus className="h-3.5 w-3.5" />
