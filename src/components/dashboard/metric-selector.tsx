@@ -279,9 +279,9 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl w-[90vw] h-[85vh] flex flex-col p-0 gap-0">
+      <DialogContent className="max-w-4xl w-[90vw] h-[85vh] flex flex-col p-0 gap-0 overflow-hidden">
         {/* Header with modern stepper */}
-        <div className="flex-shrink-0 px-6 py-4 border-b bg-gradient-to-r from-background via-muted/20 to-background">
+        <div className="flex-shrink-0 px-6 py-4 border-b bg-gradient-to-r from-background via-muted/20 to-background rounded-t-lg">
           <DialogHeader className="mb-4">
             <DialogTitle className="text-xl font-bold">Create Widget</DialogTitle>
             <DialogDescription className="text-sm text-muted-foreground">
@@ -372,7 +372,7 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
 
               {/* Step 2: Metric Selection */}
               {step === 2 && (
-                <div className="w-full max-w-none">
+                <div className="w-full max-w-none h-full flex flex-col">
                   <div className="text-center mb-4">
                     <h3 className="text-lg font-semibold mb-2">Select Your Metrics</h3>
                     <p className="text-sm text-muted-foreground">
@@ -447,8 +447,8 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
                     </div>
                   </div>
 
-                  {/* Metrics Grid */}
-                  <div className="max-h-[320px] overflow-y-auto border rounded-lg">
+                  {/* Metrics Grid - Extended to bottom */}
+                  <div className="flex-1 overflow-y-auto border rounded-lg">
                     <div className="p-4 space-y-4">
                       {Object.entries(filteredGroupedMetrics).map(([category, metrics]) => (
                         <div key={category}>
@@ -635,7 +635,7 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
         </div>
 
         {/* Footer */}
-        <div className="flex-shrink-0 border-t bg-muted/10 px-6 py-3">
+        <div className="flex-shrink-0 border-t bg-muted/10 px-6 py-3 rounded-b-lg">
           <div className="flex items-center justify-between">
             <div className="text-xs text-muted-foreground">
               Step {step} of {steps.length}
