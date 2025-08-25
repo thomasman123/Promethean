@@ -61,16 +61,16 @@ BEGIN
             a.id,
             a.date_booked,
             a.date_booked_for,
-            a.contact_name,
+            a.contact_id,
             a.setter,
             a.sales_rep,
-            c.name as contact_name_from_table,
+            c.name as contact_name,
             c.email,
             c.phone
         FROM appointments a
         LEFT JOIN contacts c ON c.id = a.contact_id
-        WHERE (LOWER(a.contact_name) LIKE '%douglas%' AND LOWER(a.contact_name) LIKE '%gardner%')
-           OR (LOWER(c.name) LIKE '%douglas%' AND LOWER(c.name) LIKE '%gardner%')
+        WHERE (LOWER(c.name) LIKE '%douglas%' AND LOWER(c.name) LIKE '%gardner%')
+           OR (LOWER(c.first_name) LIKE '%douglas%' AND LOWER(c.last_name) LIKE '%gardner%')
            OR LOWER(c.email) LIKE '%dougelectric%'
         ORDER BY a.date_booked DESC
         LIMIT 5
@@ -79,7 +79,7 @@ BEGIN
             substring(search_result.id::text, 1, 8),
             search_result.date_booked,
             search_result.date_booked_for,
-            COALESCE(search_result.contact_name_from_table, search_result.contact_name),
+            COALESCE(search_result.contact_name, 'no-name'),
             COALESCE(search_result.email, 'no-email');
     END LOOP;
     
@@ -100,22 +100,24 @@ BEGIN
         SELECT 
             'appointment' as source,
             a.id,
-            a.contact_name as name,
-            NULL as email,
-            a.phone,
+            c.name as name,
+            c.email,
+            c.phone,
             a.date_booked as date_created
         FROM appointments a
-        WHERE a.phone LIKE '%2024206970%'
+        LEFT JOIN contacts c ON c.id = a.contact_id
+        WHERE c.phone LIKE '%2024206970%'
         UNION ALL
         SELECT 
             'dial' as source,
             d.id,
-            d.contact_name as name,
-            d.email,
-            d.phone,
+            c.name as name,
+            c.email,
+            c.phone,
             d.date_called as date_created
         FROM dials d
-        WHERE d.phone LIKE '%2024206970%'
+        LEFT JOIN contacts c ON c.id = d.contact_id
+        WHERE c.phone LIKE '%2024206970%'
         ORDER BY date_created DESC
         LIMIT 10
     LOOP
