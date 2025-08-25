@@ -1767,6 +1767,55 @@ async function processAppointmentWebhook(payload: any) {
       
       console.log('✅ Appointment saved successfully:', payload.appointment?.id);
       
+      // Link appointment to originating dial (for "booked calls from dials" metrics)
+      try {
+        if (appointmentContactId && savedAppointment.date_booked) {
+          const bookedAt = new Date(savedAppointment.date_booked as string);
+          const dialWindowStart = new Date(bookedAt.getTime() - 30 * 60 * 1000); // 30 minutes before
+          const dialWindowEnd = new Date(bookedAt.getTime() + 30 * 60 * 1000); // 30 minutes after
+
+          const { data: matchingDials, error: dialSearchErr } = await supabase
+            .from('dials')
+            .select('id, date_called, contact_id')
+            .eq('account_id', account.id)
+            .eq('contact_id', appointmentContactId)
+            .eq('booked', false) // Only unbooked dials
+            .gte('date_called', dialWindowStart.toISOString())
+            .lte('date_called', dialWindowEnd.toISOString())
+            .order('date_called', { ascending: false }) // Most recent first
+            .limit(1);
+
+          if (dialSearchErr) {
+            console.error('Error searching for dials to link to appointment:', dialSearchErr);
+          } else if (matchingDials && matchingDials.length > 0) {
+            const dialToLink = matchingDials[0];
+            const { error: linkDialErr } = await supabase
+              .from('dials')
+              .update({ 
+                booked: true, 
+                booked_appointment_id: savedAppointment.id 
+              })
+              .eq('id', dialToLink.id);
+
+            if (linkDialErr) {
+              console.error('Failed to link dial to appointment:', linkDialErr);
+            } else {
+              const minutesDiff = (new Date(savedAppointment.date_booked as string).getTime() - new Date(dialToLink.date_called).getTime()) / (1000 * 60);
+              console.log('🔗 Linked dial to appointment:', { 
+                dialId: dialToLink.id, 
+                appointmentId: savedAppointment.id,
+                minutesApart: Math.round(minutesDiff * 10) / 10
+              });
+            }
+          } else {
+            console.log('ℹ️ No matching dials found within 30-minute window for appointment linking');
+          }
+        }
+      } catch (dialLinkError) {
+        console.error('Error in appointment dial linking:', dialLinkError);
+        // Don't throw - this shouldn't fail the appointment creation
+      }
+      
       // Refresh GHL user roles now that the appointment is saved and activity counts should be accurate
       try {
         console.log('🔄 Refreshing GHL user roles after appointment save...');
