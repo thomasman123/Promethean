@@ -171,7 +171,7 @@ export async function POST(request: NextRequest) {
       // Re-subscribe webhooks for this account
       const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
       const target = `${appUrl}/api/webhook/call-events`
-      const events = ['OutboundMessage', 'AppointmentCreate', 'AppointmentUpdate', 'AppointmentDelete', 'ContactCreate', 'ContactUpdate']
+      const events = ['OutboundMessage', 'InboundMessage', 'CallCompleted', 'CallStarted', 'AppointmentCreate', 'AppointmentUpdate', 'AppointmentDelete', 'ContactCreate', 'ContactUpdate']
 
       console.log(`🔄 Re-subscribing webhooks for account ${accountId}`)
 
