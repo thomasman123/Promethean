@@ -1,19 +1,3 @@
-/*
- * ⚠️ PROTECTED WEBHOOK STATUS ENDPOINT - MODIFICATION RESTRICTED ⚠️
- * 
- * This file monitors GoHighLevel webhook subscription status and health.
- * It's critical for debugging webhook connectivity issues.
- * 
- * PROTECTED FUNCTIONALITY:
- * - Webhook subscription status checking
- * - GHL API endpoint validation  
- * - Account OAuth token verification
- * - Webhook re-subscription logic
- * 
- * See WEBHOOK_PROTECTION.md for modification guidelines.
- * Last verified working: January 28, 2025
- */
-
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
