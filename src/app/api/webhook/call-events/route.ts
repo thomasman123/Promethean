@@ -1346,9 +1346,9 @@ async function processAppointmentWebhook(payload: any) {
           setterId: setterId
         });
         
-        if (setterId) {
+        if (setterId && account.ghl_location_id) {
           console.log('👨‍🎯 Fetching setter details for ID:', setterId);
-          setterData = await fetchGhlUserDetails(setterId, accessToken, account.ghl_location_id || '');
+          setterData = await fetchGhlUserDetails(setterId, accessToken, account.ghl_location_id as string);
           
           if (setterData) {
             console.log('👨‍🎯 Setter data retrieved:', {

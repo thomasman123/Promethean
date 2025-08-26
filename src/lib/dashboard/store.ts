@@ -291,7 +291,7 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
   deleteView: async (viewId) => {
     const { data: existing } = await supabase
       .from('dashboard_views')
-      .select('account_id')
+      .select('account_id, name')
       .eq('id', viewId)
       .single();
 
@@ -301,9 +301,24 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
       .eq('id', viewId);
 
     if (error) {
-      console.warn('Failed to delete view:', error);
+      console.error('Failed to delete view:', error);
+      
+      // Provide user-friendly error messages
+      let errorMessage = 'Failed to delete view.';
+      if (error.message?.includes('permission')) {
+        errorMessage = 'You do not have permission to delete this view.';
+      } else if (error.message?.includes('not found')) {
+        errorMessage = 'View not found or already deleted.';
+      } else if (error.code === 'PGRST116') {
+        errorMessage = 'You can only delete views you created or team/global views if you are an admin.';
+      }
+      
+      // Show alert to user
+      alert(errorMessage + '\n\nError details: ' + error.message);
       return;
     }
+
+    console.log(`✅ Successfully deleted view: ${existing?.name || viewId}`);
 
     // Refresh list and clear current if it was deleted
     if (existing?.account_id) {
