@@ -946,17 +946,49 @@ async function processPhoneCallWebhook(payload: any) {
         attribution_source: dialAttrSource || null,
         last_attribution_source: dialLastAttrSource || null,
       }
+      
+      console.log('👤 Contact data for dial:', {
+        hasGhlContactId: !!contactUpsert.ghl_contact_id,
+        hasEmail: !!contactUpsert.email,
+        hasPhone: !!contactUpsert.phone,
+        hasName: !!contactUpsert.name,
+        contactData: contactUpsert
+      });
+      
       if (contactUpsert.ghl_contact_id || contactUpsert.email || contactUpsert.phone) {
-        const { data: up } = await supabase
+        console.log('📝 Upserting contact for dial...');
+        const { data: up, error: upsertError } = await supabase
           .from('contacts')
           .upsert(contactUpsert, { onConflict: 'account_id,ghl_contact_id' })
           .select('id')
           .maybeSingle()
-        if (up?.id) {
+        
+        if (upsertError) {
+          console.error('❌ Contact upsert failed:', upsertError);
+        } else if (up?.id) {
           dialData.contact_id = up.id
+          console.log('✅ Contact linked to dial:', up.id);
+        } else {
+          console.log('⚠️ Contact upsert succeeded but no ID returned');
         }
+      } else {
+        console.log('⚠️ No contact identifiers available - dial will be saved without contact linking');
+        console.log('📋 Missing contact data debug:', {
+          rawPayload: {
+            contactId: payload.contactId,
+            userId: payload.userId,
+            messageId: payload.messageId
+          },
+          fetchedData: {
+            contactName,
+            contactEmail, 
+            contactPhone
+          }
+        });
       }
-    } catch {}
+    } catch (contactError) {
+      console.error('❌ Error in contact upsert process:', contactError);
+    }
 
     console.log('💾 Saving dial data:', {
       ...dialData,
