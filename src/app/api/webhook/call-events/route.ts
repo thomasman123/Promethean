@@ -743,8 +743,7 @@ async function processPhoneCallWebhook(payload: any) {
     contactId: payload.contactId,
     callDuration: payload.callDuration,
     callStatus: payload.callStatus,
-    direction: payload.direction,
-    userId: payload.userId || 'not provided'
+    direction: payload.direction
   });
   
   try {
@@ -781,11 +780,8 @@ async function processPhoneCallWebhook(payload: any) {
     let setterName = null;
     let setterEmail = null;
     
-    // Get a valid access token for GHL API calls
-    const accessToken = await getValidGhlAccessToken(account, supabase);
-    
-    if (payload.userId && accessToken) {
-      const userData = await fetchGhlUserDetails(payload.userId, accessToken, account.ghl_location_id || '');
+    if (payload.userId && account.ghl_api_key) {
+      const userData = await fetchGhlUserDetails(payload.userId, account.ghl_api_key, account.ghl_location_id || '');
       
       if (userData) {
         setterName = userData.name || `${userData.firstName || ''} ${userData.lastName || ''}`.trim();
@@ -1350,9 +1346,9 @@ async function processAppointmentWebhook(payload: any) {
           setterId: setterId
         });
         
-        if (setterId && accessToken) {
+        if (setterId) {
           console.log('👨‍🎯 Fetching setter details for ID:', setterId);
-          setterData = await fetchGhlUserDetails(setterId, accessToken as string, account.ghl_location_id || '');
+          setterData = await fetchGhlUserDetails(setterId, accessToken, account.ghl_location_id || '');
           
           if (setterData) {
             console.log('👨‍🎯 Setter data retrieved:', {
