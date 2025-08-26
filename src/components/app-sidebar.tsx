@@ -42,6 +42,7 @@ const staticData = {
 			isActive: true,
 			items: [
 				{ title: "Appointments", url: "/dashboard/appointments" },
+				{ title: "Detailed Data", url: "/dashboard/detailed-data" },
 			],
 		},
 		{ title: "Update Data", url: "/dashboard/update-data", icon: ClipboardList, items: [ { title: "Follow Ups", url: "/follow-ups" } ] },
