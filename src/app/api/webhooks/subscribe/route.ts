@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Missing location ID for account' }, { status: 400 })
     }
 
-    const events = ['OutboundMessage', 'InboundMessage', 'CallCompleted', 'CallStarted', 'AppointmentCreate', 'AppointmentUpdate', 'AppointmentDelete', 'ContactCreate', 'ContactUpdate']
+    const events = ['OutboundMessage', 'InboundMessage', 'AppointmentCreate', 'AppointmentUpdate', 'AppointmentDelete', 'ContactCreate', 'ContactUpdate']
 
     const webhookAttempts = [
       {

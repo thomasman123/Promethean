@@ -110,17 +110,17 @@ export async function GET(request: NextRequest) {
         {
           name: 'Location-based endpoint',
           url: `https://services.leadconnectorhq.com/locations/${tokenData.locationId}/webhooks`,
-          body: { url: webhookUrl, events: ['OutboundMessage', 'InboundMessage', 'CallCompleted', 'CallStarted', 'AppointmentCreate', 'AppointmentUpdate', 'AppointmentDelete', 'ContactCreate', 'ContactUpdate'] }
+          body: { url: webhookUrl, events: ['OutboundMessage', 'InboundMessage', 'AppointmentCreate', 'AppointmentUpdate', 'AppointmentDelete', 'ContactCreate', 'ContactUpdate'] }
         },
         {
           name: 'V2 webhooks with locationId',
           url: 'https://services.leadconnectorhq.com/v2/webhooks',
-          body: { locationId: tokenData.locationId, url: webhookUrl, events: ['OutboundMessage', 'InboundMessage', 'CallCompleted', 'CallStarted', 'AppointmentCreate', 'AppointmentUpdate', 'AppointmentDelete', 'ContactCreate', 'ContactUpdate'] }
+          body: { locationId: tokenData.locationId, url: webhookUrl, events: ['OutboundMessage', 'InboundMessage', 'AppointmentCreate', 'AppointmentUpdate', 'AppointmentDelete', 'ContactCreate', 'ContactUpdate'] }
         },
         {
           name: 'V1 webhooks endpoint', 
           url: 'https://services.leadconnectorhq.com/webhooks',
-          body: { locationId: tokenData.locationId, url: webhookUrl, events: ['OutboundMessage', 'InboundMessage', 'CallCompleted', 'CallStarted', 'AppointmentCreate', 'AppointmentUpdate', 'AppointmentDelete', 'ContactCreate', 'ContactUpdate'] }
+          body: { locationId: tokenData.locationId, url: webhookUrl, events: ['OutboundMessage', 'InboundMessage', 'AppointmentCreate', 'AppointmentUpdate', 'AppointmentDelete', 'ContactCreate', 'ContactUpdate'] }
         }
       ];
       
