@@ -163,6 +163,23 @@ export const METRICS_REGISTRY: Record<string, MetricDefinition> = {
 		},
 		unit: 'days'
 	},
+	// Speed to Lead - seconds between contact creation and first dial
+	'speed_to_lead': {
+		name: 'Speed to Lead',
+		description: 'Time in seconds between contact creation and first dial attempt',
+		breakdownType: 'total',
+		query: {
+			table: 'contacts',
+			select: [
+				"COALESCE(ROUND(AVG(EXTRACT(EPOCH FROM ((SELECT MIN(date_called) FROM dials WHERE dials.contact_id = contacts.id) - contacts.date_added))), 0), 0) as value"
+			],
+			where: [
+				'contacts.date_added IS NOT NULL',
+				'EXISTS (SELECT 1 FROM dials WHERE dials.contact_id = contacts.id)'
+			]
+		},
+		unit: 'seconds'
+	},
 	// Answers (Dials): count rows where answered = true
 	'answers_dials': {
 		name: 'Answers (Dials)',

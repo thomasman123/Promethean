@@ -39,20 +39,38 @@ export function applyStandardFilters(filters: MetricFilters, baseTable: string):
 	// Determine appropriate local date column for filtering
 	const startStr = filters.dateRange.start
 	const endStr = filters.dateRange.end
-	const dateCol = pickLocalDateColumn(baseTable, startStr, endStr)
-	const qualifiedDateCol = dateCol // already denormalized on each table
+	
+	// Handle different table types for date filtering
+	let dateCol: string
+	if (baseTable === 'contacts') {
+		// Contacts table uses date_added field directly (no local date columns)
+		dateCol = 'date_added'
+	} else {
+		// Other tables use local date columns
+		const localCol = pickLocalDateColumn(baseTable, startStr, endStr)
+		dateCol = localCol // already denormalized on each table
+	}
 
 	// Compute exclusive end date (next day) for date range filters
 	const endExclusive = (() => {
 		try { const d = new Date(`${endStr}T00:00:00`); d.setDate(d.getDate() + 1); return toDateOnlyString(d) } catch { return endStr }
 	})()
 
-	// Date range on denormalized local date columns
-	conditions.push({ field: qualifiedDateCol, operator: '>=', value: startStr, paramName: 'start_date' })
-	conditions.push({ field: qualifiedDateCol, operator: '<', value: endExclusive, paramName: 'end_plus' })
-	params.start_date = startStr
+	// Date range filtering
+	if (baseTable === 'contacts') {
+		// For contacts, filter on date_added using timestamp comparison
+		conditions.push({ field: dateCol, operator: '>=', value: `${startStr}T00:00:00Z`, paramName: 'start_date' })
+		conditions.push({ field: dateCol, operator: '<', value: `${endExclusive}T00:00:00Z`, paramName: 'end_plus' })
+		params.start_date = `${startStr}T00:00:00Z`
+		params.end_plus = `${endExclusive}T00:00:00Z`
+	} else {
+		// For other tables, use local date columns
+		conditions.push({ field: dateCol, operator: '>=', value: startStr, paramName: 'start_date' })
+		conditions.push({ field: dateCol, operator: '<', value: endExclusive, paramName: 'end_plus' })
+		params.start_date = startStr
+		params.end_plus = endExclusive
+	}
 	params.range_end = endStr
-	params.end_plus = endExclusive
 
 	// Account filter - always applied
 	conditions.push({ field: 'account_id', operator: '=', value: filters.accountId, paramName: 'account_id' })

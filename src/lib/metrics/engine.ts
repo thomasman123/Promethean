@@ -133,6 +133,21 @@ export class MetricsEngine {
       }
     }
     
+    // Handle dynamic speed to lead calculation
+    if (metric.name === 'Speed to Lead' && options?.widgetSettings?.speedToLeadCalculation) {
+      const calculationType = options.widgetSettings.speedToLeadCalculation
+      if (calculationType === 'median') {
+        selectFields = [
+          "COALESCE(ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM ((SELECT MIN(date_called) FROM dials WHERE dials.contact_id = contacts.id) - contacts.date_added))), 0), 0) as value"
+        ]
+      } else {
+        // Default to average
+        selectFields = [
+          "COALESCE(ROUND(AVG(EXTRACT(EPOCH FROM ((SELECT MIN(date_called) FROM dials WHERE dials.contact_id = contacts.id) - contacts.date_added))), 0), 0) as value"
+        ]
+      }
+    }
+    
     // Build SELECT clause
     const selectClause = `SELECT ${selectFields.join(', ')}`
     
