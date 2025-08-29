@@ -20,7 +20,7 @@ export class MetricsEngine {
   /**
    * Execute a metric request
    */
-  async execute(request: MetricRequest, options?: { vizType?: string; dynamicBreakdown?: string }): Promise<MetricResponse> {
+  async execute(request: MetricRequest, options?: { vizType?: string; dynamicBreakdown?: string; widgetSettings?: any }): Promise<MetricResponse> {
     
     let metric: MetricDefinition | null = null
     
@@ -85,7 +85,7 @@ export class MetricsEngine {
       sql = this.buildTimeSeriesSQL(appliedFilters, metric)
       effectiveBreakdown = 'time'
     } else {
-      sql = this.buildSQL(metric, appliedFilters)
+      sql = this.buildSQL(metric, appliedFilters, options)
     }
     
     // Flatten parameters for Supabase
@@ -114,10 +114,27 @@ export class MetricsEngine {
   /**
    * Build complete SQL query from metric definition and filters
    */
-  private buildSQL(metric: MetricDefinition, appliedFilters: any): string {
+  private buildSQL(metric: MetricDefinition, appliedFilters: any, options?: any): string {
     const query = metric.query
+    
+    // Handle dynamic booking lead time calculation
+    let selectFields = [...query.select]
+    if (metric.name === 'Booking Lead Time' && options?.widgetSettings?.bookingLeadTimeCalculation) {
+      const calculationType = options.widgetSettings.bookingLeadTimeCalculation
+      if (calculationType === 'median') {
+        selectFields = [
+          "COALESCE(ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM (date_booked_for - created_at))/86400), 1), 0) as value"
+        ]
+      } else {
+        // Default to average
+        selectFields = [
+          "COALESCE(ROUND(AVG(EXTRACT(EPOCH FROM (date_booked_for - created_at))/86400), 1), 0) as value"
+        ]
+      }
+    }
+    
     // Build SELECT clause
-    const selectClause = `SELECT ${query.select.join(', ')}`
+    const selectClause = `SELECT ${selectFields.join(', ')}`
     
     // Build FROM clause
     const fromClause = `FROM ${query.table}`
@@ -174,42 +191,24 @@ export class MetricsEngine {
     let dateDisplay: string
     let joinCondition: string
     
-    // Check if this is a booking lead time metric - these need special handling
-    const isBookingLeadTimeMetric = metric.name.includes('Booking Lead Time')
-    
     switch (aggregationLevel) {
       case 'month':
         dateSeriesInterval = "'1 month'::interval"
-        if (isBookingLeadTimeMetric) {
-          localColumn = 'created_at_month'
-          joinCondition = `DATE_TRUNC('month', ${baseTable}.created_at AT TIME ZONE COALESCE((SELECT business_timezone FROM accounts WHERE id = ${baseTable}.account_id), 'UTC'))::date = date_series.date`
-        } else {
-          localColumn = 'local_month'
-          joinCondition = `${baseTable}.${localColumn} = date_series.date`
-        }
+        localColumn = 'local_month'
+        joinCondition = `${baseTable}.${localColumn} = date_series.date`
         dateDisplay = "TO_CHAR(date_series.date, 'Mon YYYY') as date"
         break
       case 'week':
         dateSeriesInterval = "'1 week'::interval"
-        if (isBookingLeadTimeMetric) {
-          localColumn = 'created_at_week'
-          joinCondition = `DATE_TRUNC('week', ${baseTable}.created_at AT TIME ZONE COALESCE((SELECT business_timezone FROM accounts WHERE id = ${baseTable}.account_id), 'UTC'))::date = date_series.date`
-        } else {
-          localColumn = 'local_week'
-          joinCondition = `${baseTable}.${localColumn} = date_series.date`
-        }
+        localColumn = 'local_week'
+        joinCondition = `${baseTable}.${localColumn} = date_series.date`
         dateDisplay = "TO_CHAR(date_series.date, 'YYYY-\"W\"WW') as date"
         break
       case 'day':
       default:
         dateSeriesInterval = "'1 day'::interval"
-        if (isBookingLeadTimeMetric) {
-          localColumn = 'created_at_date'
-          joinCondition = `(${baseTable}.created_at AT TIME ZONE COALESCE((SELECT business_timezone FROM accounts WHERE id = ${baseTable}.account_id), 'UTC'))::date = date_series.date`
-        } else {
-          localColumn = 'local_date'
-          joinCondition = `${baseTable}.${localColumn} = date_series.date`
-        }
+        localColumn = 'local_date'
+        joinCondition = `${baseTable}.${localColumn} = date_series.date`
         dateDisplay = "TO_CHAR(date_series.date, 'Mon DD') as date"
         break
     }

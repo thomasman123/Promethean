@@ -67,10 +67,12 @@ export async function POST(request: NextRequest) {
 
     const requestedVizType = body.vizType;
     const requestedBreakdown = body.breakdown;
+    const widgetSettings = body.widgetSettings;
 
     const result = await metricsEngine.execute(metricRequest, {
       vizType: requestedVizType,
-      dynamicBreakdown: requestedBreakdown
+      dynamicBreakdown: requestedBreakdown,
+      widgetSettings: widgetSettings
     })
 
     return NextResponse.json(result)

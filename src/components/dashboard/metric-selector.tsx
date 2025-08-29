@@ -88,6 +88,7 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
   const [favoriteMetricNames, setFavoriteMetricNames] = useState<string[]>([]);
   const [recentMetricNames, setRecentMetricNames] = useState<string[]>([]);
   const [isCumulative, setIsCumulative] = useState(false);
+  const [bookingLeadTimeCalculation, setBookingLeadTimeCalculation] = useState<'average' | 'median'>('average');
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
 
   // Step validation helpers
@@ -220,6 +221,8 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
 
     const names = selectedMetrics.map((m) => m.name);
 
+    const isBookingLeadTime = names[0] === 'booking_lead_time';
+    
     addWidget({
       metricName: names[0],
       metricNames: names.length > 1 ? names : undefined,
@@ -228,6 +231,7 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
       settings: {
         title: customTitle || selectedMetrics[0]?.displayName,
         cumulative: isCumulative,
+        ...(isBookingLeadTime && { bookingLeadTimeCalculation }),
       },
       position: { x: 0, y: 0 },
       size: { w: 4, h: 4 },
@@ -243,6 +247,7 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
     setSelectedBreakdown(null);
     setCustomTitle("");
     setIsCumulative(false);
+    setBookingLeadTimeCalculation('average');
     onOpenChange(false);
   };
 
@@ -574,6 +579,42 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
                         </CardContent>
                       </Card>
                     )}
+
+                    {/* Booking Lead Time Calculation Type */}
+                    {selectedMetrics.length > 0 && selectedMetrics[0]?.name === 'booking_lead_time' && (
+                      <Card>
+                        <CardHeader className="pb-2">
+                          <CardTitle className="text-base">Calculation Method</CardTitle>
+                          <CardDescription className="text-sm">Choose how to calculate booking lead time</CardDescription>
+                        </CardHeader>
+                        <CardContent className="pt-0">
+                          <div className="grid grid-cols-2 gap-2">
+                            <Button
+                              variant={bookingLeadTimeCalculation === 'average' ? 'default' : 'outline'}
+                              size="sm"
+                              onClick={() => setBookingLeadTimeCalculation('average')}
+                              className="text-sm"
+                            >
+                              Average
+                            </Button>
+                            <Button
+                              variant={bookingLeadTimeCalculation === 'median' ? 'default' : 'outline'}
+                              size="sm"
+                              onClick={() => setBookingLeadTimeCalculation('median')}
+                              className="text-sm"
+                            >
+                              Median
+                            </Button>
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-2">
+                            {bookingLeadTimeCalculation === 'average' 
+                              ? 'Shows the mean number of days between booking and appointment date'
+                              : 'Shows the middle value, less affected by outliers'
+                            }
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
                   </div>
                 </div>
               )}
@@ -614,6 +655,12 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
                           <div>
                             <span className="font-medium text-muted-foreground text-xs">Cumulative:</span>
                             <div className="mt-1 font-medium text-sm">{isCumulative ? 'Enabled' : 'Disabled'}</div>
+                          </div>
+                        )}
+                        {selectedMetrics.length > 0 && selectedMetrics[0]?.name === 'booking_lead_time' && (
+                          <div>
+                            <span className="font-medium text-muted-foreground text-xs">Calculation:</span>
+                            <div className="mt-1 font-medium text-sm">{bookingLeadTimeCalculation === 'average' ? 'Average' : 'Median'}</div>
                           </div>
                         )}
                       </div>

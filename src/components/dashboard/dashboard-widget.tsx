@@ -172,7 +172,13 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
 
           const response = await fetch('/api/metrics', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ metricName: engineMetricName, filters: requestFilters, vizType: widget.vizType, breakdown: widgetKey.breakdown })
+            body: JSON.stringify({ 
+              metricName: engineMetricName, 
+              filters: requestFilters, 
+              vizType: widget.vizType, 
+              breakdown: widgetKey.breakdown,
+              widgetSettings: widget.settings
+            })
           });
           if (!response.ok) throw new Error(`API Error: ${response.status}`);
           const apiResult = await response.json();

@@ -43,6 +43,7 @@ export interface WidgetSettings {
   compareVsPrevious?: boolean;
   previousPeriodType?: 'day' | 'week' | 'month' | 'year';
   cumulative?: boolean;
+  bookingLeadTimeCalculation?: 'average' | 'median';
 }
 
 export interface DashboardWidget {
