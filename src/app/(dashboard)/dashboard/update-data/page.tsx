@@ -22,6 +22,8 @@ import { PaymentPlan } from "@/components/payment-plan";
 interface AppointmentItem {
 	id: string;
 	leadName: string;
+	leadEmail?: string;
+	leadPhone?: string;
 	scheduledAt: string;
 	localDate: string;
 	overdueDays: number;
@@ -31,6 +33,8 @@ interface AppointmentItem {
 interface DiscoveryItem {
 	id: string;
 	leadName: string;
+	leadEmail?: string;
+	leadPhone?: string;
 	scheduledAt: string;
 	localDate: string;
 	overdueDays: number;
@@ -40,6 +44,8 @@ interface DiscoveryItem {
 interface FollowUpItem {
 	id: string;
 	leadName: string;
+	leadEmail?: string;
+	leadPhone?: string;
 	followUpAt: string;
 	type: "follow_up";
 }
@@ -94,7 +100,7 @@ export default function UpdateDataPage() {
 						id, 
 						contact_id, 
 						follow_up_at,
-						contacts!inner(name)
+						contacts!inner(name, email, phone)
 					`)
 					.eq('account_id', selectedAccountId)
 					.eq('sales_rep_user_id', effectiveUserId)
@@ -109,6 +115,8 @@ export default function UpdateDataPage() {
 				const items: FollowUpItem[] = (data || []).map((a) => ({
 					id: a.id,
 					leadName: (a as any).contacts?.name || 'Unknown',
+					leadEmail: (a as any).contacts?.email || undefined,
+					leadPhone: (a as any).contacts?.phone || undefined,
 					followUpAt: (a as any).follow_up_at,
 					type: 'follow_up',
 				}));
@@ -136,7 +144,7 @@ export default function UpdateDataPage() {
 					date_booked_for, 
 					sales_rep_user_id, 
 					local_date,
-					contacts!inner(name)
+					contacts!inner(name, email, phone)
 				`)
 				.eq('account_id', selectedAccountId)
 				.eq('sales_rep_user_id', effectiveUserId)
@@ -158,6 +166,8 @@ export default function UpdateDataPage() {
 				return {
 					id: a.id,
 					leadName: (a as any).contacts?.name || 'Unknown',
+					leadEmail: (a as any).contacts?.email || undefined,
+					leadPhone: (a as any).contacts?.phone || undefined,
 					scheduledAt: a.date_booked_for,
 					localDate: itemLocal,
 					overdueDays,
@@ -173,7 +183,7 @@ export default function UpdateDataPage() {
 					date_booked_for, 
 					setter_user_id, 
 					local_date,
-					contacts!inner(name)
+					contacts!inner(name, email, phone)
 				`)
 				.eq('account_id', selectedAccountId)
 				.eq('setter_user_id', effectiveUserId)
@@ -193,6 +203,8 @@ export default function UpdateDataPage() {
 				return {
 					id: d.id,
 					leadName: (d as any).contacts?.name || 'Unknown',
+					leadEmail: (d as any).contacts?.email || undefined,
+					leadPhone: (d as any).contacts?.phone || undefined,
 					scheduledAt: d.date_booked_for,
 					localDate: itemLocal,
 					overdueDays,
@@ -427,7 +439,11 @@ function AppointmentEntryCard({
 						</div>
 						<div>
 							<CardTitle className="text-lg">Appointment: {item.leadName}</CardTitle>
-							<CardDescription>Scheduled: {new Date(item.scheduledAt).toLocaleString()}</CardDescription>
+							<CardDescription>
+								{item.leadEmail && <div>Email: {item.leadEmail}</div>}
+								{item.leadPhone && <div>Phone: {item.leadPhone}</div>}
+								<div>Scheduled: {new Date(item.scheduledAt).toLocaleString()}</div>
+							</CardDescription>
 						</div>
 					</div>
 					<div className="flex items-center gap-2">
@@ -605,7 +621,11 @@ function FollowUpEntryCard({ item, onComplete }: { item: FollowUpItem; onComplet
 						</div>
 						<div>
 							<CardTitle className="text-lg">Follow Up: {item.leadName}</CardTitle>
-							<CardDescription>Scheduled: {new Date(item.followUpAt).toLocaleString()}</CardDescription>
+							<CardDescription>
+								{item.leadEmail && <div>Email: {item.leadEmail}</div>}
+								{item.leadPhone && <div>Phone: {item.leadPhone}</div>}
+								<div>Scheduled: {new Date(item.followUpAt).toLocaleString()}</div>
+							</CardDescription>
 						</div>
 					</div>
 					<Badge variant="secondary">follow up</Badge>
@@ -743,7 +763,11 @@ function DiscoveryEntryCard({
 						</div>
 						<div>
 							<CardTitle className="text-lg">Discovery: {item.leadName}</CardTitle>
-							<CardDescription>Scheduled: {new Date(item.scheduledAt).toLocaleString()}</CardDescription>
+							<CardDescription>
+								{item.leadEmail && <div>Email: {item.leadEmail}</div>}
+								{item.leadPhone && <div>Phone: {item.leadPhone}</div>}
+								<div>Scheduled: {new Date(item.scheduledAt).toLocaleString()}</div>
+							</CardDescription>
 						</div>
 					</div>
 					<Badge variant="secondary" className="capitalize">discovery</Badge>
