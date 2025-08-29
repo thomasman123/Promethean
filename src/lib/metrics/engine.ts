@@ -287,6 +287,16 @@ export class MetricsEngine {
     console.log('🐛 DEBUG - contactsWhereClause:', contactsWhereClause)
     console.log('🐛 DEBUG - aggregationExpression:', aggregationExpression)
     console.log('🐛 DEBUG - appliedFilters:', JSON.stringify(appliedFilters, null, 2))
+    
+    // Test query without date filtering to see if data exists
+    const testSql = `
+      SELECT COUNT(*) as total_contacts_with_dials
+      FROM contacts c
+      WHERE c.date_added IS NOT NULL
+        AND c.account_id = $account_id
+        AND EXISTS (SELECT 1 FROM dials WHERE dials.contact_id = c.id AND dials.contact_id IS NOT NULL)
+    `
+    console.log('🐛 DEBUG - Test query (no date filter):', testSql)
 
     const sql = `
 WITH contact_speed_to_lead AS (
@@ -307,6 +317,11 @@ WHERE speed_to_lead_seconds IS NOT NULL
   AND speed_to_lead_seconds >= 0`
     
     console.log('🐛 DEBUG - Final Speed to Lead SQL:', sql)
+    console.log('🐛 DEBUG - Date filter params:', {
+      start_date: appliedFilters.params.start_date,
+      end_plus: appliedFilters.params.end_plus,
+      account_id: appliedFilters.params.account_id
+    })
     
     return sql.trim()
   }
