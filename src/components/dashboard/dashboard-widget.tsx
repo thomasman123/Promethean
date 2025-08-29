@@ -194,10 +194,10 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
           return transformed;
         };
 
-        // If KPI or only one metric
+        // If KPI, always fetch single value regardless of metric count
         const names = (widget.metricNames && widget.metricNames.length > 0 ? widget.metricNames : [widget.metricName]).slice(0, widget.vizType === 'kpi' ? 1 : 3);
 
-        if (widget.vizType === 'kpi' || names.length === 1) {
+        if (widget.vizType === 'kpi') {
           const single = await fetchMetric(names[0]);
           setData(single);
           setMultiSeries([]);
@@ -205,6 +205,7 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
           return;
         }
 
+        // For chart visualizations (line, bar, area), always fetch time-series data
         // Multi-metric fetch and merge as series
         const results = await Promise.all(names.map(fetchMetric));
         const series = results.map(r => ({
