@@ -134,17 +134,13 @@ export class MetricsEngine {
     }
     
     // Handle dynamic speed to lead calculation
-    if (metric.name === 'Speed to Lead' && options?.widgetSettings?.speedToLeadCalculation) {
-      const calculationType = options.widgetSettings.speedToLeadCalculation
+    if (metric.name === 'Speed to Lead') {
+      const calculationType = options?.widgetSettings?.speedToLeadCalculation || 'average'
+      // Use a CTE to properly calculate per-contact speed to lead first
       if (calculationType === 'median') {
-        selectFields = [
-          "COALESCE(ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM ((SELECT MIN(date_called) FROM dials WHERE dials.contact_id = contacts.id AND dials.contact_id IS NOT NULL) - contacts.date_added))), 0), 0) as value"
-        ]
+        return this.buildSpeedToLeadSQL(appliedFilters, 'median')
       } else {
-        // Default to average
-        selectFields = [
-          "COALESCE(ROUND(AVG(EXTRACT(EPOCH FROM ((SELECT MIN(date_called) FROM dials WHERE dials.contact_id = contacts.id AND dials.contact_id IS NOT NULL) - contacts.date_added))), 0), 0) as value"
-        ]
+        return this.buildSpeedToLeadSQL(appliedFilters, 'average')
       }
     }
     
@@ -271,6 +267,46 @@ export class MetricsEngine {
   }
 
   /**
+   * Special SQL builder for Speed to Lead metric (KPI/total)
+   * Properly calculates per-contact speed to lead then aggregates
+   */
+  private buildSpeedToLeadSQL(appliedFilters: any, calculationType: 'average' | 'median'): string {
+    let aggregationExpression: string
+    if (calculationType === 'median') {
+      aggregationExpression = "COALESCE(ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY speed_to_lead_seconds)), 0)"
+    } else {
+      aggregationExpression = "COALESCE(ROUND(AVG(speed_to_lead_seconds)), 0)"
+    }
+
+    // Build the base CTE query with filters applied to the inner contacts query
+    const contactsWhereClause = buildWhereClause(appliedFilters, [
+      'contacts.date_added IS NOT NULL',
+      'EXISTS (SELECT 1 FROM dials WHERE dials.contact_id = contacts.id AND dials.contact_id IS NOT NULL)'
+    ])
+
+    const sql = `
+      WITH contact_speed_to_lead AS (
+        SELECT 
+          contacts.id,
+          contacts.date_added,
+          contacts.account_id,
+          EXTRACT(EPOCH FROM (
+            (SELECT MIN(date_called) FROM dials WHERE dials.contact_id = contacts.id AND dials.contact_id IS NOT NULL) 
+            - contacts.date_added
+          )) as speed_to_lead_seconds
+        FROM contacts
+        ${contactsWhereClause}
+      )
+      SELECT ${aggregationExpression} as value
+      FROM contact_speed_to_lead
+      WHERE speed_to_lead_seconds IS NOT NULL 
+        AND speed_to_lead_seconds >= 0
+    `
+    
+    return sql.trim()
+  }
+
+  /**
    * Special time-series SQL builder for Speed to Lead metric
    * Since contacts table doesn't have local date columns, we need custom logic
    */
@@ -307,10 +343,10 @@ export class MetricsEngine {
     let aggregationExpression: string
     
     if (calculationType === 'median') {
-      aggregationExpression = "COALESCE(ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM ((SELECT MIN(date_called) FROM dials WHERE dials.contact_id = contacts.id AND dials.contact_id IS NOT NULL) - contacts.date_added))), 0), 0)"
+      aggregationExpression = "COALESCE(ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY speed_to_lead_seconds)), 0)"
     } else {
       // Default to average
-      aggregationExpression = "COALESCE(ROUND(AVG(EXTRACT(EPOCH FROM ((SELECT MIN(date_called) FROM dials WHERE dials.contact_id = contacts.id AND dials.contact_id IS NOT NULL) - contacts.date_added))), 0), 0)"
+      aggregationExpression = "COALESCE(ROUND(AVG(speed_to_lead_seconds)), 0)"
     }
 
     // Build the time-series query for Speed to Lead
@@ -322,17 +358,31 @@ export class MetricsEngine {
           ${dateSeriesInterval}
         )::date as date
       ),
-      speed_to_lead_by_date AS (
+      contact_speed_to_lead AS (
         SELECT 
+          contacts.id,
+          contacts.date_added,
+          contacts.account_id,
           ${dateGrouping} as contact_date,
-          ${aggregationExpression} as value
+          EXTRACT(EPOCH FROM (
+            (SELECT MIN(date_called) FROM dials WHERE dials.contact_id = contacts.id AND dials.contact_id IS NOT NULL) 
+            - contacts.date_added
+          )) as speed_to_lead_seconds
         FROM contacts
         WHERE contacts.date_added IS NOT NULL
           AND contacts.date_added >= $start_date::timestamptz
           AND contacts.date_added < $end_plus::timestamptz
           AND contacts.account_id = $account_id
           AND EXISTS (SELECT 1 FROM dials WHERE dials.contact_id = contacts.id AND dials.contact_id IS NOT NULL)
-        GROUP BY ${dateGrouping}
+      ),
+      speed_to_lead_by_date AS (
+        SELECT 
+          contact_date,
+          ${aggregationExpression} as value
+        FROM contact_speed_to_lead
+        WHERE speed_to_lead_seconds IS NOT NULL 
+          AND speed_to_lead_seconds >= 0
+        GROUP BY contact_date
       )
       SELECT 
         ${dateDisplay},

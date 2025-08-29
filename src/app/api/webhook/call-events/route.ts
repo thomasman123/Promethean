@@ -932,7 +932,7 @@ async function processPhoneCallWebhook(payload: any) {
       date_called: new Date(payload.timestamp || payload.dateAdded || new Date().toISOString()).toISOString(),
     } as any;
 
-    // Upsert/link contact and set contact_id on dial
+    // Try to upsert contact first
     try {
       const contactUpsert = {
         account_id: account.id,
@@ -945,6 +945,7 @@ async function processPhoneCallWebhook(payload: any) {
         source: contactSource || null,
         attribution_source: dialAttrSource || null,
         last_attribution_source: dialLastAttrSource || null,
+        date_added: new Date().toISOString(), // Set current time as fallback
       }
       
       console.log('👤 Contact data for dial:', {
@@ -965,29 +966,87 @@ async function processPhoneCallWebhook(payload: any) {
         
         if (upsertError) {
           console.error('❌ Contact upsert failed:', upsertError);
+          
+          // FUTURE-PROOF FALLBACK: Use the same API process as Sync Contacts button
+          if (payload.contactId && typeof payload.contactId === 'string') {
+            console.log('🔄 Attempting contact sync from GHL API as fallback...');
+            const { syncSingleContactFromGHL } = await import('@/lib/ghl-contact-sync');
+            const syncResult = await syncSingleContactFromGHL(account.id, payload.contactId);
+            
+            if (syncResult.success && syncResult.contactId) {
+              dialData.contact_id = syncResult.contactId;
+              console.log('✅ Contact synced from GHL and linked to dial:', syncResult.contactId);
+            } else {
+              console.log('⚠️ GHL contact sync also failed:', syncResult.error);
+            }
+          }
         } else if (up?.id) {
           dialData.contact_id = up.id
           console.log('✅ Contact linked to dial:', up.id);
         } else {
           console.log('⚠️ Contact upsert succeeded but no ID returned');
+          
+          // FUTURE-PROOF FALLBACK: Try GHL sync if we have a contact ID
+          if (payload.contactId && typeof payload.contactId === 'string') {
+            console.log('🔄 Attempting contact sync from GHL API as fallback...');
+            const { syncSingleContactFromGHL } = await import('@/lib/ghl-contact-sync');
+            const syncResult = await syncSingleContactFromGHL(account.id, payload.contactId);
+            
+            if (syncResult.success && syncResult.contactId) {
+              dialData.contact_id = syncResult.contactId;
+              console.log('✅ Contact synced from GHL and linked to dial:', syncResult.contactId);
+            }
+          }
         }
       } else {
-        console.log('⚠️ No contact identifiers available - dial will be saved without contact linking');
-        console.log('📋 Missing contact data debug:', {
-          rawPayload: {
-            contactId: payload.contactId,
-            userId: payload.userId,
-            messageId: payload.messageId
-          },
-          fetchedData: {
-            contactName,
-            contactEmail, 
-            contactPhone
+        console.log('⚠️ No contact identifiers available - attempting GHL sync as last resort');
+        
+        // FUTURE-PROOF FALLBACK: Even without basic identifiers, try GHL sync if we have contact ID
+        if (payload.contactId && typeof payload.contactId === 'string') {
+          console.log('🔄 Attempting contact sync from GHL API...');
+          const { syncSingleContactFromGHL } = await import('@/lib/ghl-contact-sync');
+          const syncResult = await syncSingleContactFromGHL(account.id, payload.contactId);
+          
+          if (syncResult.success && syncResult.contactId) {
+            dialData.contact_id = syncResult.contactId;
+            console.log('✅ Contact synced from GHL and linked to dial:', syncResult.contactId);
+          } else {
+            console.log('⚠️ No contact data available for dial - will save without contact linking');
+            console.log('📋 Missing contact data debug:', {
+              rawPayload: {
+                contactId: payload.contactId,
+                userId: payload.userId,
+                messageId: payload.messageId
+              },
+              fetchedData: {
+                contactName,
+                contactEmail, 
+                contactPhone
+              }
+            });
           }
-        });
+        } else {
+          console.log('⚠️ No contact ID available - dial will be saved without contact linking');
+        }
       }
     } catch (contactError) {
       console.error('❌ Error in contact upsert process:', contactError);
+      
+      // FUTURE-PROOF FALLBACK: Try GHL sync even after errors
+      if (payload.contactId && typeof payload.contactId === 'string') {
+        try {
+          console.log('🔄 Attempting contact sync from GHL API after error...');
+          const { syncSingleContactFromGHL } = await import('@/lib/ghl-contact-sync');
+          const syncResult = await syncSingleContactFromGHL(account.id, payload.contactId);
+          
+          if (syncResult.success && syncResult.contactId) {
+            dialData.contact_id = syncResult.contactId;
+            console.log('✅ Contact synced from GHL after error and linked to dial:', syncResult.contactId);
+          }
+        } catch (syncError) {
+          console.error('❌ GHL contact sync also failed:', syncError);
+        }
+      }
     }
 
     console.log('💾 Saving dial data:', {
@@ -1707,11 +1766,52 @@ async function processAppointmentWebhook(payload: any) {
             name: (contactData?.name || ((contactData?.firstName || '') || '') || '').toString() || null,
             email: contactData?.email || null,
             phone: contactData?.phone || null,
+            date_added: contactData?.dateAdded ? new Date(contactData.dateAdded).toISOString() : new Date().toISOString(),
           }, { onConflict: 'account_id,ghl_contact_id' })
           .select('id')
           .maybeSingle()
         appointmentContactId = up?.data?.id || null
-      } catch {}
+        
+        // FUTURE-PROOF FALLBACK: If contact creation failed, try GHL sync
+        if (!appointmentContactId && (payload.appointment?.contactId || contactData?.id)) {
+          console.log('🔄 Attempting contact sync from GHL API for appointment...');
+          const { syncSingleContactFromGHL } = await import('@/lib/ghl-contact-sync');
+          const ghlContactId = payload.appointment?.contactId || contactData?.id;
+          
+          if (ghlContactId && typeof ghlContactId === 'string') {
+            const syncResult = await syncSingleContactFromGHL(account.id, ghlContactId);
+            
+            if (syncResult.success && syncResult.contactId) {
+              appointmentContactId = syncResult.contactId;
+              console.log('✅ Contact synced from GHL and linked to appointment:', syncResult.contactId);
+            } else {
+              console.log('⚠️ GHL contact sync failed for appointment:', syncResult.error);
+            }
+          }
+        }
+      } catch (contactSyncError) {
+        console.error('❌ Contact sync error for appointment:', contactSyncError);
+        
+        // FINAL FALLBACK: Try GHL sync even after errors
+        if (payload.appointment?.contactId || contactData?.id) {
+          try {
+            console.log('🔄 Final attempt at contact sync from GHL API...');
+            const { syncSingleContactFromGHL } = await import('@/lib/ghl-contact-sync');
+            const ghlContactId = payload.appointment?.contactId || contactData?.id;
+            
+            if (ghlContactId && typeof ghlContactId === 'string') {
+              const syncResult = await syncSingleContactFromGHL(account.id, ghlContactId);
+              
+              if (syncResult.success && syncResult.contactId) {
+                appointmentContactId = syncResult.contactId;
+                console.log('✅ Contact synced from GHL after error and linked to appointment:', syncResult.contactId);
+              }
+            }
+          } catch (finalError) {
+            console.error('❌ Final GHL contact sync also failed:', finalError);
+          }
+        }
+      }
 
       const appointmentData = {
         ...baseData,
@@ -2072,11 +2172,52 @@ async function processAppointmentWebhook(payload: any) {
             name: (contactData?.name || ((contactData?.firstName || '') || '') || '').toString() || null,
             email: contactData?.email || null,
             phone: contactData?.phone || null,
+            date_added: contactData?.dateAdded ? new Date(contactData.dateAdded).toISOString() : new Date().toISOString(),
           }, { onConflict: 'account_id,ghl_contact_id' })
           .select('id')
           .maybeSingle()
         discoveryContactId = up?.data?.id || null
-      } catch {}
+        
+        // FUTURE-PROOF FALLBACK: If contact creation failed, try GHL sync
+        if (!discoveryContactId && (payload.appointment?.contactId || contactData?.id)) {
+          console.log('🔄 Attempting contact sync from GHL API for discovery...');
+          const { syncSingleContactFromGHL } = await import('@/lib/ghl-contact-sync');
+          const ghlContactId = payload.appointment?.contactId || contactData?.id;
+          
+          if (ghlContactId && typeof ghlContactId === 'string') {
+            const syncResult = await syncSingleContactFromGHL(account.id, ghlContactId);
+            
+            if (syncResult.success && syncResult.contactId) {
+              discoveryContactId = syncResult.contactId;
+              console.log('✅ Contact synced from GHL and linked to discovery:', syncResult.contactId);
+            } else {
+              console.log('⚠️ GHL contact sync failed for discovery:', syncResult.error);
+            }
+          }
+        }
+      } catch (contactSyncError) {
+        console.error('❌ Contact sync error for discovery:', contactSyncError);
+        
+        // FINAL FALLBACK: Try GHL sync even after errors
+        if (payload.appointment?.contactId || contactData?.id) {
+          try {
+            console.log('🔄 Final attempt at contact sync from GHL API...');
+            const { syncSingleContactFromGHL } = await import('@/lib/ghl-contact-sync');
+            const ghlContactId = payload.appointment?.contactId || contactData?.id;
+            
+            if (ghlContactId && typeof ghlContactId === 'string') {
+              const syncResult = await syncSingleContactFromGHL(account.id, ghlContactId);
+              
+              if (syncResult.success && syncResult.contactId) {
+                discoveryContactId = syncResult.contactId;
+                console.log('✅ Contact synced from GHL after error and linked to discovery:', syncResult.contactId);
+              }
+            }
+          } catch (finalError) {
+            console.error('❌ Final GHL contact sync also failed:', finalError);
+          }
+        }
+      }
 
       const discoveryData = {
         ...baseData,
