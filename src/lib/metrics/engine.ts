@@ -172,22 +172,44 @@ export class MetricsEngine {
     let dateSeriesInterval: string
     let localColumn: string
     let dateDisplay: string
+    let joinCondition: string
+    
+    // Check if this is a booking lead time metric - these need special handling
+    const isBookingLeadTimeMetric = metric.name.includes('Booking Lead Time')
     
     switch (aggregationLevel) {
       case 'month':
         dateSeriesInterval = "'1 month'::interval"
-        localColumn = 'local_month'
+        if (isBookingLeadTimeMetric) {
+          localColumn = 'created_at_month'
+          joinCondition = `DATE_TRUNC('month', ${baseTable}.created_at AT TIME ZONE COALESCE((SELECT business_timezone FROM accounts WHERE id = ${baseTable}.account_id), 'UTC'))::date = date_series.date`
+        } else {
+          localColumn = 'local_month'
+          joinCondition = `${baseTable}.${localColumn} = date_series.date`
+        }
         dateDisplay = "TO_CHAR(date_series.date, 'Mon YYYY') as date"
         break
       case 'week':
         dateSeriesInterval = "'1 week'::interval"
-        localColumn = 'local_week'
+        if (isBookingLeadTimeMetric) {
+          localColumn = 'created_at_week'
+          joinCondition = `DATE_TRUNC('week', ${baseTable}.created_at AT TIME ZONE COALESCE((SELECT business_timezone FROM accounts WHERE id = ${baseTable}.account_id), 'UTC'))::date = date_series.date`
+        } else {
+          localColumn = 'local_week'
+          joinCondition = `${baseTable}.${localColumn} = date_series.date`
+        }
         dateDisplay = "TO_CHAR(date_series.date, 'YYYY-\"W\"WW') as date"
         break
       case 'day':
       default:
         dateSeriesInterval = "'1 day'::interval"
-        localColumn = 'local_date'
+        if (isBookingLeadTimeMetric) {
+          localColumn = 'created_at_date'
+          joinCondition = `(${baseTable}.created_at AT TIME ZONE COALESCE((SELECT business_timezone FROM accounts WHERE id = ${baseTable}.account_id), 'UTC'))::date = date_series.date`
+        } else {
+          localColumn = 'local_date'
+          joinCondition = `${baseTable}.${localColumn} = date_series.date`
+        }
         dateDisplay = "TO_CHAR(date_series.date, 'Mon DD') as date"
         break
     }
@@ -218,7 +240,7 @@ export class MetricsEngine {
         COALESCE(${valueExpr}, 0) as value
       FROM date_series
       LEFT JOIN ${baseTable} ON (
-        ${baseTable}.${localColumn} = date_series.date
+        ${joinCondition}
         ${qualifiedConditions ? ` AND (${qualifiedConditions})` : ''}
       )
       GROUP BY date_series.date

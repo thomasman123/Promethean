@@ -154,7 +154,7 @@ export const METRICS_REGISTRY: Record<string, MetricDefinition> = {
 	'booking_lead_time_avg': {
 		name: 'Booking Lead Time (Average)',
 		description: 'Average number of days between appointment creation and scheduled date',
-		breakdownType: 'total',
+		breakdownType: 'time',
 		query: {
 			table: 'appointments',
 			select: [
@@ -167,7 +167,7 @@ export const METRICS_REGISTRY: Record<string, MetricDefinition> = {
 	'booking_lead_time_median': {
 		name: 'Booking Lead Time (Median)',
 		description: 'Median number of days between appointment creation and scheduled date',
-		breakdownType: 'total',
+		breakdownType: 'time',
 		query: {
 			table: 'appointments',
 			select: [
