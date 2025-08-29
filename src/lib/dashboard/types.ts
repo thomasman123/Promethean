@@ -44,6 +44,7 @@ export interface WidgetSettings {
   previousPeriodType?: 'day' | 'week' | 'month' | 'year';
   cumulative?: boolean;
   bookingLeadTimeCalculation?: 'average' | 'median';
+  speedToLeadCalculation?: 'average' | 'median';
   metricColors?: Record<string, string>; // metricName -> color
 }
 

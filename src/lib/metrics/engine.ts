@@ -138,12 +138,12 @@ export class MetricsEngine {
       const calculationType = options.widgetSettings.speedToLeadCalculation
       if (calculationType === 'median') {
         selectFields = [
-          "COALESCE(ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM ((SELECT MIN(date_called) FROM dials WHERE dials.contact_id = contacts.id) - contacts.date_added))), 0), 0) as value"
+          "COALESCE(ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM ((SELECT MIN(date_called) FROM dials WHERE dials.contact_id = contacts.id AND dials.contact_id IS NOT NULL) - contacts.date_added))), 0), 0) as value"
         ]
       } else {
         // Default to average
         selectFields = [
-          "COALESCE(ROUND(AVG(EXTRACT(EPOCH FROM ((SELECT MIN(date_called) FROM dials WHERE dials.contact_id = contacts.id) - contacts.date_added))), 0), 0) as value"
+          "COALESCE(ROUND(AVG(EXTRACT(EPOCH FROM ((SELECT MIN(date_called) FROM dials WHERE dials.contact_id = contacts.id AND dials.contact_id IS NOT NULL) - contacts.date_added))), 0), 0) as value"
         ]
       }
     }

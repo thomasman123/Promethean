@@ -90,6 +90,7 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
   const [recentMetricNames, setRecentMetricNames] = useState<string[]>([]);
   const [isCumulative, setIsCumulative] = useState(false);
   const [bookingLeadTimeCalculation, setBookingLeadTimeCalculation] = useState<'average' | 'median'>('average');
+  const [speedToLeadCalculation, setSpeedToLeadCalculation] = useState<'average' | 'median'>('average');
   const [metricColors, setMetricColors] = useState<Record<string, string>>({});
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
 
@@ -242,6 +243,7 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
     const names = selectedMetrics.map((m) => m.name);
 
     const isBookingLeadTime = names[0] === 'booking_lead_time';
+    const isSpeedToLead = names[0] === 'speed_to_lead';
     
     // Build default colors for metrics that don't have colors set
     const finalMetricColors = { ...metricColors };
@@ -262,6 +264,7 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
         cumulative: isCumulative,
         metricColors: finalMetricColors,
         ...(isBookingLeadTime && { bookingLeadTimeCalculation }),
+        ...(isSpeedToLead && { speedToLeadCalculation }),
       },
       position: { x: 0, y: 0 },
       size: { w: 4, h: 4 },
@@ -278,6 +281,7 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
     setCustomTitle("");
     setIsCumulative(false);
     setBookingLeadTimeCalculation('average');
+    setSpeedToLeadCalculation('average');
     setMetricColors({});
     onOpenChange(false);
   };
@@ -646,6 +650,42 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
                                                  </CardContent>
                        </Card>
                      )}
+
+                    {/* Speed to Lead Calculation Type */}
+                    {selectedMetrics.length > 0 && selectedMetrics[0]?.name === 'speed_to_lead' && (
+                      <Card>
+                        <CardHeader className="pb-2">
+                          <CardTitle className="text-base">Calculation Method</CardTitle>
+                          <CardDescription className="text-sm">Choose how to calculate speed to lead</CardDescription>
+                        </CardHeader>
+                        <CardContent className="pt-0">
+                          <div className="grid grid-cols-2 gap-2">
+                            <Button
+                              variant={speedToLeadCalculation === 'average' ? 'default' : 'outline'}
+                              size="sm"
+                              onClick={() => setSpeedToLeadCalculation('average')}
+                              className="text-sm"
+                            >
+                              Average
+                            </Button>
+                            <Button
+                              variant={speedToLeadCalculation === 'median' ? 'default' : 'outline'}
+                              size="sm"
+                              onClick={() => setSpeedToLeadCalculation('median')}
+                              className="text-sm"
+                            >
+                              Median
+                            </Button>
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-2">
+                            {speedToLeadCalculation === 'average' 
+                              ? 'Shows the mean time in seconds between contact creation and first dial'
+                              : 'Shows the middle value, less affected by outliers'
+                            }
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
 
                     {/* Metric Colors */}
                     {selectedMetrics.length > 0 && (
