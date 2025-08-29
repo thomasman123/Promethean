@@ -258,10 +258,22 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
     if (widget.vizType === 'kpi') {
       if (!data) return null;
       const chartKey = `chart-${widget.id}-${widget.vizType}-${widget.size.w}x${widget.size.h}-${isDragging ? 'dragging' : 'static'}`;
+      const rawValue = Number((data as any).data.value);
+      const formattedValue = formatValue(rawValue, unit);
+      
+      console.log('🔍 KPI Chart rendering:', {
+        widgetId: widget.id,
+        metricName: widget.metricName,
+        rawValue,
+        unit,
+        formattedValue,
+        settings: widget.settings
+      });
+      
       return (
         <KPIChart
           key={chartKey}
-          value={formatValue(Number((data as any).data.value), unit)}
+          value={formattedValue}
           unit={unit === 'percent' ? '' : unit === 'currency' ? '' : ''}
           comparison={undefined}
         />
