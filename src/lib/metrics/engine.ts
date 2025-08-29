@@ -286,6 +286,7 @@ export class MetricsEngine {
 
     console.log('🐛 DEBUG - contactsWhereClause:', contactsWhereClause)
     console.log('🐛 DEBUG - aggregationExpression:', aggregationExpression)
+    console.log('🐛 DEBUG - appliedFilters:', JSON.stringify(appliedFilters, null, 2))
 
     const sql = `
 WITH contact_speed_to_lead AS (
