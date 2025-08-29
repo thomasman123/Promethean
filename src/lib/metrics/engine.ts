@@ -284,24 +284,28 @@ export class MetricsEngine {
       'EXISTS (SELECT 1 FROM dials WHERE dials.contact_id = contacts.id AND dials.contact_id IS NOT NULL)'
     ])
 
+    console.log('🐛 DEBUG - contactsWhereClause:', contactsWhereClause)
+    console.log('🐛 DEBUG - aggregationExpression:', aggregationExpression)
+
     const sql = `
-      WITH contact_speed_to_lead AS (
-        SELECT 
-          contacts.id,
-          contacts.date_added,
-          contacts.account_id,
-          EXTRACT(EPOCH FROM (
-            (SELECT MIN(date_called) FROM dials WHERE dials.contact_id = contacts.id AND dials.contact_id IS NOT NULL) 
-            - contacts.date_added
-          )) as speed_to_lead_seconds
-        FROM contacts
-        ${contactsWhereClause}
-      )
-      SELECT ${aggregationExpression} as value
-      FROM contact_speed_to_lead
-      WHERE speed_to_lead_seconds IS NOT NULL 
-        AND speed_to_lead_seconds >= 0
-    `
+WITH contact_speed_to_lead AS (
+  SELECT 
+    contacts.id,
+    contacts.date_added,
+    contacts.account_id,
+    EXTRACT(EPOCH FROM (
+      (SELECT MIN(date_called) FROM dials WHERE dials.contact_id = contacts.id AND dials.contact_id IS NOT NULL) 
+      - contacts.date_added
+    )) as speed_to_lead_seconds
+  FROM contacts
+  ${contactsWhereClause}
+)
+SELECT ${aggregationExpression} as value
+FROM contact_speed_to_lead
+WHERE speed_to_lead_seconds IS NOT NULL 
+  AND speed_to_lead_seconds >= 0`
+    
+    console.log('🐛 DEBUG - Final Speed to Lead SQL:', sql)
     
     return sql.trim()
   }
