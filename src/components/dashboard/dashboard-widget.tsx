@@ -110,7 +110,8 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
   // Helper: unit formatting for tooltips/KPI
   const formatValue = useCallback((val: number, unit?: string) => {
     // Special handling for Speed to Lead time formatting
-    if (unit === 'seconds' && widget.settings?.speedToLeadTimeFormat && 
+    // Check for Speed to Lead metric AND time formatting enabled (unit can be 'seconds' or undefined)
+    if (widget.settings?.speedToLeadTimeFormat && 
         (widget.metricName === 'speed_to_lead' || widget.metricNames?.includes('speed_to_lead'))) {
       console.log('🕐 Speed to Lead time formatting enabled:', val, '→', formatSecondsToTime(val || 0));
       return formatSecondsToTime(val || 0);
@@ -125,7 +126,7 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
         speedToLeadTimeFormat: widget.settings?.speedToLeadTimeFormat,
         allSettings: widget.settings,
         value: val,
-        willFormat: unit === 'seconds' && widget.settings?.speedToLeadTimeFormat,
+        willFormat: widget.settings?.speedToLeadTimeFormat && (widget.metricName === 'speed_to_lead' || widget.metricNames?.includes('speed_to_lead')),
         testFormat: formatSecondsToTime(val || 0)
       });
     }
