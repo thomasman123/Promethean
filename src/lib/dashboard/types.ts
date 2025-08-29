@@ -45,6 +45,7 @@ export interface WidgetSettings {
   cumulative?: boolean;
   bookingLeadTimeCalculation?: 'average' | 'median';
   speedToLeadCalculation?: 'average' | 'median';
+  speedToLeadTimeFormat?: boolean; // Show as human-readable time format
   metricColors?: Record<string, string>; // metricName -> color
 }
 

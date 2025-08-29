@@ -109,15 +109,9 @@ export class MetricsEngine {
     // data is a JSONB array, so we need to parse it
     const results = Array.isArray(data) ? data : (data ? JSON.parse(String(data)) : [])
     
-    console.log('🐛 Speed to Lead - Raw results:', results)
-    console.log('🐛 Speed to Lead - Results count:', results?.length)
-    console.log('🐛 Speed to Lead - First result:', results?.[0])
-    
-    // If Speed to Lead is returning empty, log the issue
-    if (metric.name === 'Speed to Lead' && (!results || results.length === 0)) {
-      console.error('❌ Speed to Lead returned EMPTY results - check date filters!')
-      console.error('Expected: 668 contacts with avg ~3.8M seconds')
-      console.error('Actual: Empty array - date filter likely too restrictive')
+    // Debug Speed to Lead if needed
+    if (metric.name === 'Speed to Lead') {
+      console.log('🐛 Speed to Lead results:', results?.length, 'records')
     }
     
     return this.formatResults(effectiveBreakdown, results)
@@ -296,8 +290,8 @@ export class MetricsEngine {
       'EXISTS (SELECT 1 FROM dials WHERE dials.contact_id = contacts.id AND dials.contact_id IS NOT NULL)'
     ])
 
-    console.log('🐛 Speed to Lead - WHERE clause:', contactsWhereClause)
-    console.log('🐛 Speed to Lead - Aggregation:', aggregationExpression)
+    // Clean logging for Speed to Lead
+    console.log('Speed to Lead calculation:', calculationType)
 
     const sql = `
 WITH contact_speed_to_lead AS (
@@ -317,12 +311,7 @@ FROM contact_speed_to_lead
 WHERE speed_to_lead_seconds IS NOT NULL 
   AND speed_to_lead_seconds >= 0`
     
-    console.log('🐛 Speed to Lead - Final SQL:', sql)
-    console.log('🐛 Speed to Lead - Filters:', {
-      start_date: appliedFilters.params.start_date,
-      end_plus: appliedFilters.params.end_plus,
-      account_id: appliedFilters.params.account_id
-    })
+
     
     return sql.trim()
   }

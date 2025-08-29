@@ -15,6 +15,7 @@ import { DashboardWidget as WidgetType, MetricData } from "@/lib/dashboard/types
 import { useDashboardStore } from "@/lib/dashboard/store";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
+import { formatSecondsToTime } from "@/lib/utils";
 
 interface DashboardWidgetProps {
   widget: WidgetType;
@@ -108,12 +109,18 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
 
   // Helper: unit formatting for tooltips/KPI
   const formatValue = useCallback((val: number, unit?: string) => {
+    // Special handling for Speed to Lead time formatting
+    if (unit === 'seconds' && widget.settings?.speedToLeadTimeFormat && 
+        (widget.metricName === 'speed_to_lead' || widget.metricNames?.includes('speed_to_lead'))) {
+      return formatSecondsToTime(val || 0);
+    }
+    
     if (unit === 'currency') return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(val || 0);
     if (unit === 'percent') return `${Math.round((val || 0) * 100)}%`;
     if (unit === 'days') return `${(val || 0).toFixed(1)} days`;
     if (unit === 'seconds') return `${Math.round(val || 0)}s`;
     return new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(val || 0);
-  }, []);
+  }, [widget.settings?.speedToLeadTimeFormat, widget.metricName, widget.metricNames]);
 
   useEffect(() => {
     const fetchData = async () => {

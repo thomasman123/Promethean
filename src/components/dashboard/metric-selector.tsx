@@ -91,6 +91,7 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
   const [isCumulative, setIsCumulative] = useState(false);
   const [bookingLeadTimeCalculation, setBookingLeadTimeCalculation] = useState<'average' | 'median'>('average');
   const [speedToLeadCalculation, setSpeedToLeadCalculation] = useState<'average' | 'median'>('average');
+  const [speedToLeadTimeFormat, setSpeedToLeadTimeFormat] = useState<boolean>(false);
   const [metricColors, setMetricColors] = useState<Record<string, string>>({});
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
 
@@ -264,7 +265,7 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
         cumulative: isCumulative,
         metricColors: finalMetricColors,
         ...(isBookingLeadTime && { bookingLeadTimeCalculation }),
-        ...(isSpeedToLead && { speedToLeadCalculation }),
+        ...(isSpeedToLead && { speedToLeadCalculation, speedToLeadTimeFormat }),
       },
       position: { x: 0, y: 0 },
       size: { w: 4, h: 4 },
@@ -683,6 +684,22 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
                               : 'Shows the middle value, less affected by outliers'
                             }
                           </div>
+                          
+                          {/* Time Format Option for KPI tiles */}
+                          {selectedViz === 'kpi' && (
+                            <div className="flex items-center space-x-2 mt-3 pt-3 border-t">
+                              <input
+                                type="checkbox"
+                                id="speedToLeadTimeFormat"
+                                checked={speedToLeadTimeFormat}
+                                onChange={(e) => setSpeedToLeadTimeFormat(e.target.checked)}
+                                className="rounded border-gray-300"
+                              />
+                              <label htmlFor="speedToLeadTimeFormat" className="text-xs text-muted-foreground">
+                                Show as human-readable time (e.g., "2 days, 3 hours")
+                              </label>
+                            </div>
+                          )}
                         </CardContent>
                       </Card>
                     )}
