@@ -264,7 +264,7 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
           const base = Array.isArray(data.data) ? data.data.map((it: any) => ({ date: it.date, value: it.value })) : [{ date: 'Current', value: (data as any).data.value || 0 }];
           const lineData = shouldCumulative ? makeCumulative(base) : base;
           const metricName = resolveEngineMetricName(names[0]);
-          const customColor = widget.settings?.metricColors?.[metricName] || '#ef4444'; // Default to Red 500
+          const customColor = widget.settings?.metricColors?.[metricName] || '#a855f7'; // Default to Purple Medium
           return (
             <LineChart
               data={lineData.map(d => ({ ...d, value: unit === 'percent' ? Math.round(d.value * 100) : d.value }))}
@@ -282,7 +282,7 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
           const base = Array.isArray(data.data) ? data.data.map((it: any) => ({ date: it.date, value: it.value })) : [{ date: 'Current', value: (data as any).data.value || 0 }];
           const barData = shouldCumulative ? makeCumulative(base) : base;
           const metricName = resolveEngineMetricName(names[0]);
-          const customColor = widget.settings?.metricColors?.[metricName] || '#ef4444'; // Default to Red 500
+          const customColor = widget.settings?.metricColors?.[metricName] || '#a855f7'; // Default to Purple Medium
           return (
             <BarChart
               data={barData.map(d => ({ ...d, value: unit === 'percent' ? Math.round(d.value * 100) : d.value }))}
@@ -300,7 +300,7 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
           const base = Array.isArray(data.data) ? data.data.map((it: any) => ({ date: it.date, value: it.value })) : [{ date: 'Current', value: (data as any).data.value || 0 }];
           const areaData = shouldCumulative ? makeCumulative(base) : base;
           const metricName = resolveEngineMetricName(names[0]);
-          const customColor = widget.settings?.metricColors?.[metricName] || '#ef4444'; // Default to Red 500
+          const customColor = widget.settings?.metricColors?.[metricName] || '#a855f7'; // Default to Purple Medium
           return (
             <AreaChart
               data={areaData.map(d => ({ ...d, value: unit === 'percent' ? Math.round(d.value * 100) : d.value }))}
@@ -317,7 +317,7 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
         case 'radar': {
           const radarData = Array.isArray(data.data) ? data.data.map((it: any) => ({ date: it.date, value: it.value })) : [{ date: 'Current', value: (data as any).data.value || 0 }];
           const metricName = resolveEngineMetricName(names[0]);
-          const customColor = widget.settings?.metricColors?.[metricName] || '#ef4444'; // Default to Red 500
+          const customColor = widget.settings?.metricColors?.[metricName] || '#a855f7'; // Default to Purple Medium
           return (
             <RadarChart
               key={`chart-${widget.id}`}
@@ -348,7 +348,7 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
       // Try to find the metric name from the display name
       const metric = metricsRegistry.find(m => m.displayName === s.name);
       const metricName = metric?.name || names[idx];
-      const defaultColors = ['#ef4444', '#f97316', '#a855f7', '#f43f5e']; // Red 500, Orange 500, Purple 500, Rose 500
+      const defaultColors = ['#a855f7', '#ec4899', '#f97316', '#ef4444']; // Purple Medium, Pink Medium, Orange Medium, Red Medium
       const customColor = widget.settings?.metricColors?.[metricName] || defaultColors[idx % 4];
       return { dataKey: `series_${idx}`, name: s.name, color: customColor };
     });

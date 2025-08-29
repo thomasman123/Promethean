@@ -6,31 +6,31 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// Predefined color options with red, orange, purple, rose variants
+// Predefined color options with purple, pink, orange, red variants with better variance
 const COLOR_OPTIONS = [
-  // Red shades (row 1)
-  { name: "Red 300", value: "#fca5a5", cssVar: null },
-  { name: "Red 500", value: "#ef4444", cssVar: null },
-  { name: "Red 600", value: "#dc2626", cssVar: null },
-  { name: "Red 800", value: "#991b1b", cssVar: null },
+  // Purple shades (row 1) - Light to Dark
+  { name: "Purple Light", value: "#e9d5ff", cssVar: null },
+  { name: "Purple Medium", value: "#a855f7", cssVar: null },
+  { name: "Purple Dark", value: "#7c3aed", cssVar: null },
+  { name: "Purple Deep", value: "#581c87", cssVar: null },
   
-  // Orange shades (row 2)
-  { name: "Orange 300", value: "#fdba74", cssVar: null },
-  { name: "Orange 500", value: "#f97316", cssVar: null },
-  { name: "Orange 600", value: "#ea580c", cssVar: null },
-  { name: "Orange 800", value: "#9a3412", cssVar: null },
+  // Pink shades (row 2) - Light to Dark
+  { name: "Pink Light", value: "#fbcfe8", cssVar: null },
+  { name: "Pink Medium", value: "#ec4899", cssVar: null },
+  { name: "Pink Dark", value: "#be185d", cssVar: null },
+  { name: "Pink Deep", value: "#831843", cssVar: null },
   
-  // Purple shades (row 3)
-  { name: "Purple 300", value: "#c084fc", cssVar: null },
-  { name: "Purple 500", value: "#a855f7", cssVar: null },
-  { name: "Purple 600", value: "#9333ea", cssVar: null },
-  { name: "Purple 800", value: "#6b21a8", cssVar: null },
+  // Orange shades (row 3) - Light to Dark
+  { name: "Orange Light", value: "#fed7aa", cssVar: null },
+  { name: "Orange Medium", value: "#f97316", cssVar: null },
+  { name: "Orange Dark", value: "#c2410c", cssVar: null },
+  { name: "Orange Deep", value: "#7c2d12", cssVar: null },
   
-  // Rose shades (row 4)
-  { name: "Rose 300", value: "#fda4af", cssVar: null },
-  { name: "Rose 500", value: "#f43f5e", cssVar: null },
-  { name: "Rose 600", value: "#e11d48", cssVar: null },
-  { name: "Rose 800", value: "#9f1239", cssVar: null },
+  // Red shades (row 4) - Light to Dark
+  { name: "Red Light", value: "#fecaca", cssVar: null },
+  { name: "Red Medium", value: "#ef4444", cssVar: null },
+  { name: "Red Dark", value: "#b91c1c", cssVar: null },
+  { name: "Red Deep", value: "#7f1d1d", cssVar: null },
 ];
 
 interface ColorPickerProps {
@@ -58,7 +58,7 @@ export function ColorPicker({ color, onColorChange, label }: ColorPickerProps) {
               <div
                 className="w-4 h-4 rounded border border-border"
                                  style={{
-                   backgroundColor: color || "#ef4444"
+                   backgroundColor: color || "#a855f7"
                  }}
               />
               <span className="text-xs truncate">
