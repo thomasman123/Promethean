@@ -40,6 +40,7 @@ import {
 import { useDashboardStore } from "@/lib/dashboard/store";
 import { MetricDefinition, VizType, BreakdownType } from "@/lib/dashboard/types";
 import { cn } from "@/lib/utils";
+import { ColorPicker } from "@/components/ui/color-picker";
 
 interface MetricSelectorProps {
   open: boolean;
@@ -89,6 +90,7 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
   const [recentMetricNames, setRecentMetricNames] = useState<string[]>([]);
   const [isCumulative, setIsCumulative] = useState(false);
   const [bookingLeadTimeCalculation, setBookingLeadTimeCalculation] = useState<'average' | 'median'>('average');
+  const [metricColors, setMetricColors] = useState<Record<string, string>>({});
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
 
   // Step validation helpers
@@ -109,6 +111,24 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
   useEffect(() => {
     if (open) setStep(1);
   }, [open]);
+
+  // Update colors when metrics change
+  useEffect(() => {
+    const newMetricColors = { ...metricColors };
+    let hasChanges = false;
+
+    // Remove colors for metrics that are no longer selected
+    Object.keys(newMetricColors).forEach(metricName => {
+      if (!selectedMetrics.find(m => m.name === metricName)) {
+        delete newMetricColors[metricName];
+        hasChanges = true;
+      }
+    });
+
+    if (hasChanges) {
+      setMetricColors(newMetricColors);
+    }
+  }, [selectedMetrics, metricColors]);
 
   // Load favorites/recents from localStorage
   useEffect(() => {
@@ -223,6 +243,14 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
 
     const isBookingLeadTime = names[0] === 'booking_lead_time';
     
+    // Build default colors for metrics that don't have colors set
+    const finalMetricColors = { ...metricColors };
+    selectedMetrics.forEach((metric, index) => {
+      if (!finalMetricColors[metric.name]) {
+        finalMetricColors[metric.name] = `hsl(var(--chart-${(index % 5) + 1}))`;
+      }
+    });
+
     addWidget({
       metricName: names[0],
       metricNames: names.length > 1 ? names : undefined,
@@ -231,6 +259,7 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
       settings: {
         title: customTitle || selectedMetrics[0]?.displayName,
         cumulative: isCumulative,
+        metricColors: finalMetricColors,
         ...(isBookingLeadTime && { bookingLeadTimeCalculation }),
       },
       position: { x: 0, y: 0 },
@@ -248,6 +277,7 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
     setCustomTitle("");
     setIsCumulative(false);
     setBookingLeadTimeCalculation('average');
+    setMetricColors({});
     onOpenChange(false);
   };
 
@@ -612,6 +642,36 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
                               : 'Shows the middle value, less affected by outliers'
                             }
                           </div>
+                                                 </CardContent>
+                       </Card>
+                     )}
+
+                    {/* Metric Colors */}
+                    {selectedMetrics.length > 0 && (
+                      <Card>
+                        <CardHeader className="pb-2">
+                          <CardTitle className="text-base">Metric Colors</CardTitle>
+                          <CardDescription className="text-sm">Choose colors for each metric</CardDescription>
+                        </CardHeader>
+                        <CardContent className="pt-0">
+                          <div className="space-y-3">
+                            {selectedMetrics.map((metric, index) => (
+                              <div key={metric.name} className="flex items-center justify-between">
+                                <span className="text-sm font-medium truncate mr-3">
+                                  {metric.displayName}
+                                </span>
+                                <ColorPicker
+                                  color={metricColors[metric.name] || `hsl(var(--chart-${(index % 5) + 1}))`}
+                                  onColorChange={(color) => {
+                                    setMetricColors(prev => ({
+                                      ...prev,
+                                      [metric.name]: color
+                                    }));
+                                  }}
+                                />
+                              </div>
+                            ))}
+                          </div>
                         </CardContent>
                       </Card>
                     )}
@@ -668,9 +728,18 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
                         <div>
                           <span className="font-medium text-muted-foreground text-xs">Selected Metrics:</span>
                           <div className="mt-2 flex flex-wrap gap-1">
-                            {selectedMetrics.map((metric) => (
-                              <Badge key={metric.name} variant="outline" className="text-xs">{metric.displayName}</Badge>
-                            ))}
+                            {selectedMetrics.map((metric, index) => {
+                              const color = metricColors[metric.name] || `hsl(var(--chart-${(index % 5) + 1}))`;
+                              return (
+                                <div key={metric.name} className="flex items-center gap-1">
+                                  <div
+                                    className="w-3 h-3 rounded border border-border"
+                                    style={{ backgroundColor: color }}
+                                  />
+                                  <Badge variant="outline" className="text-xs">{metric.displayName}</Badge>
+                                </div>
+                              );
+                            })}
                           </div>
                         </div>
                       )}

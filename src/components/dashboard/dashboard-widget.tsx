@@ -263,10 +263,12 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
         case 'line': {
           const base = Array.isArray(data.data) ? data.data.map((it: any) => ({ date: it.date, value: it.value })) : [{ date: 'Current', value: (data as any).data.value || 0 }];
           const lineData = shouldCumulative ? makeCumulative(base) : base;
+          const metricName = resolveEngineMetricName(names[0]);
+          const customColor = widget.settings?.metricColors?.[metricName] || 'var(--primary)';
           return (
             <LineChart
               data={lineData.map(d => ({ ...d, value: unit === 'percent' ? Math.round(d.value * 100) : d.value }))}
-              lines={[{ dataKey: 'value', name: widget.settings?.title || formatLabel(resolveEngineMetricName(names[0])), color: 'var(--primary)' }]}
+              lines={[{ dataKey: 'value', name: widget.settings?.title || formatLabel(metricName), color: customColor }]}
               xAxisKey="date"
               showLegend={false}
               showGrid
@@ -279,10 +281,12 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
         case 'bar': {
           const base = Array.isArray(data.data) ? data.data.map((it: any) => ({ date: it.date, value: it.value })) : [{ date: 'Current', value: (data as any).data.value || 0 }];
           const barData = shouldCumulative ? makeCumulative(base) : base;
+          const metricName = resolveEngineMetricName(names[0]);
+          const customColor = widget.settings?.metricColors?.[metricName] || 'var(--primary)';
           return (
             <BarChart
               data={barData.map(d => ({ ...d, value: unit === 'percent' ? Math.round(d.value * 100) : d.value }))}
-              bars={[{ dataKey: 'value', name: widget.settings?.title || formatLabel(resolveEngineMetricName(names[0])), color: 'var(--primary)' }]}
+              bars={[{ dataKey: 'value', name: widget.settings?.title || formatLabel(metricName), color: customColor }]}
               xAxisKey="date"
               showLegend={false}
               showGrid
@@ -295,10 +299,12 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
         case 'area': {
           const base = Array.isArray(data.data) ? data.data.map((it: any) => ({ date: it.date, value: it.value })) : [{ date: 'Current', value: (data as any).data.value || 0 }];
           const areaData = shouldCumulative ? makeCumulative(base) : base;
+          const metricName = resolveEngineMetricName(names[0]);
+          const customColor = widget.settings?.metricColors?.[metricName] || 'var(--primary)';
           return (
             <AreaChart
               data={areaData.map(d => ({ ...d, value: unit === 'percent' ? Math.round(d.value * 100) : d.value }))}
-              areas={[{ dataKey: 'value', name: widget.settings?.title || formatLabel(resolveEngineMetricName(names[0])), color: 'var(--primary)' }]}
+              areas={[{ dataKey: 'value', name: widget.settings?.title || formatLabel(metricName), color: customColor }]}
               xAxisKey="date"
               showLegend={false}
               showGrid
@@ -310,11 +316,13 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
         }
         case 'radar': {
           const radarData = Array.isArray(data.data) ? data.data.map((it: any) => ({ date: it.date, value: it.value })) : [{ date: 'Current', value: (data as any).data.value || 0 }];
+          const metricName = resolveEngineMetricName(names[0]);
+          const customColor = widget.settings?.metricColors?.[metricName] || 'var(--primary)';
           return (
             <RadarChart
               key={`chart-${widget.id}`}
               data={radarData.map(d => ({ ...d, value: unit === 'percent' ? Math.round(d.value * 100) : d.value }))}
-              radarSeries={[{ dataKey: 'value', name: widget.settings?.title || formatLabel(resolveEngineMetricName(names[0])), color: 'var(--primary)' }]}
+              radarSeries={[{ dataKey: 'value', name: widget.settings?.title || formatLabel(metricName), color: customColor }]}
               angleKey="date"
               showLegend={false}
               disableTooltip={isDragging}
@@ -336,7 +344,13 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
       });
     });
 
-    const lines = multiSeries.map((s, idx) => ({ dataKey: `series_${idx}`, name: s.name, color: `var(--chart-${(idx % 10) + 1})` }));
+    const lines = multiSeries.map((s, idx) => {
+      // Try to find the metric name from the display name
+      const metric = metricsRegistry.find(m => m.displayName === s.name);
+      const metricName = metric?.name || names[idx];
+      const customColor = widget.settings?.metricColors?.[metricName] || `var(--chart-${(idx % 5) + 1})`;
+      return { dataKey: `series_${idx}`, name: s.name, color: customColor };
+    });
 
     switch (widget.vizType) {
       case 'line':
