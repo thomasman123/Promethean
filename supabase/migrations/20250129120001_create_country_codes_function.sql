@@ -7,21 +7,21 @@ AS $$
 BEGIN
   RETURN QUERY
   WITH country_code_extraction AS (
-    SELECT 
-      CASE 
-        -- Only extract from properly formatted international numbers starting with +
-        WHEN phone ~ '^\+1[2-9][0-9]{9}$' THEN '+1'           -- US/Canada (10 digits after +1)
-        WHEN phone ~ '^\+44[1-9][0-9]{8,9}$' THEN '+44'       -- UK
-        WHEN phone ~ '^\+61[2-9][0-9]{8}$' THEN '+61'         -- Australia
-        WHEN phone ~ '^\+49[1-9][0-9]{10,11}$' THEN '+49'     -- Germany
-        WHEN phone ~ '^\+33[1-9][0-9]{8}$' THEN '+33'         -- France
-        WHEN phone ~ '^\+81[1-9][0-9]{9,10}$' THEN '+81'      -- Japan
-        WHEN phone ~ '^\+86[1-9][0-9]{10}$' THEN '+86'        -- China
-        WHEN phone ~ '^\+91[6-9][0-9]{9}$' THEN '+91'         -- India
-        WHEN phone ~ '^\+55[1-9][0-9]{10}$' THEN '+55'        -- Brazil
-        -- Only include well-known country codes to avoid random numbers
-        ELSE NULL
-      END as country_code
+          SELECT 
+        CASE 
+          -- Extract country codes from properly formatted international numbers
+          WHEN phone ~ '^\+1[0-9]{10}$' THEN '+1'               -- US/Canada (10 digits after +1)
+          WHEN phone ~ '^\+44[0-9]{10,11}$' THEN '+44'          -- UK
+          WHEN phone ~ '^\+61[0-9]{9}$' THEN '+61'              -- Australia (9 digits after +61)
+          WHEN phone ~ '^\+49[0-9]{10,12}$' THEN '+49'          -- Germany
+          WHEN phone ~ '^\+33[0-9]{9}$' THEN '+33'              -- France
+          WHEN phone ~ '^\+81[0-9]{10,11}$' THEN '+81'          -- Japan
+          WHEN phone ~ '^\+86[0-9]{11}$' THEN '+86'             -- China
+          WHEN phone ~ '^\+91[0-9]{10}$' THEN '+91'             -- India
+          WHEN phone ~ '^\+55[0-9]{10,11}$' THEN '+55'          -- Brazil
+          -- Only include well-known country codes with proper length validation
+          ELSE NULL
+        END as country_code
     FROM contacts 
     WHERE account_id = p_account_id 
       AND phone IS NOT NULL 

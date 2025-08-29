@@ -18,18 +18,18 @@ DECLARE
   contact_time_only TIME;
   adjusted_date TIMESTAMPTZ;
 BEGIN
-  -- Extract country code from phone number (stricter validation)
+  -- Extract country code from phone number (matches actual data format)
   country_code := CASE 
-    WHEN p_phone ~ '^\+1[2-9][0-9]{9}$' THEN '+1'           -- US/Canada (10 digits after +1)
-    WHEN p_phone ~ '^\+44[1-9][0-9]{8,9}$' THEN '+44'       -- UK
-    WHEN p_phone ~ '^\+61[2-9][0-9]{8}$' THEN '+61'         -- Australia
-    WHEN p_phone ~ '^\+49[1-9][0-9]{10,11}$' THEN '+49'     -- Germany
-    WHEN p_phone ~ '^\+33[1-9][0-9]{8}$' THEN '+33'         -- France
-    WHEN p_phone ~ '^\+81[1-9][0-9]{9,10}$' THEN '+81'      -- Japan
-    WHEN p_phone ~ '^\+86[1-9][0-9]{10}$' THEN '+86'        -- China
-    WHEN p_phone ~ '^\+91[6-9][0-9]{9}$' THEN '+91'         -- India
-    WHEN p_phone ~ '^\+55[1-9][0-9]{10}$' THEN '+55'        -- Brazil
-    -- Only include well-known country codes to avoid random numbers
+    WHEN p_phone ~ '^\+1[0-9]{10}$' THEN '+1'               -- US/Canada (10 digits after +1)
+    WHEN p_phone ~ '^\+44[0-9]{10,11}$' THEN '+44'          -- UK
+    WHEN p_phone ~ '^\+61[0-9]{9}$' THEN '+61'              -- Australia (9 digits after +61)
+    WHEN p_phone ~ '^\+49[0-9]{10,12}$' THEN '+49'          -- Germany
+    WHEN p_phone ~ '^\+33[0-9]{9}$' THEN '+33'              -- France
+    WHEN p_phone ~ '^\+81[0-9]{10,11}$' THEN '+81'          -- Japan
+    WHEN p_phone ~ '^\+86[0-9]{11}$' THEN '+86'             -- China
+    WHEN p_phone ~ '^\+91[0-9]{10}$' THEN '+91'             -- India
+    WHEN p_phone ~ '^\+55[0-9]{10,11}$' THEN '+55'          -- Brazil
+    -- Only include well-known country codes with proper length validation
     ELSE NULL
   END;
   
