@@ -91,6 +91,11 @@ export class MetricsEngine {
     // Flatten parameters for Supabase
     const params = flattenParams(appliedFilters)
     
+    // Add business hours parameter if configured for Speed to Lead
+    if (metric.name === 'Speed to Lead' && options && options.widgetSettings?.speedToLeadBusinessHours?.length > 0) {
+      params.business_hours = JSON.stringify(options.widgetSettings.speedToLeadBusinessHours);
+    }
+    
     console.log('Executing SQL:', sql)
     console.log('Parameters:', params)
     
@@ -144,9 +149,9 @@ export class MetricsEngine {
       const calculationType = options?.widgetSettings?.speedToLeadCalculation || 'average'
       // Use a CTE to properly calculate per-contact speed to lead first
       if (calculationType === 'median') {
-        return this.buildSpeedToLeadSQL(appliedFilters, 'median')
+        return this.buildSpeedToLeadSQL(appliedFilters, 'median', options)
       } else {
-        return this.buildSpeedToLeadSQL(appliedFilters, 'average')
+        return this.buildSpeedToLeadSQL(appliedFilters, 'average', options)
       }
     }
     
@@ -276,7 +281,7 @@ export class MetricsEngine {
    * Special SQL builder for Speed to Lead metric (KPI/total)
    * Properly calculates per-contact speed to lead then aggregates
    */
-  private buildSpeedToLeadSQL(appliedFilters: any, calculationType: 'average' | 'median'): string {
+  private buildSpeedToLeadSQL(appliedFilters: any, calculationType: 'average' | 'median', options?: any): string {
     let aggregationExpression: string
     if (calculationType === 'median') {
       aggregationExpression = "COALESCE(ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY speed_to_lead_seconds)), 0)"
@@ -290,8 +295,18 @@ export class MetricsEngine {
       'EXISTS (SELECT 1 FROM dials WHERE dials.contact_id = contacts.id AND dials.contact_id IS NOT NULL)'
     ])
 
+    // Check if business hours are configured
+    const businessHours = options?.widgetSettings?.speedToLeadBusinessHours;
+    const hasBusinessHours = businessHours && businessHours.length > 0;
+
     // Clean logging for Speed to Lead
-    console.log('Speed to Lead calculation:', calculationType)
+    console.log('Speed to Lead calculation:', calculationType, hasBusinessHours ? 'with business hours' : 'standard');
+
+    let contactDateExpression = 'contacts.date_added';
+    if (hasBusinessHours) {
+      // Use business hours adjustment function
+      contactDateExpression = `apply_business_hours(contacts.date_added, contacts.phone, $business_hours)`;
+    }
 
     const sql = `
 WITH contact_speed_to_lead AS (
@@ -301,7 +316,7 @@ WITH contact_speed_to_lead AS (
     contacts.account_id,
     EXTRACT(EPOCH FROM (
       (SELECT MIN(date_called) FROM dials WHERE dials.contact_id = contacts.id AND dials.contact_id IS NOT NULL) 
-      - contacts.date_added
+      - ${contactDateExpression}
     )) as speed_to_lead_seconds
   FROM contacts
   ${contactsWhereClause}
@@ -376,7 +391,9 @@ WHERE speed_to_lead_seconds IS NOT NULL
           ${dateGrouping} as contact_date,
           EXTRACT(EPOCH FROM (
             (SELECT MIN(date_called) FROM dials WHERE dials.contact_id = contacts.id AND dials.contact_id IS NOT NULL) 
-            - contacts.date_added
+            - ${options?.widgetSettings?.speedToLeadBusinessHours?.length > 0 ? 
+                'apply_business_hours(contacts.date_added, contacts.phone, $business_hours)' : 
+                'contacts.date_added'}
           )) as speed_to_lead_seconds
         FROM contacts
         WHERE contacts.date_added IS NOT NULL
