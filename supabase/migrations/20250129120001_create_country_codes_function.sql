@@ -6,40 +6,33 @@ SECURITY DEFINER
 AS $$
 BEGIN
   RETURN QUERY
+  WITH country_code_extraction AS (
+    SELECT 
+      CASE 
+        -- Only extract from properly formatted international numbers starting with +
+        WHEN phone ~ '^\+1[2-9][0-9]{9}$' THEN '+1'           -- US/Canada (10 digits after +1)
+        WHEN phone ~ '^\+44[1-9][0-9]{8,9}$' THEN '+44'       -- UK
+        WHEN phone ~ '^\+61[2-9][0-9]{8}$' THEN '+61'         -- Australia
+        WHEN phone ~ '^\+49[1-9][0-9]{10,11}$' THEN '+49'     -- Germany
+        WHEN phone ~ '^\+33[1-9][0-9]{8}$' THEN '+33'         -- France
+        WHEN phone ~ '^\+81[1-9][0-9]{9,10}$' THEN '+81'      -- Japan
+        WHEN phone ~ '^\+86[1-9][0-9]{10}$' THEN '+86'        -- China
+        WHEN phone ~ '^\+91[6-9][0-9]{9}$' THEN '+91'         -- India
+        WHEN phone ~ '^\+55[1-9][0-9]{10}$' THEN '+55'        -- Brazil
+        -- Only include well-known country codes to avoid random numbers
+        ELSE NULL
+      END as country_code
+    FROM contacts 
+    WHERE account_id = p_account_id 
+      AND phone IS NOT NULL 
+      AND phone != ''
+  )
   SELECT 
-    CASE 
-      -- Extract country codes from phone numbers starting with +
-      WHEN phone ~ '^\+1[0-9]' THEN '+1'
-      WHEN phone ~ '^\+44[0-9]' THEN '+44'
-      WHEN phone ~ '^\+61[0-9]' THEN '+61'
-      WHEN phone ~ '^\+49[0-9]' THEN '+49'
-      WHEN phone ~ '^\+33[0-9]' THEN '+33'
-      WHEN phone ~ '^\+81[0-9]' THEN '+81'
-      WHEN phone ~ '^\+86[0-9]' THEN '+86'
-      WHEN phone ~ '^\+91[0-9]' THEN '+91'
-      WHEN phone ~ '^\+55[0-9]' THEN '+55'
-      WHEN phone ~ '^\+39[0-9]' THEN '+39'
-      WHEN phone ~ '^\+34[0-9]' THEN '+34'
-      WHEN phone ~ '^\+7[0-9]' THEN '+7'
-      WHEN phone ~ '^\+52[0-9]' THEN '+52'
-      WHEN phone ~ '^\+31[0-9]' THEN '+31'
-      WHEN phone ~ '^\+46[0-9]' THEN '+46'
-      WHEN phone ~ '^\+47[0-9]' THEN '+47'
-      WHEN phone ~ '^\+45[0-9]' THEN '+45'
-      WHEN phone ~ '^\+41[0-9]' THEN '+41'
-      WHEN phone ~ '^\+43[0-9]' THEN '+43'
-      WHEN phone ~ '^\+32[0-9]' THEN '+32'
-      -- Generic extraction for other codes (up to 4 digits)
-      WHEN phone ~ '^\+[0-9]{1,4}' THEN 
-        SUBSTRING(phone FROM '^\+[0-9]{1,4}')
-      ELSE 'Unknown'
-    END as country_code,
+    country_code,
     COUNT(*) as contact_count
-  FROM contacts 
-  WHERE account_id = p_account_id 
-    AND phone IS NOT NULL 
-    AND phone != ''
-  GROUP BY 1
+  FROM country_code_extraction
+  WHERE country_code IS NOT NULL  -- Filter out NULL country codes
+  GROUP BY country_code
   HAVING COUNT(*) > 0
   ORDER BY contact_count DESC;
 END;
