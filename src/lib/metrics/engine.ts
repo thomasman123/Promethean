@@ -70,7 +70,7 @@ export class MetricsEngine {
   /**
    * Execute the SQL query for a specific metric
    */
-  private async executeMetricQuery(metric: MetricDefinition, filters: any, options?: { vizType?: string; dynamicBreakdown?: string }): Promise<MetricResult> {
+  private async executeMetricQuery(metric: MetricDefinition, filters: any, options?: { vizType?: string; dynamicBreakdown?: string; widgetSettings?: any }): Promise<MetricResult> {
     // Apply standard filters using the base table to choose correct date/account fields
     const appliedFilters = applyStandardFilters(filters, metric.query.table)
     
@@ -82,7 +82,7 @@ export class MetricsEngine {
     let effectiveBreakdown = metric.breakdownType
 
     if (wantsTimeSeries) {
-      sql = this.buildTimeSeriesSQL(appliedFilters, metric)
+      sql = this.buildTimeSeriesSQL(appliedFilters, metric, options)
       effectiveBreakdown = 'time'
     } else {
       sql = this.buildSQL(metric, appliedFilters, options)
@@ -192,8 +192,14 @@ export class MetricsEngine {
    * Build time-series SQL with complete date range (including zero values)
    * Applies metric-specific filters in addition to standard filters
    */
-  private buildTimeSeriesSQL(appliedFilters: any, metric: MetricDefinition): string {
+  private buildTimeSeriesSQL(appliedFilters: any, metric: MetricDefinition, options?: { vizType?: string; dynamicBreakdown?: string; widgetSettings?: any }): string {
     const baseTable = metric.query.table
+    
+    // Special handling for Speed to Lead metric since contacts table doesn't have local date columns
+    if (metric.name === 'Speed to Lead') {
+      return this.buildSpeedToLeadTimeSeriesSQL(appliedFilters, metric, options)
+    }
+    
     // Build WHERE conditions for the base table including metric-specific conditions
     const whereClauseWithMetric = buildWhereClause(appliedFilters, metric.query.where)
 
@@ -258,6 +264,81 @@ export class MetricsEngine {
         ${qualifiedConditions ? ` AND (${qualifiedConditions})` : ''}
       )
       GROUP BY date_series.date
+      ORDER BY date_series.date ASC
+    `
+    
+    return sql.trim()
+  }
+
+  /**
+   * Special time-series SQL builder for Speed to Lead metric
+   * Since contacts table doesn't have local date columns, we need custom logic
+   */
+  private buildSpeedToLeadTimeSeriesSQL(appliedFilters: any, metric: MetricDefinition, options?: { vizType?: string; dynamicBreakdown?: string; widgetSettings?: any }): string {
+    // Determine aggregation level based on date range
+    const aggregationLevel = this.determineTimeAggregation(appliedFilters)
+    console.log('🐛 DEBUG - Speed to Lead using aggregation level:', aggregationLevel)
+    
+    let dateSeriesInterval: string
+    let dateGrouping: string
+    let dateDisplay: string
+    
+    switch (aggregationLevel) {
+      case 'month':
+        dateSeriesInterval = "'1 month'::interval"
+        dateGrouping = "DATE_TRUNC('month', contacts.date_added AT TIME ZONE 'UTC')::date"
+        dateDisplay = "TO_CHAR(date_series.date, 'Mon YYYY') as date"
+        break
+      case 'week':
+        dateSeriesInterval = "'1 week'::interval"
+        dateGrouping = "DATE_TRUNC('week', contacts.date_added AT TIME ZONE 'UTC')::date"
+        dateDisplay = "TO_CHAR(date_series.date, 'YYYY-\"W\"WW') as date"
+        break
+      case 'day':
+      default:
+        dateSeriesInterval = "'1 day'::interval"
+        dateGrouping = "DATE_TRUNC('day', contacts.date_added AT TIME ZONE 'UTC')::date"
+        dateDisplay = "TO_CHAR(date_series.date, 'Mon DD') as date"
+        break
+    }
+
+    // Determine calculation type (average or median)
+    const calculationType = options?.widgetSettings?.speedToLeadCalculation || 'average'
+    let aggregationExpression: string
+    
+    if (calculationType === 'median') {
+      aggregationExpression = "COALESCE(ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM ((SELECT MIN(date_called) FROM dials WHERE dials.contact_id = contacts.id AND dials.contact_id IS NOT NULL) - contacts.date_added))), 0), 0)"
+    } else {
+      // Default to average
+      aggregationExpression = "COALESCE(ROUND(AVG(EXTRACT(EPOCH FROM ((SELECT MIN(date_called) FROM dials WHERE dials.contact_id = contacts.id AND dials.contact_id IS NOT NULL) - contacts.date_added))), 0), 0)"
+    }
+
+    // Build the time-series query for Speed to Lead
+    const sql = `
+      WITH date_series AS (
+        SELECT generate_series(
+          DATE_TRUNC('${aggregationLevel}', $start_date::date),
+          DATE_TRUNC('${aggregationLevel}', $range_end::date),
+          ${dateSeriesInterval}
+        )::date as date
+      ),
+      speed_to_lead_by_date AS (
+        SELECT 
+          ${dateGrouping} as contact_date,
+          ${aggregationExpression} as value
+        FROM contacts
+        WHERE contacts.date_added IS NOT NULL
+          AND contacts.date_added >= $start_date::timestamptz
+          AND contacts.date_added < $end_plus::timestamptz
+          AND contacts.account_id = $account_id
+          AND EXISTS (SELECT 1 FROM dials WHERE dials.contact_id = contacts.id AND dials.contact_id IS NOT NULL)
+        GROUP BY ${dateGrouping}
+      )
+      SELECT 
+        ${dateDisplay},
+        COALESCE(speed_to_lead_by_date.value, 0) as value
+      FROM date_series
+      LEFT JOIN speed_to_lead_by_date ON date_series.date = speed_to_lead_by_date.contact_date
       ORDER BY date_series.date ASC
     `
     
