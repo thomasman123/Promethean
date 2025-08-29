@@ -113,6 +113,13 @@ export class MetricsEngine {
     console.log('🐛 Speed to Lead - Results count:', results?.length)
     console.log('🐛 Speed to Lead - First result:', results?.[0])
     
+    // If Speed to Lead is returning empty, log the issue
+    if (metric.name === 'Speed to Lead' && (!results || results.length === 0)) {
+      console.error('❌ Speed to Lead returned EMPTY results - check date filters!')
+      console.error('Expected: 668 contacts with avg ~3.8M seconds')
+      console.error('Actual: Empty array - date filter likely too restrictive')
+    }
+    
     return this.formatResults(effectiveBreakdown, results)
   }
 
