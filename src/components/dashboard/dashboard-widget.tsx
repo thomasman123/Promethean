@@ -119,10 +119,14 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
     // Debug Speed to Lead formatting
     if (widget.metricName === 'speed_to_lead' || widget.metricNames?.includes('speed_to_lead')) {
       console.log('🐛 Speed to Lead widget settings:', {
+        metricName: widget.metricName,
+        metricNames: widget.metricNames,
         unit,
         speedToLeadTimeFormat: widget.settings?.speedToLeadTimeFormat,
+        allSettings: widget.settings,
         value: val,
-        willFormat: unit === 'seconds' && widget.settings?.speedToLeadTimeFormat
+        willFormat: unit === 'seconds' && widget.settings?.speedToLeadTimeFormat,
+        testFormat: formatSecondsToTime(val || 0)
       });
     }
     
