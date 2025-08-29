@@ -38,9 +38,10 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { useDashboardStore } from "@/lib/dashboard/store";
-import { MetricDefinition, VizType, BreakdownType } from "@/lib/dashboard/types";
+import { MetricDefinition, VizType, BreakdownType, BusinessHourMapping } from "@/lib/dashboard/types";
 import { cn } from "@/lib/utils";
 import { ColorPicker } from "@/components/ui/color-picker";
+import { BusinessHourEditor } from "./business-hour-editor";
 
 interface MetricSelectorProps {
   open: boolean;
@@ -92,6 +93,7 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
   const [bookingLeadTimeCalculation, setBookingLeadTimeCalculation] = useState<'average' | 'median'>('average');
   const [speedToLeadCalculation, setSpeedToLeadCalculation] = useState<'average' | 'median'>('average');
   const [speedToLeadTimeFormat, setSpeedToLeadTimeFormat] = useState<boolean>(false);
+  const [speedToLeadBusinessHours, setSpeedToLeadBusinessHours] = useState<BusinessHourMapping[]>([]);
   const [metricColors, setMetricColors] = useState<Record<string, string>>({});
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
 
@@ -265,7 +267,7 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
         cumulative: isCumulative,
         metricColors: finalMetricColors,
         ...(isBookingLeadTime && { bookingLeadTimeCalculation }),
-        ...(isSpeedToLead && { speedToLeadCalculation, speedToLeadTimeFormat }),
+        ...(isSpeedToLead && { speedToLeadCalculation, speedToLeadTimeFormat, speedToLeadBusinessHours }),
       },
       position: { x: 0, y: 0 },
       size: { w: 4, h: 4 },
@@ -699,10 +701,18 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
                                 Show as human-readable time (e.g., "2 days, 3 hours")
                               </label>
                             </div>
-                          )}
-                        </CardContent>
-                      </Card>
-                    )}
+                                                     )}
+                         </CardContent>
+                       </Card>
+                     )}
+
+                     {/* Speed to Lead Business Hours */}
+                     {selectedMetrics.length > 0 && selectedMetrics[0]?.name === 'speed_to_lead' && (
+                       <BusinessHourEditor
+                         value={speedToLeadBusinessHours}
+                         onChange={setSpeedToLeadBusinessHours}
+                       />
+                     )}
 
                     {/* Metric Colors */}
                     {selectedMetrics.length > 0 && (
