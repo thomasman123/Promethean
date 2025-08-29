@@ -35,6 +35,13 @@ export interface WidgetSize {
   h: number;
 }
 
+export type BusinessHourMapping = {
+  countryCode: string;          // "+1", "+61", etc.
+  tz: string;                   // IANA timezone like "America/New_York"
+  startLocal: string;           // "08:00"
+  endLocal: string;             // "18:00"
+};
+
 export interface WidgetSettings {
   title?: string;
   yAxisScale?: 'linear' | 'log';
@@ -46,6 +53,7 @@ export interface WidgetSettings {
   bookingLeadTimeCalculation?: 'average' | 'median';
   speedToLeadCalculation?: 'average' | 'median';
   speedToLeadTimeFormat?: boolean; // Show as human-readable time format
+  speedToLeadBusinessHours?: BusinessHourMapping[]; // Business hours by country code
   metricColors?: Record<string, string>; // metricName -> color
 }
 
