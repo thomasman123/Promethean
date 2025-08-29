@@ -56,6 +56,7 @@ export function BusinessHourEditor({ value, onChange }: BusinessHourEditorProps)
   const { selectedAccountId } = useAuth();
   const [countryCodes, setCountryCodes] = useState<CountryCode[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   // Fetch country codes from the API
   useEffect(() => {
@@ -66,7 +67,7 @@ export function BusinessHourEditor({ value, onChange }: BusinessHourEditorProps)
         const response = await fetch(`/api/contacts/country-codes?accountId=${selectedAccountId}`);
         const data = await response.json();
         
-        if (data.countryCodes) {
+        if (data.countryCodes && data.countryCodes.length > 0) {
           setCountryCodes(data.countryCodes);
           
           // Auto-populate with detected country codes if no mappings exist
@@ -79,6 +80,10 @@ export function BusinessHourEditor({ value, onChange }: BusinessHourEditorProps)
             }));
             onChange(defaultMappings);
           }
+        } else {
+          // No valid country codes found - provide manual option
+          setCountryCodes([]);
+          console.log('No valid country codes detected - phone numbers may not be in international format');
         }
       } catch (error) {
         console.error('Failed to fetch country codes:', error);
@@ -88,7 +93,7 @@ export function BusinessHourEditor({ value, onChange }: BusinessHourEditorProps)
     };
 
     fetchCountryCodes();
-  }, [selectedAccountId, value.length, onChange]);
+  }, [selectedAccountId, value.length, onChange, refreshKey]);
 
   const addMapping = () => {
     const newMapping: BusinessHourMapping = {
@@ -127,10 +132,22 @@ export function BusinessHourEditor({ value, onChange }: BusinessHourEditorProps)
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Business Hours by Country</CardTitle>
-        <p className="text-sm text-muted-foreground">
-          Configure business hours for each country. Speed to Lead will only count time during these hours.
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="text-base">Business Hours by Country</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Configure business hours for each country. Speed to Lead will only count time during these hours.
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setRefreshKey(prev => prev + 1)}
+            disabled={isLoading}
+          >
+            Refresh
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
         {value.map((mapping, index) => (
