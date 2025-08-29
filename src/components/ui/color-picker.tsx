@@ -6,25 +6,31 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// Predefined color options based on shadcn theme
+// Predefined color options with red, orange, purple, rose variants
 const COLOR_OPTIONS = [
-  { name: "Chart 1", value: "hsl(var(--chart-1))", cssVar: "--chart-1" },
-  { name: "Chart 2", value: "hsl(var(--chart-2))", cssVar: "--chart-2" },
-  { name: "Chart 3", value: "hsl(var(--chart-3))", cssVar: "--chart-3" },
-  { name: "Chart 4", value: "hsl(var(--chart-4))", cssVar: "--chart-4" },
-  { name: "Chart 5", value: "hsl(var(--chart-5))", cssVar: "--chart-5" },
-  { name: "Primary", value: "hsl(var(--primary))", cssVar: "--primary" },
-  { name: "Secondary", value: "hsl(var(--muted-foreground))", cssVar: "--muted-foreground" },
-  { name: "Destructive", value: "hsl(var(--destructive))", cssVar: "--destructive" },
-  // Additional nice colors that work well in both themes
-  { name: "Blue", value: "#3b82f6", cssVar: null },
-  { name: "Green", value: "#10b981", cssVar: null },
-  { name: "Yellow", value: "#f59e0b", cssVar: null },
-  { name: "Red", value: "#ef4444", cssVar: null },
-  { name: "Indigo", value: "#6366f1", cssVar: null },
-  { name: "Orange", value: "#f97316", cssVar: null },
-  { name: "Teal", value: "#14b8a6", cssVar: null },
-  { name: "Cyan", value: "#06b6d4", cssVar: null },
+  // Red shades (row 1)
+  { name: "Red 300", value: "#fca5a5", cssVar: null },
+  { name: "Red 500", value: "#ef4444", cssVar: null },
+  { name: "Red 600", value: "#dc2626", cssVar: null },
+  { name: "Red 800", value: "#991b1b", cssVar: null },
+  
+  // Orange shades (row 2)
+  { name: "Orange 300", value: "#fdba74", cssVar: null },
+  { name: "Orange 500", value: "#f97316", cssVar: null },
+  { name: "Orange 600", value: "#ea580c", cssVar: null },
+  { name: "Orange 800", value: "#9a3412", cssVar: null },
+  
+  // Purple shades (row 3)
+  { name: "Purple 300", value: "#c084fc", cssVar: null },
+  { name: "Purple 500", value: "#a855f7", cssVar: null },
+  { name: "Purple 600", value: "#9333ea", cssVar: null },
+  { name: "Purple 800", value: "#6b21a8", cssVar: null },
+  
+  // Rose shades (row 4)
+  { name: "Rose 300", value: "#fda4af", cssVar: null },
+  { name: "Rose 500", value: "#f43f5e", cssVar: null },
+  { name: "Rose 600", value: "#e11d48", cssVar: null },
+  { name: "Rose 800", value: "#9f1239", cssVar: null },
 ];
 
 interface ColorPickerProps {
@@ -51,9 +57,9 @@ export function ColorPicker({ color, onColorChange, label }: ColorPickerProps) {
             <div className="flex items-center gap-2">
               <div
                 className="w-4 h-4 rounded border border-border"
-                style={{
-                  backgroundColor: color || "hsl(var(--chart-1))"
-                }}
+                                 style={{
+                   backgroundColor: color || "#ef4444"
+                 }}
               />
               <span className="text-xs truncate">
                 {selectedColor?.name || "Custom"}

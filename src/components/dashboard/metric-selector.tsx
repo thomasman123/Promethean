@@ -245,9 +245,10 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
     
     // Build default colors for metrics that don't have colors set
     const finalMetricColors = { ...metricColors };
+    const defaultColors = ['#ef4444', '#f97316', '#a855f7', '#f43f5e']; // Red 500, Orange 500, Purple 500, Rose 500
     selectedMetrics.forEach((metric, index) => {
       if (!finalMetricColors[metric.name]) {
-        finalMetricColors[metric.name] = `hsl(var(--chart-${(index % 5) + 1}))`;
+        finalMetricColors[metric.name] = defaultColors[index % 4];
       }
     });
 
@@ -660,15 +661,15 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
                                 <span className="text-sm font-medium truncate mr-3">
                                   {metric.displayName}
                                 </span>
-                                <ColorPicker
-                                  color={metricColors[metric.name] || `hsl(var(--chart-${(index % 5) + 1}))`}
-                                  onColorChange={(color) => {
-                                    setMetricColors(prev => ({
-                                      ...prev,
-                                      [metric.name]: color
-                                    }));
-                                  }}
-                                />
+                                                                 <ColorPicker
+                                   color={metricColors[metric.name] || ['#ef4444', '#f97316', '#a855f7', '#f43f5e'][index % 4]}
+                                   onColorChange={(color) => {
+                                     setMetricColors(prev => ({
+                                       ...prev,
+                                       [metric.name]: color
+                                     }));
+                                   }}
+                                 />
                               </div>
                             ))}
                           </div>
@@ -728,18 +729,18 @@ export function MetricSelector({ open, onOpenChange }: MetricSelectorProps) {
                         <div>
                           <span className="font-medium text-muted-foreground text-xs">Selected Metrics:</span>
                           <div className="mt-2 flex flex-wrap gap-1">
-                            {selectedMetrics.map((metric, index) => {
-                              const color = metricColors[metric.name] || `hsl(var(--chart-${(index % 5) + 1}))`;
-                              return (
-                                <div key={metric.name} className="flex items-center gap-1">
-                                  <div
-                                    className="w-3 h-3 rounded border border-border"
-                                    style={{ backgroundColor: color }}
-                                  />
-                                  <Badge variant="outline" className="text-xs">{metric.displayName}</Badge>
-                                </div>
-                              );
-                            })}
+                                                         {selectedMetrics.map((metric, index) => {
+                               const color = metricColors[metric.name] || ['#ef4444', '#f97316', '#a855f7', '#f43f5e'][index % 4];
+                               return (
+                                 <div key={metric.name} className="flex items-center gap-1">
+                                   <div
+                                     className="w-3 h-3 rounded border border-border"
+                                     style={{ backgroundColor: color }}
+                                   />
+                                   <Badge variant="outline" className="text-xs">{metric.displayName}</Badge>
+                                 </div>
+                               );
+                             })}
                           </div>
                         </div>
                       )}
