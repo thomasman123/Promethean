@@ -110,6 +110,8 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
   const formatValue = useCallback((val: number, unit?: string) => {
     if (unit === 'currency') return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(val || 0);
     if (unit === 'percent') return `${Math.round((val || 0) * 100)}%`;
+    if (unit === 'days') return `${(val || 0).toFixed(1)} days`;
+    if (unit === 'seconds') return `${Math.round(val || 0)}s`;
     return new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(val || 0);
   }, []);
 

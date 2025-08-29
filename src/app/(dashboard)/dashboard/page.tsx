@@ -40,6 +40,7 @@ const mapEngineMetricToDashboard = (engineMetricName: string): MetricDefinition 
 
   // Categorize metrics
   const getCategory = (name: string) => {
+    if (name.includes('booking_lead_time')) return 'Quality';
     if (name.includes('appointment')) return 'Appointments';
     if (name.includes('show') || name.includes('rate')) return 'Quality';
     if (name.includes('revenue') || name.includes('deal')) return 'Revenue';

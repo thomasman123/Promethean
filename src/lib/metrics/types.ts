@@ -46,7 +46,7 @@ export interface MetricDefinition {
   description: string
   breakdownType: BreakdownType
   query: MetricQuery
-  unit?: 'count' | 'currency' | 'percent' | 'seconds'
+  unit?: 'count' | 'currency' | 'percent' | 'seconds' | 'days'
 }
 
 export interface MetricRequest {

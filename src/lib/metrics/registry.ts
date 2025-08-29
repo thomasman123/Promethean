@@ -150,6 +150,32 @@ export const METRICS_REGISTRY: Record<string, MetricDefinition> = {
 		},
 		unit: 'percent'
 	},
+	// Booking Lead Time Average - average days between created_at and date_booked_for
+	'booking_lead_time_avg': {
+		name: 'Booking Lead Time (Average)',
+		description: 'Average number of days between appointment creation and scheduled date',
+		breakdownType: 'total',
+		query: {
+			table: 'appointments',
+			select: [
+				"COALESCE(ROUND(AVG(EXTRACT(EPOCH FROM (date_booked_for - created_at))/86400), 2), 0) as value"
+			]
+		},
+		unit: 'days'
+	},
+	// Booking Lead Time Median - median days between created_at and date_booked_for
+	'booking_lead_time_median': {
+		name: 'Booking Lead Time (Median)',
+		description: 'Median number of days between appointment creation and scheduled date',
+		breakdownType: 'total',
+		query: {
+			table: 'appointments',
+			select: [
+				"COALESCE(ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM (date_booked_for - created_at))/86400), 2), 0) as value"
+			]
+		},
+		unit: 'days'
+	},
 	// Answers (Dials): count rows where answered = true
 	'answers_dials': {
 		name: 'Answers (Dials)',
