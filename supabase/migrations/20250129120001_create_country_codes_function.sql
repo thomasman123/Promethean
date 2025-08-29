@@ -10,9 +10,11 @@ BEGIN
           SELECT 
         CASE 
           -- Extract country codes from properly formatted international numbers
-          WHEN phone ~ '^\+1[0-9]{10}$' THEN '+1'               -- US/Canada (10 digits after +1)
+          WHEN phone ~ '^\+61[0-9]{9}$' THEN '+61'              -- Australia international format
+          WHEN phone ~ '^0[0-9]{9}$' THEN '+61'                  -- Australia local format (10 digits starting with 0)
+          WHEN phone ~ '^\+1[0-9]{10}$' THEN '+1'               -- US/Canada international format
+          WHEN phone ~ '^[2-9][0-9]{9}$' THEN '+1'               -- US local 10-digit numbers without country code
           WHEN phone ~ '^\+44[0-9]{10,11}$' THEN '+44'          -- UK
-          WHEN phone ~ '^\+61[0-9]{9}$' THEN '+61'              -- Australia (9 digits after +61)
           WHEN phone ~ '^\+49[0-9]{10,12}$' THEN '+49'          -- Germany
           WHEN phone ~ '^\+33[0-9]{9}$' THEN '+33'              -- France
           WHEN phone ~ '^\+81[0-9]{10,11}$' THEN '+81'          -- Japan
