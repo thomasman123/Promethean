@@ -112,7 +112,18 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
     // Special handling for Speed to Lead time formatting
     if (unit === 'seconds' && widget.settings?.speedToLeadTimeFormat && 
         (widget.metricName === 'speed_to_lead' || widget.metricNames?.includes('speed_to_lead'))) {
+      console.log('🕐 Speed to Lead time formatting enabled:', val, '→', formatSecondsToTime(val || 0));
       return formatSecondsToTime(val || 0);
+    }
+    
+    // Debug Speed to Lead formatting
+    if (widget.metricName === 'speed_to_lead' || widget.metricNames?.includes('speed_to_lead')) {
+      console.log('🐛 Speed to Lead widget settings:', {
+        unit,
+        speedToLeadTimeFormat: widget.settings?.speedToLeadTimeFormat,
+        value: val,
+        willFormat: unit === 'seconds' && widget.settings?.speedToLeadTimeFormat
+      });
     }
     
     if (unit === 'currency') return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(val || 0);
