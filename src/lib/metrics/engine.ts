@@ -108,6 +108,12 @@ export class MetricsEngine {
     // Format results based on breakdown type
     // data is a JSONB array, so we need to parse it
     const results = Array.isArray(data) ? data : (data ? JSON.parse(String(data)) : [])
+    
+    console.log('🐛 DEBUG - Raw database results:', results)
+    console.log('🐛 DEBUG - Results length:', results?.length)
+    console.log('🐛 DEBUG - First result:', results?.[0])
+    console.log('🐛 DEBUG - Breakdown type:', effectiveBreakdown)
+    
     return this.formatResults(effectiveBreakdown, results)
   }
 
