@@ -1,37 +1,21 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { ThemeProvider } from "@/components/theme-provider";
-import { Toaster } from "@/components/ui/sonner";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
-  title: "Promethean - Transform Your Call Data Into Actionable Insights",
-  description: "AI-powered analytics platform for sales teams. Advanced dashboards, call tracking, and performance insights to optimize your operations and drive results.",
+  title: "Promethean Dashboard",
+  description: "Sales performance analytics and management platform",
 };
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen`}>
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-          {children}
-          <Toaster />
-        </ThemeProvider>
+    <html lang="en">
+      <body className="antialiased">
+        {children}
       </body>
     </html>
   );
-}
+} 

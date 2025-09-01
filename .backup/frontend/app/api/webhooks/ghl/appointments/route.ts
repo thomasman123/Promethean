@@ -1,0 +1,1 @@
+export { GET, POST } from "../../../webhook/call-events/route"; 
