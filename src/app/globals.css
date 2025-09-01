@@ -2,6 +2,7 @@
 @import "tw-animate-css";
 @import "react-grid-layout/css/styles.css";
 @import "react-resizable/css/styles.css";
+@import "../../.superdesign/design_iterations/dashboard_theme.css";
 
 @custom-variant dark (&:is(.dark *));
 

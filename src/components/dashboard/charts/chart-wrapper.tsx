@@ -56,11 +56,15 @@ export function ChartWrapper({
   children
 }: ChartWrapperProps) {
   return (
-    <Card className={cn("h-full min-h-0 flex flex-col", pinned && "ring-2 ring-primary", className)}>
-      <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 px-3 pt-3">
+    <Card className={cn(
+      "dashboard-card h-full min-h-0 flex flex-col transition-all duration-300 hover:shadow-lg", 
+      pinned && "ring-2 ring-primary shadow-lg", 
+      className
+    )}>
+      <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 px-4 pt-4">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <CardTitle className="text-sm font-medium truncate">{title}</CardTitle>
+            <CardTitle className="text-base font-bold truncate">{title}</CardTitle>
             {compareMode && compareEntities && compareEntities > 0 && (
               <Badge variant="secondary" className="gap-1 text-xs">
                 <Users className="h-3 w-3" />
@@ -91,8 +95,8 @@ export function ChartWrapper({
           
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-6 w-6">
-                <MoreHorizontal className="h-3 w-3" />
+              <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-accent transition-colors">
+                <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -125,19 +129,30 @@ export function ChartWrapper({
         </div>
       </CardHeader>
       
-      <CardContent className="flex-1 min-h-0 p-3 pt-0">
+      <CardContent className="flex-1 min-h-0 p-4 pt-0">
         {isLoading ? (
-          <div className="h-full flex items-center justify-center">
-            <Skeleton className="w-full h-full" />
+          <div className="h-full flex items-center justify-center fade-in">
+            <div className="space-y-3 w-full">
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-32 w-full rounded-lg" />
+              <div className="flex gap-2">
+                <Skeleton className="h-4 w-1/3" />
+                <Skeleton className="h-4 w-1/4" />
+              </div>
+            </div>
           </div>
         ) : error ? (
-          <div className="h-full flex items-center justify-center">
-            <p className="text-sm text-muted-foreground text-center">
-              {error}
-            </p>
+          <div className="h-full flex items-center justify-center fade-in">
+            <div className="text-center space-y-2">
+              <div className="w-12 h-12 mx-auto rounded-full bg-destructive/10 flex items-center justify-center">
+                <Info className="h-6 w-6 text-destructive" />
+              </div>
+              <p className="text-sm text-destructive font-medium">Error loading chart</p>
+              <p className="text-xs text-muted-foreground max-w-xs">{error}</p>
+            </div>
           </div>
         ) : (
-          <div className="h-full min-h-0 relative overflow-hidden">
+          <div className="h-full min-h-0 relative overflow-hidden fade-in">
             {children}
           </div>
         )}

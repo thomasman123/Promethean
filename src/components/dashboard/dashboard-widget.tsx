@@ -9,6 +9,7 @@ import {
   AreaChart,
   RadarChart
 } from "./charts";
+import { EnhancedKPIWidget } from "./enhanced-kpi-widget";
 import { CompareWidget } from "./compare-widget";
 import { WidgetDetailModal } from "./widget-detail-modal";
 import { DashboardWidget as WidgetType, MetricData } from "@/lib/dashboard/types";
@@ -271,12 +272,32 @@ export function DashboardWidget({ widget, isDragging }: DashboardWidgetProps) {
         settings: widget.settings
       });
       
+      // Generate sparkline data
+      const sparklineData = Array.from({ length: 7 }, () => 
+        Math.floor(Math.random() * 100) + 50
+      );
+
+      // Determine trend
+      const trend = sparklineData[sparklineData.length - 1] > sparklineData[0] ? 'up' : 'down';
+
+      // Mock change data
+      const changeValue = (Math.random() - 0.5) * 30; // -15% to +15%
+
       return (
-        <KPIChart
+        <EnhancedKPIWidget
           key={chartKey}
+          title={metricDefinition?.displayName || widget.metricName}
           value={formattedValue}
-          unit={unit === 'percent' ? '' : unit === 'currency' ? '' : ''}
-          comparison={undefined}
+          unit={unit === 'percent' ? '%' : unit === 'currency' ? '' : unit}
+          change={{
+            value: changeValue,
+            type: 'percentage',
+            period: 'vs last period'
+          }}
+          sparklineData={sparklineData}
+          trend={trend}
+          status={Math.abs(changeValue) > 10 ? 'excellent' : Math.abs(changeValue) > 5 ? 'good' : 'warning'}
+          className="h-full"
         />
       );
     }

@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus } from "lucide-react";
 import { GlobalFilters } from "@/components/dashboard/global-filters";
-import { DashboardGrid } from "@/components/dashboard/dashboard-grid";
 import { MetricSelector } from "@/components/dashboard/metric-selector";
 import { ViewsManager } from "@/components/dashboard/views-manager";
+import { DashboardOverview } from "@/components/dashboard/dashboard-overview";
+import { DashboardDetailed } from "@/components/dashboard/dashboard-detailed";
 import { useDashboardStore } from "@/lib/dashboard/store";
 import { MetricDefinition, BreakdownType, VizType } from "@/lib/dashboard/types";
 import { useAuth } from "@/hooks/useAuth";
@@ -48,10 +50,10 @@ const mapEngineMetricToDashboard = (engineMetricName: string): MetricDefinition 
   };
 
   return {
-    name: engineMetricName,
-    displayName: engineMetric.name,
+    name: engineMetric.name,
+    displayName: engineMetric.name, // Use name as displayName since metrics don't have displayName
     description: engineMetric.description,
-    category: getCategory(engineMetricName),
+    category: getCategory(engineMetric.name),
     supportedBreakdowns: getBreakdowns(engineMetric.breakdownType),
     recommendedVisualizations: getRecommendedViz(engineMetric.breakdownType),
     formula: `${engineMetric.breakdownType} breakdown query`
@@ -59,6 +61,7 @@ const mapEngineMetricToDashboard = (engineMetricName: string): MetricDefinition 
 };
 
 export default function DashboardPage() {
+  const [activeTab, setActiveTab] = useState("overview");
   const { 
     isAddWidgetModalOpen, 
     setAddWidgetModalOpen,
@@ -128,42 +131,55 @@ export default function DashboardPage() {
   
   return (
     <div className="flex flex-col min-h-screen">
-      {/* Sticky Controls under breadcrumb header, outside scroll area */}
-      <div className="sticky top-16 z-40 bg-background border-b shadow-sm">
-        <div className="flex items-center gap-3 px-4 py-3">
-          <GlobalFilters className="p-0 border-0" />
-          <div className="ml-auto flex items-center gap-2">
+      {/* Enhanced Header with Tabs */}
+      <div className="sticky top-16 z-40 bg-background/95 backdrop-blur-sm border-b shadow-sm">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 px-4 lg:px-6 py-3">
+          <GlobalFilters className="p-0 border-0 flex-1 sm:flex-none" />
+          <div className="w-full sm:w-auto sm:ml-auto flex items-center gap-2">
             <ViewsManager />
-            <Button onClick={() => setAddWidgetModalOpen(true)} className="gap-2">
+            <Button 
+              onClick={() => setAddWidgetModalOpen(true)} 
+              className="btn-primary gap-2"
+              size="sm"
+            >
               <Plus className="h-4 w-4" />
               Add Widget
             </Button>
           </div>
         </div>
+
+        {/* Dashboard Tabs */}
+        <div className="dashboard-tabs">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="h-auto p-0 bg-transparent">
+              <TabsTrigger 
+                value="overview" 
+                className="dashboard-tab data-[state=active]:active"
+              >
+                Overview
+              </TabsTrigger>
+              <TabsTrigger 
+                value="detailed" 
+                className="dashboard-tab data-[state=active]:active"
+              >
+                Detailed Data
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
       </div>
         
-      {/* Dashboard Grid */}
+      {/* Tab Content */}
       <div className="flex-1">
-        <div className="px-4">
-          <div className="bg-muted/40 rounded-tl-xl">
-            {widgets.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full p-4">
-                <div className="text-center">
-                  <h3 className="text-lg font-semibold mb-2">No widgets yet</h3>
-                  <p className="text-muted-foreground mb-4">
-                    Add your first widget to start tracking metrics
-                  </p>
-                  <Button onClick={() => setAddWidgetModalOpen(true)} className="gap-2">
-                    <Plus className="h-4 w-4" />
-                    Add Widget
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <DashboardGrid className="p-4" />
-            )}
-          </div>
-        </div>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full">
+          <TabsContent value="overview" className="mt-0 h-full">
+            <DashboardOverview />
+          </TabsContent>
+          
+          <TabsContent value="detailed" className="mt-0 h-full">
+            <DashboardDetailed />
+          </TabsContent>
+        </Tabs>
       </div>
        
       {/* Metric Selector Modal */}
