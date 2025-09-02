@@ -245,6 +245,17 @@ export const useDashboardStore = create<DashboardStore>()(
         try {
           await get().updateView(state.currentView.id, { widgets: updatedWidgets });
           console.log('✅ Widget saved to database successfully');
+          
+          // Ensure current view is still set after database update
+          const updatedState = get();
+          if (!updatedState.currentView && state.currentView) {
+            console.warn('⚠️  Current view lost after database update, restoring...');
+            const restoredView = updatedState.views.find(v => v.id === state.currentView!.id);
+            if (restoredView) {
+              set({ currentView: restoredView });
+              console.log('🔄 Restored current view:', restoredView.id);
+            }
+          }
         } catch (error) {
           console.error('❌ Failed to save widget to database:', error);
           throw error; // Re-throw so the UI can handle it
@@ -446,6 +457,7 @@ export const useDashboardStore = create<DashboardStore>()(
       },
       
       updateView: async (viewId, updates) => {
+        console.log('💾 updateView called:', { viewId, updates });
         try {
           const response = await fetch('/api/dashboard/views', {
             method: 'PUT',
@@ -459,11 +471,26 @@ export const useDashboardStore = create<DashboardStore>()(
           
           const data = await response.json();
           const updatedView = data.view;
+          console.log('📥 updateView response:', updatedView);
+          
+          const stateBefore = get();
+          console.log('📊 State before update:', {
+            currentViewId: stateBefore.currentView?.id,
+            viewsCount: stateBefore.views.length,
+            isUpdatingCurrentView: stateBefore.currentView?.id === viewId
+          });
           
           set((state) => ({
             views: state.views.map((v) => v.id === viewId ? updatedView : v),
             currentView: state.currentView?.id === viewId ? updatedView : state.currentView
           }));
+          
+          const stateAfter = get();
+          console.log('📊 State after update:', {
+            currentViewId: stateAfter.currentView?.id,
+            viewsCount: stateAfter.views.length,
+            currentViewWidgets: stateAfter.currentView?.widgets?.length
+          });
         } catch (error) {
           console.error('Error updating view:', error);
           throw error;
