@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
+import { useAuth } from '@/hooks/useAuth';
 
 interface TopDockProps {
   className?: string;
@@ -13,14 +14,36 @@ export function TopDock({ className = '' }: TopDockProps) {
   const [selectedTab, setSelectedTab] = useState<'dashboard' | 'data'>('dashboard');
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isAccountOpen, setIsAccountOpen] = useState(false);
-  const [selectedAccount, setSelectedAccount] = useState('Alex Smith');
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  
+  const { 
+    getAvailableAccounts, 
+    getSelectedAccount, 
+    selectedAccountId, 
+    setSelectedAccountId,
+    user,
+    loading 
+  } = useAuth();
 
-  // Mock accounts - in real app would come from store/API
-  const accounts = [
-    { id: '1', name: 'Alex Smith', type: 'Personal' },
-    { id: '2', name: 'Company ABC', type: 'Business' },
-    { id: '3', name: 'Project XYZ', type: 'Team' }
-  ];
+  const availableAccounts = getAvailableAccounts();
+  const selectedAccount = getSelectedAccount();
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsAccountOpen(false);
+      }
+    };
+
+    if (isAccountOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isAccountOpen]);
 
   // Get page title based on current route
   const getPageTitle = () => {
@@ -67,10 +90,9 @@ export function TopDock({ className = '' }: TopDockProps) {
     document.documentElement.classList.toggle('dark');
   };
 
-  const handleAccountSelect = (accountName: string) => {
-    setSelectedAccount(accountName);
+  const handleAccountSelect = (accountId: string) => {
+    setSelectedAccountId(accountId);
     setIsAccountOpen(false);
-    // In real app, would trigger account switch
   };
 
   return (
@@ -93,41 +115,80 @@ export function TopDock({ className = '' }: TopDockProps) {
       {/* Center section - Account Dropdown and Navigation Pills */}
       <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-4">
         {/* Account Dropdown */}
-        <div className="relative">
-          <button
-            onClick={() => setIsAccountOpen(!isAccountOpen)}
-            className="flex items-center gap-2 px-4 py-2 bg-zinc-100/90 dark:bg-zinc-900/90 backdrop-blur-md rounded-full text-sm font-medium text-zinc-900 dark:text-white hover:bg-zinc-200/90 dark:hover:bg-zinc-800/90 transition-colors"
-          >
-            <span>{selectedAccount}</span>
-            <svg className={`w-4 h-4 transition-transform ${isAccountOpen ? 'rotate-180' : ''}`} fill="currentColor" viewBox="0 0 24 24">
-              <path d="M7 10l5 5 5-5z"/>
-            </svg>
-          </button>
+        <div className="relative" ref={dropdownRef}>
+          {loading || !user ? (
+            <div className="animate-pulse bg-zinc-200 dark:bg-zinc-800 rounded-full h-10 w-48" />
+          ) : availableAccounts.length === 0 ? (
+            <div className="px-4 py-2 bg-zinc-100/90 dark:bg-zinc-900/90 backdrop-blur-md rounded-full text-sm text-zinc-600 dark:text-zinc-400">
+              No accounts available
+            </div>
+          ) : (
+            <button
+              onClick={() => setIsAccountOpen(!isAccountOpen)}
+              className="flex items-center gap-2 px-4 py-2 bg-zinc-100/90 dark:bg-zinc-900/90 backdrop-blur-md rounded-full text-sm font-medium text-zinc-900 dark:text-white hover:bg-zinc-200/90 dark:hover:bg-zinc-800/90 transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-green-500 rounded-full" />
+                <div>
+                  <div className="font-medium">
+                    {selectedAccount?.name || 'Select Account'}
+                  </div>
+                  {selectedAccount?.description && (
+                    <div className="text-xs text-zinc-500 dark:text-zinc-400">
+                      {selectedAccount.description}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <svg className={`w-4 h-4 transition-transform ${isAccountOpen ? 'rotate-180' : ''}`} fill="currentColor" viewBox="0 0 24 24">
+                <path d="M7 10l5 5 5-5z"/>
+              </svg>
+            </button>
+          )}
 
           {/* Dropdown Menu */}
-          {isAccountOpen && (
+          {isAccountOpen && availableAccounts.length > 0 && (
             <>
               <div className="fixed inset-0 z-10" onClick={() => setIsAccountOpen(false)} />
               <div className="absolute top-full left-0 mt-2 w-64 bg-white dark:bg-zinc-900 rounded-xl shadow-lg border border-zinc-200 dark:border-zinc-700 overflow-hidden z-20">
                 <div className="p-2">
-                  {accounts.map((account) => (
+                  {availableAccounts.map((account) => (
                     <button
                       key={account.id}
-                      onClick={() => handleAccountSelect(account.name)}
+                      onClick={() => handleAccountSelect(account.id)}
                       className={`w-full text-left px-3 py-2 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors ${
-                        selectedAccount === account.name ? 'bg-zinc-100 dark:bg-zinc-800' : ''
+                        selectedAccountId === account.id ? 'bg-zinc-100 dark:bg-zinc-800' : ''
                       }`}
-                    >
-                      <div className="font-medium text-sm text-zinc-900 dark:text-white">{account.name}</div>
-                      <div className="text-xs text-zinc-500 dark:text-zinc-400">{account.type}</div>
+                                          >
+                        <div className="flex items-center gap-3">
+                          <div className={`w-2 h-2 rounded-full ${
+                            selectedAccountId === account.id ? 'bg-blue-500' : 'bg-zinc-400'
+                          }`} />
+                          <div>
+                            <div className="font-medium text-sm text-zinc-900 dark:text-white">{account.name}</div>
+                            {account.description && (
+                              <div className="text-xs text-zinc-500 dark:text-zinc-400">{account.description}</div>
+                            )}
+                          </div>
+                          {selectedAccountId === account.id && (
+                            <svg className="w-4 h-4 ml-auto text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            </svg>
+                          )}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                  <div className="border-t border-zinc-200 dark:border-zinc-700 p-2">
+                    <button className="w-full text-left px-3 py-2 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors text-sm text-zinc-600 dark:text-zinc-400">
+                      <div className="flex items-center gap-3">
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                        </svg>
+                        <span>Add Account</span>
+                      </div>
                     </button>
-                  ))}
-                </div>
-                <div className="border-t border-zinc-200 dark:border-zinc-700 p-2">
-                  <button className="w-full text-left px-3 py-2 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors text-sm text-zinc-600 dark:text-zinc-400">
-                    + Add Account
-                  </button>
-                </div>
+                  </div>
               </div>
             </>
           )}
