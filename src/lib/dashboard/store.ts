@@ -2,7 +2,7 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { DashboardWidget, DashboardView, MetricDefinition, WidgetPosition } from './types';
+import type { DashboardWidget, DashboardView, MetricDefinition, WidgetPosition, ViewScope } from './types';
 import { METRICS_REGISTRY } from '../metrics/registry';
 
 interface DashboardStore {
@@ -128,6 +128,30 @@ export const useDashboardStore = create<DashboardStore>()(
       addWidget: (widget) => {
         const state = get();
         
+        // If no current view exists, create a temporary view
+        if (!state.currentView && state.selectedAccountId) {
+          const tempView: DashboardView = {
+            id: `temp-view-${Date.now()}`,
+            name: 'Default View',
+            accountId: state.selectedAccountId,
+            createdBy: 'system',
+            scope: 'team',
+            isPrivate: false,
+            filters: {},
+            widgets: [...DEFAULT_WIDGETS],
+            compareMode: false,
+            compareEntities: [],
+            isDefault: true,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          };
+          
+          set((state) => ({
+            views: [...state.views, tempView],
+            currentView: tempView
+          }));
+        }
+        
         if (!state.currentView) {
           console.warn('No current view to add widget to');
           return;
@@ -177,6 +201,34 @@ export const useDashboardStore = create<DashboardStore>()(
       
       removeWidget: (widgetId) => {
         const state = get();
+        
+        // If no current view exists, we're dealing with default widgets
+        // Create a temporary view to allow widget management
+        if (!state.currentView && state.selectedAccountId) {
+          const tempView: DashboardView = {
+            id: `temp-view-${Date.now()}`,
+            name: 'Default View',
+            accountId: state.selectedAccountId,
+            createdBy: 'system',
+            scope: 'team',
+            isPrivate: false,
+            filters: {},
+            widgets: DEFAULT_WIDGETS.filter(w => w.id !== widgetId),
+            compareMode: false,
+            compareEntities: [],
+            isDefault: true,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          };
+          
+          set((state) => ({
+            views: [...state.views, tempView],
+            currentView: tempView
+          }));
+          return;
+        }
+        
+        // Normal view-based widget removal
         if (!state.currentView) return;
         
         set((state) => ({

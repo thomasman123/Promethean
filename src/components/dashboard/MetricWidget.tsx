@@ -27,7 +27,7 @@ export function MetricWidget({ widget }: MetricWidgetProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | undefined>(undefined);
   
-  const { filters } = useDashboardStore();
+  const { filters, currentView } = useDashboardStore();
   const { selectedAccountId } = useAuth();
 
   // Memoize filters to prevent unnecessary re-fetches
@@ -38,49 +38,44 @@ export function MetricWidget({ widget }: MetricWidgetProps) {
       setIsLoading(true);
       setError(undefined);
       
-      // If no account selected, show mock data for demo purposes
-      if (!selectedAccountId) {
-        setTimeout(() => {
+      try {
+        // If no account is selected, show empty state
+        if (!selectedAccountId) {
           setData({
             metricName: widget.metricName,
             breakdown: widget.breakdown,
-            data: {
-              value: Math.floor(Math.random() * 10000),
-              change: {
-                value: `${(Math.random() * 20 - 10).toFixed(1)}%`,
-                trend: Math.random() > 0.5 ? 'up' : 'down'
-              }
-            }
+            data: { value: 0 }
           });
           setIsLoading(false);
-        }, 1000 + Math.random() * 1000); // Random delay for demo
-        return;
-      }
+          return;
+        }
 
-      try {
-        // Build request filters
+        // Build request filters - merge global filters with view-specific filters
+        const viewFilters = currentView?.filters || {};
+        const mergedFilters = { ...filters, ...viewFilters };
+        
         const requestFilters = {
-          dateRange: filters.dateRange || {
+          dateRange: mergedFilters.dateRange || {
             start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(), // Last 30 days
             end: new Date().toISOString()
           },
           accountId: selectedAccountId,
-          repIds: filters.repIds,
-          setterIds: filters.setterIds,
-          utm_source: filters.utm_source,
-          utm_medium: filters.utm_medium,
-          utm_campaign: filters.utm_campaign,
-          utm_content: filters.utm_content,
-          utm_term: filters.utm_term,
-          utm_id: filters.utm_id,
-          source_category: filters.source_category,
-          specific_source: filters.specific_source,
-          session_source: filters.session_source,
-          referrer: filters.referrer,
-          fbclid: filters.fbclid,
-          fbc: filters.fbc,
-          fbp: filters.fbp,
-          gclid: filters.gclid,
+          repIds: mergedFilters.repIds,
+          setterIds: mergedFilters.setterIds,
+          utm_source: mergedFilters.utm_source,
+          utm_medium: mergedFilters.utm_medium,
+          utm_campaign: mergedFilters.utm_campaign,
+          utm_content: mergedFilters.utm_content,
+          utm_term: mergedFilters.utm_term,
+          utm_id: mergedFilters.utm_id,
+          source_category: mergedFilters.source_category,
+          specific_source: mergedFilters.specific_source,
+          session_source: mergedFilters.session_source,
+          referrer: mergedFilters.referrer,
+          fbclid: mergedFilters.fbclid,
+          fbc: mergedFilters.fbc,
+          fbp: mergedFilters.fbp,
+          gclid: mergedFilters.gclid,
         };
 
         const response = await fetch('/api/metrics', {
@@ -121,13 +116,19 @@ export function MetricWidget({ widget }: MetricWidgetProps) {
       } catch (err) {
         console.error('Error fetching metric data:', err);
         setError(err instanceof Error ? err.message : 'Unknown error');
+        // Set zero values on error instead of mock data
+        setData({
+          metricName: widget.metricName,
+          breakdown: widget.breakdown,
+          data: { value: 0 }
+        });
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchData();
-  }, [widget.metricName, widget.breakdown, widget.vizType, selectedAccountId, stableFilters, widget.settings]);
+  }, [widget.metricName, widget.breakdown, widget.vizType, selectedAccountId, stableFilters, widget.settings, currentView]);
 
   // Format the value based on metric unit
   const formatValue = (value: number | string, unit?: string) => {
