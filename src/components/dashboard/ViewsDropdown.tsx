@@ -13,10 +13,13 @@ export function ViewsDropdown({ className = '', onCreateView }: ViewsDropdownPro
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { selectedAccountId, getUserRole, user } = useAuth();
-  const { currentView, views, setCurrentView } = useDashboardStore();
+  const { currentView, setCurrentView, getViewsForAccount, selectedAccountId: storeAccountId, views } = useDashboardStore();
 
-  // Filter views for current account
-  const accountViews = views.filter(view => view.accountId === selectedAccountId);
+  // Use the account ID from the store
+  const accountId = storeAccountId || selectedAccountId;
+  
+  // Get views for current account
+  const accountViews = getViewsForAccount(accountId || '');
   const personalViews = accountViews.filter(view => view.isPrivate && view.createdBy === user?.id);
   const teamViews = accountViews.filter(view => !view.isPrivate);
 
@@ -90,7 +93,7 @@ export function ViewsDropdown({ className = '', onCreateView }: ViewsDropdownPro
       </button>
 
       {isOpen && (
-        <div className="absolute top-full left-0 mt-2 min-w-[250px] bg-white dark:bg-zinc-900 rounded-lg shadow-lg border border-zinc-200 dark:border-zinc-800 py-2 z-50 max-h-80 overflow-y-auto">
+        <div className="absolute top-full right-0 mt-2 min-w-[250px] bg-zinc-100/90 dark:bg-zinc-900/90 backdrop-blur-sm rounded-2xl py-2 z-50 max-h-80 overflow-y-auto">
           
           {/* Default View */}
           <button
@@ -98,8 +101,8 @@ export function ViewsDropdown({ className = '', onCreateView }: ViewsDropdownPro
               setCurrentView(null);
               setIsOpen(false);
             }}
-            className={`w-full px-4 py-2 text-left hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors ${
-              !currentView ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400' : 'text-zinc-900 dark:text-white'
+            className={`w-full px-4 py-2 text-left hover:bg-zinc-200/50 dark:hover:bg-zinc-800/50 transition-all ${
+              !currentView ? 'bg-blue-100/50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400' : 'text-zinc-900 dark:text-white'
             }`}
           >
             <div className="flex items-center gap-3">
@@ -125,9 +128,9 @@ export function ViewsDropdown({ className = '', onCreateView }: ViewsDropdownPro
                 <button
                   key={view.id}
                   onClick={() => handleViewSelect(view.id)}
-                  className={`w-full px-4 py-2 text-left hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors ${
+                  className={`w-full px-4 py-2 text-left hover:bg-zinc-200/50 dark:hover:bg-zinc-800/50 transition-all ${
                     currentView?.id === view.id 
-                      ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400' 
+                      ? 'bg-blue-100/50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400' 
                       : 'text-zinc-900 dark:text-white'
                   }`}
                 >
@@ -162,9 +165,9 @@ export function ViewsDropdown({ className = '', onCreateView }: ViewsDropdownPro
                 <button
                   key={view.id}
                   onClick={() => handleViewSelect(view.id)}
-                  className={`w-full px-4 py-2 text-left hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors ${
+                  className={`w-full px-4 py-2 text-left hover:bg-zinc-200/50 dark:hover:bg-zinc-800/50 transition-all ${
                     currentView?.id === view.id 
-                      ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400' 
+                      ? 'bg-blue-100/50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400' 
                       : 'text-zinc-900 dark:text-white'
                   }`}
                 >
@@ -193,7 +196,7 @@ export function ViewsDropdown({ className = '', onCreateView }: ViewsDropdownPro
           <div className="border-t border-zinc-200 dark:border-zinc-800 mt-2 pt-2">
             <button
               onClick={handleCreateView}
-              className="w-full px-4 py-2 text-left text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
+              className="w-full px-4 py-2 text-left text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200/50 dark:hover:bg-zinc-800/50 transition-all"
             >
               <div className="flex items-center gap-3">
                 <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">

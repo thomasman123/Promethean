@@ -18,8 +18,8 @@ export function CreateViewModal({ isOpen, onClose }: CreateViewModalProps) {
   const [viewScope, setViewScope] = useState<ViewScope>('private');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { selectedAccountId, getUserRole, user } = useAuth();
-  const { createView, widgets, filters } = useDashboardStore();
+  const { getUserRole, user } = useAuth();
+  const { createView, selectedAccountId, filters } = useDashboardStore();
 
   const userRole = getUserRole();
   const canCreateTeamViews = userRole === 'admin' || userRole === 'moderator';
@@ -29,7 +29,7 @@ export function CreateViewModal({ isOpen, onClose }: CreateViewModalProps) {
 
     setIsSubmitting(true);
     try {
-      // Create the view with current widgets and filters
+      // Create the view with empty widgets and current filters
       createView({
         name: viewName.trim(),
         description: viewDescription.trim() || undefined,
@@ -38,7 +38,6 @@ export function CreateViewModal({ isOpen, onClose }: CreateViewModalProps) {
         scope: viewScope,
         isPrivate: viewScope === 'private',
         filters: filters,
-        widgets: widgets,
         compareMode: false,
         compareEntities: []
       });
@@ -131,7 +130,7 @@ export function CreateViewModal({ isOpen, onClose }: CreateViewModalProps) {
               </label>
               <div className="space-y-3">
                 {/* Private View */}
-                <label className="flex items-start gap-3 p-4 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer">
+                <label className="flex items-start gap-3 p-4 rounded-xl bg-zinc-100/50 dark:bg-zinc-800/50 hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50 transition-all cursor-pointer">
                   <input
                     type="radio"
                     name="viewScope"
@@ -156,9 +155,9 @@ export function CreateViewModal({ isOpen, onClose }: CreateViewModalProps) {
                 </label>
 
                 {/* Team View */}
-                <label className={`flex items-start gap-3 p-4 rounded-xl transition-colors cursor-pointer ${
+                <label className={`flex items-start gap-3 p-4 rounded-xl transition-all cursor-pointer ${
                   canCreateTeamViews 
-                    ? 'bg-zinc-50 dark:bg-zinc-800/50 hover:bg-zinc-100 dark:hover:bg-zinc-800' 
+                    ? 'bg-zinc-100/50 dark:bg-zinc-800/50 hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50' 
                     : 'bg-zinc-100/50 dark:bg-zinc-800/25 cursor-not-allowed opacity-60'
                 }`}>
                   <input
@@ -193,19 +192,17 @@ export function CreateViewModal({ isOpen, onClose }: CreateViewModalProps) {
             </div>
 
             {/* Current State Info */}
-            <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
+            <div className="bg-zinc-100/50 dark:bg-zinc-800/50 rounded-lg p-4">
               <div className="flex items-start gap-3">
-                <svg className="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 text-zinc-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
                 </svg>
                 <div>
-                  <h4 className="text-sm font-medium text-blue-700 dark:text-blue-300">
-                    View will include current state
+                  <h4 className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                    New view will start empty
                   </h4>
-                  <p className="text-sm text-blue-600 dark:text-blue-400 mt-1">
-                    • {widgets.length} widget{widgets.length !== 1 ? 's' : ''} and their positions
-                    <br />
-                    • Current filters and settings
+                  <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">
+                    Add widgets after creating the view
                   </p>
                 </div>
               </div>
