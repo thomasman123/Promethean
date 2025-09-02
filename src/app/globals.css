@@ -14,23 +14,30 @@
   }
   
   body {
-    @apply bg-white text-zinc-900;
+    background-color: rgb(var(--color-background));
+    color: rgb(var(--color-text-primary));
     font-family: var(--font-sans);
     font-size: var(--text-base);
     line-height: var(--leading-normal);
+    transition: background-color var(--duration-normal), color var(--duration-normal);
   }
 }
 
 @layer utilities {
-  /* Custom utility classes using our tokens */
-  .surface-primary {
-    background: rgb(var(--color-surface));
+  /* Dynamic background utilities */
+  .bg-background {
+    background-color: rgb(var(--color-background));
   }
   
-  .surface-secondary {
-    background: rgb(var(--color-surface-secondary));
+  .bg-surface {
+    background-color: rgb(var(--color-surface));
   }
   
+  .bg-surface-secondary {
+    background-color: rgb(var(--color-surface-secondary));
+  }
+  
+  /* Dynamic text utilities */
   .text-primary {
     color: rgb(var(--color-text-primary));
   }
@@ -47,6 +54,7 @@
     color: rgb(var(--color-text-muted));
   }
   
+  /* Dynamic border utilities */
   .border-default {
     border-color: rgb(var(--color-border));
   }
@@ -55,24 +63,44 @@
     border-color: rgb(var(--color-border-light));
   }
   
-  /* Soft shadows like Krea */
-  .shadow-soft-xs {
-    box-shadow: var(--shadow-xs);
+  /* Component-specific dark mode support */
+  .dark .bg-zinc-100 {
+    background-color: rgb(var(--color-zinc-900));
   }
   
-  .shadow-soft-sm {
-    box-shadow: var(--shadow-sm);
+  .dark .bg-zinc-50 {
+    background-color: rgb(var(--color-zinc-950));
   }
   
-  .shadow-soft-md {
-    box-shadow: var(--shadow-md);
+  .dark .bg-zinc-200 {
+    background-color: rgb(var(--color-zinc-800));
   }
   
-  .shadow-soft-lg {
-    box-shadow: var(--shadow-lg);
+  .dark .text-zinc-900 {
+    color: rgb(var(--color-zinc-50));
   }
   
-  .shadow-soft-xl {
-    box-shadow: var(--shadow-xl);
+  .dark .text-zinc-700 {
+    color: rgb(var(--color-zinc-300));
+  }
+  
+  .dark .text-zinc-600 {
+    color: rgb(var(--color-zinc-400));
+  }
+  
+  .dark .text-zinc-500 {
+    color: rgb(var(--color-zinc-500));
+  }
+  
+  .dark .hover\:bg-zinc-50:hover {
+    background-color: rgb(var(--color-zinc-900));
+  }
+  
+  .dark .hover\:bg-zinc-100:hover {
+    background-color: rgb(var(--color-zinc-800));
+  }
+  
+  .dark .hover\:bg-zinc-200:hover {
+    background-color: rgb(var(--color-zinc-700));
   }
 }

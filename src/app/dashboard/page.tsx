@@ -14,7 +14,7 @@ export default function DashboardPage() {
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
         {/* Top Dock */}
-        <TopDock title="Overview" />
+        <TopDock />
         
         {/* Content Area */}
         <div className="flex-1 overflow-y-auto px-8 pb-8">
