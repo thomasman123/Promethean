@@ -40,32 +40,32 @@ export default function DashboardPage() {
         {/* Content Area - Dashboard Overview */}
         <div className="pl-24 pr-8 pt-20 pb-8">
           {/* Control Bar */}
-          <div className="flex items-center gap-4 mb-6">
+          <div className="flex items-center gap-3 mb-6">
             {/* Date Picker Button */}
-            <button className="flex items-center gap-2 px-4 py-2 bg-zinc-900 text-white rounded-lg hover:bg-zinc-800 transition-colors">
+            <button className="flex items-center gap-2 px-4 py-2 bg-zinc-100 rounded-lg text-sm font-medium text-zinc-900 hover:bg-zinc-200 transition-colors">
               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M9 11H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2zm2-7h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11z"/>
               </svg>
-              <span className="text-sm font-medium">{dateRange}</span>
+              <span>{dateRange}</span>
               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M7 10l5 5 5-5z"/>
               </svg>
             </button>
 
             {/* Add Widget Button */}
-            <button className="flex items-center gap-2 px-4 py-2 bg-zinc-900 text-white rounded-lg hover:bg-zinc-800 transition-colors">
+            <button className="flex items-center gap-2 px-4 py-2 bg-zinc-100 rounded-lg text-sm font-medium text-zinc-900 hover:bg-zinc-200 transition-colors">
               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
               </svg>
-              <span className="text-sm font-medium">Add Widget</span>
+              <span>Add Widget</span>
             </button>
 
             {/* Views Button */}
-            <button className="flex items-center gap-2 px-4 py-2 bg-zinc-900 text-white rounded-lg hover:bg-zinc-800 transition-colors">
+            <button className="flex items-center gap-2 px-4 py-2 bg-zinc-100 rounded-lg text-sm font-medium text-zinc-900 hover:bg-zinc-200 transition-colors">
               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"/>
               </svg>
-              <span className="text-sm font-medium">Views</span>
+              <span>Views</span>
               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M7 10l5 5 5-5z"/>
               </svg>
