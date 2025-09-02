@@ -3,13 +3,13 @@
 import { Sidebar } from '@/components/ui/Sidebar';
 import { TopDock } from '@/components/ui/TopDock';
 import { KPIWidget } from '@/components/ui/Card';
-import { Widget, WidgetGrid } from '@/components/ui/Widget';
-import { DashboardControls } from '@/components/ui/DashboardControls';
+import { Widget } from '@/components/ui/Widget';
 import { useDashboardStore } from '@/lib/dashboard/store';
-import { useMemo } from 'react';
+import { useState } from 'react';
 
 export default function DashboardPage() {
   const { widgets, removeWidget, updateWidgetSize } = useDashboardStore();
+  const [dateRange, setDateRange] = useState('Last 30 days');
 
   const handleWidgetDelete = (widgetId: string) => {
     removeWidget(widgetId);
@@ -27,16 +27,6 @@ export default function DashboardPage() {
     'active_users': { value: '89', change: { value: '5', trend: 'up' } }
   };
 
-  // Randomly assign gradient themes to widgets
-  const gradientThemes: ('purple' | 'blue' | 'green' | 'orange')[] = ['purple', 'blue', 'green', 'orange'];
-  const widgetThemes = useMemo(() => {
-    const themes: Record<string, 'purple' | 'blue' | 'green' | 'orange'> = {};
-    widgets.forEach((widget, index) => {
-      themes[widget.id] = gradientThemes[index % gradientThemes.length];
-    });
-    return themes;
-  }, [widgets]);
-
   return (
     <>
       {/* Floating Sidebar */}
@@ -49,40 +39,80 @@ export default function DashboardPage() {
       <div className="min-h-screen bg-white">
         {/* Content Area - Dashboard Overview */}
         <div className="pl-24 pr-8 pt-20 pb-8">
-          {/* Dashboard Controls Bar */}
-          <div className="mb-6">
-            <DashboardControls />
+          {/* Control Bar */}
+          <div className="flex items-center gap-4 mb-6">
+            {/* Date Picker Button */}
+            <button className="flex items-center gap-2 px-4 py-2 bg-zinc-900 text-white rounded-lg hover:bg-zinc-800 transition-colors">
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M9 11H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2zm2-7h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11z"/>
+              </svg>
+              <span className="text-sm font-medium">{dateRange}</span>
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M7 10l5 5 5-5z"/>
+              </svg>
+            </button>
+
+            {/* Add Widget Button */}
+            <button className="flex items-center gap-2 px-4 py-2 bg-zinc-900 text-white rounded-lg hover:bg-zinc-800 transition-colors">
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+              </svg>
+              <span className="text-sm font-medium">Add Widget</span>
+            </button>
+
+            {/* Views Button */}
+            <button className="flex items-center gap-2 px-4 py-2 bg-zinc-900 text-white rounded-lg hover:bg-zinc-800 transition-colors">
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"/>
+              </svg>
+              <span className="text-sm font-medium">Views</span>
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M7 10l5 5 5-5z"/>
+              </svg>
+            </button>
           </div>
 
-          {/* Widget Grid */}
-          <WidgetGrid>
+          {/* Widget Grid - Proper grid system */}
+          <div className="grid grid-cols-12 gap-4 auto-rows-[200px]">
             {widgets.map((widget) => {
               if (widget.vizType === 'kpi') {
                 const metricData = mockMetricData[widget.metricName] || { value: '0' };
+                // Calculate grid column span based on widget width
+                const colSpan = Math.min(widget.size.w * 3, 12); // Each unit = 3 columns, max 12
+                const rowSpan = widget.size.h; // Each unit = 1 row (200px)
+                
                 return (
-                  <Widget
+                  <div
                     key={widget.id}
-                    id={widget.id}
-                    onDelete={handleWidgetDelete}
-                    onResize={handleWidgetResize}
-                    initialWidth={widget.size.w * 250}
-                    initialHeight={widget.size.h * 200}
+                    className={`col-span-${colSpan} row-span-${rowSpan}`}
+                    style={{
+                      gridColumn: `span ${colSpan} / span ${colSpan}`,
+                      gridRow: `span ${rowSpan} / span ${rowSpan}`
+                    }}
                   >
-                    <KPIWidget
-                      label={widget.metricName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                      value={metricData.value}
-                      change={metricData.change}
-                      gradientTheme={widgetThemes[widget.id]}
-                    />
-                  </Widget>
+                    <Widget
+                      id={widget.id}
+                      onDelete={handleWidgetDelete}
+                      onResize={handleWidgetResize}
+                      initialWidth="100%"
+                      initialHeight="100%"
+                      gridBased={true}
+                    >
+                      <KPIWidget
+                        label={widget.metricName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                        value={metricData.value}
+                        change={metricData.change}
+                      />
+                    </Widget>
+                  </div>
                 );
               }
               // Add other widget types (charts, etc.) here in the future
               return null;
             })}
-          </WidgetGrid>
+          </div>
 
-          {/* Add Widget Button */}
+          {/* Empty State */}
           {widgets.length === 0 && (
             <div className="flex items-center justify-center h-64 bg-zinc-50 rounded-2xl border-2 border-dashed border-zinc-200">
               <div className="text-center">

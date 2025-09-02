@@ -57,46 +57,27 @@ interface KPIWidgetProps {
     value: string;
     trend: 'up' | 'down' | 'neutral';
   };
-  gradientTheme?: 'purple' | 'blue' | 'green' | 'orange';
 }
 
-export function KPIWidget({ label, value, change, gradientTheme = 'purple' }: KPIWidgetProps) {
+export function KPIWidget({ label, value, change }: KPIWidgetProps) {
   const trendColors = {
-    up: 'text-green-300',
-    down: 'text-red-300',
-    neutral: 'text-zinc-300'
-  };
-
-  // Define gradient themes similar to the reference image
-  const gradientClasses = {
-    purple: 'bg-gradient-to-br from-purple-600 via-purple-700 to-purple-900',
-    blue: 'bg-gradient-to-br from-blue-600 via-blue-700 to-blue-900',
-    green: 'bg-gradient-to-br from-emerald-600 via-emerald-700 to-emerald-900',
-    orange: 'bg-gradient-to-br from-orange-600 via-orange-700 to-orange-900'
+    up: 'text-green-600',
+    down: 'text-red-600',
+    neutral: 'text-zinc-600'
   };
 
   return (
-    <div className={`${gradientClasses[gradientTheme]} rounded-3xl p-8 flex flex-col items-start justify-between text-left h-full min-h-[200px] relative overflow-hidden`}>
-      {/* Background decoration similar to reference image */}
-      <div className="absolute inset-0 opacity-10">
-        <div className="absolute -right-10 -top-10 w-40 h-40 rounded-full bg-white/20 blur-3xl" />
-        <div className="absolute -left-10 -bottom-10 w-40 h-40 rounded-full bg-white/20 blur-3xl" />
-      </div>
-      
-      {/* Content */}
-      <div className="relative z-10 w-full">
-        <p className="text-sm font-bold text-white/80 uppercase tracking-wider">{label}</p>
-        <p className="mt-3 text-4xl font-black text-white">{value}</p>
-      </div>
-      
+    <div className="bg-zinc-100 rounded-2xl p-6 flex flex-col items-center justify-center text-center h-full">
+      <p className="text-sm font-medium text-zinc-600 uppercase tracking-wide">{label}</p>
+      <p className="mt-2 text-3xl font-semibold text-zinc-900">{value}</p>
       {change && (
-        <div className="relative z-10 mt-4 flex items-center gap-2">
-          <span className={`text-sm font-bold ${trendColors[change.trend]}`}>
-            {change.trend === 'up' && '↑'}
-            {change.trend === 'down' && '↓'}
+        <div className="mt-3 flex items-center gap-1">
+          <span className={`text-sm font-medium ${trendColors[change.trend]}`}>
+            {change.trend === 'up' && '+'}
+            {change.trend === 'down' && '-'}
             {change.value}
           </span>
-          <span className="text-xs text-white/60 font-medium">vs last period</span>
+          <span className="text-xs text-zinc-500">vs last period</span>
         </div>
       )}
     </div>
