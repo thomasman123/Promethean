@@ -75,8 +75,7 @@ export function AddWidgetModal({ isOpen, onClose }: AddWidgetModalProps) {
         metricName: selectedMetric,
         breakdown: 'total',
         vizType: selectedVizType,
-        position: { x: 0, y: 0 },
-        size: { w: selectedVizType === 'kpi' ? 1 : 2, h: 1 },
+        size: { w: selectedVizType === 'kpi' ? 3 : 6, h: selectedVizType === 'kpi' ? 2 : 4 },
         settings: {
           ...settings,
           title: widgetTitle || undefined

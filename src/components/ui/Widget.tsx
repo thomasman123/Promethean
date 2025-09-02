@@ -28,13 +28,32 @@ export function Widget({
   gridBased = false
 }: WidgetProps) {
   const [isHovered, setIsHovered] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
   const [dimensions, setDimensions] = useState({ 
     width: typeof initialWidth === 'number' ? initialWidth : 0, 
     height: typeof initialHeight === 'number' ? initialHeight : 0 
   });
   const widgetRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const startPos = useRef({ x: 0, y: 0, width: 0, height: 0 });
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setIsMenuOpen(false);
+      }
+    };
+
+    if (isMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isMenuOpen]);
 
   // For grid-based widgets, we don't handle resize the same way
   const handleResizeStart = (e: React.MouseEvent) => {
@@ -84,6 +103,13 @@ export function Widget({
     if (onDelete) {
       onDelete(id);
     }
+    setIsMenuOpen(false);
+  };
+
+  const toggleMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsMenuOpen(!isMenuOpen);
   };
 
   // For grid-based widgets, use full width/height
@@ -94,26 +120,46 @@ export function Widget({
   return (
     <div
       ref={widgetRef}
-      className={`relative group ${className}`}
+      className={`relative group bg-white/90 dark:bg-zinc-900/90 backdrop-blur-sm rounded-2xl border border-zinc-200/50 dark:border-zinc-800/50 shadow-sm hover:shadow-md transition-all duration-200 ${className}`}
       style={style}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/* Delete button */}
+      {/* Three-dot menu button */}
       {isHovered && (
-        <button
-          onClick={handleDelete}
-          className="absolute top-2 right-2 z-10 p-1.5 bg-white dark:bg-zinc-900 rounded-lg text-zinc-500 dark:text-zinc-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all opacity-0 group-hover:opacity-100"
-          aria-label="Delete widget"
-        >
-          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
-          </svg>
-        </button>
+        <div className="absolute top-3 right-3 z-20">
+          <button
+            onClick={toggleMenu}
+            className="p-1.5 bg-white/80 dark:bg-zinc-800/80 backdrop-blur-sm rounded-lg text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300 hover:bg-white dark:hover:bg-zinc-800 transition-all opacity-0 group-hover:opacity-100 shadow-sm"
+            aria-label="Widget options"
+          >
+            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+            </svg>
+          </button>
+
+          {/* Dropdown menu */}
+          {isMenuOpen && (
+            <div 
+              ref={menuRef}
+              className="absolute top-full right-0 mt-1 min-w-[120px] bg-white dark:bg-zinc-900 rounded-lg shadow-lg border border-zinc-200 dark:border-zinc-800 py-1 z-30"
+            >
+              <button
+                onClick={handleDelete}
+                className="w-full px-3 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                </svg>
+                Delete
+              </button>
+            </div>
+          )}
+        </div>
       )}
 
       {/* Widget content */}
-      <div className="w-full h-full">
+      <div className="w-full h-full p-4">
         {children}
       </div>
 

@@ -4,20 +4,49 @@ import { Widget } from '@/components/ui/Widget';
 import { useDashboardStore } from '@/lib/dashboard/store';
 import { AddWidgetModal } from '@/components/dashboard/AddWidgetModal';
 import { MetricWidget } from '@/components/dashboard/MetricWidget';
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
+import { Responsive, WidthProvider, Layout as GridLayout } from 'react-grid-layout';
+
+const ResponsiveGridLayout = WidthProvider(Responsive);
 
 export default function DashboardPage() {
-  const { widgets, removeWidget, updateWidgetSize } = useDashboardStore();
+  const { widgets, removeWidget, updateWidgetLayout } = useDashboardStore();
   const [dateRange, setDateRange] = useState('Last 30 days');
   const [isAddWidgetModalOpen, setIsAddWidgetModalOpen] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
 
   const handleWidgetDelete = (widgetId: string) => {
     removeWidget(widgetId);
   };
 
-  const handleWidgetResize = (widgetId: string, width: number, height: number) => {
-    updateWidgetSize(widgetId, width, height);
+  // Convert widgets to grid layout format
+  const layouts = {
+    lg: widgets.map(widget => ({
+      i: widget.id,
+      x: widget.position.x,
+      y: widget.position.y,
+      w: Math.max(widget.size.w, 2), // Minimum 2 columns
+      h: Math.max(widget.size.h, 2), // Minimum 2 rows
+      minW: 2,
+      minH: 2,
+      maxW: 12,
+      maxH: 8
+    }))
   };
+
+  const handleLayoutChange = useCallback((layout: GridLayout[]) => {
+    if (isDragging) return; // Prevent updates during drag
+    updateWidgetLayout(layout);
+  }, [isDragging, updateWidgetLayout]);
+
+  const handleDragStart = useCallback(() => {
+    setIsDragging(true);
+  }, []);
+
+  const handleDragStop = useCallback((layout: GridLayout[]) => {
+    setIsDragging(false);
+    updateWidgetLayout(layout);
+  }, [updateWidgetLayout]);
 
   return (
     <div className="min-h-screen bg-white/50 dark:bg-black/50 backdrop-blur-sm">
@@ -59,49 +88,49 @@ export default function DashboardPage() {
           </button>
         </div>
 
-        {/* Widget Grid - Proper grid system */}
-        <div className="grid grid-cols-12 gap-4 auto-rows-[200px]">
-          {widgets.map((widget) => {
-            // Calculate grid column span based on widget width
-            const colSpan = Math.min(widget.size.w * 3, 12); // Each unit = 3 columns, max 12
-            const rowSpan = widget.size.h; // Each unit = 1 row (200px)
-            
-            return (
-              <div
-                key={widget.id}
-                className={`col-span-${colSpan} row-span-${rowSpan}`}
-                style={{
-                  gridColumn: `span ${colSpan} / span ${colSpan}`,
-                  gridRow: `span ${rowSpan} / span ${rowSpan}`
-                }}
-              >
-                <Widget
-                  id={widget.id}
-                  onDelete={handleWidgetDelete}
-                  onResize={handleWidgetResize}
-                  initialWidth="100%"
-                  initialHeight="100%"
-                  gridBased={true}
-                >
-                  <MetricWidget widget={widget} />
-                </Widget>
+        {/* Widget Grid - React Grid Layout */}
+        <div className="min-h-[400px]">
+          {widgets.length > 0 ? (
+            <ResponsiveGridLayout
+              className="layout"
+              layouts={layouts}
+              breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
+              cols={{ lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 }}
+              rowHeight={80}
+              onLayoutChange={handleLayoutChange}
+              onDragStart={handleDragStart}
+              onDragStop={handleDragStop}
+              isDraggable={true}
+              isResizable={true}
+              margin={[16, 16]}
+              containerPadding={[0, 0]}
+              useCSSTransforms={true}
+            >
+              {widgets.map((widget) => (
+                <div key={widget.id}>
+                  <Widget
+                    id={widget.id}
+                    onDelete={handleWidgetDelete}
+                    gridBased={true}
+                  >
+                    <MetricWidget widget={widget} />
+                  </Widget>
+                </div>
+              ))}
+            </ResponsiveGridLayout>
+          ) : (
+            /* Empty State */
+            <div className="flex items-center justify-center h-64 bg-zinc-100/50 dark:bg-zinc-900/50 backdrop-blur-sm rounded-2xl border-2 border-dashed border-zinc-300 dark:border-zinc-700">
+              <div className="text-center">
+                <svg className="w-12 h-12 mx-auto mb-3 text-zinc-400 dark:text-white" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                </svg>
+                <p className="text-zinc-600 dark:text-white">No widgets added yet</p>
+                <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">Click "Add Widget" to get started</p>
               </div>
-            );
-          })}
-        </div>
-
-        {/* Empty State */}
-        {widgets.length === 0 && (
-          <div className="flex items-center justify-center h-64 bg-zinc-100/50 dark:bg-zinc-900/50 backdrop-blur-sm rounded-2xl border-2 border-dashed border-zinc-300 dark:border-zinc-700">
-            <div className="text-center">
-              <svg className="w-12 h-12 mx-auto mb-3 text-zinc-400 dark:text-white" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
-              </svg>
-              <p className="text-zinc-600 dark:text-white">No widgets added yet</p>
-              <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">Click "Add Widget" to get started</p>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Add Widget Modal */}

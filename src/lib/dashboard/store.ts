@@ -2,7 +2,7 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { DashboardWidget, DashboardView, MetricDefinition } from './types';
+import type { DashboardWidget, DashboardView, MetricDefinition, WidgetPosition } from './types';
 import { METRICS_REGISTRY } from '../metrics/registry';
 
 interface DashboardStore {
@@ -12,10 +12,11 @@ interface DashboardStore {
   
   // Widgets
   widgets: DashboardWidget[];
-  addWidget: (widget: Omit<DashboardWidget, 'id'>) => void;
+  addWidget: (widget: Omit<DashboardWidget, 'id' | 'position'> & { position?: WidgetPosition }) => void;
   removeWidget: (widgetId: string) => void;
   updateWidget: (widgetId: string, updates: Partial<DashboardWidget>) => void;
   updateWidgetSize: (widgetId: string, width: number, height: number) => void;
+  updateWidgetLayout: (layout: any[]) => void;
   reorderWidgets: (widgetIds: string[]) => void;
   
   // Filters
@@ -66,38 +67,62 @@ export const useDashboardStore = create<DashboardStore>()(
           breakdown: 'total',
           vizType: 'kpi', // KPI Tile preset
           position: { x: 0, y: 0 },
-          size: { w: 1, h: 1 }
+          size: { w: 3, h: 2 }
         },
         {
           id: 'widget-2',
           metricName: 'total_appointments',
           breakdown: 'total',
           vizType: 'kpi', // KPI Tile preset
-          position: { x: 1, y: 0 },
-          size: { w: 1, h: 1 }
+          position: { x: 3, y: 0 },
+          size: { w: 3, h: 2 }
         },
         {
           id: 'widget-3',
           metricName: 'show_up_rate',
           breakdown: 'total',
           vizType: 'kpi', // KPI Tile preset
-          position: { x: 2, y: 0 },
-          size: { w: 1, h: 1 }
+          position: { x: 6, y: 0 },
+          size: { w: 3, h: 2 }
         },
         {
           id: 'widget-4',
           metricName: 'sales_made',
           breakdown: 'total',
           vizType: 'kpi', // KPI Tile preset
-          position: { x: 3, y: 0 },
-          size: { w: 1, h: 1 }
+          position: { x: 9, y: 0 },
+          size: { w: 3, h: 2 }
         }
       ],
       
       addWidget: (widget) => {
+        const state = get();
+        
+        // Find next available position
+        const findNextPosition = () => {
+          const occupiedPositions = new Set(
+            state.widgets.map(w => `${w.position.x},${w.position.y}`)
+          );
+          
+          // Try to place in a grid pattern
+          for (let y = 0; y < 10; y++) {
+            for (let x = 0; x < 12; x += widget.size?.w || 2) {
+              const posKey = `${x},${y}`;
+              if (!occupiedPositions.has(posKey)) {
+                return { x, y };
+              }
+            }
+          }
+          
+          // Fallback: place at end
+          return { x: 0, y: Math.max(0, ...state.widgets.map(w => w.position.y + w.size.h)) };
+        };
+
         const newWidget: DashboardWidget = {
           ...widget,
-          id: `widget-${Date.now()}`
+          id: `widget-${Date.now()}`,
+          position: widget.position || findNextPosition(),
+          size: widget.size || { w: 4, h: 2 } // Default size
         };
         set((state) => ({ widgets: [...state.widgets, newWidget] }));
       },
@@ -123,6 +148,22 @@ export const useDashboardStore = create<DashboardStore>()(
               ? { ...w, size: { w: Math.round(width / 250), h: Math.round(height / 200) } }
               : w
           )
+        }));
+      },
+
+      updateWidgetLayout: (layout) => {
+        set((state) => ({
+          widgets: state.widgets.map((widget) => {
+            const layoutItem = layout.find((item) => item.i === widget.id);
+            if (layoutItem) {
+              return {
+                ...widget,
+                position: { x: layoutItem.x, y: layoutItem.y },
+                size: { w: layoutItem.w, h: layoutItem.h }
+              };
+            }
+            return widget;
+          })
         }));
       },
       
