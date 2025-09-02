@@ -89,7 +89,7 @@ export default function Sidebar() {
               className={`
                 relative group p-2 rounded-full transition-all
                 ${isActive 
-                  ? 'text-zinc-900 bg-white dark:text-white dark:bg-zinc-800' 
+                  ? 'text-zinc-900 bg-white dark:text-zinc-900 dark:bg-black' 
                   : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'
                 }
               `}

@@ -139,7 +139,7 @@ export function TopDock({ className = '' }: TopDockProps) {
             onClick={() => handleTabChange('dashboard')}
             className={`p-2 rounded-full transition-all ${
               selectedTab === 'dashboard' 
-                ? 'text-zinc-900 bg-white dark:text-white dark:bg-zinc-800' 
+                ? 'text-zinc-900 bg-white dark:text-zinc-900 dark:bg-black' 
                 : 'text-zinc-600 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-white'
             }`}
             aria-label="Dashboard"
@@ -152,7 +152,7 @@ export function TopDock({ className = '' }: TopDockProps) {
             onClick={() => handleTabChange('data')}
             className={`p-2 rounded-full transition-all ${
               selectedTab === 'data' 
-                ? 'text-zinc-900 bg-white dark:text-white dark:bg-zinc-800' 
+                ? 'text-zinc-900 bg-white dark:text-zinc-900 dark:bg-black' 
                 : 'text-zinc-600 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-white'
             }`}
             aria-label="Data"

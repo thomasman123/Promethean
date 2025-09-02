@@ -26,7 +26,7 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-white dark:bg-zinc-950">
+    <div className="min-h-screen bg-white dark:bg-black">
       {/* Content Area - Dashboard Overview */}
       <div className="pl-20 pr-8 pt-20 pb-8">
         {/* Control Bar - Now aligned to the right */}
@@ -104,7 +104,7 @@ export default function DashboardPage() {
 
         {/* Empty State */}
         {widgets.length === 0 && (
-          <div className="flex items-center justify-center h-64 bg-zinc-100 dark:bg-zinc-900 rounded-2xl border-2 border-dashed border-zinc-300 dark:border-zinc-700">
+          <div className="flex items-center justify-center h-64 bg-zinc-100 rounded-2xl border-2 border-dashed border-zinc-300">
             <div className="text-center">
               <svg className="w-12 h-12 mx-auto mb-3 text-zinc-400" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
