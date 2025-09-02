@@ -13,12 +13,15 @@ import { useAuth } from '@/hooks/useAuth';
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
 export default function DashboardPage() {
-  const { widgets, removeWidget, updateWidgetLayout, setSelectedAccount, selectedAccountId: storeAccountId, initializeDefaultView, loadViews } = useDashboardStore();
+  const store = useDashboardStore();
+  const { widgets, removeWidget, updateWidgetLayout, setSelectedAccount, selectedAccountId: storeAccountId, initializeDefaultView, loadViews, currentView } = store;
   
-  // Debug widgets
+  // Debug widgets and current view
   console.log('🖥️  Dashboard rendering with widgets:', {
     count: widgets.length,
-    widgets: widgets.map(w => ({ id: w.id, metric: w.metricName }))
+    widgets: widgets.map(w => ({ id: w.id, metric: w.metricName })),
+    currentViewId: currentView?.id,
+    currentViewWidgetCount: currentView?.widgets?.length
   });
   const { selectedAccountId: authAccountId } = useAuth();
   const [dateRange, setDateRange] = useState('Last 30 days');
@@ -38,9 +41,10 @@ export default function DashboardPage() {
     if (storeAccountId) {
       loadViews(storeAccountId).then(() => {
         initializeDefaultView();
+        store.refreshWidgets();
       });
     }
-  }, [storeAccountId, loadViews, initializeDefaultView]);
+  }, [storeAccountId, loadViews, initializeDefaultView, store]);
 
   const handleWidgetDelete = async (widgetId: string) => {
     try {

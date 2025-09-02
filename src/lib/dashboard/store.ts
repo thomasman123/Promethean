@@ -17,6 +17,7 @@ interface DashboardStore {
   
   // Widgets - these are now derived from currentView
   widgets: DashboardWidget[];
+  refreshWidgets: () => void;
   addWidget: (widget: Omit<DashboardWidget, 'id' | 'position'> & { position?: WidgetPosition }) => Promise<void>;
   removeWidget: (widgetId: string) => Promise<void>;
   updateWidget: (widgetId: string, updates: Partial<DashboardWidget>) => void;
@@ -116,7 +117,10 @@ export const useDashboardStore = create<DashboardStore>()(
       
       // Current view
       currentView: null,
-      setCurrentView: (view) => set({ currentView: view }),
+      setCurrentView: (view) => {
+        set({ currentView: view });
+        get().refreshWidgets();
+      },
       
       // Initialize default view if needed
       initializeDefaultView: () => {
@@ -134,6 +138,7 @@ export const useDashboardStore = create<DashboardStore>()(
           if (existingView) {
             console.log('📂 Using existing default view:', existingView.id);
             set({ currentView: existingView });
+            get().refreshWidgets();
           } else {
             console.log('🆕 Creating new default view for account:', state.selectedAccountId);
             const tempView: DashboardView = {
@@ -156,6 +161,7 @@ export const useDashboardStore = create<DashboardStore>()(
               views: [...state.views, tempView],
               currentView: tempView
             }));
+            get().refreshWidgets();
             console.log('✅ Created and set default view:', tempView.id);
           }
         } else {
@@ -163,16 +169,18 @@ export const useDashboardStore = create<DashboardStore>()(
         }
       },
       
-      // Widgets - now computed from current view
-      get widgets() {
+      // Widgets - now a regular state property
+      widgets: [],
+      
+      refreshWidgets: () => {
         const state = get();
         const widgets = state.currentView?.widgets || [];
-        console.log('🎯 widgets getter called:', {
+        console.log('🔄 refreshWidgets called:', {
           currentViewId: state.currentView?.id,
           widgetCount: widgets.length,
           widgets: widgets.map(w => ({ id: w.id, metric: w.metricName }))
         });
-        return widgets;
+        set({ widgets });
       },
       
       addWidget: async (widget) => {
@@ -239,6 +247,8 @@ export const useDashboardStore = create<DashboardStore>()(
             : null
         }));
 
+        // Refresh widgets display immediately
+        get().refreshWidgets();
         console.log('💾 Local state updated, now saving to database...');
 
         // Save to database
@@ -281,6 +291,9 @@ export const useDashboardStore = create<DashboardStore>()(
             ? { ...state.currentView, widgets: updatedWidgets }
             : null
         }));
+
+        // Refresh widgets display immediately
+        get().refreshWidgets();
 
         // Save to database
         try {
@@ -484,6 +497,11 @@ export const useDashboardStore = create<DashboardStore>()(
             views: state.views.map((v) => v.id === viewId ? updatedView : v),
             currentView: state.currentView?.id === viewId ? updatedView : state.currentView
           }));
+          
+          // Refresh widgets if we updated the current view
+          if (get().currentView?.id === viewId) {
+            get().refreshWidgets();
+          }
           
           const stateAfter = get();
           console.log('📊 State after update:', {
