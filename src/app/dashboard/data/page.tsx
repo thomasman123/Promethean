@@ -16,7 +16,7 @@ export default function DataPage() {
       {/* Full-width Content */}
       <div className="min-h-screen bg-white">
         {/* Content Area - Data View */}
-        <div className="px-8 pt-20 pb-8">
+        <div className="pl-24 pr-8 pt-20 pb-8">
           <Card>
             <div className="flex items-center justify-center h-96">
               <div className="text-center">

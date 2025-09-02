@@ -100,26 +100,12 @@ export function Sidebar() {
 
   return (
     <aside 
-      className={`fixed left-0 top-0 h-screen bg-white z-[60] transition-all duration-300 overflow-hidden ${
+      className={`fixed left-2 top-[72px] h-[calc(100vh-80px)] bg-white z-[60] transition-all duration-300 overflow-hidden rounded-2xl shadow-md ${
         isExpanded ? 'w-56' : 'w-16'
       }`}
       onMouseEnter={() => setIsExpanded(true)}
       onMouseLeave={() => setIsExpanded(false)}
     >
-      {/* Logo */}
-      <div className={`h-16 flex items-center ${isExpanded ? 'px-6' : 'px-4'}`}>
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-zinc-900 rounded-lg flex items-center justify-center flex-shrink-0">
-            <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24">
-              <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
-          </div>
-          {isExpanded && (
-            <span className="font-semibold text-zinc-900 whitespace-nowrap">Krea AI</span>
-          )}
-        </div>
-      </div>
-
       {/* Navigation */}
       <nav className="flex-1 p-4">
         <ul className="space-y-1">
@@ -173,7 +159,7 @@ export function SidebarDemo() {
   return (
     <div className="min-h-screen bg-white">
       <Sidebar />
-      <div className="ml-16 p-8">
+      <div className="ml-20 p-8">
         <h1 className="text-2xl font-semibold text-zinc-900">Sidebar Demo</h1>
         <p className="mt-2 text-zinc-600">Hover over the sidebar to see it expand</p>
       </div>

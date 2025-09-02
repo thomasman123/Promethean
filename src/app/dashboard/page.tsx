@@ -36,7 +36,7 @@ export default function DashboardPage() {
       {/* Full-width Content */}
       <div className="min-h-screen bg-white">
         {/* Content Area - Dashboard Overview */}
-        <div className="px-8 pt-20 pb-8">
+        <div className="pl-24 pr-8 pt-20 pb-8">
           {/* Widget Grid */}
           <WidgetGrid>
             {widgets.map((widget) => {
