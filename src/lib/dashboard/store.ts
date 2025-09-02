@@ -13,6 +13,7 @@ interface DashboardStore {
   // Current view
   currentView: DashboardView | null;
   setCurrentView: (view: DashboardView | null) => void;
+  initializeDefaultView: () => void;
   
   // Widgets - these are now derived from currentView
   widgets: DashboardWidget[];
@@ -116,59 +117,51 @@ export const useDashboardStore = create<DashboardStore>()(
       currentView: null,
       setCurrentView: (view) => set({ currentView: view }),
       
-      // Widgets - now computed from current view
-      get widgets() {
+      // Initialize default view if needed
+      initializeDefaultView: () => {
         const state = get();
-        
-        // If no current view exists but we have an account, create a default view automatically
         if (!state.currentView && state.selectedAccountId) {
-          const tempView: DashboardView = {
-            id: `default-view-${state.selectedAccountId}`,
-            name: 'Default View',
-            accountId: state.selectedAccountId,
-            createdBy: 'system',
-            scope: 'team',
-            isPrivate: false,
-            filters: {},
-            widgets: [...DEFAULT_WIDGETS],
-            compareMode: false,
-            compareEntities: [],
-            isDefault: true,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          };
+          const defaultViewId = `default-view-${state.selectedAccountId}`;
+          const existingView = state.views.find(v => v.id === defaultViewId);
           
-          // Check if this default view already exists
-          const existingView = state.views.find(v => v.id === tempView.id);
-          if (!existingView) {
-            // Create the view and set it as current
+          if (existingView) {
+            set({ currentView: existingView });
+          } else {
+            const tempView: DashboardView = {
+              id: defaultViewId,
+              name: 'Default View',
+              accountId: state.selectedAccountId,
+              createdBy: 'system',
+              scope: 'team',
+              isPrivate: false,
+              filters: {},
+              widgets: [...DEFAULT_WIDGETS],
+              compareMode: false,
+              compareEntities: [],
+              isDefault: true,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            };
+            
             set((state) => ({
               views: [...state.views, tempView],
               currentView: tempView
             }));
-            return tempView.widgets;
-          } else {
-            // Use existing view
-            set({ currentView: existingView });
-            return existingView.widgets || [];
           }
         }
-        
-        if (!state.currentView) {
-          return [];
-        }
-        return state.currentView.widgets || [];
+      },
+      
+      // Widgets - now computed from current view
+      get widgets() {
+        const state = get();
+        return state.currentView?.widgets || [];
       },
       
       addWidget: (widget) => {
+        // Ensure we have a current view
+        get().initializeDefaultView();
+        
         const state = get();
-        
-        // The widgets getter will ensure we have a current view
-        if (!state.currentView) {
-          // Trigger the widgets getter to create a view if needed
-          get().widgets;
-        }
-        
         if (!state.currentView) {
           console.warn('No current view to add widget to');
           return;
@@ -217,14 +210,10 @@ export const useDashboardStore = create<DashboardStore>()(
       },
       
       removeWidget: (widgetId) => {
+        // Ensure we have a current view
+        get().initializeDefaultView();
+        
         const state = get();
-        
-        // The widgets getter will ensure we have a current view
-        if (!state.currentView) {
-          // Trigger the widgets getter to create a view if needed
-          get().widgets;
-        }
-        
         if (!state.currentView) return;
         
         set((state) => ({

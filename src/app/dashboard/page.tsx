@@ -13,7 +13,7 @@ import { useAuth } from '@/hooks/useAuth';
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
 export default function DashboardPage() {
-  const { widgets, removeWidget, updateWidgetLayout, setSelectedAccount, selectedAccountId: storeAccountId } = useDashboardStore();
+  const { widgets, removeWidget, updateWidgetLayout, setSelectedAccount, selectedAccountId: storeAccountId, initializeDefaultView } = useDashboardStore();
   const { selectedAccountId: authAccountId } = useAuth();
   const [dateRange, setDateRange] = useState('Last 30 days');
   const [isAddWidgetModalOpen, setIsAddWidgetModalOpen] = useState(false);
@@ -26,6 +26,11 @@ export default function DashboardPage() {
       setSelectedAccount(authAccountId);
     }
   }, [authAccountId, storeAccountId, setSelectedAccount]);
+
+  // Initialize default view when needed
+  useEffect(() => {
+    initializeDefaultView();
+  }, [storeAccountId, initializeDefaultView]);
 
   const handleWidgetDelete = (widgetId: string) => {
     removeWidget(widgetId);
