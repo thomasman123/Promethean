@@ -22,6 +22,21 @@ export function TopDock({ className = '' }: TopDockProps) {
     { id: '3', name: 'Project XYZ', type: 'Team' }
   ];
 
+  // Get page title based on current route
+  const getPageTitle = () => {
+    if (pathname === '/' || pathname === '/dashboard') return 'Dashboard';
+    if (pathname === '/dashboard/data') return 'Data';
+    if (pathname === '/account') return 'Account';
+    if (pathname === '/team') return 'Team';
+    if (pathname === '/subscription') return 'Subscription Plans';
+    if (pathname === '/compute') return 'Buy Compute Packs';
+    if (pathname === '/statistics') return 'Usage Statistics';
+    if (pathname === '/billing') return 'Billing';
+    if (pathname === '/promo') return 'Promo';
+    if (pathname === '/settings') return 'Settings';
+    return 'Dashboard'; // Default
+  };
+
   // Update selected tab based on current path
   useEffect(() => {
     if (pathname.includes('/data')) {
@@ -60,7 +75,7 @@ export function TopDock({ className = '' }: TopDockProps) {
 
   return (
     <div className={`fixed top-0 left-0 right-0 z-40 h-16 flex items-center justify-between px-4 backdrop-blur-md bg-white/80 dark:bg-zinc-950/80 ${className}`}>
-      {/* Left section - Logo and Account Dropdown */}
+      {/* Left section - Logo and Page Title */}
       <div className="flex items-center gap-4">
         {/* Sword Logo */}
         <div className="w-8 h-8 bg-black dark:bg-white rounded flex items-center justify-center">
@@ -69,6 +84,14 @@ export function TopDock({ className = '' }: TopDockProps) {
           </svg>
         </div>
         
+        {/* Page Title */}
+        <h1 className="text-xl font-semibold text-zinc-900 dark:text-white">
+          {getPageTitle()}
+        </h1>
+      </div>
+
+      {/* Center section - Account Dropdown and Navigation Pills */}
+      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-4">
         {/* Account Dropdown */}
         <div className="relative">
           <button
@@ -109,10 +132,8 @@ export function TopDock({ className = '' }: TopDockProps) {
             </>
           )}
         </div>
-      </div>
 
-      {/* Center navigation pills - absolute positioning for true center */}
-      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+        {/* Navigation pills */}
         <div className="flex items-center bg-zinc-100 dark:bg-zinc-900 rounded-full p-1">
           <button 
             onClick={() => handleTabChange('dashboard')}

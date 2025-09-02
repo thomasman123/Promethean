@@ -39,13 +39,8 @@ export default function DashboardPage() {
       <div className="min-h-screen bg-white dark:bg-zinc-950">
         {/* Content Area - Dashboard Overview */}
         <div className="pl-20 pr-8 pt-20 pb-8">
-          {/* Page Title */}
-          <h1 className="text-3xl font-semibold text-zinc-900 dark:text-white mb-8">
-            IDEAS
-          </h1>
-
-          {/* Control Bar */}
-          <div className="flex items-center gap-3 mb-6">
+          {/* Control Bar - Now aligned to the right */}
+          <div className="flex justify-end gap-3 mb-6">
             {/* Date Picker Button */}
             <button className="flex items-center gap-2 px-4 py-2 bg-zinc-100 dark:bg-zinc-900 rounded-lg text-sm font-medium text-zinc-900 dark:text-white hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors">
               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
