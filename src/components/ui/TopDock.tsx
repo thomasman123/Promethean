@@ -74,12 +74,12 @@ export function TopDock({ className = '' }: TopDockProps) {
   };
 
   return (
-    <div className={`fixed top-0 left-0 right-0 z-40 h-16 flex items-center justify-between px-4 backdrop-blur-md bg-white/80 dark:bg-zinc-950/80 ${className}`}>
+    <div className={`fixed top-0 left-0 right-0 z-40 h-16 flex items-center justify-between px-4 backdrop-blur-md bg-white/80 dark:bg-zinc-900/80 ${className}`}>
       {/* Left section - Logo and Page Title */}
       <div className="flex items-center gap-4">
         {/* Sword Logo */}
-        <div className="w-8 h-8 bg-black dark:bg-white rounded flex items-center justify-center">
-          <svg className="w-5 h-5 text-white dark:text-black" fill="currentColor" viewBox="0 0 24 24">
+        <div className="w-8 h-8 bg-zinc-900 dark:bg-white rounded flex items-center justify-center">
+          <svg className="w-5 h-5 text-white dark:text-zinc-900" fill="currentColor" viewBox="0 0 24 24">
             <path d="M17.47 2.53a.75.75 0 010 1.06l-7.72 7.72-2.04-2.04 7.72-7.72a.75.75 0 011.06 0l.98.98zM8.71 10.29l2.04 2.04-6.37 6.37a4.5 4.5 0 01-1.85 1.14l-.59.17a.75.75 0 01-.92-.92l.17-.59a4.5 4.5 0 011.14-1.85l6.37-6.37zM21 12a.75.75 0 01-.75.75h-4.5a.75.75 0 010-1.5h4.5A.75.75 0 0121 12zm-9 6a.75.75 0 010 1.5h-4.5a.75.75 0 010-1.5H12z"/>
           </svg>
         </div>
@@ -96,7 +96,7 @@ export function TopDock({ className = '' }: TopDockProps) {
         <div className="relative">
           <button
             onClick={() => setIsAccountOpen(!isAccountOpen)}
-            className="flex items-center gap-2 px-4 py-2 bg-zinc-100 dark:bg-zinc-900 rounded-full text-sm font-medium text-zinc-900 dark:text-white hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-zinc-100 rounded-full text-sm font-medium text-zinc-900 dark:text-white hover:bg-zinc-200 transition-colors"
           >
             <span>{selectedAccount}</span>
             <svg className={`w-4 h-4 transition-transform ${isAccountOpen ? 'rotate-180' : ''}`} fill="currentColor" viewBox="0 0 24 24">
@@ -108,7 +108,7 @@ export function TopDock({ className = '' }: TopDockProps) {
           {isAccountOpen && (
             <>
               <div className="fixed inset-0 z-10" onClick={() => setIsAccountOpen(false)} />
-              <div className="absolute top-full left-0 mt-2 w-64 bg-white dark:bg-zinc-900 rounded-xl shadow-lg border border-zinc-200 dark:border-zinc-800 overflow-hidden z-20">
+              <div className="absolute top-full left-0 mt-2 w-64 bg-white dark:bg-zinc-900 rounded-xl shadow-lg border border-zinc-200 dark:border-zinc-700 overflow-hidden z-20">
                 <div className="p-2">
                   {accounts.map((account) => (
                     <button
@@ -123,7 +123,7 @@ export function TopDock({ className = '' }: TopDockProps) {
                     </button>
                   ))}
                 </div>
-                <div className="border-t border-zinc-200 dark:border-zinc-800 p-2">
+                <div className="border-t border-zinc-200 dark:border-zinc-700 p-2">
                   <button className="w-full text-left px-3 py-2 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors text-sm text-zinc-600 dark:text-zinc-400">
                     + Add Account
                   </button>
@@ -134,7 +134,7 @@ export function TopDock({ className = '' }: TopDockProps) {
         </div>
 
         {/* Navigation pills */}
-        <div className="flex items-center bg-zinc-100 dark:bg-zinc-900 rounded-full p-1">
+        <div className="flex items-center bg-zinc-100 rounded-full p-1">
           <button 
             onClick={() => handleTabChange('dashboard')}
             className={`p-2 rounded-full transition-all ${
@@ -166,10 +166,10 @@ export function TopDock({ className = '' }: TopDockProps) {
 
       {/* Right section - User profile area */}
       <div className="flex items-center gap-3">
-        <div className="flex items-center bg-zinc-100 dark:bg-zinc-900 rounded-full p-1">
+        <div className="flex items-center bg-zinc-100 rounded-full p-1">
           {/* Support */}
           <button 
-            className="p-2 rounded-full text-zinc-600 hover:text-zinc-900 hover:bg-zinc-200 dark:text-zinc-400 dark:hover:text-white dark:hover:bg-zinc-800 transition-all"
+            className="p-2 rounded-full text-zinc-600 hover:text-zinc-900 hover:bg-zinc-200 dark:text-zinc-400 dark:hover:text-white dark:hover:bg-zinc-700 transition-all"
             aria-label="Support"
           >
             <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
@@ -179,7 +179,7 @@ export function TopDock({ className = '' }: TopDockProps) {
 
           {/* Notifications */}
           <button 
-            className="p-2 rounded-full text-zinc-600 hover:text-zinc-900 hover:bg-zinc-200 dark:text-zinc-400 dark:hover:text-white dark:hover:bg-zinc-800 transition-all"
+            className="p-2 rounded-full text-zinc-600 hover:text-zinc-900 hover:bg-zinc-200 dark:text-zinc-400 dark:hover:text-white dark:hover:bg-zinc-700 transition-all"
             aria-label="Notifications"
           >
             <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
@@ -190,7 +190,7 @@ export function TopDock({ className = '' }: TopDockProps) {
           {/* Theme toggle */}
           <button 
             onClick={toggleTheme}
-            className="p-2 rounded-full text-zinc-600 hover:text-zinc-900 hover:bg-zinc-200 dark:text-zinc-400 dark:hover:text-white dark:hover:bg-zinc-800 transition-all"
+            className="p-2 rounded-full text-zinc-600 hover:text-zinc-900 hover:bg-zinc-200 dark:text-zinc-400 dark:hover:text-white dark:hover:bg-zinc-700 transition-all"
             aria-label="Toggle theme"
           >
             {isDarkMode ? (

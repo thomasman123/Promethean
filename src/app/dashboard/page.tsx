@@ -26,13 +26,13 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-white dark:bg-zinc-950">
+    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
       {/* Content Area - Dashboard Overview */}
       <div className="pl-20 pr-8 pt-20 pb-8">
         {/* Control Bar - Now aligned to the right */}
         <div className="flex justify-end gap-3 mb-6">
           {/* Date Picker Button */}
-          <button className="flex items-center gap-2 px-4 py-2 bg-zinc-100 dark:bg-zinc-900 rounded-lg text-sm font-medium text-zinc-900 dark:text-white hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors">
+          <button className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-zinc-900 rounded-lg text-sm font-medium text-zinc-900 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
             <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
               <path d="M9 11H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2zm2-7h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11z"/>
             </svg>
@@ -43,7 +43,7 @@ export default function DashboardPage() {
           </button>
 
           {/* Add Widget Button */}
-          <button className="flex items-center gap-2 px-4 py-2 bg-zinc-100 dark:bg-zinc-900 rounded-lg text-sm font-medium text-zinc-900 dark:text-white hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors">
+          <button className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-zinc-900 rounded-lg text-sm font-medium text-zinc-900 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
             <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
               <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
             </svg>
@@ -51,7 +51,7 @@ export default function DashboardPage() {
           </button>
 
           {/* Views Button */}
-          <button className="flex items-center gap-2 px-4 py-2 bg-zinc-100 dark:bg-zinc-900 rounded-lg text-sm font-medium text-zinc-900 dark:text-white hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors">
+          <button className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-zinc-900 rounded-lg text-sm font-medium text-zinc-900 dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
             <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
               <path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"/>
             </svg>
@@ -104,13 +104,13 @@ export default function DashboardPage() {
 
         {/* Empty State */}
         {widgets.length === 0 && (
-          <div className="flex items-center justify-center h-64 bg-zinc-50 dark:bg-zinc-900 rounded-2xl border-2 border-dashed border-zinc-200 dark:border-zinc-800">
+          <div className="flex items-center justify-center h-64 bg-white dark:bg-zinc-900 rounded-2xl border-2 border-dashed border-zinc-300 dark:border-zinc-700">
             <div className="text-center">
-              <svg className="w-12 h-12 mx-auto mb-3 text-zinc-400 dark:text-zinc-600" fill="currentColor" viewBox="0 0 24 24">
+              <svg className="w-12 h-12 mx-auto mb-3 text-zinc-400" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
               </svg>
               <p className="text-zinc-600 dark:text-zinc-400">No widgets added yet</p>
-              <p className="text-sm text-zinc-500 dark:text-zinc-500 mt-1">Click "Add Widget" to get started</p>
+              <p className="text-sm text-zinc-500 mt-1">Click "Add Widget" to get started</p>
             </div>
           </div>
         )}
