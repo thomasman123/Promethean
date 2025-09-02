@@ -1,55 +1,55 @@
 "use client";
 
-import React, { useState } from 'react';
+import React from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 
 // Icons - using inline SVGs for now
 const Icons = {
   home: (
-    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+      <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
     </svg>
   ),
   user: (
-    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
     </svg>
   ),
   team: (
-    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+      <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
     </svg>
   ),
   credit: (
-    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+      <path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/>
     </svg>
   ),
   shield: (
-    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+      <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM9 6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9V6zm9 14H6V10h12v10zm-6-3c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z"/>
     </svg>
   ),
   chart: (
-    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+      <path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z"/>
     </svg>
   ),
   monitor: (
-    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+      <path d="M21.9 4.1c-.1-.1-.2-.2-.3-.2H2.4c-.1 0-.2.1-.3.2-.1.1-.1.2-.1.3v15.2c0 .1 0 .2.1.3.1.1.2.1.3.1h19.2c.1 0 .2 0 .3-.1.1-.1.1-.2.1-.3V4.4c0-.1 0-.2-.1-.3zM20 8H4V6h16v2zm0 4H4v-2h16v2zm-8 4H4v-2h8v2z"/>
     </svg>
   ),
   tag: (
-    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+      <path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/>
     </svg>
   ),
   settings: (
-    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+      <path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+      <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
     </svg>
   ),
 };
@@ -59,16 +59,14 @@ interface NavItem {
   label: string;
   icon: React.ReactNode;
   href: string;
-  badge?: string | number;
 }
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const [isHovered, setIsHovered] = useState(false);
 
   // Navigation items
   const navItems: NavItem[] = [
-    { id: 'overview', label: 'Overview', icon: Icons.home, href: '/' },
+    { id: 'overview', label: 'Overview', icon: Icons.home, href: '/dashboard' },
     { id: 'account', label: 'Account', icon: Icons.user, href: '/account' },
     { id: 'team', label: 'Team', icon: Icons.team, href: '/team' },
     { id: 'subscription', label: 'Subscription Plans', icon: Icons.credit, href: '/subscription' },
@@ -79,131 +77,48 @@ export default function Sidebar() {
   ];
 
   return (
-    <div 
-      className={`
-        fixed left-0 top-0 h-screen bg-white z-50
-        transition-all duration-300 ease-out
-        ${isHovered ? 'w-64' : 'w-16'}
-        ${isHovered ? 'shadow-xl' : 'shadow-none'}
-      `}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-    >
-      {/* Logo Area */}
-      <div className="h-16 flex items-center px-4 border-b border-gray-100">
-        <div className="w-8 h-8 bg-black rounded flex items-center justify-center">
-          {/* Sword Icon Placeholder */}
-          <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M17.47 2.53a.75.75 0 010 1.06l-7.72 7.72-2.04-2.04 7.72-7.72a.75.75 0 011.06 0l.98.98zM8.71 10.29l2.04 2.04-6.37 6.37a4.5 4.5 0 01-1.85 1.14l-.59.17a.75.75 0 01-.92-.92l.17-.59a4.5 4.5 0 011.14-1.85l6.37-6.37zM21 12a.75.75 0 01-.75.75h-4.5a.75.75 0 010-1.5h4.5A.75.75 0 0121 12zm-9 6a.75.75 0 010 1.5h-4.5a.75.75 0 010-1.5H12z"/>
-          </svg>
-        </div>
-        {isHovered && (
-          <span className="ml-3 font-semibold text-gray-900 animate-fadeIn">
-            Krea AI
-          </span>
-        )}
+    <div className="fixed left-4 top-1/2 -translate-y-1/2 z-50">
+      {/* Navigation pill */}
+      <div className="flex flex-col items-center bg-zinc-100 dark:bg-zinc-900 rounded-full p-1">
+        {navItems.map((item) => {
+          const isActive = pathname === item.href || (item.href === '/dashboard' && pathname === '/');
+          return (
+            <Link
+              key={item.id}
+              href={item.href}
+              className={`
+                relative group p-2 rounded-full transition-all
+                ${isActive 
+                  ? 'text-zinc-900 bg-white dark:text-white dark:bg-zinc-800' 
+                  : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'
+                }
+              `}
+            >
+              {item.icon}
+              
+              {/* Tooltip */}
+              <div className="absolute left-full ml-2 px-2 py-1 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 text-xs rounded-md whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity">
+                {item.label}
+              </div>
+            </Link>
+          );
+        })}
       </div>
 
-      {/* Navigation Items */}
-      <nav className="flex-1 py-6">
-        <ul className="space-y-2">
-          {navItems.map((item) => {
-            const isActive = pathname === item.href;
-            return (
-              <li key={item.id}>
-                <Link
-                  href={item.href}
-                  className={`
-                    relative flex items-center h-12 
-                    transition-all duration-200
-                    ${isActive 
-                      ? 'text-gray-900' 
-                      : 'text-gray-500 hover:text-gray-900'
-                    }
-                    ${isHovered ? 'px-4' : 'px-0'}
-                  `}
-                >
-                  {/* Active Indicator */}
-                  {isActive && (
-                    <div className="absolute left-0 top-0 h-full w-1 bg-gray-900" />
-                  )}
-                  
-                  {/* Icon Container - Always Centered */}
-                  <div className={`
-                    flex items-center justify-center
-                    ${isHovered ? 'w-8' : 'w-16'}
-                  `}>
-                    {item.icon}
-                  </div>
-                  
-                  {/* Label */}
-                  {isHovered && (
-                    <span className="ml-3 text-sm font-medium animate-fadeIn">
-                      {item.label}
-                    </span>
-                  )}
-                  
-                  {/* Badge */}
-                  {item.badge && isHovered && (
-                    <span className="ml-auto text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full animate-fadeIn">
-                      {item.badge}
-                    </span>
-                  )}
-                  
-                  {/* Tooltip for collapsed state */}
-                  {!isHovered && (
-                    <div className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded whitespace-nowrap opacity-0 pointer-events-none hover:opacity-100 transition-opacity">
-                      {item.label}
-                    </div>
-                  )}
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
-
-      {/* Bottom Actions */}
-      <div className="p-4 border-t border-gray-100">
+      {/* Settings button separated */}
+      <div className="mt-4 flex flex-col items-center bg-zinc-100 dark:bg-zinc-900 rounded-full p-1">
         <Link
           href="/settings"
-          className={`
-            flex items-center h-10 text-gray-500 hover:text-gray-900
-            transition-all duration-200
-            ${isHovered ? '' : 'justify-center'}
-          `}
+          className="relative group p-2 rounded-full text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white transition-all"
         >
-          <div className={`
-            flex items-center justify-center
-            ${isHovered ? 'w-8' : 'w-8'}
-          `}>
-            {Icons.settings}
+          {Icons.settings}
+          
+          {/* Tooltip */}
+          <div className="absolute left-full ml-2 px-2 py-1 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 text-xs rounded-md whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity">
+            Settings
           </div>
-          {isHovered && (
-            <span className="ml-3 text-sm font-medium animate-fadeIn">
-              Settings
-            </span>
-          )}
         </Link>
       </div>
-
-      {/* Add animation styles */}
-      <style jsx>{`
-        @keyframes fadeIn {
-          from {
-            opacity: 0;
-            transform: translateX(-10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateX(0);
-          }
-        }
-        
-        .animate-fadeIn {
-          animation: fadeIn 0.2s ease-out;
-        }
-      `}</style>
     </div>
   );
 } 

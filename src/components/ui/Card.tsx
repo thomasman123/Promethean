@@ -20,7 +20,7 @@ export function Card({
   };
 
   return (
-    <div className={`bg-zinc-100 rounded-2xl ${paddingClasses[padding]} ${className}`}>
+    <div className={`bg-zinc-100 dark:bg-zinc-900 rounded-2xl ${paddingClasses[padding]} ${className}`}>
       {children}
     </div>
   );
@@ -38,8 +38,8 @@ export function Surface({
   variant = 'primary' 
 }: SurfaceProps) {
   const variantClasses = {
-    primary: 'bg-white',
-    secondary: 'bg-zinc-100'
+    primary: 'bg-white dark:bg-zinc-950',
+    secondary: 'bg-zinc-100 dark:bg-zinc-900'
   };
 
   return (
@@ -61,15 +61,15 @@ interface KPIWidgetProps {
 
 export function KPIWidget({ label, value, change }: KPIWidgetProps) {
   const trendColors = {
-    up: 'text-green-600',
-    down: 'text-red-600',
-    neutral: 'text-zinc-600'
+    up: 'text-green-600 dark:text-green-400',
+    down: 'text-red-600 dark:text-red-400',
+    neutral: 'text-zinc-600 dark:text-zinc-400'
   };
 
   return (
-    <div className="bg-zinc-100 rounded-2xl p-6 flex flex-col items-center justify-center text-center h-full">
-      <p className="text-sm font-medium text-zinc-600 uppercase tracking-wide">{label}</p>
-      <p className="mt-2 text-3xl font-semibold text-zinc-900">{value}</p>
+    <div className="bg-zinc-100 dark:bg-zinc-900 rounded-2xl p-6 flex flex-col items-center justify-center text-center h-full">
+      <p className="text-sm font-medium text-zinc-600 dark:text-zinc-400 uppercase tracking-wide">{label}</p>
+      <p className="mt-2 text-3xl font-semibold text-zinc-900 dark:text-white">{value}</p>
       {change && (
         <div className="mt-3 flex items-center gap-1">
           <span className={`text-sm font-medium ${trendColors[change.trend]}`}>
@@ -77,7 +77,7 @@ export function KPIWidget({ label, value, change }: KPIWidgetProps) {
             {change.trend === 'down' && '-'}
             {change.value}
           </span>
-          <span className="text-xs text-zinc-500">vs last period</span>
+          <span className="text-xs text-zinc-500 dark:text-zinc-500">vs last period</span>
         </div>
       )}
     </div>
