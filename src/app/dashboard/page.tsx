@@ -19,17 +19,42 @@ export default function DashboardPage() {
     removeWidget(widgetId);
   };
 
-  // Convert widgets to grid layout format
+  // Convert widgets to grid layout format with proper constraints
   const layouts = {
     lg: widgets.map(widget => ({
       i: widget.id,
-      x: widget.position.x,
-      y: widget.position.y,
-      w: Math.max(widget.size.w, 2), // Minimum 2 columns
-      h: Math.max(widget.size.h, 2), // Minimum 2 rows
+      x: Math.min(Math.max(widget.position.x, 0), 10), // Constrain x between 0 and 10 (leaving room for width)
+      y: Math.max(widget.position.y, 0), // Constrain y to be non-negative
+      w: Math.min(Math.max(widget.size.w, 2), 6), // Width between 2-6 columns
+      h: Math.max(widget.size.h, 2), // Minimum 2 rows height
       minW: 2,
       minH: 2,
-      maxW: 12,
+      maxW: 6, // Maximum 6 columns (half screen)
+      maxH: 8,
+      static: false, // Allow dragging
+      isDraggable: true,
+      isResizable: true
+    })),
+    md: widgets.map(widget => ({
+      i: widget.id,
+      x: Math.min(Math.max(widget.position.x, 0), 8), // Constrain for medium screens
+      y: Math.max(widget.position.y, 0),
+      w: Math.min(Math.max(widget.size.w, 2), 5),
+      h: Math.max(widget.size.h, 2),
+      minW: 2,
+      minH: 2,
+      maxW: 5,
+      maxH: 8
+    })),
+    sm: widgets.map(widget => ({
+      i: widget.id,
+      x: Math.min(Math.max(widget.position.x, 0), 4), // Constrain for small screens
+      y: Math.max(widget.position.y, 0),
+      w: Math.min(Math.max(widget.size.w, 2), 3),
+      h: Math.max(widget.size.h, 2),
+      minW: 2,
+      minH: 2,
+      maxW: 3,
       maxH: 8
     }))
   };
@@ -45,7 +70,15 @@ export default function DashboardPage() {
 
   const handleDragStop = useCallback((layout: GridLayout[]) => {
     setIsDragging(false);
-    updateWidgetLayout(layout);
+    
+    // Ensure widgets stay within bounds
+    const constrainedLayout = layout.map(item => ({
+      ...item,
+      x: Math.min(Math.max(item.x, 0), 12 - item.w), // Ensure widget doesn't go beyond right edge
+      y: Math.max(item.y, 0) // Ensure widget doesn't go above top edge
+    }));
+    
+    updateWidgetLayout(constrainedLayout);
   }, [updateWidgetLayout]);
 
   return (
@@ -89,7 +122,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Widget Grid - React Grid Layout */}
-        <div className="min-h-[400px]">
+        <div className="min-h-[400px] overflow-hidden">
           {widgets.length > 0 ? (
             <ResponsiveGridLayout
               className="layout"
@@ -105,6 +138,11 @@ export default function DashboardPage() {
               margin={[16, 16]}
               containerPadding={[0, 0]}
               useCSSTransforms={true}
+              preventCollision={false}
+              compactType="vertical"
+              autoSize={true}
+              verticalCompact={true}
+              isBounded={true}
             >
               {widgets.map((widget) => (
                 <div key={widget.id}>

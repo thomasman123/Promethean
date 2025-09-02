@@ -4,6 +4,36 @@
 @tailwind components;
 @tailwind utilities;
 
+/* React Grid Layout Constraints */
+.react-grid-layout {
+  position: relative;
+  overflow: hidden !important;
+}
+
+.react-grid-item {
+  transition: all 200ms ease;
+  transition-property: left, top;
+}
+
+.react-grid-item.cssTransforms {
+  transition-property: transform;
+}
+
+.react-grid-item > .react-resizable-handle {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  bottom: 0;
+  right: 0;
+  background: url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNiIgaGVpZ2h0PSI2IiB2aWV3Qm94PSIwIDAgNiA2IiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8ZG90cyBmaWxsPSIjODg4IiBkPSJtMTUgMTJoLTZ2NmgxdjVoNXYtMXptMC02aC02djZoNnYtNnptNiAwdi02aC02djZoNnptMCAwdjZoLTZ2LTZoNnoiLz4KPHN2Zz4K');
+  background-position: bottom right;
+  padding: 0 3px 3px 0;
+  background-repeat: no-repeat;
+  background-origin: content-box;
+  box-sizing: border-box;
+  cursor: se-resize;
+}
+
 /* Animated gradient blob animation - slower and more fluid */
 @keyframes blob {
   0% {
