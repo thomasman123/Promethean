@@ -29,12 +29,9 @@ export function TopDock({ className = '' }: TopDockProps) {
   };
 
   return (
-    <div className={`sticky top-0 z-50 bg-white h-16 flex items-center justify-between px-8 ${className}`}>
-      {/* Spacer for sidebar */}
-      <div className="w-56" />
-      
-      {/* Center navigation pills */}
-      <div className="flex-1 flex justify-center">
+    <div className={`fixed top-0 left-0 right-0 z-50 h-16 flex items-center justify-between px-8 ${className}`}>
+      {/* Center navigation pills - absolute positioning for true center */}
+      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
         <div className="flex items-center bg-zinc-100 rounded-full p-1">
           <button 
             onClick={() => handleTabChange('dashboard')}
@@ -66,7 +63,7 @@ export function TopDock({ className = '' }: TopDockProps) {
       </div>
 
       {/* Right section - User profile area */}
-      <div className="flex items-center gap-3">
+      <div className="ml-auto flex items-center gap-3">
         <div className="flex items-center bg-zinc-100 rounded-full p-1">
           {/* Support */}
           <button 
@@ -118,7 +115,7 @@ export function TopDockDemo() {
   return (
     <div className="min-h-screen bg-white">
       <TopDock />
-      <div className="px-8 py-8">
+      <div className="px-8 py-24">
         <h2 className="text-2xl font-semibold text-zinc-900">Minimal Top Dock</h2>
         <p className="mt-2 text-zinc-600">Centered navigation pills with user profile section</p>
       </div>
