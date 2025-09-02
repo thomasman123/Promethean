@@ -1,16 +1,26 @@
 "use client";
 
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useEffect } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
 
 interface TopDockProps {
   className?: string;
 }
 
 export function TopDock({ className = '' }: TopDockProps) {
+  const router = useRouter();
+  const pathname = usePathname();
   const [selectedTab, setSelectedTab] = useState<'dashboard' | 'data'>('dashboard');
   const [isDarkMode, setIsDarkMode] = useState(false);
-  const router = useRouter();
+
+  // Update selected tab based on current path
+  useEffect(() => {
+    if (pathname.includes('/data')) {
+      setSelectedTab('data');
+    } else {
+      setSelectedTab('dashboard');
+    }
+  }, [pathname]);
 
   const handleTabChange = (tab: 'dashboard' | 'data') => {
     setSelectedTab(tab);
@@ -29,7 +39,7 @@ export function TopDock({ className = '' }: TopDockProps) {
   };
 
   return (
-    <div className={`fixed top-0 left-0 right-0 z-50 h-16 flex items-center justify-between px-8 ${className}`}>
+    <div className={`fixed top-0 left-0 right-0 z-50 h-16 flex items-center justify-between px-8 backdrop-blur-md ${className}`}>
       {/* Center navigation pills - absolute positioning for true center */}
       <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
         <div className="flex items-center bg-zinc-100 rounded-full p-1">
