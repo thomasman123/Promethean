@@ -4,7 +4,6 @@ import { Widget } from '@/components/ui/Widget';
 import { useDashboardStore } from '@/lib/dashboard/store';
 import { AddWidgetModal } from '@/components/dashboard/AddWidgetModal';
 import { CreateViewModal } from '@/components/dashboard/CreateViewModal';
-import { AccountDropdown } from '@/components/dashboard/AccountDropdown';
 import { ViewsDropdown } from '@/components/dashboard/ViewsDropdown';
 import { MetricWidget } from '@/components/dashboard/MetricWidget';
 import { useState, useCallback } from 'react';
@@ -89,11 +88,10 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-white/50 dark:bg-black/50 backdrop-blur-sm">
       {/* Content Area - Dashboard Overview */}
       <div className="pl-20 pr-8 pt-20 pb-8">
-        {/* Control Bar - Account, Views, and Actions */}
+        {/* Control Bar - Views and Actions */}
         <div className="flex items-center justify-between mb-6">
-          {/* Left Side - Account and Views */}
+          {/* Left Side - Views */}
           <div className="flex items-center gap-3">
-            <AccountDropdown />
             <ViewsDropdown onCreateView={() => setIsCreateViewModalOpen(true)} />
           </div>
 
