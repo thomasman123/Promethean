@@ -16,8 +16,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       {/* Sidebar */}
       <Sidebar />
       
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      {/* Main Content Area - Add margin-left for collapsed sidebar */}
+      <div className="flex-1 flex flex-col overflow-hidden ml-16">
         {/* Top Bar */}
         <TopBar mode={mode} onModeChange={setMode} />
         

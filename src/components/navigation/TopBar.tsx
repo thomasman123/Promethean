@@ -40,7 +40,7 @@ export default function TopBar({ mode, onModeChange }: TopBarProps) {
   ];
 
   return (
-    <div className="h-16 bg-white border-b border-gray-200 px-6 flex items-center justify-between">
+    <div className="h-16 bg-white border-b border-gray-100 px-6 flex items-center justify-between">
       {/* Left Section */}
       <div className="flex items-center space-x-4">
         {/* Mode Selector */}
@@ -48,9 +48,9 @@ export default function TopBar({ mode, onModeChange }: TopBarProps) {
           <button
             onClick={() => onModeChange('dashboard')}
             className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ${
-              mode === 'dashboard'
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-600 hover:text-gray-900'
+              mode === 'dashboard' 
+                ? 'bg-white text-gray-900 shadow-sm' 
+                : 'text-gray-500 hover:text-gray-700'
             }`}
           >
             Dashboard
@@ -58,12 +58,12 @@ export default function TopBar({ mode, onModeChange }: TopBarProps) {
           <button
             onClick={() => onModeChange('data')}
             className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ${
-              mode === 'data'
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-600 hover:text-gray-900'
+              mode === 'data' 
+                ? 'bg-white text-gray-900 shadow-sm' 
+                : 'text-gray-500 hover:text-gray-700'
             }`}
           >
-            Data
+            Data Table
           </button>
         </div>
 
