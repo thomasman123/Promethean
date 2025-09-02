@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/hooks/useAuth';
 import { useDashboardStore } from '@/lib/dashboard/store';
@@ -210,16 +209,19 @@ export function CreateViewModal({ isOpen, onClose }: CreateViewModalProps) {
           </div>
 
           {/* Modal Footer */}
-          <div className="px-6 py-4 border-t border-zinc-200/50 dark:border-zinc-800/50 flex items-center justify-between bg-zinc-50/50 dark:bg-zinc-800/20">
-            <div></div>
+          <div className="px-6 py-4 border-t border-zinc-200/50 dark:border-zinc-800/50 flex items-center justify-end">
             <div className="flex items-center gap-3">
-              <Button variant="secondary" onClick={handleClose} disabled={isSubmitting}>
+              <button 
+                onClick={handleClose} 
+                disabled={isSubmitting}
+                className="px-4 py-2 bg-zinc-100/90 dark:bg-zinc-900/90 text-zinc-900 dark:text-white hover:bg-zinc-200/90 dark:hover:bg-zinc-800/90 rounded-full font-medium text-sm backdrop-blur-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
                 Cancel
-              </Button>
-              <Button 
-                variant="primary" 
+              </button>
+              <button 
                 onClick={handleSubmit}
                 disabled={!viewName.trim() || isSubmitting}
+                className="px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-full font-medium text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSubmitting ? (
                   <div className="flex items-center gap-2">
@@ -234,7 +236,7 @@ export function CreateViewModal({ isOpen, onClose }: CreateViewModalProps) {
                     Create View
                   </>
                 )}
-              </Button>
+              </button>
             </div>
           </div>
         </div>
