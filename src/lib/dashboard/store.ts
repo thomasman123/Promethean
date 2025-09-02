@@ -119,19 +119,11 @@ export const useDashboardStore = create<DashboardStore>()(
       // Widgets - now computed from current view
       get widgets() {
         const state = get();
-        if (!state.currentView) {
-          return DEFAULT_WIDGETS;
-        }
-        return state.currentView.widgets || [];
-      },
-      
-      addWidget: (widget) => {
-        const state = get();
         
-        // If no current view exists, create a temporary view
+        // If no current view exists but we have an account, create a default view automatically
         if (!state.currentView && state.selectedAccountId) {
           const tempView: DashboardView = {
-            id: `temp-view-${Date.now()}`,
+            id: `default-view-${state.selectedAccountId}`,
             name: 'Default View',
             accountId: state.selectedAccountId,
             createdBy: 'system',
@@ -146,10 +138,35 @@ export const useDashboardStore = create<DashboardStore>()(
             updatedAt: new Date().toISOString()
           };
           
-          set((state) => ({
-            views: [...state.views, tempView],
-            currentView: tempView
-          }));
+          // Check if this default view already exists
+          const existingView = state.views.find(v => v.id === tempView.id);
+          if (!existingView) {
+            // Create the view and set it as current
+            set((state) => ({
+              views: [...state.views, tempView],
+              currentView: tempView
+            }));
+            return tempView.widgets;
+          } else {
+            // Use existing view
+            set({ currentView: existingView });
+            return existingView.widgets || [];
+          }
+        }
+        
+        if (!state.currentView) {
+          return [];
+        }
+        return state.currentView.widgets || [];
+      },
+      
+      addWidget: (widget) => {
+        const state = get();
+        
+        // The widgets getter will ensure we have a current view
+        if (!state.currentView) {
+          // Trigger the widgets getter to create a view if needed
+          get().widgets;
         }
         
         if (!state.currentView) {
@@ -202,33 +219,12 @@ export const useDashboardStore = create<DashboardStore>()(
       removeWidget: (widgetId) => {
         const state = get();
         
-        // If no current view exists, we're dealing with default widgets
-        // Create a temporary view to allow widget management
-        if (!state.currentView && state.selectedAccountId) {
-          const tempView: DashboardView = {
-            id: `temp-view-${Date.now()}`,
-            name: 'Default View',
-            accountId: state.selectedAccountId,
-            createdBy: 'system',
-            scope: 'team',
-            isPrivate: false,
-            filters: {},
-            widgets: DEFAULT_WIDGETS.filter(w => w.id !== widgetId),
-            compareMode: false,
-            compareEntities: [],
-            isDefault: true,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          };
-          
-          set((state) => ({
-            views: [...state.views, tempView],
-            currentView: tempView
-          }));
-          return;
+        // The widgets getter will ensure we have a current view
+        if (!state.currentView) {
+          // Trigger the widgets getter to create a view if needed
+          get().widgets;
         }
         
-        // Normal view-based widget removal
         if (!state.currentView) return;
         
         set((state) => ({
