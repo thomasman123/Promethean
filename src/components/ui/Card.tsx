@@ -20,7 +20,7 @@ export function Card({
   };
 
   return (
-    <div className={`bg-white rounded-2xl shadow-soft-md border border-zinc-100 ${paddingClasses[padding]} ${className}`}>
+    <div className={`bg-zinc-100 rounded-2xl ${paddingClasses[padding]} ${className}`}>
       {children}
     </div>
   );
@@ -39,7 +39,7 @@ export function Surface({
 }: SurfaceProps) {
   const variantClasses = {
     primary: 'bg-white',
-    secondary: 'bg-zinc-50'
+    secondary: 'bg-zinc-100'
   };
 
   return (
@@ -63,14 +63,14 @@ export function StatCard({ label, value, change, icon }: StatCardProps) {
   const trendColors = {
     up: 'text-green-600 bg-green-50',
     down: 'text-red-600 bg-red-50',
-    neutral: 'text-zinc-600 bg-zinc-50'
+    neutral: 'text-zinc-600 bg-zinc-100'
   };
 
   return (
     <Card padding="md">
       <div className="flex items-start justify-between">
         <div className="flex-1">
-          <p className="text-sm font-medium text-zinc-500">{label}</p>
+          <p className="text-sm font-medium text-zinc-600">{label}</p>
           <p className="mt-2 text-3xl font-semibold text-zinc-900">{value}</p>
           {change && (
             <div className="mt-3 flex items-center gap-2">
@@ -84,7 +84,7 @@ export function StatCard({ label, value, change, icon }: StatCardProps) {
           )}
         </div>
         {icon && (
-          <div className="w-12 h-12 bg-zinc-100 rounded-xl flex items-center justify-center text-zinc-600">
+          <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-zinc-900">
             {icon}
           </div>
         )}
@@ -96,7 +96,7 @@ export function StatCard({ label, value, change, icon }: StatCardProps) {
 /* Demo/Story */
 export function CardDemo() {
   return (
-    <div className="min-h-screen bg-zinc-50 p-8">
+    <div className="min-h-screen bg-white p-8">
       <div className="max-w-6xl mx-auto space-y-8">
         <div>
           <h2 className="text-2xl font-semibold text-zinc-900 mb-4">Cards</h2>
@@ -126,8 +126,8 @@ export function CardDemo() {
               value="$124,592"
               change={{ value: '+12.5%', trend: 'up' }}
               icon={
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1.41 16.09V20h-2.67v-1.93c-1.71-.36-3.16-1.46-3.27-3.4h1.96c.1.93.66 1.64 2.08 1.64 1.51 0 2.2-.63 2.2-1.51 0-.96-.52-1.46-2.56-1.81-2.25-.38-3.71-1.33-3.71-3.31 0-1.86 1.39-3 3.16-3.33V5h2.67v1.38c1.51.33 2.85 1.28 2.94 3.04h-1.99c-.1-.72-.58-1.38-1.78-1.38-1.21 0-1.94.54-1.94 1.38 0 .83.58 1.26 2.43 1.56 2.5.43 3.84 1.36 3.84 3.53 0 2.03-1.43 3.13-3.36 3.58z"/>
                 </svg>
               }
             />
@@ -137,8 +137,8 @@ export function CardDemo() {
               value="1,429"
               change={{ value: '-3.2%', trend: 'down' }}
               icon={
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
                 </svg>
               }
             />

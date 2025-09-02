@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
 
 interface TopDockProps {
   title?: string;
@@ -8,19 +8,41 @@ interface TopDockProps {
 }
 
 export function TopDock({ title = "Dashboard", actions }: TopDockProps) {
+  const [selectedTab, setSelectedTab] = useState<'dashboard' | 'data'>('dashboard');
+
   return (
-    <div className="sticky top-0 z-50 px-8 py-4">
-      <div className="bg-white rounded-2xl shadow-soft-lg border border-zinc-100 px-6 py-3 flex items-center justify-between">
+    <div className="sticky top-0 z-50 px-8 py-4 bg-white">
+      <div className="bg-white rounded-2xl border border-zinc-200 px-6 py-3 flex items-center justify-between">
         {/* Left section */}
         <div className="flex items-center gap-4">
           <h1 className="text-lg font-semibold text-zinc-900">{title}</h1>
           
-          {/* Tab pills */}
+          {/* Tab pills with icons */}
           <div className="flex items-center bg-zinc-100 rounded-full p-1">
-            <button className="px-4 py-1.5 text-sm font-medium text-zinc-900 bg-white rounded-full shadow-sm">
+            <button 
+              onClick={() => setSelectedTab('dashboard')}
+              className={`flex items-center gap-2 px-4 py-1.5 text-sm font-medium rounded-full transition-all ${
+                selectedTab === 'dashboard' 
+                  ? 'text-zinc-900 bg-white' 
+                  : 'text-zinc-600 hover:text-zinc-700'
+              }`}
+            >
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
+              </svg>
               Dashboard
             </button>
-            <button className="px-4 py-1.5 text-sm font-medium text-zinc-500 hover:text-zinc-700 transition-colors">
+            <button 
+              onClick={() => setSelectedTab('data')}
+              className={`flex items-center gap-2 px-4 py-1.5 text-sm font-medium rounded-full transition-all ${
+                selectedTab === 'data' 
+                  ? 'text-zinc-900 bg-white' 
+                  : 'text-zinc-600 hover:text-zinc-700'
+              }`}
+            >
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z" />
+              </svg>
               Data
             </button>
           </div>
@@ -29,25 +51,25 @@ export function TopDock({ title = "Dashboard", actions }: TopDockProps) {
         {/* Right section */}
         <div className="flex items-center gap-3">
           {/* Date range selector */}
-          <button className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-zinc-700 bg-zinc-50 rounded-lg hover:bg-zinc-100 transition-colors">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          <button className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-zinc-700 bg-zinc-100 rounded-lg hover:bg-zinc-200 transition-colors">
+            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M9 11H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2zm2-7h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11z"/>
             </svg>
             Last 30 days
           </button>
 
           {/* Export button */}
-          <button className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-zinc-700 bg-zinc-50 rounded-lg hover:bg-zinc-100 transition-colors">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
+          <button className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-zinc-700 bg-zinc-100 rounded-lg hover:bg-zinc-200 transition-colors">
+            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
             </svg>
             Export
           </button>
 
           {/* Primary CTA */}
           <button className="flex items-center gap-2 px-4 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
             </svg>
             Add Widget
           </button>
@@ -62,14 +84,13 @@ export function TopDock({ title = "Dashboard", actions }: TopDockProps) {
 /* Demo/Story */
 export function TopDockDemo() {
   return (
-    <div className="min-h-screen bg-zinc-50">
+    <div className="min-h-screen bg-white">
       <TopDock 
         title="Overview"
         actions={
           <button className="p-2 text-zinc-500 hover:text-zinc-700 hover:bg-zinc-100 rounded-lg transition-colors">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
             </svg>
           </button>
         }

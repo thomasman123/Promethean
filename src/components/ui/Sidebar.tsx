@@ -20,8 +20,8 @@ export function Sidebar() {
       label: 'Overview',
       href: '/',
       icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
         </svg>
       ),
     },
@@ -30,8 +30,8 @@ export function Sidebar() {
       label: 'Account',
       href: '/account',
       icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
         </svg>
       ),
     },
@@ -40,8 +40,8 @@ export function Sidebar() {
       label: 'Team',
       href: '/team',
       icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
         </svg>
       ),
     },
@@ -50,8 +50,8 @@ export function Sidebar() {
       label: 'Subscription Plans',
       href: '/subscription',
       icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/>
         </svg>
       ),
     },
@@ -60,8 +60,8 @@ export function Sidebar() {
       label: 'Buy Compute Packs',
       href: '/compute',
       icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM9 6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9V6zm9 14H6V10h12v10zm-6-3c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z"/>
         </svg>
       ),
     },
@@ -70,8 +70,8 @@ export function Sidebar() {
       label: 'Usage Statistics',
       href: '/usage',
       icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z"/>
         </svg>
       ),
     },
@@ -80,8 +80,8 @@ export function Sidebar() {
       label: 'Billing',
       href: '/billing',
       icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M21.9 4.1c-.1-.1-.2-.2-.3-.2H2.4c-.1 0-.2.1-.3.2-.1.1-.1.2-.1.3v15.2c0 .1 0 .2.1.3.1.1.2.1.3.1h19.2c.1 0 .2 0 .3-.1.1-.1.1-.2.1-.3V4.4c0-.1 0-.2-.1-.3zM20 8H4V6h16v2zm0 4H4v-2h16v2zm-8 4H4v-2h8v2z"/>
         </svg>
       ),
     },
@@ -90,17 +90,17 @@ export function Sidebar() {
       label: 'Promo',
       href: '/promo',
       icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/>
         </svg>
       ),
     },
   ];
 
   return (
-    <aside className="w-56 h-screen bg-white border-r border-zinc-100 flex flex-col">
+    <aside className="w-56 h-screen bg-white border-r border-zinc-200 flex flex-col">
       {/* Logo */}
-      <div className="h-16 flex items-center px-6 border-b border-zinc-100">
+      <div className="h-16 flex items-center px-6 border-b border-zinc-200">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 bg-zinc-900 rounded-lg flex items-center justify-center">
             <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24">
@@ -121,7 +121,7 @@ export function Sidebar() {
                 <Link
                   href={item.href}
                   className={`
-                    flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium
+                    flex items-center gap-3 px-3 py-2 rounded-full text-sm font-medium
                     transition-all duration-200
                     ${isActive 
                       ? 'bg-zinc-100 text-zinc-900' 
@@ -129,7 +129,7 @@ export function Sidebar() {
                     }
                   `}
                 >
-                  <span className={isActive ? 'text-zinc-900' : 'text-zinc-400'}>
+                  <span className="text-zinc-900">
                     {item.icon}
                   </span>
                   {item.label}
@@ -141,8 +141,8 @@ export function Sidebar() {
       </nav>
 
       {/* Footer */}
-      <div className="p-4 border-t border-zinc-100">
-        <div className="text-xs text-zinc-400 text-center">
+      <div className="p-4 border-t border-zinc-200">
+        <div className="text-xs text-zinc-500 text-center">
           curated by Mobbin
         </div>
       </div>
@@ -153,7 +153,7 @@ export function Sidebar() {
 /* Demo/Story */
 export function SidebarDemo() {
   return (
-    <div className="flex h-screen bg-zinc-50">
+    <div className="flex h-screen bg-white">
       <Sidebar />
       <div className="flex-1 p-8">
         <h1 className="text-2xl font-semibold text-zinc-900">Sidebar Demo</h1>

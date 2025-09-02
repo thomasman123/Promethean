@@ -14,10 +14,10 @@ export function Button({
   ...props 
 }: ButtonProps) {
   const variantClasses = {
-    primary: 'bg-blue-600 text-white hover:bg-blue-700 shadow-soft-sm',
+    primary: 'bg-blue-600 text-white hover:bg-blue-700',
     secondary: 'bg-zinc-100 text-zinc-900 hover:bg-zinc-200',
     ghost: 'bg-transparent text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900',
-    danger: 'bg-red-600 text-white hover:bg-red-700 shadow-soft-sm'
+    danger: 'bg-red-600 text-white hover:bg-red-700'
   };
 
   const sizeClasses = {
@@ -90,7 +90,7 @@ export function Pill({ children, selected = false, onClick }: PillProps) {
       className={`
         px-4 py-1.5 text-sm font-medium rounded-full transition-all duration-200
         ${selected 
-          ? 'bg-white text-zinc-900 shadow-sm' 
+          ? 'bg-white text-zinc-900' 
           : 'text-zinc-500 hover:text-zinc-700'
         }
       `}
@@ -103,7 +103,7 @@ export function Pill({ children, selected = false, onClick }: PillProps) {
 /* Demo/Story */
 export function ButtonDemo() {
   return (
-    <div className="min-h-screen bg-zinc-50 p-8">
+    <div className="min-h-screen bg-white p-8">
       <div className="max-w-4xl mx-auto space-y-8">
         <div>
           <h2 className="text-2xl font-semibold text-zinc-900 mb-4">Buttons</h2>
@@ -122,15 +122,15 @@ export function ButtonDemo() {
 
           <div className="mt-6 flex flex-wrap gap-4">
             <Button>
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
               </svg>
               With Icon
             </Button>
             <Button variant="secondary">
               Export
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
               </svg>
             </Button>
           </div>
