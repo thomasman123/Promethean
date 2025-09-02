@@ -60,31 +60,32 @@ export default function DashboardPage() {
     );
   }
 
-  if (!user) {
-    return (
-      <DashboardLayout>
-        <div className="min-h-full flex items-center justify-center">
-          <div className="text-center">
-            <h2 className="text-xl font-semibold text-gray-900">Please log in</h2>
-            <p className="mt-2 text-gray-600">You need to be logged in to view this page.</p>
-          </div>
-        </div>
-      </DashboardLayout>
-    );
-  }
+  // Temporarily disable auth checks for public testing
+  // if (!user) {
+  //   return (
+  //     <DashboardLayout>
+  //       <div className="min-h-full flex items-center justify-center">
+  //         <div className="text-center">
+  //           <h2 className="text-xl font-semibold text-gray-900">Please log in</h2>
+  //           <p className="mt-2 text-gray-600">You need to be logged in to view this page.</p>
+  //         </div>
+  //       </div>
+  //     </DashboardLayout>
+  //   );
+  // }
 
-  if (!selectedAccountId) {
-    return (
-      <DashboardLayout>
-        <div className="min-h-full flex items-center justify-center">
-          <div className="text-center">
-            <h2 className="text-xl font-semibold text-gray-900">Select an Account</h2>
-            <p className="mt-2 text-gray-600">Please select an account from the sidebar to continue.</p>
-          </div>
-        </div>
-      </DashboardLayout>
-    );
-  }
+  // if (!selectedAccountId) {
+  //   return (
+  //     <DashboardLayout>
+  //       <div className="min-h-full flex items-center justify-center">
+  //         <div className="text-center">
+  //           <h2 className="text-xl font-semibold text-gray-900">Select an Account</h2>
+  //           <p className="mt-2 text-gray-600">Please select an account from the sidebar to continue.</p>
+  //         </div>
+  //       </div>
+  //     </DashboardLayout>
+  //   );
+  // }
 
   return (
     <DashboardLayout>
