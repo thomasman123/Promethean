@@ -79,7 +79,7 @@ export default function Sidebar() {
   return (
     <div className="fixed left-4 top-1/2 -translate-y-1/2 z-50">
       {/* Navigation pill */}
-      <div className="flex flex-col items-center bg-zinc-100 dark:bg-zinc-900 rounded-full p-1">
+      <div className="flex flex-col items-center bg-zinc-100/90 dark:bg-zinc-900/90 backdrop-blur-md rounded-full p-1">
         {navItems.map((item) => {
           const isActive = pathname === item.href || (item.href === '/dashboard' && pathname === '/');
           return (
@@ -106,7 +106,7 @@ export default function Sidebar() {
       </div>
 
       {/* Settings button separated */}
-      <div className="mt-4 flex flex-col items-center bg-zinc-100 dark:bg-zinc-900 rounded-full p-1">
+      <div className="mt-4 flex flex-col items-center bg-zinc-100/90 dark:bg-zinc-900/90 backdrop-blur-md rounded-full p-1">
         <Link
           href="/settings"
           className="relative group p-2 rounded-full text-zinc-600 hover:text-zinc-900 dark:text-white dark:hover:text-white transition-all"

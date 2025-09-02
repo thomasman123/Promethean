@@ -1,9 +1,13 @@
-import type { Metadata } from "next";
-import "./globals.css";
+import { Metadata } from 'next';
+import { Inter } from 'next/font/google';
+import './globals.css';
+import { AnimatedGradientCSS } from '@/components/ui/AnimatedGradient';
+
+const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: "Promethean Dashboard",
-  description: "Sales performance analytics and management platform",
+  title: 'Promethean',
+  description: 'The Ascendant Agent',
 };
 
 export default function RootLayout({
@@ -13,8 +17,14 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="antialiased">
-        {children}
+      <body className={`${inter.className} antialiased`}>
+        {/* Animated background gradient */}
+        <AnimatedGradientCSS />
+        
+        {/* Main content with higher z-index */}
+        <div className="relative z-10">
+          {children}
+        </div>
       </body>
     </html>
   );
