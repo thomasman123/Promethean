@@ -100,8 +100,8 @@ export function Sidebar() {
 
   return (
     <aside 
-      className={`fixed left-2 top-[72px] h-[calc(100vh-80px)] bg-white z-[60] transition-all duration-300 overflow-hidden rounded-2xl shadow-md ${
-        isExpanded ? 'w-56' : 'w-16'
+      className={`fixed left-2 top-[72px] h-[calc(100vh-80px)] bg-white z-[60] transition-all duration-300 overflow-hidden rounded-2xl ${
+        isExpanded ? 'w-56 shadow-xl' : 'w-16'
       }`}
       onMouseEnter={() => setIsExpanded(true)}
       onMouseLeave={() => setIsExpanded(false)}
@@ -117,11 +117,12 @@ export function Sidebar() {
                   href={item.href}
                   className={`
                     flex items-center gap-3 px-3 py-2 rounded-full text-sm font-medium
-                    transition-all duration-200 relative
+                    transition-all duration-200 relative group
                     ${isActive 
                       ? 'bg-zinc-100 text-zinc-900' 
                       : 'text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900'
                     }
+                    ${!isExpanded ? 'justify-center' : ''}
                   `}
                 >
                   <span className="text-zinc-900 flex-shrink-0">

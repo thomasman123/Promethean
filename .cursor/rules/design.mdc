@@ -1,6 +1,4 @@
 ---
-description: Use this rule when asked to do any frontend or UI design
-globs: 
 alwaysApply: false
 ---
 When asked to design UI & frontend interface

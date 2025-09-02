@@ -55,45 +55,55 @@ export function TopDock({ className = '' }: TopDockProps) {
 
   return (
     <div className={`fixed top-0 left-0 right-0 z-50 h-16 flex items-center justify-between px-4 backdrop-blur-md bg-white/80 ${className}`}>
-      {/* Left section - Account Dropdown */}
-      <div className="relative">
-        <button
-          onClick={() => setIsAccountOpen(!isAccountOpen)}
-          className="flex items-center gap-2 px-4 py-2 bg-zinc-100 rounded-full text-sm font-medium text-zinc-900 hover:bg-zinc-200 transition-colors"
-        >
-          <span>{selectedAccount}</span>
-          <svg className={`w-4 h-4 transition-transform ${isAccountOpen ? 'rotate-180' : ''}`} fill="currentColor" viewBox="0 0 24 24">
-            <path d="M7 10l5 5 5-5z"/>
+      {/* Left section - Logo and Account Dropdown */}
+      <div className="flex items-center gap-4">
+        {/* Sword Logo */}
+        <div className="w-8 h-8 bg-black rounded flex items-center justify-center">
+          <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M17.47 2.53a.75.75 0 010 1.06l-7.72 7.72-2.04-2.04 7.72-7.72a.75.75 0 011.06 0l.98.98zM8.71 10.29l2.04 2.04-6.37 6.37a4.5 4.5 0 01-1.85 1.14l-.59.17a.75.75 0 01-.92-.92l.17-.59a4.5 4.5 0 011.14-1.85l6.37-6.37zM21 12a.75.75 0 01-.75.75h-4.5a.75.75 0 010-1.5h4.5A.75.75 0 0121 12zm-9 6a.75.75 0 010 1.5h-4.5a.75.75 0 010-1.5H12z"/>
           </svg>
-        </button>
+        </div>
+        
+        {/* Account Dropdown */}
+        <div className="relative">
+          <button
+            onClick={() => setIsAccountOpen(!isAccountOpen)}
+            className="flex items-center gap-2 px-4 py-2 bg-zinc-100 rounded-full text-sm font-medium text-zinc-900 hover:bg-zinc-200 transition-colors"
+          >
+            <span>{selectedAccount}</span>
+            <svg className={`w-4 h-4 transition-transform ${isAccountOpen ? 'rotate-180' : ''}`} fill="currentColor" viewBox="0 0 24 24">
+              <path d="M7 10l5 5 5-5z"/>
+            </svg>
+          </button>
 
-        {/* Dropdown Menu */}
-        {isAccountOpen && (
-          <>
-            <div className="fixed inset-0 z-10" onClick={() => setIsAccountOpen(false)} />
-            <div className="absolute top-full left-0 mt-2 w-64 bg-white rounded-xl shadow-lg border border-zinc-200 overflow-hidden z-20">
-              <div className="p-2">
-                {accounts.map((account) => (
-                  <button
-                    key={account.id}
-                    onClick={() => handleAccountSelect(account.name)}
-                    className={`w-full text-left px-3 py-2 rounded-lg hover:bg-zinc-50 transition-colors ${
-                      selectedAccount === account.name ? 'bg-zinc-100' : ''
-                    }`}
-                  >
-                    <div className="font-medium text-sm text-zinc-900">{account.name}</div>
-                    <div className="text-xs text-zinc-500">{account.type}</div>
+          {/* Dropdown Menu */}
+          {isAccountOpen && (
+            <>
+              <div className="fixed inset-0 z-10" onClick={() => setIsAccountOpen(false)} />
+              <div className="absolute top-full left-0 mt-2 w-64 bg-white rounded-xl shadow-lg border border-zinc-200 overflow-hidden z-20">
+                <div className="p-2">
+                  {accounts.map((account) => (
+                    <button
+                      key={account.id}
+                      onClick={() => handleAccountSelect(account.name)}
+                      className={`w-full text-left px-3 py-2 rounded-lg hover:bg-zinc-50 transition-colors ${
+                        selectedAccount === account.name ? 'bg-zinc-100' : ''
+                      }`}
+                    >
+                      <div className="font-medium text-sm text-zinc-900">{account.name}</div>
+                      <div className="text-xs text-zinc-500">{account.type}</div>
+                    </button>
+                  ))}
+                </div>
+                <div className="border-t border-zinc-200 p-2">
+                  <button className="w-full text-left px-3 py-2 rounded-lg hover:bg-zinc-50 transition-colors text-sm text-zinc-600">
+                    + Add Account
                   </button>
-                ))}
+                </div>
               </div>
-              <div className="border-t border-zinc-200 p-2">
-                <button className="w-full text-left px-3 py-2 rounded-lg hover:bg-zinc-50 transition-colors text-sm text-zinc-600">
-                  + Add Account
-                </button>
-              </div>
-            </div>
-          </>
-        )}
+            </>
+          )}
+        </div>
       </div>
 
       {/* Center navigation pills - absolute positioning for true center */}
