@@ -3,24 +3,30 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Animated gradient blob animation */
+/* Animated gradient blob animation - slower and more fluid */
 @keyframes blob {
   0% {
-    transform: translate(0px, 0px) scale(1);
+    transform: translate(0px, 0px) scale(1) rotate(0deg);
   }
-  33% {
-    transform: translate(30px, -50px) scale(1.1);
+  20% {
+    transform: translate(60px, -80px) scale(1.15) rotate(90deg);
   }
-  66% {
-    transform: translate(-20px, 20px) scale(0.9);
+  40% {
+    transform: translate(-40px, -60px) scale(0.95) rotate(180deg);
+  }
+  60% {
+    transform: translate(80px, 40px) scale(1.1) rotate(270deg);
+  }
+  80% {
+    transform: translate(-60px, 80px) scale(0.9) rotate(360deg);
   }
   100% {
-    transform: translate(0px, 0px) scale(1);
+    transform: translate(0px, 0px) scale(1) rotate(360deg);
   }
 }
 
 .animate-blob {
-  animation: blob 12s infinite;
+  animation: blob 30s infinite ease-in-out;
 }
 
 .animation-delay-2000 {
@@ -37,6 +43,10 @@
 
 .animation-delay-8000 {
   animation-delay: 8s;
+}
+
+.animation-delay-10000 {
+  animation-delay: 10s;
 }
 
 /* Smooth transitions for theme switching */

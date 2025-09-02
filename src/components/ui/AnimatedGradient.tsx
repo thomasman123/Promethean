@@ -20,42 +20,60 @@ export function AnimatedGradient() {
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
 
-    // Gradient blobs configuration
+    // Gradient blobs configuration - Purple and Blue shades only
     const blobs = [
       {
         x: Math.random() * canvas.width,
         y: Math.random() * canvas.height,
-        vx: (Math.random() - 0.5) * 0.5,
-        vy: (Math.random() - 0.5) * 0.5,
-        radius: 300,
+        vx: (Math.random() - 0.5) * 0.2, // Slower movement
+        vy: (Math.random() - 0.5) * 0.2,
+        radius: 400, // Larger for more coverage
         color: { r: 147, g: 51, b: 234 }, // Purple
         pulsePhase: Math.random() * Math.PI * 2,
       },
       {
         x: Math.random() * canvas.width,
         y: Math.random() * canvas.height,
-        vx: (Math.random() - 0.5) * 0.5,
-        vy: (Math.random() - 0.5) * 0.5,
-        radius: 400,
+        vx: (Math.random() - 0.5) * 0.15,
+        vy: (Math.random() - 0.5) * 0.15,
+        radius: 500,
+        color: { r: 99, g: 102, b: 241 }, // Indigo
+        pulsePhase: Math.random() * Math.PI * 2,
+      },
+      {
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        vx: (Math.random() - 0.5) * 0.25,
+        vy: (Math.random() - 0.5) * 0.25,
+        radius: 450,
         color: { r: 59, g: 130, b: 246 }, // Blue
         pulsePhase: Math.random() * Math.PI * 2,
       },
       {
         x: Math.random() * canvas.width,
         y: Math.random() * canvas.height,
-        vx: (Math.random() - 0.5) * 0.5,
-        vy: (Math.random() - 0.5) * 0.5,
+        vx: (Math.random() - 0.5) * 0.18,
+        vy: (Math.random() - 0.5) * 0.18,
         radius: 350,
-        color: { r: 236, g: 72, b: 153 }, // Pink
+        color: { r: 168, g: 85, b: 247 }, // Purple-pink
         pulsePhase: Math.random() * Math.PI * 2,
       },
       {
         x: Math.random() * canvas.width,
         y: Math.random() * canvas.height,
-        vx: (Math.random() - 0.5) * 0.5,
-        vy: (Math.random() - 0.5) * 0.5,
-        radius: 300,
-        color: { r: 16, g: 185, b: 129 }, // Green
+        vx: (Math.random() - 0.5) * 0.22,
+        vy: (Math.random() - 0.5) * 0.22,
+        radius: 400,
+        color: { r: 79, g: 70, b: 229 }, // Deep purple
+        pulsePhase: Math.random() * Math.PI * 2,
+      },
+      {
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        vx: (Math.random() - 0.5) * 0.16,
+        vy: (Math.random() - 0.5) * 0.16,
+        radius: 380,
+        color: { r: 96, g: 165, b: 250 }, // Sky blue
         pulsePhase: Math.random() * Math.PI * 2,
       },
     ];
@@ -68,7 +86,7 @@ export function AnimatedGradient() {
 
       // Update and draw each blob
       blobs.forEach((blob) => {
-        // Update position
+        // Update position with slower movement
         blob.x += blob.vx;
         blob.y += blob.vy;
 
@@ -82,8 +100,8 @@ export function AnimatedGradient() {
           blob.y = Math.max(blob.radius, Math.min(canvas.height - blob.radius, blob.y));
         }
 
-        // Pulse effect
-        const pulseFactor = 1 + Math.sin(time * 0.001 + blob.pulsePhase) * 0.1;
+        // Enhanced pulse effect - slower and more pronounced
+        const pulseFactor = 1 + Math.sin(time * 0.0005 + blob.pulsePhase) * 0.2;
         const currentRadius = blob.radius * pulseFactor;
 
         // Create radial gradient
@@ -98,10 +116,10 @@ export function AnimatedGradient() {
 
         // Determine opacity based on theme
         const isDarkMode = document.documentElement.classList.contains('dark');
-        const opacity = isDarkMode ? 0.15 : 0.1;
+        const opacity = isDarkMode ? 0.12 : 0.08; // Slightly reduced for more subtlety
 
         gradient.addColorStop(0, `rgba(${blob.color.r}, ${blob.color.g}, ${blob.color.b}, ${opacity})`);
-        gradient.addColorStop(0.5, `rgba(${blob.color.r}, ${blob.color.g}, ${blob.color.b}, ${opacity * 0.5})`);
+        gradient.addColorStop(0.4, `rgba(${blob.color.r}, ${blob.color.g}, ${blob.color.b}, ${opacity * 0.6})`);
         gradient.addColorStop(1, `rgba(${blob.color.r}, ${blob.color.g}, ${blob.color.b}, 0)`);
 
         ctx.fillStyle = gradient;
@@ -127,6 +145,7 @@ export function AnimatedGradient() {
       style={{ 
         zIndex: 0,
         opacity: 1,
+        filter: 'blur(40px)', // Add blur at the canvas level
       }}
     />
   );
@@ -136,12 +155,13 @@ export function AnimatedGradient() {
 export function AnimatedGradientCSS() {
   return (
     <div className="fixed inset-0 pointer-events-none overflow-hidden" style={{ zIndex: 0 }}>
-      {/* Gradient orbs */}
-      <div className="absolute -top-40 -left-40 w-96 h-96 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-10 dark:opacity-20 animate-blob" />
-      <div className="absolute -top-40 -right-40 w-96 h-96 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-10 dark:opacity-20 animate-blob animation-delay-2000" />
-      <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-pink-500 rounded-full mix-blend-multiply filter blur-3xl opacity-10 dark:opacity-20 animate-blob animation-delay-4000" />
-      <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-green-500 rounded-full mix-blend-multiply filter blur-3xl opacity-10 dark:opacity-20 animate-blob animation-delay-6000" />
-      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-yellow-500 rounded-full mix-blend-multiply filter blur-3xl opacity-10 dark:opacity-20 animate-blob animation-delay-8000" />
+      {/* Gradient orbs - Purple and Blue shades only */}
+      <div className="absolute -top-40 -left-40 w-[600px] h-[600px] bg-purple-500 rounded-full mix-blend-multiply filter blur-[128px] opacity-20 dark:opacity-30 animate-blob" />
+      <div className="absolute -top-40 -right-40 w-[700px] h-[700px] bg-indigo-500 rounded-full mix-blend-multiply filter blur-[128px] opacity-20 dark:opacity-30 animate-blob animation-delay-2000" />
+      <div className="absolute -bottom-40 left-20 w-[600px] h-[600px] bg-blue-500 rounded-full mix-blend-multiply filter blur-[128px] opacity-20 dark:opacity-30 animate-blob animation-delay-4000" />
+      <div className="absolute bottom-20 -right-40 w-[500px] h-[500px] bg-violet-500 rounded-full mix-blend-multiply filter blur-[128px] opacity-20 dark:opacity-30 animate-blob animation-delay-6000" />
+      <div className="absolute left-1/3 top-1/3 w-[550px] h-[550px] bg-purple-600 rounded-full mix-blend-multiply filter blur-[128px] opacity-20 dark:opacity-30 animate-blob animation-delay-8000" />
+      <div className="absolute right-1/3 bottom-1/3 w-[650px] h-[650px] bg-blue-600 rounded-full mix-blend-multiply filter blur-[128px] opacity-20 dark:opacity-30 animate-blob animation-delay-10000" />
     </div>
   );
 } 
