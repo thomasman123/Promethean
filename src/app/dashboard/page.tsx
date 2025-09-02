@@ -7,17 +7,17 @@ import { Button, Badge } from '@/components/ui/Button';
 
 export default function DashboardPage() {
   return (
-    <div className="flex h-screen bg-white">
-      {/* Sidebar */}
+    <>
+      {/* Floating Sidebar */}
       <Sidebar />
       
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col">
-        {/* Top Dock */}
-        <TopDock />
-        
+      {/* Top Dock */}
+      <TopDock />
+      
+      {/* Full-width Content */}
+      <div className="min-h-screen bg-white">
         {/* Content Area - Dashboard Overview */}
-        <div className="flex-1 overflow-y-auto px-8 pt-20 pb-8">
+        <div className="px-8 pt-20 pb-8">
           {/* KPI Widgets Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <KPIWidget 
@@ -115,6 +115,6 @@ export default function DashboardPage() {
           </Card>
         </div>
       </div>
-    </div>
+    </>
   );
 } 

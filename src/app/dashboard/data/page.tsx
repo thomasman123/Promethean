@@ -6,17 +6,17 @@ import { Card } from '@/components/ui/Card';
 
 export default function DataPage() {
   return (
-    <div className="flex h-screen bg-white">
-      {/* Sidebar */}
+    <>
+      {/* Floating Sidebar */}
       <Sidebar />
       
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col">
-        {/* Top Dock */}
-        <TopDock />
-        
+      {/* Top Dock */}
+      <TopDock />
+      
+      {/* Full-width Content */}
+      <div className="min-h-screen bg-white">
         {/* Content Area - Data View */}
-        <div className="flex-1 overflow-y-auto px-8 pt-20 pb-8">
+        <div className="px-8 pt-20 pb-8">
           <Card>
             <div className="flex items-center justify-center h-96">
               <div className="text-center">
@@ -30,6 +30,6 @@ export default function DataPage() {
           </Card>
         </div>
       </div>
-    </div>
+    </>
   );
 } 

@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -13,6 +13,7 @@ interface NavItem {
 
 export function Sidebar() {
   const pathname = usePathname();
+  const [isExpanded, setIsExpanded] = useState(false);
   
   const navItems: NavItem[] = [
     {
@@ -98,16 +99,24 @@ export function Sidebar() {
   ];
 
   return (
-    <aside className="w-56 h-screen bg-white flex flex-col">
+    <aside 
+      className={`fixed left-0 top-0 h-screen bg-white z-[60] transition-all duration-300 overflow-hidden ${
+        isExpanded ? 'w-56' : 'w-16'
+      }`}
+      onMouseEnter={() => setIsExpanded(true)}
+      onMouseLeave={() => setIsExpanded(false)}
+    >
       {/* Logo */}
-      <div className="h-16 flex items-center px-6">
+      <div className={`h-16 flex items-center ${isExpanded ? 'px-6' : 'px-4'}`}>
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-zinc-900 rounded-lg flex items-center justify-center">
+          <div className="w-8 h-8 bg-zinc-900 rounded-lg flex items-center justify-center flex-shrink-0">
             <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24">
               <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
             </svg>
           </div>
-          <span className="font-semibold text-zinc-900">Krea AI</span>
+          {isExpanded && (
+            <span className="font-semibold text-zinc-900 whitespace-nowrap">Krea AI</span>
+          )}
         </div>
       </div>
 
@@ -122,17 +131,24 @@ export function Sidebar() {
                   href={item.href}
                   className={`
                     flex items-center gap-3 px-3 py-2 rounded-full text-sm font-medium
-                    transition-all duration-200
+                    transition-all duration-200 relative
                     ${isActive 
                       ? 'bg-zinc-100 text-zinc-900' 
                       : 'text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900'
                     }
                   `}
                 >
-                  <span className="text-zinc-900">
+                  <span className="text-zinc-900 flex-shrink-0">
                     {item.icon}
                   </span>
-                  {item.label}
+                  {isExpanded && (
+                    <span className="whitespace-nowrap">{item.label}</span>
+                  )}
+                  {!isExpanded && (
+                    <div className="absolute left-full ml-2 px-2 py-1 bg-zinc-900 text-white text-xs rounded-md whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity">
+                      {item.label}
+                    </div>
+                  )}
                 </Link>
               </li>
             );
@@ -141,11 +157,13 @@ export function Sidebar() {
       </nav>
 
       {/* Footer */}
-      <div className="p-4">
-        <div className="text-xs text-zinc-500 text-center">
-          curated by Mobbin
+      {isExpanded && (
+        <div className="p-4">
+          <div className="text-xs text-zinc-500 text-center">
+            curated by Mobbin
+          </div>
         </div>
-      </div>
+      )}
     </aside>
   );
 }
@@ -153,11 +171,11 @@ export function Sidebar() {
 /* Demo/Story */
 export function SidebarDemo() {
   return (
-    <div className="flex h-screen bg-white">
+    <div className="min-h-screen bg-white">
       <Sidebar />
-      <div className="flex-1 p-8">
+      <div className="ml-16 p-8">
         <h1 className="text-2xl font-semibold text-zinc-900">Sidebar Demo</h1>
-        <p className="mt-2 text-zinc-600">Minimalist sidebar inspired by Krea AI</p>
+        <p className="mt-2 text-zinc-600">Hover over the sidebar to see it expand</p>
       </div>
     </div>
   );
