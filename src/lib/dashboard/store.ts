@@ -17,8 +17,8 @@ interface DashboardStore {
   
   // Widgets - these are now derived from currentView
   widgets: DashboardWidget[];
-  addWidget: (widget: Omit<DashboardWidget, 'id' | 'position'> & { position?: WidgetPosition }) => void;
-  removeWidget: (widgetId: string) => void;
+  addWidget: (widget: Omit<DashboardWidget, 'id' | 'position'> & { position?: WidgetPosition }) => Promise<void>;
+  removeWidget: (widgetId: string) => Promise<void>;
   updateWidget: (widgetId: string, updates: Partial<DashboardWidget>) => void;
   updateWidgetSize: (widgetId: string, width: number, height: number) => void;
   updateWidgetLayout: (layout: any[]) => void;
@@ -52,9 +52,10 @@ interface DashboardStore {
   
   // Views management
   views: DashboardView[];
-  createView: (view: Omit<DashboardView, 'id' | 'createdAt' | 'updatedAt' | 'widgets'>) => void;
-  updateView: (viewId: string, updates: Partial<DashboardView>) => void;
-  deleteView: (viewId: string) => void;
+  loadViews: (accountId: string) => Promise<void>;
+  createView: (view: Omit<DashboardView, 'id' | 'createdAt' | 'updatedAt' | 'widgets'>) => Promise<void>;
+  updateView: (viewId: string, updates: Partial<DashboardView>) => Promise<void>;
+  deleteView: (viewId: string) => Promise<void>;
   getViewsForAccount: (accountId: string) => DashboardView[];
 }
 
@@ -157,7 +158,7 @@ export const useDashboardStore = create<DashboardStore>()(
         return state.currentView?.widgets || [];
       },
       
-      addWidget: (widget) => {
+      addWidget: async (widget) => {
         // Ensure we have a current view
         get().initializeDefaultView();
         
@@ -197,35 +198,53 @@ export const useDashboardStore = create<DashboardStore>()(
         };
         
         // Update the current view's widgets
+        const updatedWidgets = [...(state.currentView.widgets || []), newWidget];
+        
         set((state) => ({
           views: state.views.map(v => 
             v.id === state.currentView?.id 
-              ? { ...v, widgets: [...(v.widgets || []), newWidget] }
+              ? { ...v, widgets: updatedWidgets }
               : v
           ),
           currentView: state.currentView 
-            ? { ...state.currentView, widgets: [...(state.currentView.widgets || []), newWidget] }
+            ? { ...state.currentView, widgets: updatedWidgets }
             : null
         }));
+
+        // Save to database
+        try {
+          await get().updateView(state.currentView.id, { widgets: updatedWidgets });
+        } catch (error) {
+          console.error('Failed to save widget to database:', error);
+        }
       },
       
-      removeWidget: (widgetId) => {
+      removeWidget: async (widgetId) => {
         // Ensure we have a current view
         get().initializeDefaultView();
         
         const state = get();
         if (!state.currentView) return;
         
+        const updatedWidgets = (state.currentView.widgets || []).filter(w => w.id !== widgetId);
+        
         set((state) => ({
           views: state.views.map(v => 
             v.id === state.currentView?.id 
-              ? { ...v, widgets: (v.widgets || []).filter(w => w.id !== widgetId) }
+              ? { ...v, widgets: updatedWidgets }
               : v
           ),
           currentView: state.currentView 
-            ? { ...state.currentView, widgets: (state.currentView.widgets || []).filter(w => w.id !== widgetId) }
+            ? { ...state.currentView, widgets: updatedWidgets }
             : null
         }));
+
+        // Save to database
+        try {
+          await get().updateView(state.currentView.id, { widgets: updatedWidgets });
+        } catch (error) {
+          console.error('Failed to save widget removal to database:', error);
+        }
       },
       
       updateWidget: (widgetId, updates) => {
@@ -354,33 +373,89 @@ export const useDashboardStore = create<DashboardStore>()(
       
       // Views
       views: [],
-      createView: (view) => {
-        const newView: DashboardView = {
-          ...view,
-          id: `view-${Date.now()}`,
-          widgets: [], // Start with empty widgets for new views
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        };
-        set((state) => ({ views: [...state.views, newView] }));
+      
+      loadViews: async (accountId) => {
+        try {
+          const response = await fetch(`/api/dashboard/views?accountId=${accountId}`);
+          if (!response.ok) {
+            throw new Error(`Failed to load views: ${response.status}`);
+          }
+          const data = await response.json();
+          set({ views: data.views || [] });
+        } catch (error) {
+          console.error('Error loading views:', error);
+          set({ views: [] });
+        }
       },
       
-      updateView: (viewId, updates) => {
-        set((state) => ({
-          views: state.views.map((v) =>
-            v.id === viewId
-              ? { ...v, ...updates, updatedAt: new Date().toISOString() }
-              : v
-          )
-        }));
+      createView: async (view) => {
+        try {
+          const response = await fetch('/api/dashboard/views', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(view)
+          });
+          
+          if (!response.ok) {
+            throw new Error(`Failed to create view: ${response.status}`);
+          }
+          
+          const data = await response.json();
+          const newView = data.view;
+          
+          set((state) => ({ 
+            views: [...state.views, newView],
+            currentView: newView // Set the newly created view as current
+          }));
+        } catch (error) {
+          console.error('Error creating view:', error);
+          throw error;
+        }
       },
       
-      deleteView: (viewId) => {
-        set((state) => ({
-          views: state.views.filter((v) => v.id !== viewId),
-          currentView:
-            state.currentView?.id === viewId ? null : state.currentView
-        }));
+      updateView: async (viewId, updates) => {
+        try {
+          const response = await fetch('/api/dashboard/views', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: viewId, ...updates })
+          });
+          
+          if (!response.ok) {
+            throw new Error(`Failed to update view: ${response.status}`);
+          }
+          
+          const data = await response.json();
+          const updatedView = data.view;
+          
+          set((state) => ({
+            views: state.views.map((v) => v.id === viewId ? updatedView : v),
+            currentView: state.currentView?.id === viewId ? updatedView : state.currentView
+          }));
+        } catch (error) {
+          console.error('Error updating view:', error);
+          throw error;
+        }
+      },
+      
+      deleteView: async (viewId) => {
+        try {
+          const response = await fetch(`/api/dashboard/views?id=${viewId}`, {
+            method: 'DELETE'
+          });
+          
+          if (!response.ok) {
+            throw new Error(`Failed to delete view: ${response.status}`);
+          }
+          
+          set((state) => ({
+            views: state.views.filter((v) => v.id !== viewId),
+            currentView: state.currentView?.id === viewId ? null : state.currentView
+          }));
+        } catch (error) {
+          console.error('Error deleting view:', error);
+          throw error;
+        }
       },
       
       getViewsForAccount: (accountId) => {

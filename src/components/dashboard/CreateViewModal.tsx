@@ -29,7 +29,7 @@ export function CreateViewModal({ isOpen, onClose }: CreateViewModalProps) {
     setIsSubmitting(true);
     try {
       // Create the view with empty widgets and current filters
-      createView({
+      await createView({
         name: viewName.trim(),
         description: viewDescription.trim() || undefined,
         accountId: selectedAccountId,

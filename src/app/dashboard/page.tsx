@@ -13,7 +13,7 @@ import { useAuth } from '@/hooks/useAuth';
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
 export default function DashboardPage() {
-  const { widgets, removeWidget, updateWidgetLayout, setSelectedAccount, selectedAccountId: storeAccountId, initializeDefaultView } = useDashboardStore();
+  const { widgets, removeWidget, updateWidgetLayout, setSelectedAccount, selectedAccountId: storeAccountId, initializeDefaultView, loadViews } = useDashboardStore();
   const { selectedAccountId: authAccountId } = useAuth();
   const [dateRange, setDateRange] = useState('Last 30 days');
   const [isAddWidgetModalOpen, setIsAddWidgetModalOpen] = useState(false);
@@ -27,13 +27,21 @@ export default function DashboardPage() {
     }
   }, [authAccountId, storeAccountId, setSelectedAccount]);
 
-  // Initialize default view when needed
+  // Load views and initialize default view when account changes
   useEffect(() => {
-    initializeDefaultView();
-  }, [storeAccountId, initializeDefaultView]);
+    if (storeAccountId) {
+      loadViews(storeAccountId).then(() => {
+        initializeDefaultView();
+      });
+    }
+  }, [storeAccountId, loadViews, initializeDefaultView]);
 
-  const handleWidgetDelete = (widgetId: string) => {
-    removeWidget(widgetId);
+  const handleWidgetDelete = async (widgetId: string) => {
+    try {
+      await removeWidget(widgetId);
+    } catch (error) {
+      console.error('Failed to delete widget:', error);
+    }
   };
 
   // Convert widgets to grid layout format with proper constraints
