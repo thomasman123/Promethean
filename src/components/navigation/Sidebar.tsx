@@ -79,7 +79,7 @@ export default function Sidebar() {
   return (
     <div className="fixed left-4 top-1/2 -translate-y-1/2 z-50">
       {/* Navigation pill */}
-      <div className="flex flex-col items-center bg-zinc-100 rounded-full p-1">
+      <div className="flex flex-col items-center bg-zinc-100 dark:bg-zinc-800 rounded-full p-1">
         {navItems.map((item) => {
           const isActive = pathname === item.href || (item.href === '/dashboard' && pathname === '/');
           return (
@@ -89,8 +89,8 @@ export default function Sidebar() {
               className={`
                 relative group p-2 rounded-full transition-all
                 ${isActive 
-                  ? 'text-zinc-900 bg-white dark:text-zinc-900 dark:bg-black' 
-                  : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'
+                  ? 'text-zinc-900 bg-white dark:text-white dark:bg-black' 
+                  : 'text-zinc-600 hover:text-zinc-900 dark:text-white dark:hover:text-white'
                 }
               `}
             >
@@ -106,10 +106,10 @@ export default function Sidebar() {
       </div>
 
       {/* Settings button separated */}
-      <div className="mt-4 flex flex-col items-center bg-zinc-100 rounded-full p-1">
+      <div className="mt-4 flex flex-col items-center bg-zinc-100 dark:bg-zinc-800 rounded-full p-1">
         <Link
           href="/settings"
-          className="relative group p-2 rounded-full text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white transition-all"
+          className="relative group p-2 rounded-full text-zinc-600 hover:text-zinc-900 dark:text-white dark:hover:text-white transition-all"
         >
           {Icons.settings}
           

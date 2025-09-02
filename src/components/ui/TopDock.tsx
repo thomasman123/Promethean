@@ -96,7 +96,7 @@ export function TopDock({ className = '' }: TopDockProps) {
         <div className="relative">
           <button
             onClick={() => setIsAccountOpen(!isAccountOpen)}
-            className="flex items-center gap-2 px-4 py-2 bg-zinc-100 rounded-full text-sm font-medium text-zinc-900 dark:text-white hover:bg-zinc-200 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-zinc-100 dark:bg-zinc-800 rounded-full text-sm font-medium text-zinc-900 dark:text-white hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"
           >
             <span>{selectedAccount}</span>
             <svg className={`w-4 h-4 transition-transform ${isAccountOpen ? 'rotate-180' : ''}`} fill="currentColor" viewBox="0 0 24 24">
@@ -134,13 +134,13 @@ export function TopDock({ className = '' }: TopDockProps) {
         </div>
 
         {/* Navigation pills */}
-        <div className="flex items-center bg-zinc-100 rounded-full p-1">
+        <div className="flex items-center bg-zinc-100 dark:bg-zinc-800 rounded-full p-1">
           <button 
             onClick={() => handleTabChange('dashboard')}
             className={`p-2 rounded-full transition-all ${
               selectedTab === 'dashboard' 
-                ? 'text-zinc-900 bg-white dark:text-zinc-900 dark:bg-black' 
-                : 'text-zinc-600 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-white'
+                ? 'text-zinc-900 bg-white dark:text-white dark:bg-black' 
+                : 'text-zinc-600 hover:text-zinc-700 dark:text-white dark:hover:text-white'
             }`}
             aria-label="Dashboard"
           >
@@ -152,8 +152,8 @@ export function TopDock({ className = '' }: TopDockProps) {
             onClick={() => handleTabChange('data')}
             className={`p-2 rounded-full transition-all ${
               selectedTab === 'data' 
-                ? 'text-zinc-900 bg-white dark:text-zinc-900 dark:bg-black' 
-                : 'text-zinc-600 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-white'
+                ? 'text-zinc-900 bg-white dark:text-white dark:bg-black' 
+                : 'text-zinc-600 hover:text-zinc-700 dark:text-white dark:hover:text-white'
             }`}
             aria-label="Data"
           >
@@ -166,10 +166,10 @@ export function TopDock({ className = '' }: TopDockProps) {
 
       {/* Right section - User profile area */}
       <div className="flex items-center gap-3">
-        <div className="flex items-center bg-zinc-100 rounded-full p-1">
+        <div className="flex items-center bg-zinc-100 dark:bg-zinc-800 rounded-full p-1">
           {/* Support */}
           <button 
-            className="p-2 rounded-full text-zinc-600 hover:text-zinc-900 hover:bg-zinc-200 dark:text-zinc-400 dark:hover:text-white dark:hover:bg-zinc-700 transition-all"
+            className="p-2 rounded-full text-zinc-600 hover:text-zinc-900 hover:bg-zinc-200 dark:text-white dark:hover:text-white dark:hover:bg-zinc-700 transition-all"
             aria-label="Support"
           >
             <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
@@ -179,7 +179,7 @@ export function TopDock({ className = '' }: TopDockProps) {
 
           {/* Notifications */}
           <button 
-            className="p-2 rounded-full text-zinc-600 hover:text-zinc-900 hover:bg-zinc-200 dark:text-zinc-400 dark:hover:text-white dark:hover:bg-zinc-700 transition-all"
+            className="p-2 rounded-full text-zinc-600 hover:text-zinc-900 hover:bg-zinc-200 dark:text-white dark:hover:text-white dark:hover:bg-zinc-700 transition-all"
             aria-label="Notifications"
           >
             <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
@@ -190,7 +190,7 @@ export function TopDock({ className = '' }: TopDockProps) {
           {/* Theme toggle */}
           <button 
             onClick={toggleTheme}
-            className="p-2 rounded-full text-zinc-600 hover:text-zinc-900 hover:bg-zinc-200 dark:text-zinc-400 dark:hover:text-white dark:hover:bg-zinc-700 transition-all"
+            className="p-2 rounded-full text-zinc-600 hover:text-zinc-900 hover:bg-zinc-200 dark:text-white dark:hover:text-white dark:hover:bg-zinc-700 transition-all"
             aria-label="Toggle theme"
           >
             {isDarkMode ? (
