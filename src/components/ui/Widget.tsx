@@ -120,7 +120,7 @@ export function Widget({
   return (
     <div
       ref={widgetRef}
-      className={`relative group bg-white/90 dark:bg-zinc-900/90 backdrop-blur-sm rounded-2xl border border-zinc-200/50 dark:border-zinc-800/50 shadow-sm hover:shadow-md transition-all duration-200 ${className}`}
+      className={`relative group bg-zinc-100/90 dark:bg-zinc-900/90 backdrop-blur-sm rounded-2xl transition-all duration-200 ${className}`}
       style={style}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
