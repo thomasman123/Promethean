@@ -64,22 +64,11 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-zinc-50 to-zinc-100 dark:from-zinc-950 dark:to-black flex items-center justify-center p-4">
-      {/* Animated gradient background */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-500 rounded-full opacity-10 blur-3xl animate-blob" />
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-purple-500 rounded-full opacity-10 blur-3xl animate-blob animation-delay-2000" />
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-pink-500 rounded-full opacity-10 blur-3xl animate-blob animation-delay-4000" />
-      </div>
+    <div className="min-h-screen bg-white/50 dark:bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
 
-      <div className="w-full max-w-md z-10">
+      <div className="w-full max-w-md">
         {/* Logo and Header */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 mb-4 bg-gradient-to-br from-blue-500 to-purple-600 text-white rounded-2xl shadow-lg">
-            <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
-            </svg>
-          </div>
           <h1 className="text-3xl font-bold text-zinc-900 dark:text-white mb-2">
             Welcome back
           </h1>
@@ -89,7 +78,7 @@ export default function LoginPage() {
         </div>
 
         {/* Login Form */}
-        <div className="bg-white/90 dark:bg-zinc-900/90 backdrop-blur-xl rounded-3xl shadow-2xl border border-zinc-200/50 dark:border-zinc-800/50 p-8">
+        <div className="bg-zinc-100/90 dark:bg-zinc-900/90 backdrop-blur-sm rounded-2xl p-8">
           <form onSubmit={handleLogin} className="space-y-6">
             {/* Email Input */}
             <div>
@@ -162,7 +151,7 @@ export default function LoginPage() {
 
             {/* Error message */}
             {error && (
-              <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+              <div className="p-3 bg-red-100/50 dark:bg-red-900/20 rounded-lg">
                 <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
               </div>
             )}
@@ -199,7 +188,7 @@ export default function LoginPage() {
           <div className="grid grid-cols-2 gap-3">
             <button
               type="button"
-              className="flex items-center justify-center gap-2 px-4 py-2 bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 rounded-full text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-colors"
+              className="flex items-center justify-center gap-2 px-4 py-2 bg-white/90 dark:bg-zinc-800/90 backdrop-blur-sm rounded-full text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-all"
               disabled
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -212,7 +201,7 @@ export default function LoginPage() {
             </button>
             <button
               type="button"
-              className="flex items-center justify-center gap-2 px-4 py-2 bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 rounded-full text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-colors"
+              className="flex items-center justify-center gap-2 px-4 py-2 bg-white/90 dark:bg-zinc-800/90 backdrop-blur-sm rounded-full text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-all"
               disabled
             >
               <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
