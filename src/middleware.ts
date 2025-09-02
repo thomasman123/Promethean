@@ -71,9 +71,9 @@ export async function middleware(req: NextRequest) {
     return supabaseResponse
   }
 
-  // Temporarily allow public access to dashboard for testing
-  if (req.nextUrl.pathname.startsWith('/dashboard')) {
-    return supabaseResponse
+  // Require authentication for dashboard
+  if (req.nextUrl.pathname.startsWith('/dashboard') && !session) {
+    return NextResponse.redirect(new URL('/', req.url))
   }
 
   // Redirect to login if user is not authenticated and trying to access protected routes

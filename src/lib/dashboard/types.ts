@@ -99,9 +99,11 @@ export interface SetterRepPair {
 export interface DashboardView {
   id: string;
   name: string;
+  description?: string;
   accountId: string;
   createdBy: string;
   scope: ViewScope;
+  isPrivate: boolean; // Computed from scope: scope === 'private'
   notes?: string;
   filters: DashboardFilters;
   widgets: DashboardWidget[];

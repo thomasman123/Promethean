@@ -8,7 +8,7 @@ import { METRICS_REGISTRY } from '../metrics/registry';
 interface DashboardStore {
   // Current view
   currentView: DashboardView | null;
-  setCurrentView: (view: DashboardView) => void;
+  setCurrentView: (view: DashboardView | null) => void;
   
   // Widgets
   widgets: DashboardWidget[];
