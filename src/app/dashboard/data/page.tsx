@@ -4,7 +4,7 @@ import { Card } from '@/components/ui/Card';
 
 export default function DataPage() {
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
+    <div className="min-h-screen bg-white dark:bg-zinc-950">
       {/* Content Area - Data View */}
       <div className="pl-20 pr-8 pt-20 pb-8">
         <Card>

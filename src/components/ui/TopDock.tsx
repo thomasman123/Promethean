@@ -74,7 +74,7 @@ export function TopDock({ className = '' }: TopDockProps) {
   };
 
   return (
-    <div className={`fixed top-0 left-0 right-0 z-40 h-16 flex items-center justify-between px-4 backdrop-blur-md bg-white/80 dark:bg-zinc-900/80 ${className}`}>
+    <div className={`fixed top-0 left-0 right-0 z-40 h-16 flex items-center justify-between px-4 backdrop-blur-xl bg-transparent ${className}`}>
       {/* Left section - Logo and Page Title */}
       <div className="flex items-center gap-4">
         {/* Sword Logo */}
