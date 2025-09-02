@@ -62,45 +62,4 @@
   .border-light {
     border-color: rgb(var(--color-border-light));
   }
-  
-  /* Component-specific dark mode support */
-  .dark .bg-zinc-100 {
-    background-color: rgb(var(--color-zinc-900));
-  }
-  
-  .dark .bg-zinc-50 {
-    background-color: rgb(var(--color-zinc-950));
-  }
-  
-  .dark .bg-zinc-200 {
-    background-color: rgb(var(--color-zinc-800));
-  }
-  
-  .dark .text-zinc-900 {
-    color: rgb(var(--color-zinc-50));
-  }
-  
-  .dark .text-zinc-700 {
-    color: rgb(var(--color-zinc-300));
-  }
-  
-  .dark .text-zinc-600 {
-    color: rgb(var(--color-zinc-400));
-  }
-  
-  .dark .text-zinc-500 {
-    color: rgb(var(--color-zinc-500));
-  }
-  
-  .dark .hover\:bg-zinc-50:hover {
-    background-color: rgb(var(--color-zinc-900));
-  }
-  
-  .dark .hover\:bg-zinc-100:hover {
-    background-color: rgb(var(--color-zinc-800));
-  }
-  
-  .dark .hover\:bg-zinc-200:hover {
-    background-color: rgb(var(--color-zinc-700));
-  }
 }
