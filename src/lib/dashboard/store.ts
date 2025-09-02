@@ -21,8 +21,23 @@ interface DashboardStore {
   // Filters
   filters: {
     dateRange?: { start: Date; end: Date };
-    accounts?: string[];
-    users?: string[];
+    accountId?: string;
+    repIds?: string[];
+    setterIds?: string[];
+    utm_source?: string[];
+    utm_medium?: string[];
+    utm_campaign?: string[];
+    utm_content?: string[];
+    utm_term?: string[];
+    utm_id?: string[];
+    source_category?: string[];
+    specific_source?: string[];
+    session_source?: string[];
+    referrer?: string[];
+    fbclid?: string[];
+    fbc?: string[];
+    fbp?: string[];
+    gclid?: string[];
   };
   setFilters: (filters: any) => void;
   
@@ -47,7 +62,7 @@ export const useDashboardStore = create<DashboardStore>()(
       widgets: [
         {
           id: 'widget-1',
-          metricName: 'total_revenue',
+          metricName: 'cash_collected',
           breakdown: 'total',
           vizType: 'kpi', // KPI Tile preset
           position: { x: 0, y: 0 },
@@ -55,7 +70,7 @@ export const useDashboardStore = create<DashboardStore>()(
         },
         {
           id: 'widget-2',
-          metricName: 'appointments_scheduled',
+          metricName: 'total_appointments',
           breakdown: 'total',
           vizType: 'kpi', // KPI Tile preset
           position: { x: 1, y: 0 },
@@ -63,7 +78,7 @@ export const useDashboardStore = create<DashboardStore>()(
         },
         {
           id: 'widget-3',
-          metricName: 'conversion_rate',
+          metricName: 'show_up_rate',
           breakdown: 'total',
           vizType: 'kpi', // KPI Tile preset
           position: { x: 2, y: 0 },
@@ -71,7 +86,7 @@ export const useDashboardStore = create<DashboardStore>()(
         },
         {
           id: 'widget-4',
-          metricName: 'active_users',
+          metricName: 'sales_made',
           breakdown: 'total',
           vizType: 'kpi', // KPI Tile preset
           position: { x: 3, y: 0 },

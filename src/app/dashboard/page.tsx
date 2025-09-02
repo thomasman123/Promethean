@@ -1,9 +1,9 @@
 "use client";
 
-import { KPIWidget } from '@/components/ui/Card';
 import { Widget } from '@/components/ui/Widget';
 import { useDashboardStore } from '@/lib/dashboard/store';
 import { AddWidgetModal } from '@/components/dashboard/AddWidgetModal';
+import { MetricWidget } from '@/components/dashboard/MetricWidget';
 import { useState } from 'react';
 
 export default function DashboardPage() {
@@ -17,33 +17,6 @@ export default function DashboardPage() {
 
   const handleWidgetResize = (widgetId: string, width: number, height: number) => {
     updateWidgetSize(widgetId, width, height);
-  };
-
-  // Map metric names to display values - in a real app this would come from the metrics engine
-  const mockMetricData: Record<string, { value: string; change?: { value: string; trend: 'up' | 'down' | 'neutral' } }> = {
-    'total_revenue': { value: '$124,592', change: { value: '12.5%', trend: 'up' } },
-    'appointments_scheduled': { value: '142', change: { value: '8.2%', trend: 'up' } },
-    'conversion_rate': { value: '23.8%', change: { value: '2.4%', trend: 'down' } },
-    'active_users': { value: '89', change: { value: '5', trend: 'up' } },
-    'total_appointments': { value: '187', change: { value: '9.3%', trend: 'up' } },
-    'show_ups_appointments': { value: '142', change: { value: '8.2%', trend: 'up' } },
-    'show_ups_discoveries': { value: '23', change: { value: '15.0%', trend: 'up' } },
-    'sales_made': { value: '34', change: { value: '13.3%', trend: 'up' } },
-    'cash_collected': { value: '$124,592', change: { value: '12.5%', trend: 'up' } },
-    'appointment_to_sale_rate': { value: '18.2%', change: { value: '1.2%', trend: 'up' } },
-    'pitch_to_sale_rate': { value: '42.5%', change: { value: '3.8%', trend: 'up' } },
-    'answer_to_sale_rate': { value: '23.9%', change: { value: '0.7%', trend: 'down' } },
-    'cash_per_sale': { value: '$3,664', change: { value: '5.2%', trend: 'up' } },
-    'cash_per_appointment': { value: '$666', change: { value: '2.8%', trend: 'up' } },
-    'cash_per_dial': { value: '$12.46', change: { value: '4.1%', trend: 'up' } },
-    'show_up_rate': { value: '75.9%', change: { value: '1.4%', trend: 'up' } },
-    'booking_lead_time': { value: '2.4 days', change: { value: '0.3', trend: 'down' } },
-    'speed_to_lead': { value: '4m 32s', change: { value: '28s', trend: 'down' } },
-    'answers_dials': { value: '2,341', change: { value: '8.7%', trend: 'up' } },
-    'meaningful_conversations_dials': { value: '892', change: { value: '11.2%', trend: 'up' } },
-    'booked_calls_dials': { value: '187', change: { value: '9.3%', trend: 'up' } },
-    'meaningful_conversation_avg_call_length_dials': { value: '6m 14s', change: { value: '18s', trend: 'up' } },
-    'total_dials': { value: '10,002', change: { value: '5.1%', trend: 'up' } }
   };
 
   return (
@@ -89,40 +62,31 @@ export default function DashboardPage() {
         {/* Widget Grid - Proper grid system */}
         <div className="grid grid-cols-12 gap-4 auto-rows-[200px]">
           {widgets.map((widget) => {
-            if (widget.vizType === 'kpi') {
-              const metricData = mockMetricData[widget.metricName] || { value: '0' };
-              // Calculate grid column span based on widget width
-              const colSpan = Math.min(widget.size.w * 3, 12); // Each unit = 3 columns, max 12
-              const rowSpan = widget.size.h; // Each unit = 1 row (200px)
-              
-              return (
-                <div
-                  key={widget.id}
-                  className={`col-span-${colSpan} row-span-${rowSpan}`}
-                  style={{
-                    gridColumn: `span ${colSpan} / span ${colSpan}`,
-                    gridRow: `span ${rowSpan} / span ${rowSpan}`
-                  }}
+            // Calculate grid column span based on widget width
+            const colSpan = Math.min(widget.size.w * 3, 12); // Each unit = 3 columns, max 12
+            const rowSpan = widget.size.h; // Each unit = 1 row (200px)
+            
+            return (
+              <div
+                key={widget.id}
+                className={`col-span-${colSpan} row-span-${rowSpan}`}
+                style={{
+                  gridColumn: `span ${colSpan} / span ${colSpan}`,
+                  gridRow: `span ${rowSpan} / span ${rowSpan}`
+                }}
+              >
+                <Widget
+                  id={widget.id}
+                  onDelete={handleWidgetDelete}
+                  onResize={handleWidgetResize}
+                  initialWidth="100%"
+                  initialHeight="100%"
+                  gridBased={true}
                 >
-                  <Widget
-                    id={widget.id}
-                    onDelete={handleWidgetDelete}
-                    onResize={handleWidgetResize}
-                    initialWidth="100%"
-                    initialHeight="100%"
-                    gridBased={true}
-                  >
-                    <KPIWidget
-                      label={widget.settings?.title || widget.metricName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                      value={metricData.value}
-                      change={metricData.change}
-                    />
-                  </Widget>
-                </div>
-              );
-            }
-            // Add other widget types (charts, etc.) here in the future
-            return null;
+                  <MetricWidget widget={widget} />
+                </Widget>
+              </div>
+            );
           })}
         </div>
 
