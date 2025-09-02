@@ -3,11 +3,13 @@
 import { KPIWidget } from '@/components/ui/Card';
 import { Widget } from '@/components/ui/Widget';
 import { useDashboardStore } from '@/lib/dashboard/store';
+import { AddWidgetModal } from '@/components/dashboard/AddWidgetModal';
 import { useState } from 'react';
 
 export default function DashboardPage() {
   const { widgets, removeWidget, updateWidgetSize } = useDashboardStore();
   const [dateRange, setDateRange] = useState('Last 30 days');
+  const [isAddWidgetModalOpen, setIsAddWidgetModalOpen] = useState(false);
 
   const handleWidgetDelete = (widgetId: string) => {
     removeWidget(widgetId);
@@ -22,7 +24,26 @@ export default function DashboardPage() {
     'total_revenue': { value: '$124,592', change: { value: '12.5%', trend: 'up' } },
     'appointments_scheduled': { value: '142', change: { value: '8.2%', trend: 'up' } },
     'conversion_rate': { value: '23.8%', change: { value: '2.4%', trend: 'down' } },
-    'active_users': { value: '89', change: { value: '5', trend: 'up' } }
+    'active_users': { value: '89', change: { value: '5', trend: 'up' } },
+    'total_appointments': { value: '187', change: { value: '9.3%', trend: 'up' } },
+    'show_ups_appointments': { value: '142', change: { value: '8.2%', trend: 'up' } },
+    'show_ups_discoveries': { value: '23', change: { value: '15.0%', trend: 'up' } },
+    'sales_made': { value: '34', change: { value: '13.3%', trend: 'up' } },
+    'cash_collected': { value: '$124,592', change: { value: '12.5%', trend: 'up' } },
+    'appointment_to_sale_rate': { value: '18.2%', change: { value: '1.2%', trend: 'up' } },
+    'pitch_to_sale_rate': { value: '42.5%', change: { value: '3.8%', trend: 'up' } },
+    'answer_to_sale_rate': { value: '23.9%', change: { value: '0.7%', trend: 'down' } },
+    'cash_per_sale': { value: '$3,664', change: { value: '5.2%', trend: 'up' } },
+    'cash_per_appointment': { value: '$666', change: { value: '2.8%', trend: 'up' } },
+    'cash_per_dial': { value: '$12.46', change: { value: '4.1%', trend: 'up' } },
+    'show_up_rate': { value: '75.9%', change: { value: '1.4%', trend: 'up' } },
+    'booking_lead_time': { value: '2.4 days', change: { value: '0.3', trend: 'down' } },
+    'speed_to_lead': { value: '4m 32s', change: { value: '28s', trend: 'down' } },
+    'answers_dials': { value: '2,341', change: { value: '8.7%', trend: 'up' } },
+    'meaningful_conversations_dials': { value: '892', change: { value: '11.2%', trend: 'up' } },
+    'booked_calls_dials': { value: '187', change: { value: '9.3%', trend: 'up' } },
+    'meaningful_conversation_avg_call_length_dials': { value: '6m 14s', change: { value: '18s', trend: 'up' } },
+    'total_dials': { value: '10,002', change: { value: '5.1%', trend: 'up' } }
   };
 
   return (
@@ -43,7 +64,10 @@ export default function DashboardPage() {
           </button>
 
           {/* Add Widget Button */}
-          <button className="flex items-center gap-2 px-4 py-2 bg-zinc-100/90 dark:bg-zinc-900/90 backdrop-blur-sm rounded-full text-sm font-medium text-zinc-900 dark:text-white hover:bg-zinc-200/90 dark:hover:bg-zinc-800/90 transition-all">
+          <button 
+            onClick={() => setIsAddWidgetModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-zinc-100/90 dark:bg-zinc-900/90 backdrop-blur-sm rounded-full text-sm font-medium text-zinc-900 dark:text-white hover:bg-zinc-200/90 dark:hover:bg-zinc-800/90 transition-all"
+          >
             <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
               <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
             </svg>
@@ -89,7 +113,7 @@ export default function DashboardPage() {
                     gridBased={true}
                   >
                     <KPIWidget
-                      label={widget.metricName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                      label={widget.settings?.title || widget.metricName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
                       value={metricData.value}
                       change={metricData.change}
                     />
@@ -115,6 +139,12 @@ export default function DashboardPage() {
           </div>
         )}
       </div>
+
+      {/* Add Widget Modal */}
+      <AddWidgetModal 
+        isOpen={isAddWidgetModalOpen}
+        onClose={() => setIsAddWidgetModalOpen(false)}
+      />
     </div>
   );
 } 

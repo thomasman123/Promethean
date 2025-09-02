@@ -49,7 +49,7 @@ export const useDashboardStore = create<DashboardStore>()(
           id: 'widget-1',
           metricName: 'total_revenue',
           breakdown: 'total',
-          vizType: 'kpi',
+          vizType: 'kpi', // KPI Tile preset
           position: { x: 0, y: 0 },
           size: { w: 1, h: 1 }
         },
@@ -57,7 +57,7 @@ export const useDashboardStore = create<DashboardStore>()(
           id: 'widget-2',
           metricName: 'appointments_scheduled',
           breakdown: 'total',
-          vizType: 'kpi',
+          vizType: 'kpi', // KPI Tile preset
           position: { x: 1, y: 0 },
           size: { w: 1, h: 1 }
         },
@@ -65,7 +65,7 @@ export const useDashboardStore = create<DashboardStore>()(
           id: 'widget-3',
           metricName: 'conversion_rate',
           breakdown: 'total',
-          vizType: 'kpi',
+          vizType: 'kpi', // KPI Tile preset
           position: { x: 2, y: 0 },
           size: { w: 1, h: 1 }
         },
@@ -73,7 +73,7 @@ export const useDashboardStore = create<DashboardStore>()(
           id: 'widget-4',
           metricName: 'active_users',
           breakdown: 'total',
-          vizType: 'kpi',
+          vizType: 'kpi', // KPI Tile preset
           position: { x: 3, y: 0 },
           size: { w: 1, h: 1 }
         }
