@@ -166,7 +166,13 @@ export const useDashboardStore = create<DashboardStore>()(
       // Widgets - now computed from current view
       get widgets() {
         const state = get();
-        return state.currentView?.widgets || [];
+        const widgets = state.currentView?.widgets || [];
+        console.log('🎯 widgets getter called:', {
+          currentViewId: state.currentView?.id,
+          widgetCount: widgets.length,
+          widgets: widgets.map(w => ({ id: w.id, metric: w.metricName }))
+        });
+        return widgets;
       },
       
       addWidget: async (widget) => {

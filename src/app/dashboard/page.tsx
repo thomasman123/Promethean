@@ -14,6 +14,12 @@ const ResponsiveGridLayout = WidthProvider(Responsive);
 
 export default function DashboardPage() {
   const { widgets, removeWidget, updateWidgetLayout, setSelectedAccount, selectedAccountId: storeAccountId, initializeDefaultView, loadViews } = useDashboardStore();
+  
+  // Debug widgets
+  console.log('🖥️  Dashboard rendering with widgets:', {
+    count: widgets.length,
+    widgets: widgets.map(w => ({ id: w.id, metric: w.metricName }))
+  });
   const { selectedAccountId: authAccountId } = useAuth();
   const [dateRange, setDateRange] = useState('Last 30 days');
   const [isAddWidgetModalOpen, setIsAddWidgetModalOpen] = useState(false);
