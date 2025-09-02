@@ -121,13 +121,21 @@ export const useDashboardStore = create<DashboardStore>()(
       // Initialize default view if needed
       initializeDefaultView: () => {
         const state = get();
+        console.log('🚀 initializeDefaultView called:', { 
+          hasCurrentView: !!state.currentView, 
+          accountId: state.selectedAccountId,
+          viewsCount: state.views.length 
+        });
+        
         if (!state.currentView && state.selectedAccountId) {
           const defaultViewId = `default-view-${state.selectedAccountId}`;
           const existingView = state.views.find(v => v.id === defaultViewId);
           
           if (existingView) {
+            console.log('📂 Using existing default view:', existingView.id);
             set({ currentView: existingView });
           } else {
+            console.log('🆕 Creating new default view for account:', state.selectedAccountId);
             const tempView: DashboardView = {
               id: defaultViewId,
               name: 'Default View',
@@ -148,7 +156,10 @@ export const useDashboardStore = create<DashboardStore>()(
               views: [...state.views, tempView],
               currentView: tempView
             }));
+            console.log('✅ Created and set default view:', tempView.id);
           }
+        } else {
+          console.log('ℹ️  No need to initialize default view');
         }
       },
       
@@ -159,12 +170,20 @@ export const useDashboardStore = create<DashboardStore>()(
       },
       
       addWidget: async (widget) => {
+        console.log('🔧 addWidget called with:', widget);
+        
         // Ensure we have a current view
         get().initializeDefaultView();
         
         const state = get();
+        console.log('📊 Current state:', { 
+          currentView: state.currentView?.id, 
+          accountId: state.selectedAccountId,
+          viewsCount: state.views.length 
+        });
+        
         if (!state.currentView) {
-          console.warn('No current view to add widget to');
+          console.error('❌ No current view to add widget to');
           return;
         }
         
@@ -197,8 +216,11 @@ export const useDashboardStore = create<DashboardStore>()(
           size: widget.size || { w: 4, h: 2 } // Default size
         };
         
+        console.log('✨ Created new widget:', newWidget);
+        
         // Update the current view's widgets
         const updatedWidgets = [...(state.currentView.widgets || []), newWidget];
+        console.log('📝 Updated widgets array:', updatedWidgets.length, 'widgets');
         
         set((state) => ({
           views: state.views.map(v => 
@@ -211,11 +233,15 @@ export const useDashboardStore = create<DashboardStore>()(
             : null
         }));
 
+        console.log('💾 Local state updated, now saving to database...');
+
         // Save to database
         try {
           await get().updateView(state.currentView.id, { widgets: updatedWidgets });
+          console.log('✅ Widget saved to database successfully');
         } catch (error) {
-          console.error('Failed to save widget to database:', error);
+          console.error('❌ Failed to save widget to database:', error);
+          throw error; // Re-throw so the UI can handle it
         }
       },
       
