@@ -35,10 +35,27 @@ export function MetricWidget({ widget }: MetricWidgetProps) {
 
   useEffect(() => {
     const fetchData = async () => {
-      if (!selectedAccountId) return;
-      
       setIsLoading(true);
       setError(undefined);
+      
+      // If no account selected, show mock data for demo purposes
+      if (!selectedAccountId) {
+        setTimeout(() => {
+          setData({
+            metricName: widget.metricName,
+            breakdown: widget.breakdown,
+            data: {
+              value: Math.floor(Math.random() * 10000),
+              change: {
+                value: `${(Math.random() * 20 - 10).toFixed(1)}%`,
+                trend: Math.random() > 0.5 ? 'up' : 'down'
+              }
+            }
+          });
+          setIsLoading(false);
+        }, 1000 + Math.random() * 1000); // Random delay for demo
+        return;
+      }
 
       try {
         // Build request filters
