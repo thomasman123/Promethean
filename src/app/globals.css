@@ -1,6 +1,5 @@
 @import '../styles/tokens.css';
 @import 'react-grid-layout/css/styles.css';
-@import 'react-grid-layout/css/resizable.css';
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
