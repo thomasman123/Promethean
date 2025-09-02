@@ -20,7 +20,7 @@ export function Card({
   };
 
   return (
-    <div className={`bg-zinc-100 dark:bg-zinc-800 rounded-2xl ${paddingClasses[padding]} ${className}`}>
+    <div className={`bg-zinc-100 dark:bg-zinc-900 rounded-2xl ${paddingClasses[padding]} ${className}`}>
       {children}
     </div>
   );
@@ -39,7 +39,7 @@ export function Surface({
 }: SurfaceProps) {
   const variantClasses = {
     primary: 'bg-white dark:bg-zinc-900',
-    secondary: 'bg-zinc-100 dark:bg-zinc-800'
+    secondary: 'bg-zinc-100 dark:bg-zinc-900'
   };
 
   return (
@@ -67,7 +67,7 @@ export function KPIWidget({ label, value, change }: KPIWidgetProps) {
   };
 
   return (
-    <div className="bg-zinc-100 dark:bg-zinc-800 rounded-2xl p-6 flex flex-col items-center justify-center text-center h-full">
+    <div className="bg-zinc-100 dark:bg-zinc-900 rounded-2xl p-6 flex flex-col items-center justify-center text-center h-full">
       <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">{label}</p>
       <p className="mt-2 text-3xl font-semibold text-zinc-900 dark:text-white">{value}</p>
       {change && (

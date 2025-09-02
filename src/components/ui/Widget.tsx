@@ -103,7 +103,7 @@ export function Widget({
       {isHovered && (
         <button
           onClick={handleDelete}
-          className="absolute top-2 right-2 z-10 p-1.5 bg-white rounded-lg text-zinc-500 hover:text-red-600 hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100"
+          className="absolute top-2 right-2 z-10 p-1.5 bg-white dark:bg-zinc-900 rounded-lg text-zinc-500 dark:text-zinc-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all opacity-0 group-hover:opacity-100"
           aria-label="Delete widget"
         >
           <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
@@ -125,7 +125,7 @@ export function Widget({
           }`}
           onMouseDown={handleResizeStart}
         >
-          <svg className="w-4 h-4 text-zinc-400" fill="currentColor" viewBox="0 0 24 24">
+          <svg className="w-4 h-4 text-zinc-400 dark:text-zinc-600" fill="currentColor" viewBox="0 0 24 24">
             <path d="M22 22H20V20H22V22M22 18H20V16H22V18M18 22H16V20H18V22M18 18H16V16H18V18M14 22H12V20H14V22M22 14H20V12H22V14Z"/>
           </svg>
         </div>

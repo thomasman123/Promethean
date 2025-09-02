@@ -14,10 +14,10 @@ export function Button({
   ...props 
 }: ButtonProps) {
   const variantClasses = {
-    primary: 'bg-blue-600 text-white hover:bg-blue-700',
-    secondary: 'bg-zinc-100 text-zinc-900 hover:bg-zinc-200',
-    ghost: 'bg-transparent text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900',
-    danger: 'bg-red-600 text-white hover:bg-red-700'
+    primary: 'bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600',
+    secondary: 'bg-zinc-100 text-zinc-900 hover:bg-zinc-200 dark:bg-zinc-900 dark:text-white dark:hover:bg-zinc-800',
+    ghost: 'bg-transparent text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-white',
+    danger: 'bg-red-600 text-white hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600'
   };
 
   const sizeClasses = {
