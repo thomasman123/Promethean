@@ -4,7 +4,9 @@ import { Sidebar } from '@/components/ui/Sidebar';
 import { TopDock } from '@/components/ui/TopDock';
 import { KPIWidget } from '@/components/ui/Card';
 import { Widget, WidgetGrid } from '@/components/ui/Widget';
+import { DashboardControls } from '@/components/ui/DashboardControls';
 import { useDashboardStore } from '@/lib/dashboard/store';
+import { useMemo } from 'react';
 
 export default function DashboardPage() {
   const { widgets, removeWidget, updateWidgetSize } = useDashboardStore();
@@ -25,6 +27,16 @@ export default function DashboardPage() {
     'active_users': { value: '89', change: { value: '5', trend: 'up' } }
   };
 
+  // Randomly assign gradient themes to widgets
+  const gradientThemes: ('purple' | 'blue' | 'green' | 'orange')[] = ['purple', 'blue', 'green', 'orange'];
+  const widgetThemes = useMemo(() => {
+    const themes: Record<string, 'purple' | 'blue' | 'green' | 'orange'> = {};
+    widgets.forEach((widget, index) => {
+      themes[widget.id] = gradientThemes[index % gradientThemes.length];
+    });
+    return themes;
+  }, [widgets]);
+
   return (
     <>
       {/* Floating Sidebar */}
@@ -37,6 +49,11 @@ export default function DashboardPage() {
       <div className="min-h-screen bg-white">
         {/* Content Area - Dashboard Overview */}
         <div className="pl-24 pr-8 pt-20 pb-8">
+          {/* Dashboard Controls Bar */}
+          <div className="mb-6">
+            <DashboardControls />
+          </div>
+
           {/* Widget Grid */}
           <WidgetGrid>
             {widgets.map((widget) => {
@@ -55,6 +72,7 @@ export default function DashboardPage() {
                       label={widget.metricName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
                       value={metricData.value}
                       change={metricData.change}
+                      gradientTheme={widgetThemes[widget.id]}
                     />
                   </Widget>
                 );
