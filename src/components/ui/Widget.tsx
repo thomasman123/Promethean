@@ -120,17 +120,17 @@ export function Widget({
   return (
     <div
       ref={widgetRef}
-      className={`relative group bg-zinc-100/90 dark:bg-zinc-900/90 backdrop-blur-sm rounded-2xl transition-all duration-200 ${className}`}
+      className={`relative group bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl rounded-2xl border border-zinc-200/50 dark:border-zinc-800/50 shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden ${className}`}
       style={style}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
       {/* Three-dot menu button */}
       {isHovered && (
-        <div className="absolute top-3 right-3 z-20">
+        <div className="absolute top-4 right-4 z-20">
           <button
             onClick={toggleMenu}
-            className="p-1.5 bg-white/80 dark:bg-zinc-800/80 backdrop-blur-sm rounded-lg text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300 hover:bg-white dark:hover:bg-zinc-800 transition-all opacity-0 group-hover:opacity-100 shadow-sm"
+            className="p-2 bg-white/90 dark:bg-zinc-800/90 backdrop-blur-sm rounded-xl text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-all opacity-0 group-hover:opacity-100 shadow-md border border-zinc-200/50 dark:border-zinc-700/50"
             aria-label="Widget options"
           >
             <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
@@ -140,26 +140,29 @@ export function Widget({
 
           {/* Dropdown menu */}
           {isMenuOpen && (
-            <div 
-              ref={menuRef}
-              className="absolute top-full right-0 mt-1 min-w-[120px] bg-white dark:bg-zinc-900 rounded-lg shadow-lg border border-zinc-200 dark:border-zinc-800 py-1 z-30"
-            >
-              <button
-                onClick={handleDelete}
-                className="w-full px-3 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center gap-2"
+            <>
+              <div className="fixed inset-0 z-20" onClick={() => setIsMenuOpen(false)} />
+              <div 
+                ref={menuRef}
+                className="absolute top-full right-0 mt-2 min-w-[140px] bg-white/95 dark:bg-zinc-900/95 backdrop-blur-xl rounded-xl shadow-xl border border-zinc-200/50 dark:border-zinc-800/50 py-1.5 z-30"
               >
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
-                </svg>
-                Delete
-              </button>
-            </div>
+                <button
+                  onClick={handleDelete}
+                  className="w-full px-4 py-2.5 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center gap-3 rounded-lg mx-1.5"
+                >
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                  </svg>
+                  Delete Widget
+                </button>
+              </div>
+            </>
           )}
         </div>
       )}
 
       {/* Widget content */}
-      <div className="w-full h-full p-4">
+      <div className="w-full h-full">
         {children}
       </div>
 

@@ -1,15 +1,20 @@
 import React from 'react';
+import { cn } from '@/lib/utils';
 
 interface CardProps {
   children: React.ReactNode;
   className?: string;
   padding?: 'none' | 'sm' | 'md' | 'lg' | 'xl';
+  variant?: 'default' | 'elevated' | 'outlined';
+  interactive?: boolean;
 }
 
 export function Card({ 
   children, 
   className = '', 
-  padding = 'lg' 
+  padding = 'lg',
+  variant = 'default',
+  interactive = false
 }: CardProps) {
   const paddingClasses = {
     none: '',
@@ -19,8 +24,20 @@ export function Card({
     xl: 'p-10'
   };
 
+  const variantClasses = {
+    default: 'bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl border border-zinc-200/50 dark:border-zinc-800/50',
+    elevated: 'bg-white dark:bg-zinc-900 shadow-lg',
+    outlined: 'bg-transparent border border-zinc-200 dark:border-zinc-700'
+  };
+
   return (
-    <div className={`bg-zinc-100/80 dark:bg-zinc-900/80 backdrop-blur-md rounded-2xl ${paddingClasses[padding]} ${className}`}>
+    <div className={cn(
+      "rounded-2xl transition-all duration-200",
+      variantClasses[variant],
+      paddingClasses[padding],
+      interactive && "hover:shadow-lg hover:scale-[1.02] cursor-pointer",
+      className
+    )}>
       {children}
     </div>
   );
@@ -38,12 +55,16 @@ export function Surface({
   variant = 'primary' 
 }: SurfaceProps) {
   const variantClasses = {
-    primary: 'bg-white dark:bg-zinc-900',
-    secondary: 'bg-zinc-100 dark:bg-zinc-900'
+    primary: 'bg-white dark:bg-zinc-900 border border-zinc-200/50 dark:border-zinc-800/50',
+    secondary: 'bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/30 dark:border-zinc-700/30'
   };
 
   return (
-    <div className={`rounded-xl ${variantClasses[variant]} ${className}`}>
+    <div className={cn(
+      "rounded-xl transition-colors duration-200",
+      variantClasses[variant],
+      className
+    )}>
       {children}
     </div>
   );
@@ -66,21 +87,42 @@ export function KPIWidget({ label, value, change }: KPIWidgetProps) {
     neutral: 'text-zinc-600 dark:text-zinc-400'
   };
 
+  const trendIcons = {
+    up: (
+      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+        <path fillRule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
+      </svg>
+    ),
+    down: (
+      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+        <path fillRule="evenodd" d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z" clipRule="evenodd" />
+      </svg>
+    ),
+    neutral: (
+      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+        <path fillRule="evenodd" d="M5 10a1 1 0 011-1h8a1 1 0 110 2H6a1 1 0 01-1-1z" clipRule="evenodd" />
+      </svg>
+    )
+  };
+
   return (
-    <div className="bg-zinc-100/80 dark:bg-zinc-900/80 backdrop-blur-md rounded-2xl p-6 flex flex-col items-center justify-center text-center h-full">
-      <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">{label}</p>
-      <p className="mt-2 text-3xl font-semibold text-zinc-900 dark:text-white">{value}</p>
-      {change && (
-        <div className="mt-3 flex items-center gap-1">
-          <span className={`text-sm font-medium ${trendColors[change.trend]}`}>
-            {change.trend === 'up' && '+'}
-            {change.trend === 'down' && '-'}
-            {change.value}
-          </span>
-          <span className="text-xs text-zinc-500 dark:text-zinc-400">vs last period</span>
-        </div>
-      )}
-    </div>
+    <Card variant="default" padding="md" className="h-full">
+      <div className="flex flex-col items-center justify-center text-center h-full">
+        <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">{label}</p>
+        <p className="mt-3 text-3xl font-bold text-zinc-900 dark:text-white">{value}</p>
+        {change && (
+          <div className="mt-4 flex items-center gap-2 px-3 py-1.5 rounded-full bg-zinc-100 dark:bg-zinc-800">
+            <div className={cn("flex items-center gap-1", trendColors[change.trend])}>
+              {trendIcons[change.trend]}
+              <span className="text-sm font-semibold">
+                {change.value}
+              </span>
+            </div>
+            <span className="text-xs text-zinc-500 dark:text-zinc-400">vs last period</span>
+          </div>
+        )}
+      </div>
+    </Card>
   );
 }
 
