@@ -12,7 +12,7 @@ export const METRICS_REGISTRY: Record<string, MetricDefinition> = {
 		},
 		unit: 'count'
 	},
-	// Show Ups (Appointments): count rows where call_outcome is 'Show'
+	// Show Ups (Appointments): count rows where call_outcome is 'Show' (case insensitive)
 	'show_ups_appointments': {
 		name: 'Show Ups (Appointments)',
 		description: 'Total count of appointments with call outcome Show',
@@ -20,7 +20,7 @@ export const METRICS_REGISTRY: Record<string, MetricDefinition> = {
 		query: {
 			table: 'appointments',
 			select: ['COUNT(*) as value'],
-			where: ["call_outcome = 'Show'"]
+			where: ["LOWER(call_outcome) = 'show'"]
 		},
 		unit: 'count'
 	},
@@ -145,7 +145,7 @@ export const METRICS_REGISTRY: Record<string, MetricDefinition> = {
 		query: {
 			table: 'appointments',
 			select: [
-				"COALESCE(AVG(CASE WHEN call_outcome = 'Show' THEN 1.0 ELSE 0.0 END), 0) as value"
+				"COALESCE(AVG(CASE WHEN LOWER(call_outcome) = 'show' THEN 1.0 ELSE 0.0 END), 0) as value"
 			]
 		},
 		unit: 'percent'
