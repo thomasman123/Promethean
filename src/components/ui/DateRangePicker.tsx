@@ -2,9 +2,11 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subDays, subWeeks, subMonths } from 'date-fns';
-import { CalendarIcon } from 'lucide-react';
-import { DayPicker } from "react-day-picker";
+import { CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react';
+import { DayPicker, DateRange as DayPickerDateRange } from "react-day-picker";
 import { cn } from '@/lib/utils';
+import "react-day-picker/dist/style.css";
+import styles from './DateRangePicker.module.css';
 
 interface DateRange {
   from: Date | null;
@@ -113,7 +115,7 @@ export function DateRangePicker({ value, onChange, className = '' }: DateRangePi
     setIsOpen(false);
   };
 
-  const handleDateSelect = (range: { from?: Date; to?: Date } | undefined) => {
+  const handleDateSelect = (range: DayPickerDateRange | undefined) => {
     const newRange = {
       from: range?.from || null,
       to: range?.to || null
@@ -166,8 +168,8 @@ export function DateRangePicker({ value, onChange, className = '' }: DateRangePi
           <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
           
           {/* Dropdown */}
-          <div className="absolute top-full mt-2 right-0 z-50 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-xl rounded-3xl shadow-2xl border border-zinc-200/50 dark:border-zinc-800/50 overflow-hidden min-w-[700px]">
-            <div className="flex h-[400px]">
+          <div className="absolute top-full mt-2 right-0 z-50 bg-white dark:bg-zinc-900 backdrop-blur-xl rounded-3xl shadow-2xl border border-zinc-200/50 dark:border-zinc-800/50 overflow-hidden min-w-[700px]">
+            <div className="flex h-[450px]">
               {/* Left side - Preset options */}
               <div className="w-48 bg-zinc-50/50 dark:bg-zinc-800/30 border-r border-zinc-200/50 dark:border-zinc-800/50 p-3">
                 <div className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-3 px-3">
@@ -201,7 +203,7 @@ export function DateRangePicker({ value, onChange, className = '' }: DateRangePi
               </div>
 
               {/* Right side - Calendar */}
-              <div className="flex-1 p-6">
+              <div className="flex-1 p-6 overflow-auto">
                 <DayPicker
                   mode="range"
                   selected={{
@@ -211,37 +213,36 @@ export function DateRangePicker({ value, onChange, className = '' }: DateRangePi
                   onSelect={handleDateSelect}
                   numberOfMonths={2}
                   showOutsideDays={true}
-                  className={cn(
-                    "p-0",
-                    "[&_.rdp-months]:flex [&_.rdp-months]:gap-6",
-                    "[&_.rdp-month]:w-[280px]",
-                    "[&_.rdp-caption]:flex [&_.rdp-caption]:justify-center [&_.rdp-caption]:pt-1 [&_.rdp-caption]:relative [&_.rdp-caption]:items-center",
-                    "[&_.rdp-caption_label]:text-sm [&_.rdp-caption_label]:font-medium",
-                    "[&_.rdp-nav]:space-x-1 [&_.rdp-nav]:flex [&_.rdp-nav]:items-center",
-                    "[&_.rdp-nav_button]:inline-flex [&_.rdp-nav_button]:items-center [&_.rdp-nav_button]:justify-center [&_.rdp-nav_button]:whitespace-nowrap [&_.rdp-nav_button]:rounded-md [&_.rdp-nav_button]:text-sm [&_.rdp-nav_button]:font-medium [&_.rdp-nav_button]:transition-colors",
-                    "[&_.rdp-nav_button]:h-7 [&_.rdp-nav_button]:w-7 [&_.rdp-nav_button]:bg-transparent [&_.rdp-nav_button]:p-0 [&_.rdp-nav_button]:opacity-50 [&_.rdp-nav_button:hover]:opacity-100",
-                    "[&_.rdp-table]:w-full [&_.rdp-table]:border-collapse [&_.rdp-table]:space-y-1",
-                    "[&_.rdp-head_row]:flex",
-                    "[&_.rdp-head_cell]:text-zinc-500 [&_.rdp-head_cell]:rounded-md [&_.rdp-head_cell]:w-8 [&_.rdp-head_cell]:font-normal [&_.rdp-head_cell]:text-[0.8rem]",
-                    "[&_.rdp-row]:flex [&_.rdp-row]:w-full [&_.rdp-row]:mt-2",
-                    "[&_.rdp-cell]:relative [&_.rdp-cell]:p-0 [&_.rdp-cell]:text-center [&_.rdp-cell]:text-sm [&_.rdp-cell]:focus-within:relative [&_.rdp-cell]:focus-within:z-20",
-                    "[&_.rdp-day]:inline-flex [&_.rdp-day]:items-center [&_.rdp-day]:justify-center [&_.rdp-day]:whitespace-nowrap [&_.rdp-day]:rounded-md [&_.rdp-day]:text-sm [&_.rdp-day]:font-medium [&_.rdp-day]:transition-colors",
-                    "[&_.rdp-day]:h-8 [&_.rdp-day]:w-8 [&_.rdp-day]:p-0 [&_.rdp-day]:font-normal",
-                    "[&_.rdp-day:hover]:bg-zinc-100 [&_.rdp-day:hover]:text-zinc-900 dark:[&_.rdp-day:hover]:bg-zinc-800 dark:[&_.rdp-day:hover]:text-zinc-50",
-                    "[&_.rdp-day_selected]:bg-zinc-900 [&_.rdp-day_selected]:text-zinc-50 dark:[&_.rdp-day_selected]:bg-zinc-50 dark:[&_.rdp-day_selected]:text-zinc-900",
-                    "[&_.rdp-day_selected:hover]:bg-zinc-900 [&_.rdp-day_selected:hover]:text-zinc-50 dark:[&_.rdp-day_selected:hover]:bg-zinc-50 dark:[&_.rdp-day_selected:hover]:text-zinc-900",
-                    "[&_.rdp-day_today]:bg-zinc-100 [&_.rdp-day_today]:text-zinc-900 dark:[&_.rdp-day_today]:bg-zinc-800 dark:[&_.rdp-day_today]:text-zinc-50",
-                    "[&_.rdp-day_outside]:text-zinc-500 dark:[&_.rdp-day_outside]:text-zinc-400",
-                    "[&_.rdp-day_disabled]:text-zinc-500 [&_.rdp-day_disabled]:opacity-50 dark:[&_.rdp-day_disabled]:text-zinc-400",
-                    "[&_.rdp-day_range_start]:bg-zinc-900 [&_.rdp-day_range_start]:text-zinc-50 dark:[&_.rdp-day_range_start]:bg-zinc-50 dark:[&_.rdp-day_range_start]:text-zinc-900",
-                    "[&_.rdp-day_range_end]:bg-zinc-900 [&_.rdp-day_range_end]:text-zinc-50 dark:[&_.rdp-day_range_end]:bg-zinc-50 dark:[&_.rdp-day_range_end]:text-zinc-900",
-                    "[&_.rdp-day_range_middle]:bg-zinc-100 [&_.rdp-day_range_middle]:text-zinc-900 dark:[&_.rdp-day_range_middle]:bg-zinc-800 dark:[&_.rdp-day_range_middle]:text-zinc-50"
-                  )}
+                  className={styles.datePicker}
+                  classNames={{
+                    months: styles.months,
+                    month: styles.month,
+                    caption: styles.caption,
+                    caption_label: styles.captionLabel,
+                    nav: styles.nav,
+                    nav_button: styles.navButton,
+                    nav_button_previous: styles.navButtonPrevious,
+                    nav_button_next: styles.navButtonNext,
+                    table: styles.table,
+                    head_row: styles.headRow,
+                    head_cell: styles.headCell,
+                    row: styles.row,
+                    cell: styles.cell,
+                    day: styles.day,
+                    day_selected: styles.daySelected,
+                    day_today: styles.dayToday,
+                    day_outside: styles.dayOutside,
+                    day_disabled: styles.dayDisabled,
+                    day_range_start: styles.dayRangeStart,
+                    day_range_middle: styles.dayRangeMiddle,
+                    day_range_end: styles.dayRangeEnd,
+                    day_hidden: styles.dayHidden
+                  }}
                 />
 
                 {/* Date preview */}
                 {selectedRange.from && selectedRange.to && (
-                  <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 border border-blue-200 dark:border-blue-800 mt-4">
+                  <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 border border-blue-200 dark:border-blue-800 mt-6">
                     <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
                       <CalendarIcon className="w-4 h-4" />
                       <span className="text-sm font-medium">
