@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import type { Database } from "@/lib/database.types";
-import { aggregateMetricsForDashboard } from "@/lib/dashboard/metrics-calculator";
+import { metricsEngine } from "@/lib/metrics/engine";
+import type { MetricRequest } from "@/lib/metrics/types";
 
 export async function POST(req: NextRequest) {
   try {
@@ -56,12 +57,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
     
-    // Fetch metrics
-    const metrics = await aggregateMetricsForDashboard(
-      accountId,
-      filters,
-      compareSettings
-    );
+    // Fetch metrics using the metrics engine
+    // For now, return a simple response - this can be enhanced later for comparison features
+    const metricRequest: MetricRequest = {
+      metricName: body.metricName || 'total_appointments',
+      filters: {
+        dateRange: { start: filters.startDate, end: filters.endDate },
+        accountId: accountId
+      }
+    };
+    
+    const metrics = await metricsEngine.execute(metricRequest);
     
     return NextResponse.json(metrics);
   } catch (error) {
