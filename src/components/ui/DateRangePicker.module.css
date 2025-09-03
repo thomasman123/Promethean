@@ -1,157 +1,212 @@
-/* Date Picker Styles */
+/* Date Picker Root Styles */
 .datePicker {
-  --rdp-cell-size: 36px;
+  --rdp-cell-size: 40px;
   --rdp-accent-color: #3b82f6;
   --rdp-background-color: #eff6ff;
   --rdp-accent-color-dark: #2563eb;
   --rdp-background-color-dark: #1e3a8a;
-  --rdp-outline: 2px solid transparent;
-  --rdp-outline-selected: 2px solid var(--rdp-accent-color);
+  padding: 0;
 }
 
+.datePicker * {
+  box-sizing: border-box;
+}
+
+/* Months container - horizontal layout */
 .months {
-  display: flex;
-  gap: 24px;
+  display: flex !important;
+  flex-direction: row !important;
+  gap: 32px;
 }
 
+/* Individual month */
 .month {
-  /* Month container styles */
+  flex: 0 0 auto;
+  width: 280px;
 }
 
+/* Caption container */
 .caption {
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
-  padding: 0.25rem 0;
+  height: 40px;
   position: relative;
-  margin-bottom: 0.5rem;
+  margin-bottom: 16px;
 }
 
 .captionLabel {
   font-size: 0.875rem;
-  font-weight: 500;
+  font-weight: 600;
   color: #18181b;
+  text-align: center;
+  flex: 1;
 }
 
 :global(.dark) .captionLabel {
   color: #fafafa;
 }
 
+/* Navigation container */
 .nav {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
   display: flex;
-  gap: 0.25rem;
+  justify-content: space-between;
+  align-items: center;
+  height: 100%;
+  padding: 0 4px;
 }
 
 .navButton {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   padding: 0;
   border-radius: 0.375rem;
   background: transparent;
-  border: none;
-  opacity: 0.5;
-  transition: opacity 0.2s;
+  border: 1px solid transparent;
+  opacity: 0.7;
+  transition: all 0.2s;
   cursor: pointer;
-  color: currentColor;
+  color: #71717a;
 }
 
 .navButton:hover:not(:disabled) {
   opacity: 1;
+  background-color: #f4f4f5;
+  border-color: #e4e4e7;
+}
+
+:global(.dark) .navButton {
+  color: #a1a1aa;
+}
+
+:global(.dark) .navButton:hover:not(:disabled) {
+  background-color: #27272a;
+  border-color: #3f3f46;
 }
 
 .navButton:disabled {
-  opacity: 0.25;
+  opacity: 0.3;
   cursor: not-allowed;
 }
 
 .navButtonPrevious {
-  position: absolute;
-  left: 0;
+  /* Positioned by nav container */
 }
 
 .navButtonNext {
-  position: absolute;
-  right: 0;
+  /* Positioned by nav container */
 }
 
+/* Table */
 .table {
   width: 100%;
-  border-collapse: collapse;
-  margin-top: 0.5rem;
+  border-collapse: separate;
+  border-spacing: 0;
 }
 
+/* Header row */
 .headRow {
   display: flex;
+  margin-bottom: 4px;
 }
 
 .headCell {
   color: #71717a;
   font-weight: normal;
   font-size: 0.75rem;
-  padding: 0.5rem 0;
   text-align: center;
-  width: 36px;
-  flex: 1;
+  width: 40px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 :global(.dark) .headCell {
   color: #a1a1aa;
 }
 
+/* Body rows */
 .row {
   display: flex;
-  margin-top: 0.25rem;
+  width: 100%;
+  margin-bottom: 2px;
 }
 
 .cell {
-  text-align: center;
   padding: 0;
-  flex: 1;
+  text-align: center;
+  width: 40px;
+  height: 40px;
+  position: relative;
 }
 
+/* Day button */
 .day {
+  width: 36px;
+  height: 36px;
+  margin: 2px;
+  padding: 0;
+  border-radius: 0.375rem;
+  border: 1px solid transparent;
+  background: transparent;
+  font-size: 0.875rem;
+  font-weight: normal;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 0.375rem;
-  font-size: 0.875rem;
-  font-weight: normal;
-  transition: all 0.2s;
   cursor: pointer;
-  background: transparent;
-  border: none;
-  color: currentColor;
-}
-
-.day:hover:not(.daySelected):not(.dayDisabled) {
-  background-color: #f4f4f5;
+  transition: all 0.15s;
   color: #18181b;
+  position: relative;
 }
 
-:global(.dark) .day:hover:not(.daySelected):not(.dayDisabled) {
-  background-color: #27272a;
+:global(.dark) .day {
   color: #fafafa;
 }
 
-.daySelected:not(.dayOutside) {
-  background-color: #18181b !important;
-  color: #fafafa !important;
+.day:hover:not(.daySelected):not(.dayDisabled):not(.dayOutside) {
+  background-color: #f4f4f5;
+  border-color: #e4e4e7;
 }
 
-:global(.dark) .daySelected:not(.dayOutside) {
+:global(.dark) .day:hover:not(.daySelected):not(.dayDisabled):not(.dayOutside) {
+  background-color: #27272a;
+  border-color: #3f3f46;
+}
+
+/* Selected days */
+.daySelected {
+  background-color: #18181b !important;
+  color: #fafafa !important;
+  font-weight: 500;
+}
+
+:global(.dark) .daySelected {
   background-color: #fafafa !important;
   color: #18181b !important;
 }
 
+.daySelected:hover {
+  background-color: #27272a !important;
+}
+
+:global(.dark) .daySelected:hover {
+  background-color: #e4e4e7 !important;
+}
+
+/* Today */
 .dayToday:not(.daySelected) {
   background-color: #f4f4f5;
+  font-weight: 600;
   color: #18181b;
-  font-weight: 500;
 }
 
 :global(.dark) .dayToday:not(.daySelected) {
@@ -159,30 +214,38 @@
   color: #fafafa;
 }
 
+/* Outside days */
 .dayOutside {
-  color: #71717a;
+  color: #a1a1aa;
   opacity: 0.5;
 }
 
 :global(.dark) .dayOutside {
-  color: #a1a1aa;
+  color: #71717a;
 }
 
+/* Disabled days */
 .dayDisabled {
-  color: #71717a;
+  color: #a1a1aa;
   opacity: 0.5;
   cursor: not-allowed;
 }
 
 :global(.dark) .dayDisabled {
-  color: #a1a1aa;
+  color: #71717a;
 }
 
+.dayDisabled:hover {
+  background-color: transparent !important;
+  border-color: transparent !important;
+}
+
+/* Range selection */
 .dayRangeStart {
   background-color: #18181b !important;
   color: #fafafa !important;
-  border-top-right-radius: 0;
-  border-bottom-right-radius: 0;
+  border-top-right-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
 }
 
 :global(.dark) .dayRangeStart {
@@ -193,8 +256,8 @@
 .dayRangeEnd {
   background-color: #18181b !important;
   color: #fafafa !important;
-  border-top-left-radius: 0;
-  border-bottom-left-radius: 0;
+  border-top-left-radius: 0 !important;
+  border-bottom-left-radius: 0 !important;
 }
 
 :global(.dark) .dayRangeEnd {
@@ -205,7 +268,7 @@
 .dayRangeMiddle {
   background-color: #f4f4f5;
   color: #18181b;
-  border-radius: 0;
+  border-radius: 0 !important;
 }
 
 :global(.dark) .dayRangeMiddle {
@@ -213,6 +276,27 @@
   color: #fafafa;
 }
 
+/* Range hover effect */
+.dayRangeStart.dayRangeEnd {
+  border-radius: 0.375rem !important;
+}
+
+/* Hidden days */
 .dayHidden {
   visibility: hidden;
+}
+
+/* Additional fixes for proper layout */
+.datePicker tbody {
+  display: block;
+}
+
+.datePicker button:focus {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+}
+
+.datePicker button:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
 } 

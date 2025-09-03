@@ -25,6 +25,8 @@ interface PresetOption {
   icon?: React.ReactNode;
 }
 
+
+
 export function DateRangePicker({ value, onChange, className = '' }: DateRangePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedRange, setSelectedRange] = useState<DateRange>(value || { from: null, to: null });
@@ -146,7 +148,7 @@ export function DateRangePicker({ value, onChange, className = '' }: DateRangePi
   };
 
   return (
-    <div ref={dropdownRef} className={`relative ${className}`}>
+    <div ref={dropdownRef} className={cn("relative", className)}>
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-2 px-4 py-2 bg-zinc-100/90 dark:bg-zinc-900/90 backdrop-blur-sm rounded-full text-sm font-medium text-zinc-900 dark:text-white hover:bg-zinc-200/90 dark:hover:bg-zinc-800/90 transition-all"
@@ -154,7 +156,7 @@ export function DateRangePicker({ value, onChange, className = '' }: DateRangePi
         <CalendarIcon className="w-4 h-4" />
         <span>{formatDateRange()}</span>
         <svg 
-          className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} 
+          className={cn("w-4 h-4 transition-transform", isOpen && "rotate-180")} 
           fill="currentColor" 
           viewBox="0 0 24 24"
         >
@@ -168,8 +170,8 @@ export function DateRangePicker({ value, onChange, className = '' }: DateRangePi
           <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
           
           {/* Dropdown */}
-          <div className="absolute top-full mt-2 right-0 z-50 bg-white dark:bg-zinc-900 backdrop-blur-xl rounded-3xl shadow-2xl border border-zinc-200/50 dark:border-zinc-800/50 overflow-hidden min-w-[700px]">
-            <div className="flex h-[450px]">
+          <div className="absolute top-full mt-2 right-0 z-50 bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl border border-zinc-200/50 dark:border-zinc-800/50 overflow-hidden animate-in fade-in-0 zoom-in-95 duration-200">
+            <div className="flex">
               {/* Left side - Preset options */}
               <div className="w-48 bg-zinc-50/50 dark:bg-zinc-800/30 border-r border-zinc-200/50 dark:border-zinc-800/50 p-3">
                 <div className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-3 px-3">
@@ -184,11 +186,12 @@ export function DateRangePicker({ value, onChange, className = '' }: DateRangePi
                     <button
                       key={preset.label}
                       onClick={() => handlePresetClick(preset)}
-                      className={`w-full text-left px-3 py-2.5 text-sm rounded-xl transition-all flex items-center gap-2 ${
+                      className={cn(
+                        "w-full text-left px-3 py-2.5 text-sm rounded-xl transition-all flex items-center gap-2",
                         isActive 
-                          ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium' 
-                          : 'text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800/50'
-                      }`}
+                          ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium" 
+                          : "text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800/50"
+                      )}
                     >
                       {preset.icon || <CalendarIcon className="w-4 h-4 opacity-50" />}
                       <span>{preset.label}</span>
@@ -203,7 +206,7 @@ export function DateRangePicker({ value, onChange, className = '' }: DateRangePi
               </div>
 
               {/* Right side - Calendar */}
-              <div className="flex-1 p-6 overflow-auto">
+              <div className="p-6">
                 <DayPicker
                   mode="range"
                   selected={{
@@ -213,6 +216,8 @@ export function DateRangePicker({ value, onChange, className = '' }: DateRangePi
                   onSelect={handleDateSelect}
                   numberOfMonths={2}
                   showOutsideDays={true}
+                  fixedWeeks={true}
+                  weekStartsOn={0}
                   className={styles.datePicker}
                   classNames={{
                     months: styles.months,
@@ -220,7 +225,7 @@ export function DateRangePicker({ value, onChange, className = '' }: DateRangePi
                     caption: styles.caption,
                     caption_label: styles.captionLabel,
                     nav: styles.nav,
-                    nav_button: styles.navButton,
+                    nav_button: cn(styles.navButton, "hidden"),
                     nav_button_previous: styles.navButtonPrevious,
                     nav_button_next: styles.navButtonNext,
                     table: styles.table,
