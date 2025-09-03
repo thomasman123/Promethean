@@ -6,9 +6,11 @@ import { AddWidgetModal } from '@/components/dashboard/AddWidgetModal';
 import { CreateViewModal } from '@/components/dashboard/CreateViewModal';
 import { ViewsDropdown } from '@/components/dashboard/ViewsDropdown';
 import { MetricWidget } from '@/components/dashboard/MetricWidget';
+import { DateRangePicker } from '@/components/ui/DateRangePicker';
 import { useState, useCallback, useEffect } from 'react';
 import { Responsive, WidthProvider, Layout as GridLayout } from 'react-grid-layout';
 import { useAuth } from '@/hooks/useAuth';
+import { subDays } from 'date-fns';
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
@@ -24,10 +26,20 @@ export default function DashboardPage() {
     currentViewWidgetCount: currentView?.widgets?.length
   });
   const { selectedAccountId: authAccountId } = useAuth();
-  const [dateRange, setDateRange] = useState('Last 30 days');
+  const [dateRange, setDateRange] = useState<{ from: Date | null; to: Date | null }>({
+    from: subDays(new Date(), 30),
+    to: new Date()
+  });
   const [isAddWidgetModalOpen, setIsAddWidgetModalOpen] = useState(false);
   const [isCreateViewModalOpen, setIsCreateViewModalOpen] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+
+  // Handle date range change
+  const handleDateRangeChange = useCallback((range: { from: Date | null; to: Date | null }) => {
+    console.log('Date range changed:', range);
+    setDateRange(range);
+    // TODO: Update dashboard data based on new date range
+  }, []);
 
   // Sync account selection from auth to store
   useEffect(() => {
@@ -125,16 +137,11 @@ export default function DashboardPage() {
           {/* Views Dropdown */}
           <ViewsDropdown onCreateView={() => setIsCreateViewModalOpen(true)} />
 
-          {/* Date Picker Button */}
-          <button className="flex items-center gap-2 px-4 py-2 bg-zinc-100/90 dark:bg-zinc-900/90 backdrop-blur-sm rounded-full text-sm font-medium text-zinc-900 dark:text-white hover:bg-zinc-200/90 dark:hover:bg-zinc-800/90 transition-all">
-            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M9 11H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2zm2-7h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11z"/>
-            </svg>
-            <span>{dateRange}</span>
-            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M7 10l5 5 5-5z"/>
-            </svg>
-          </button>
+          {/* Date Range Picker */}
+          <DateRangePicker 
+            value={dateRange}
+            onChange={handleDateRangeChange}
+          />
 
           {/* Add Widget Button */}
           <button 
