@@ -21,7 +21,7 @@ export function DashboardLayout({
       <Sidebar />
       
       {/* Main content area */}
-      <div className="pl-20"> {/* Leave space for sidebar */}
+      <div className="pl-64"> {/* Leave space for full sidebar */}
         {/* Top bar */}
         <TopBar title={title} showDateFilter={showDateFilter} />
         
