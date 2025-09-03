@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subDays, subWeeks, subMonths } from 'date-fns';
+import { CalendarIcon } from 'lucide-react';
 
 interface DateRange {
   from: Date | null;
@@ -17,6 +18,7 @@ interface DateRangePickerProps {
 interface PresetOption {
   label: string;
   getValue: () => DateRange;
+  icon?: React.ReactNode;
 }
 
 export function DateRangePicker({ value, onChange, className = '' }: DateRangePickerProps) {
@@ -63,6 +65,20 @@ export function DateRangePicker({ value, onChange, className = '' }: DateRangePi
       })
     },
     {
+      label: 'Last 7 days',
+      getValue: () => ({
+        from: startOfDay(subDays(new Date(), 7)),
+        to: endOfDay(new Date())
+      })
+    },
+    {
+      label: 'Last 30 days',
+      getValue: () => ({
+        from: startOfDay(subDays(new Date(), 30)),
+        to: endOfDay(new Date())
+      })
+    },
+    {
       label: 'This week',
       getValue: () => ({
         from: startOfWeek(new Date(), { weekStartsOn: 1 }),
@@ -88,20 +104,6 @@ export function DateRangePicker({ value, onChange, className = '' }: DateRangePi
       getValue: () => ({
         from: startOfMonth(subMonths(new Date(), 1)),
         to: endOfMonth(subMonths(new Date(), 1))
-      })
-    },
-    {
-      label: 'Last 7 days',
-      getValue: () => ({
-        from: startOfDay(subDays(new Date(), 7)),
-        to: endOfDay(new Date())
-      })
-    },
-    {
-      label: 'Last 30 days',
-      getValue: () => ({
-        from: startOfDay(subDays(new Date(), 30)),
-        to: endOfDay(new Date())
       })
     }
   ];
@@ -196,76 +198,152 @@ export function DateRangePicker({ value, onChange, className = '' }: DateRangePi
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-2 px-4 py-2 bg-zinc-100/90 dark:bg-zinc-900/90 backdrop-blur-sm rounded-full text-sm font-medium text-zinc-900 dark:text-white hover:bg-zinc-200/90 dark:hover:bg-zinc-800/90 transition-all"
       >
-        {/* Calendar Icon */}
-        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-          <path d="M9 11H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2zm2-7h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11z"/>
-        </svg>
+        <CalendarIcon className="w-4 h-4" />
         <span>{formatDateRange()}</span>
-        {/* Chevron Down Icon */}
-        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+        <svg 
+          className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} 
+          fill="currentColor" 
+          viewBox="0 0 24 24"
+        >
           <path d="M7 10l5 5 5-5z"/>
         </svg>
       </button>
 
       {isOpen && (
-        <div className="absolute top-full mt-2 right-0 z-50 bg-white dark:bg-zinc-900 rounded-lg shadow-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden min-w-[400px]">
-          <div className="flex">
-            {/* Left side - Preset options */}
-            <div className="w-40 border-r border-zinc-200 dark:border-zinc-800 p-2">
-              {presetOptions.map((preset) => (
-                <button
-                  key={preset.label}
-                  onClick={() => handlePresetClick(preset)}
-                  className="w-full text-left px-3 py-2 text-sm rounded-md text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-                >
-                  {preset.label}
-                </button>
-              ))}
-            </div>
+        <>
+          {/* Backdrop */}
+          <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
+          
+          {/* Dropdown */}
+          <div className="absolute top-full mt-2 right-0 z-50 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-xl rounded-3xl shadow-2xl border border-zinc-200/50 dark:border-zinc-800/50 overflow-hidden min-w-[500px]">
+            <div className="flex h-[400px]">
+              {/* Left side - Preset options */}
+              <div className="w-48 bg-zinc-50/50 dark:bg-zinc-800/30 border-r border-zinc-200/50 dark:border-zinc-800/50 p-3">
+                <div className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-3 px-3">
+                  Quick Select
+                </div>
+                {presetOptions.map((preset) => {
+                  const presetRange = preset.getValue();
+                  const isActive = selectedRange.from?.getTime() === presetRange.from?.getTime() && 
+                                 selectedRange.to?.getTime() === presetRange.to?.getTime();
+                  
+                  return (
+                    <button
+                      key={preset.label}
+                      onClick={() => handlePresetClick(preset)}
+                      className={`w-full text-left px-3 py-2.5 text-sm rounded-xl transition-all flex items-center gap-2 ${
+                        isActive 
+                          ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium' 
+                          : 'text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800/50'
+                      }`}
+                    >
+                      {preset.icon || <CalendarIcon className="w-4 h-4 opacity-50" />}
+                      <span>{preset.label}</span>
+                      {isActive && (
+                        <svg className="w-4 h-4 ml-auto" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
 
-            {/* Right side - Date selectors */}
-            <div className="p-4 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-                  From
-                </label>
-                <input
-                  type="date"
-                  value={fromDate}
-                  onChange={handleFromDateChange}
-                  className="w-full px-3 py-2 text-sm bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
-                />
+              {/* Right side - Date selectors */}
+              <div className="flex-1 p-6">
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-lg font-semibold text-zinc-900 dark:text-white mb-4">
+                      Custom Range
+                    </h3>
+                    <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-6">
+                      Select a custom date range for your data
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                        Start Date
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="date"
+                          value={fromDate}
+                          onChange={handleFromDateChange}
+                          className="w-full px-4 py-3 text-sm bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-xl text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-all"
+                          placeholder="Select date"
+                        />
+                        <CalendarIcon className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 pointer-events-none" />
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                        End Date
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="date"
+                          value={toDate}
+                          onChange={handleToDateChange}
+                          className="w-full px-4 py-3 text-sm bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-xl text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-all"
+                          placeholder="Select date"
+                        />
+                        <CalendarIcon className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 pointer-events-none" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Date preview */}
+                  {selectedRange.from && selectedRange.to && (
+                    <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 border border-blue-200 dark:border-blue-800">
+                      <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
+                        <CalendarIcon className="w-4 h-4" />
+                        <span className="text-sm font-medium">
+                          {format(selectedRange.from, 'MMM d, yyyy')} — {format(selectedRange.to, 'MMM d, yyyy')}
+                        </span>
+                      </div>
+                      <div className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                        {Math.ceil((selectedRange.to.getTime() - selectedRange.from.getTime()) / (1000 * 60 * 60 * 24)) + 1} days selected
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Actions */}
+                  <div className="flex gap-3 pt-2">
+                    <button
+                      onClick={() => setIsOpen(false)}
+                      className="flex-1 px-4 py-2.5 text-sm font-medium text-zinc-700 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-xl transition-all"
+                    >
+                      Cancel
+                    </button>
+                    {(selectedRange.from || selectedRange.to) && (
+                      <button
+                        onClick={() => {
+                          const clearedRange = { from: null, to: null };
+                          setSelectedRange(clearedRange);
+                          setFromDate('');
+                          setToDate('');
+                          onChange?.(clearedRange);
+                        }}
+                        className="px-4 py-2.5 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all"
+                      >
+                        Clear
+                      </button>
+                    )}
+                    <button
+                      onClick={() => setIsOpen(false)}
+                      className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 rounded-xl transition-all"
+                    >
+                      Apply
+                    </button>
+                  </div>
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-                  To
-                </label>
-                <input
-                  type="date"
-                  value={toDate}
-                  onChange={handleToDateChange}
-                  className="w-full px-3 py-2 text-sm bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
-                />
-              </div>
-              {/* Clear button */}
-              {(selectedRange.from || selectedRange.to) && (
-                <button
-                  onClick={() => {
-                    const clearedRange = { from: null, to: null };
-                    setSelectedRange(clearedRange);
-                    setFromDate('');
-                    setToDate('');
-                    onChange?.(clearedRange);
-                    setIsOpen(false);
-                  }}
-                  className="w-full px-3 py-2 text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white bg-zinc-50 dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 border border-zinc-200 dark:border-zinc-700 rounded-lg transition-colors"
-                >
-                  Clear dates
-                </button>
-              )}
             </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   );

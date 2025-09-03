@@ -1,42 +1,62 @@
 import React from 'react';
+import { cn } from '@/lib/utils';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
+  variant?: 'primary' | 'secondary' | 'ghost' | 'danger' | 'outline';
   size?: 'sm' | 'md' | 'lg';
+  fullWidth?: boolean;
+  loading?: boolean;
   children: React.ReactNode;
 }
 
 export function Button({ 
   variant = 'primary', 
   size = 'md', 
+  fullWidth = false,
+  loading = false,
   children, 
   className = '',
+  disabled,
   ...props 
 }: ButtonProps) {
   const variantClasses = {
-    primary: 'bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600',
-    secondary: 'bg-zinc-100 text-zinc-900 hover:bg-zinc-200 dark:bg-zinc-900 dark:text-white dark:hover:bg-zinc-800',
-    ghost: 'bg-transparent text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-white',
-    danger: 'bg-red-600 text-white hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600'
+    primary: 'bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 shadow-sm',
+    secondary: 'bg-zinc-100 text-zinc-900 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-white dark:hover:bg-zinc-700 border border-zinc-200 dark:border-zinc-700',
+    ghost: 'bg-transparent text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white',
+    danger: 'bg-red-600 text-white hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600 shadow-sm',
+    outline: 'bg-transparent border border-zinc-300 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800'
   };
 
   const sizeClasses = {
-    sm: 'px-3 py-1.5 text-sm',
-    md: 'px-4 py-2 text-sm',
-    lg: 'px-6 py-3 text-base'
+    sm: 'h-8 px-3 text-sm rounded-lg',
+    md: 'h-10 px-4 text-sm rounded-xl',
+    lg: 'h-12 px-6 text-base rounded-xl'
   };
 
   return (
     <button
-      className={`
-        inline-flex items-center justify-center gap-2 
-        font-medium rounded-lg transition-all duration-200
-        ${variantClasses[variant]} 
-        ${sizeClasses[size]} 
-        ${className}
-      `}
+      className={cn(
+        "inline-flex items-center justify-center gap-2",
+        "font-medium transition-all duration-200",
+        "focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:ring-offset-2 dark:focus:ring-offset-zinc-900",
+        "disabled:pointer-events-none disabled:opacity-50",
+        variantClasses[variant],
+        sizeClasses[size],
+        fullWidth && "w-full",
+        loading && "relative text-transparent hover:text-transparent",
+        className
+      )}
+      disabled={disabled || loading}
       {...props}
     >
+      {loading && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <svg className="animate-spin h-4 w-4 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+        </div>
+      )}
       {children}
     </button>
   );
@@ -54,11 +74,11 @@ export function Badge({
   size = 'sm' 
 }: BadgeProps) {
   const variantClasses = {
-    default: 'bg-zinc-100 text-zinc-700',
-    success: 'bg-green-100 text-green-700',
-    warning: 'bg-amber-100 text-amber-700',
-    error: 'bg-red-100 text-red-700',
-    info: 'bg-blue-100 text-blue-700'
+    default: 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 ring-1 ring-zinc-200 dark:ring-zinc-700',
+    success: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 ring-1 ring-green-200 dark:ring-green-800',
+    warning: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 ring-1 ring-amber-200 dark:ring-amber-800',
+    error: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 ring-1 ring-red-200 dark:ring-red-800',
+    info: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 ring-1 ring-blue-200 dark:ring-blue-800'
   };
 
   const sizeClasses = {
@@ -67,11 +87,11 @@ export function Badge({
   };
 
   return (
-    <span className={`
-      inline-flex items-center font-medium rounded-full
-      ${variantClasses[variant]} 
-      ${sizeClasses[size]}
-    `}>
+    <span className={cn(
+      "inline-flex items-center font-medium rounded-full",
+      variantClasses[variant],
+      sizeClasses[size]
+    )}>
       {children}
     </span>
   );
