@@ -2,42 +2,45 @@
 
 import * as React from "react"
 import * as SeparatorPrimitive from "@radix-ui/react-separator"
-
+import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
-interface SeparatorProps extends React.ComponentProps<typeof SeparatorPrimitive.Root> {
-  variant?: "default" | "subtle" | "strong";
-}
+const separatorVariants = cva(
+  "shrink-0 transition-colors duration-200",
+  {
+    variants: {
+      variant: {
+        default: "bg-border",
+        subtle: "bg-border/50",
+        strong: "bg-foreground/20"
+      },
+      orientation: {
+        horizontal: "h-[1px] w-full",
+        vertical: "h-full w-[1px]"
+      }
+    },
+    defaultVariants: {
+      variant: "default",
+      orientation: "horizontal"
+    }
+  }
+)
 
-function Separator({
-  className,
-  orientation = "horizontal",
-  decorative = true,
-  variant = "default",
-  ...props
-}: SeparatorProps) {
-  const variantStyles = {
-    default: "bg-zinc-200 dark:bg-zinc-800",
-    subtle: "bg-zinc-100 dark:bg-zinc-900",
-    strong: "bg-zinc-300 dark:bg-zinc-700"
-  };
-
-  return (
+const Separator = React.forwardRef<
+  React.ElementRef<typeof SeparatorPrimitive.Root>,
+  React.ComponentPropsWithoutRef<typeof SeparatorPrimitive.Root> &
+    VariantProps<typeof separatorVariants>
+>(
+  ({ className, orientation = "horizontal", variant, decorative = true, ...props }, ref) => (
     <SeparatorPrimitive.Root
-      data-slot="separator"
+      ref={ref}
       decorative={decorative}
       orientation={orientation}
-      className={cn(
-        "shrink-0 transition-colors",
-        variantStyles[variant],
-        orientation === "horizontal" 
-          ? "h-px w-full" 
-          : "h-full w-px",
-        className
-      )}
+      className={cn(separatorVariants({ variant, orientation }), className)}
       {...props}
     />
   )
-}
+)
+Separator.displayName = SeparatorPrimitive.Root.displayName
 
-export { Separator }
+export { Separator, separatorVariants }
