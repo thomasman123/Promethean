@@ -16,12 +16,12 @@ export function DashboardLayout({
   showDateFilter = true 
 }: DashboardLayoutProps) {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gray-50">
       {/* Sidebar */}
       <Sidebar />
       
       {/* Main content area */}
-      <div className="pl-64"> {/* Leave space for full sidebar */}
+      <div className="pl-48">
         {/* Top bar */}
         <TopBar title={title} showDateFilter={showDateFilter} />
         
