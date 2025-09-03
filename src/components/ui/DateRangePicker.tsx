@@ -1,55 +1,58 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from 'react';
-import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subDays, subWeeks, subMonths } from 'date-fns';
-import { CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react';
-import { DayPicker, DateRange as DayPickerDateRange } from "react-day-picker";
-import { cn } from '@/lib/utils';
-import "react-day-picker/dist/style.css";
-import styles from './DateRangePicker.module.css';
+import * as React from "react";
+import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subDays, subWeeks, subMonths } from "date-fns";
+import { Calendar as CalendarIcon } from "lucide-react";
+import { DateRange } from "react-day-picker";
 
-interface DateRange {
-  from: Date | null;
-  to: Date | null;
-}
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/Button";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 interface DateRangePickerProps {
-  value?: DateRange;
-  onChange?: (range: DateRange) => void;
+  value?: {
+    from: Date | null;
+    to: Date | null;
+  };
+  onChange?: (range: { from: Date | null; to: Date | null }) => void;
   className?: string;
 }
 
 interface PresetOption {
   label: string;
-  getValue: () => DateRange;
-  icon?: React.ReactNode;
+  getValue: () => { from: Date; to: Date };
 }
 
+export function DateRangePicker({ value, onChange, className }: DateRangePickerProps) {
+  const [date, setDate] = React.useState<DateRange | undefined>(() => {
+    if (value?.from && value?.to) {
+      return { from: value.from, to: value.to };
+    }
+    return undefined;
+  });
 
-
-export function DateRangePicker({ value, onChange, className = '' }: DateRangePickerProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [selectedRange, setSelectedRange] = useState<DateRange>(value || { from: null, to: null });
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  // Update local state when value prop changes
-  useEffect(() => {
-    if (value) {
-      setSelectedRange(value);
+  React.useEffect(() => {
+    if (value?.from && value?.to) {
+      setDate({ from: value.from, to: value.to });
+    } else {
+      setDate(undefined);
     }
   }, [value]);
 
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
+  const handleSelect = (newDate: DateRange | undefined) => {
+    setDate(newDate);
+    if (onChange) {
+      onChange({
+        from: newDate?.from || null,
+        to: newDate?.to || null
+      });
     }
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  };
 
   const presetOptions: PresetOption[] = [
     {
@@ -112,186 +115,114 @@ export function DateRangePicker({ value, onChange, className = '' }: DateRangePi
 
   const handlePresetClick = (preset: PresetOption) => {
     const range = preset.getValue();
-    setSelectedRange(range);
-    onChange?.(range);
-    setIsOpen(false);
-  };
-
-  const handleDateSelect = (range: DayPickerDateRange | undefined) => {
-    const newRange = {
-      from: range?.from || null,
-      to: range?.to || null
-    };
-    setSelectedRange(newRange);
-    onChange?.(newRange);
+    handleSelect(range);
   };
 
   const formatDateRange = () => {
-    if (selectedRange.from && selectedRange.to) {
-      const fromStr = format(selectedRange.from, 'MMM d, yyyy');
-      const toStr = format(selectedRange.to, 'MMM d, yyyy');
-      
-      // Check if it matches a preset
-      for (const preset of presetOptions) {
-        const presetRange = preset.getValue();
-        if (
-          presetRange.from?.getTime() === selectedRange.from.getTime() &&
-          presetRange.to?.getTime() === selectedRange.to.getTime()
-        ) {
-          return preset.label;
+    if (date?.from) {
+      if (date.to) {
+        // Check if it matches a preset
+        for (const preset of presetOptions) {
+          const presetRange = preset.getValue();
+          if (
+            presetRange.from.getTime() === date.from.getTime() &&
+            presetRange.to.getTime() === date.to.getTime()
+          ) {
+            return preset.label;
+          }
         }
+        return `${format(date.from, 'MMM d, yyyy')} - ${format(date.to, 'MMM d, yyyy')}`;
       }
-      
-      return `${fromStr} - ${toStr}`;
+      return format(date.from, 'MMM d, yyyy');
     }
     return 'Select date range';
   };
 
   return (
-    <div ref={dropdownRef} className={cn("relative", className)}>
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-4 py-2 bg-zinc-100/90 dark:bg-zinc-900/90 backdrop-blur-sm rounded-full text-sm font-medium text-zinc-900 dark:text-white hover:bg-zinc-200/90 dark:hover:bg-zinc-800/90 transition-all"
-      >
-        <CalendarIcon className="w-4 h-4" />
-        <span>{formatDateRange()}</span>
-        <svg 
-          className={cn("w-4 h-4 transition-transform", isOpen && "rotate-180")} 
-          fill="currentColor" 
-          viewBox="0 0 24 24"
-        >
-          <path d="M7 10l5 5 5-5z"/>
-        </svg>
-      </button>
-
-      {isOpen && (
-        <>
-          {/* Backdrop */}
-          <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
-          
-          {/* Dropdown */}
-          <div className="absolute top-full mt-2 right-0 z-50 bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl border border-zinc-200/50 dark:border-zinc-800/50 overflow-hidden animate-in fade-in-0 zoom-in-95 duration-200">
-            <div className="flex">
-              {/* Left side - Preset options */}
-              <div className="w-48 bg-zinc-50/50 dark:bg-zinc-800/30 border-r border-zinc-200/50 dark:border-zinc-800/50 p-3">
-                <div className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-3 px-3">
-                  Quick Select
-                </div>
-                {presetOptions.map((preset) => {
-                  const presetRange = preset.getValue();
-                  const isActive = selectedRange.from?.getTime() === presetRange.from?.getTime() && 
-                                 selectedRange.to?.getTime() === presetRange.to?.getTime();
-                  
-                  return (
-                    <button
-                      key={preset.label}
-                      onClick={() => handlePresetClick(preset)}
-                      className={cn(
-                        "w-full text-left px-3 py-2.5 text-sm rounded-xl transition-all flex items-center gap-2",
-                        isActive 
-                          ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium" 
-                          : "text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800/50"
-                      )}
-                    >
-                      {preset.icon || <CalendarIcon className="w-4 h-4 opacity-50" />}
-                      <span>{preset.label}</span>
-                      {isActive && (
-                        <svg className="w-4 h-4 ml-auto" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                        </svg>
-                      )}
-                    </button>
-                  );
-                })}
+    <div className={cn("grid gap-2", className)}>
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            id="date"
+            variant={"outline"}
+            className={cn(
+              "justify-start text-left font-normal rounded-full",
+              "bg-zinc-100/90 dark:bg-zinc-900/90",
+              "hover:bg-zinc-200/90 dark:hover:bg-zinc-800/90",
+              "border-0",
+              !date && "text-muted-foreground"
+            )}
+          >
+            <CalendarIcon className="mr-2 h-4 w-4" />
+            {formatDateRange()}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="end">
+          <div className="flex">
+            {/* Preset options */}
+            <div className="w-48 border-r p-3 space-y-1">
+              <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-2">
+                Quick Select
               </div>
-
-              {/* Right side - Calendar */}
-              <div className="p-6">
-                <DayPicker
-                  mode="range"
-                  selected={{
-                    from: selectedRange.from || undefined,
-                    to: selectedRange.to || undefined
-                  }}
-                  onSelect={handleDateSelect}
-                  numberOfMonths={2}
-                  showOutsideDays={true}
-                  fixedWeeks={true}
-                  weekStartsOn={0}
-                  className={styles.datePicker}
-                  classNames={{
-                    months: styles.months,
-                    month: styles.month,
-                    caption: styles.caption,
-                    caption_label: styles.captionLabel,
-                    nav: styles.nav,
-                    nav_button: cn(styles.navButton, "hidden"),
-                    nav_button_previous: styles.navButtonPrevious,
-                    nav_button_next: styles.navButtonNext,
-                    table: styles.table,
-                    head_row: styles.headRow,
-                    head_cell: styles.headCell,
-                    row: styles.row,
-                    cell: styles.cell,
-                    day: styles.day,
-                    day_selected: styles.daySelected,
-                    day_today: styles.dayToday,
-                    day_outside: styles.dayOutside,
-                    day_disabled: styles.dayDisabled,
-                    day_range_start: styles.dayRangeStart,
-                    day_range_middle: styles.dayRangeMiddle,
-                    day_range_end: styles.dayRangeEnd,
-                    day_hidden: styles.dayHidden
-                  }}
-                />
-
-                {/* Date preview */}
-                {selectedRange.from && selectedRange.to && (
-                  <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 border border-blue-200 dark:border-blue-800 mt-6">
-                    <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
-                      <CalendarIcon className="w-4 h-4" />
-                      <span className="text-sm font-medium">
-                        {format(selectedRange.from, 'MMM d, yyyy')} — {format(selectedRange.to, 'MMM d, yyyy')}
-                      </span>
-                    </div>
-                    <div className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                      {Math.ceil((selectedRange.to.getTime() - selectedRange.from.getTime()) / (1000 * 60 * 60 * 24)) + 1} days selected
-                    </div>
-                  </div>
-                )}
-
-                {/* Actions */}
-                <div className="flex gap-3 pt-4">
+              {presetOptions.map((preset) => {
+                const presetRange = preset.getValue();
+                const isActive = date?.from?.getTime() === presetRange.from.getTime() && 
+                               date?.to?.getTime() === presetRange.to.getTime();
+                
+                return (
                   <button
-                    onClick={() => setIsOpen(false)}
-                    className="flex-1 px-4 py-2.5 text-sm font-medium text-zinc-700 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-xl transition-all"
+                    key={preset.label}
+                    onClick={() => handlePresetClick(preset)}
+                    className={cn(
+                      "w-full text-left px-2 py-1.5 text-sm rounded-md transition-all",
+                      "flex items-center gap-2",
+                      isActive 
+                        ? "bg-primary text-primary-foreground" 
+                        : "hover:bg-accent hover:text-accent-foreground"
+                    )}
                   >
-                    Cancel
+                    <CalendarIcon className="w-3 h-3 opacity-50" />
+                    <span>{preset.label}</span>
+                    {isActive && (
+                      <svg className="w-3 h-3 ml-auto" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    )}
                   </button>
-                  {(selectedRange.from || selectedRange.to) && (
-                    <button
-                      onClick={() => {
-                        const clearedRange = { from: null, to: null };
-                        setSelectedRange(clearedRange);
-                        onChange?.(clearedRange);
-                      }}
-                      className="px-4 py-2.5 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all"
-                    >
-                      Clear
-                    </button>
+                );
+              })}
+              
+              {/* Clear button */}
+              {date && (
+                <button
+                  onClick={() => handleSelect(undefined)}
+                  className={cn(
+                    "w-full text-left px-2 py-1.5 text-sm rounded-md transition-all mt-2",
+                    "flex items-center gap-2 text-destructive hover:bg-destructive/10"
                   )}
-                  <button
-                    onClick={() => setIsOpen(false)}
-                    className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 rounded-xl transition-all"
-                  >
-                    Apply
-                  </button>
-                </div>
-              </div>
+                >
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  <span>Clear</span>
+                </button>
+              )}
+            </div>
+            
+            {/* Calendar */}
+            <div className="p-3">
+              <Calendar
+                initialFocus
+                mode="range"
+                defaultMonth={date?.from}
+                selected={date}
+                onSelect={handleSelect}
+                numberOfMonths={2}
+              />
             </div>
           </div>
-        </>
-      )}
+        </PopoverContent>
+      </Popover>
     </div>
   );
 } 
