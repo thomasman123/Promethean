@@ -61,12 +61,8 @@ export default function SignupPage() {
         
         if (!signInError && signInData.session) {
           setSuccess(true)
-          // First, refresh the router to ensure cookies are set
-          router.refresh()
-          // Then navigate to dashboard
-          setTimeout(() => {
-            router.push("/dashboard")
-          }, 100)
+                  // Use window.location for more reliable redirect after auth
+        window.location.href = "/dashboard"
         } else {
           // If auto sign-in fails, redirect to login
           router.push("/login")

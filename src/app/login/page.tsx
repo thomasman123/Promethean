@@ -61,12 +61,8 @@ export default function LoginPage() {
         setLoading(false)
       } else if (data.session) {
         setSuccess(true)
-        // First, refresh the router to ensure cookies are set
-        router.refresh()
-        // Then navigate to dashboard
-        setTimeout(() => {
-          router.push("/dashboard")
-        }, 100)
+        // Use window.location for more reliable redirect after auth
+        window.location.href = "/dashboard"
       }
     } catch (err) {
       setError("An unexpected error occurred")

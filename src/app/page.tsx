@@ -16,9 +16,9 @@ export default function HomePage() {
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession()
       if (session) {
-        router.push("/dashboard")
+        window.location.href = "/dashboard"
       } else {
-        router.push("/login")
+        window.location.href = "/login"
       }
       setChecking(false)
     }
