@@ -54,12 +54,12 @@ export default function DataViewPage() {
   async function loadUsers() {
     setLoading(true)
     
-    // Query profiles through account_access table
+    // Query profiles through account_access table with explicit relationship
     let query = supabase
       .from('account_access')
       .select(`
         user_id,
-        profiles!inner (
+        profiles:user_id (
           id,
           email,
           full_name,
@@ -79,6 +79,7 @@ export default function DataViewPage() {
     // Transform users to UserMetric format
     const userMetrics: UserMetric[] = (data || []).map(access => {
       const profile = (access as any).profiles
+      if (!profile) return null
       // Filter by role
       if (roleFilter !== 'both' && profile.role !== roleFilter) {
         return null

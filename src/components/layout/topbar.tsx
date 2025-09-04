@@ -373,7 +373,6 @@ export function TopBar() {
           <DropdownMenuTrigger asChild>
             <button className="rounded-full focus:outline-none focus:ring-2 focus:ring-primary/20 focus:ring-offset-2 focus:ring-offset-background">
               <Avatar className="h-9 w-9 border border-border/50">
-                <AvatarImage src="/avatar.jpg" alt="User" />
                 <AvatarFallback className="bg-muted">U</AvatarFallback>
               </Avatar>
             </button>
