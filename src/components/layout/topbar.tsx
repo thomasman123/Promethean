@@ -61,7 +61,7 @@ export function TopBar() {
 
   const loadUserAccounts = async () => {
     try {
-      const response = await fetch('/api/team')
+      const response = await fetch('/api/accounts')
       if (response.ok) {
         const data = await response.json()
         if (data.accounts && data.accounts.length > 0) {
