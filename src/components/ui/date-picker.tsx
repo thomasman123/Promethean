@@ -77,7 +77,6 @@ export function DatePicker({
           selected={date}
           onSelect={handleSelect}
           numberOfMonths={2}
-          className="rounded-lg border shadow-sm"
         />
       </PopoverContent>
     </Popover>
