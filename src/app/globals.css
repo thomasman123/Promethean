@@ -101,13 +101,18 @@
   
   /* Calendar styling overrides */
   .rdp {
-    --rdp-cell-size: 36px;
+    --rdp-cell-size: 32px;
     --rdp-accent-color: hsl(var(--primary));
     --rdp-background-color: hsl(var(--primary));
     --rdp-accent-color-dark: hsl(var(--primary));
     --rdp-background-color-dark: hsl(var(--primary));
     --rdp-outline: 2px solid transparent;
     --rdp-outline-selected: 2px solid hsl(var(--primary));
+    margin: 0;
+  }
+  
+  .rdp-months {
+    @apply flex gap-4;
   }
   
   .rdp-month {
@@ -115,7 +120,7 @@
   }
   
   .rdp-caption {
-    @apply flex justify-center pt-1 relative items-center;
+    @apply flex justify-center pt-1 relative items-center h-7;
   }
   
   .rdp-caption_label {
@@ -127,7 +132,7 @@
   }
   
   .rdp-nav_button {
-    @apply inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100;
+    @apply inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100;
   }
   
   .rdp-nav_button_previous {
@@ -139,7 +144,7 @@
   }
   
   .rdp-table {
-    @apply w-full border-collapse space-y-1;
+    @apply w-full border-collapse;
   }
   
   .rdp-head_row {
@@ -147,19 +152,19 @@
   }
   
   .rdp-head_cell {
-    @apply text-muted-foreground rounded-md w-9 font-normal text-[0.8rem];
+    @apply text-muted-foreground rounded-md w-8 h-6 font-normal text-xs flex items-center justify-center;
   }
   
   .rdp-row {
-    @apply flex w-full mt-2;
+    @apply flex w-full;
   }
   
   .rdp-cell {
-    @apply text-center text-sm p-0 relative [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20;
+    @apply h-8 w-8 text-center text-sm p-0 relative [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20;
   }
   
   .rdp-day {
-    @apply inline-flex items-center justify-center rounded-md text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground h-9 w-9 p-0 font-normal aria-selected:opacity-100;
+    @apply inline-flex items-center justify-center rounded-md text-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground h-8 w-8 p-0 font-normal aria-selected:opacity-100;
   }
   
   .rdp-day_selected {
@@ -167,7 +172,7 @@
   }
   
   .rdp-day_today {
-    @apply bg-accent text-accent-foreground;
+    @apply bg-accent text-accent-foreground font-semibold;
   }
   
   .rdp-day_outside {
@@ -179,19 +184,24 @@
   }
   
   .rdp-day_range_start {
-    @apply bg-primary text-primary-foreground;
+    @apply bg-primary text-primary-foreground rounded-l-md;
   }
   
   .rdp-day_range_end {
-    @apply bg-primary text-primary-foreground;
+    @apply bg-primary text-primary-foreground rounded-r-md;
   }
   
   .rdp-day_range_middle {
-    @apply bg-accent text-accent-foreground;
+    @apply bg-accent text-accent-foreground rounded-none;
   }
   
   .rdp-day_hidden {
     @apply invisible;
+  }
+  
+  /* Compact popover for calendar */
+  [data-radix-popper-content-wrapper] .rdp {
+    @apply text-sm;
   }
   
   .topbar-transparent {

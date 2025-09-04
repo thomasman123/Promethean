@@ -121,8 +121,8 @@ export function DatePicker({
         <PopoverContent className="w-auto p-0" align="start">
           <div className="flex">
             {/* Presets sidebar */}
-            <div className="border-r bg-muted/10">
-              <div className="p-3 space-y-1">
+            <div className="border-r bg-muted/5">
+              <div className="p-2 space-y-1">
                 {presets.map((preset) => (
                   <button
                     key={preset.label}
@@ -131,7 +131,7 @@ export function DatePicker({
                       handleSelect({ from: value.from, to: value.to })
                     }}
                     className={cn(
-                      "w-full text-left px-3 py-1.5 text-sm rounded-md",
+                      "w-full text-left px-2 py-1 text-sm rounded",
                       "hover:bg-accent hover:text-accent-foreground transition-colors"
                     )}
                   >
@@ -148,7 +148,7 @@ export function DatePicker({
               selected={date}
               onSelect={handleSelect}
               numberOfMonths={2}
-              className="p-3"
+              className="p-2"
             />
           </div>
         </PopoverContent>
