@@ -4,85 +4,84 @@ import { NextResponse } from 'next/server'
 
 export async function GET() {
   const supabase = createRouteHandlerClient({ cookies })
-  
+
   try {
+    // 1. Get current user
     const { data: { user } } = await supabase.auth.getUser()
-    
+
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    let accounts: any[] = []
-
-    // Check if user is an admin
-    const { data: profile } = await supabase
+    // 2. Determine if the user is an admin (based on the profile row)
+    const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('role')
       .eq('id', user.id)
       .single()
 
+    if (profileError) throw profileError
+
     const isAdmin = profile?.role === 'admin'
 
+    // 3. Build the accounts response
+    let accounts: Array<{ id: string; name: string; description: string | null; role?: string }> = []
+
     if (isAdmin) {
-      // Admins see all active accounts
+      // Admins can see all active accounts
       const { data, error } = await supabase
         .from('accounts')
-        .select(`
-          id,
-          name,
-          description
-        `)
+        .select('id, name, description')
         .eq('is_active', true)
         .order('name')
 
       if (error) throw error
-      accounts = data || []
+      accounts = data ?? []
     } else {
-      // Regular users - fetch account access separately to avoid recursion
-      try {
-        // First get account IDs the user has access to
-        const { data: accessData, error: accessError } = await supabase
-          .from('account_access')
-          .select('account_id, role')
-          .eq('user_id', user.id)
-          .eq('is_active', true)
+      /**
+       * Non-admins:
+       *  ‑ Join account_access → accounts in one query.
+       *  ‑ account_access.row includes the user’s role.
+       *  ‑ `accounts` table row is embedded via the foreign-key join.
+       *  => This avoids the two-step recursion-prone approach.
+       */
+      const { data, error } = await supabase
+        .from('account_access')
+        .select(
+          `role,
+           accounts (
+             id,
+             name,
+             description,
+             is_active
+           )`
+        )
+        .eq('user_id', user.id)
+        .eq('is_active', true)
 
-        if (accessError) throw accessError
+      if (error) throw error
 
-        if (accessData && accessData.length > 0) {
-          // Then fetch account details
-          const accountIds = accessData.map(a => a.account_id)
-          const { data: accountsData, error: accountsError } = await supabase
-            .from('accounts')
-            .select('id, name, description')
-            .in('id', accountIds)
-            .eq('is_active', true)
-            .order('name')
+      accounts = (data ?? []).flatMap((row: any) => {
+        const { role } = row
+        const acc = row.accounts as any | null
 
-          if (accountsError) throw accountsError
-
-          // Merge role information
-          accounts = accountsData?.map(account => {
-            const access = accessData.find(a => a.account_id === account.id)
-            return {
-              ...account,
-              role: access?.role
-            }
-          }) || []
+        if (acc && acc.is_active) {
+          return [{ id: acc.id, name: acc.name, description: acc.description, role }]
         }
-      } catch (error) {
-        console.error('Error in account access query:', error)
-        // If there's still a recursion error, return empty accounts
-        accounts = []
-      }
+        return []
+      })
     }
 
     return NextResponse.json({ accounts })
   } catch (error) {
     console.error('Get accounts error:', error)
-    return NextResponse.json({ 
-      error: 'Failed to fetch accounts',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 })
+
+    return NextResponse.json(
+      {
+        error: 'Failed to fetch accounts',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
+      { status: 500 }
+    )
   }
 } 
