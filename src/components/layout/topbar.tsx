@@ -20,6 +20,9 @@ import {
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
+import { DatePicker } from "@/components/ui/date-picker"
+import { ViewsManager } from "@/components/dashboard/views-manager"
+import { useDashboard } from "@/lib/dashboard-context"
 
 interface Account {
   id: string
@@ -33,10 +36,14 @@ export function TopBar() {
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
   const [hoverTimeout, setHoverTimeout] = useState<NodeJS.Timeout | null>(null)
   const [accounts, setAccounts] = useState<Account[]>([])
-  const [selectedAccountId, setSelectedAccountId] = useState<string>("")
+  const [currentUserId, setCurrentUserId] = useState<string>("")
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClientComponentClient()
+  const { dateRange, setDateRange, selectedAccountId, setSelectedAccountId, setCurrentViewId } = useDashboard()
+
+  // Show date/view controls only on dashboard and data-view pages
+  const showDashboardControls = pathname === "/dashboard" || pathname === "/data-view"
 
   useEffect(() => {
     // Initialize dark mode from localStorage or system preference
@@ -48,8 +55,9 @@ export function TopBar() {
   }, [])
 
   useEffect(() => {
-    // Load user accounts
+    // Load user accounts and get current user
     loadUserAccounts()
+    getCurrentUser()
   }, [])
 
   useEffect(() => {
@@ -60,6 +68,18 @@ export function TopBar() {
     window.addEventListener("scroll", handleScroll)
     return () => window.removeEventListener("scroll", handleScroll)
   }, [])
+
+  const getCurrentUser = async () => {
+    try {
+      const response = await fetch('/api/auth/session')
+      if (response.ok) {
+        const data = await response.json()
+        setCurrentUserId(data.user?.id || "")
+      }
+    } catch (error) {
+      console.error('Failed to get current user:', error)
+    }
+  }
 
   const loadUserAccounts = async () => {
     try {
@@ -108,6 +128,10 @@ export function TopBar() {
   const handleSignOut = async () => {
     await supabase.auth.signOut()
     router.push("/login")
+  }
+
+  const handleViewChange = (viewId: string) => {
+    setCurrentViewId(viewId)
   }
 
   const navItems = [
@@ -171,12 +195,34 @@ export function TopBar() {
       "fixed top-0 left-0 right-0 z-50 flex h-16 items-center justify-between px-6 transition-all duration-200",
       isScrolled ? "bg-background/80 backdrop-blur-md border-b" : "bg-transparent"
     )}>
-      {/* Left section - Logo */}
-      <div className="flex items-center gap-4">
+      {/* Left section - Logo and Account Selector */}
+      <div className="flex items-center gap-2 md:gap-4">
         {/* Logo */}
         <div className="flex items-center gap-2">
-          <Sword className="h-6 w-6 text-primary" />
+          <Sword className="h-5 w-5 md:h-6 md:w-6 text-primary" />
         </div>
+
+        {/* Account Dropdown - hide on mobile when dashboard controls are shown */}
+        {accounts.length > 0 && (
+          <Select value={selectedAccountId} onValueChange={handleAccountChange}>
+            <SelectTrigger className={cn(
+              "w-[140px] md:w-[200px] h-9 md:h-10 px-3 md:px-4 rounded-full text-sm md:text-base",
+              "bg-muted/50 backdrop-blur-sm border border-border/50",
+              "hover:bg-muted/80 transition-all duration-200",
+              "focus:outline-none focus:ring-2 focus:ring-primary/20",
+              showDashboardControls && "hidden sm:flex"
+            )}>
+              <SelectValue placeholder="Select account" />
+            </SelectTrigger>
+            <SelectContent className="rounded-2xl border bg-popover/95 backdrop-blur-sm">
+              {accounts.map((account) => (
+                <SelectItem key={account.id} value={account.id} className="rounded-xl focus:bg-accent">
+                  {account.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       {/* Center section - Main Navigation with Icon Only */}
@@ -258,34 +304,31 @@ export function TopBar() {
         })}
       </div>
 
-      {/* Right section - Account Selector, Dark mode toggle, Profile */}
-      <div className="flex items-center gap-3">
-        {/* Account Dropdown */}
-        {accounts.length > 0 && (
-          <Select value={selectedAccountId} onValueChange={handleAccountChange}>
-            <SelectTrigger className={cn(
-              "w-[200px] h-10 px-4 rounded-full",
-              "bg-muted/50 backdrop-blur-sm border border-border/50",
-              "hover:bg-muted/80 transition-all duration-200",
-              "focus:outline-none focus:ring-2 focus:ring-primary/20"
-            )}>
-              <SelectValue placeholder="Select account" />
-            </SelectTrigger>
-            <SelectContent className="rounded-2xl border bg-popover/95 backdrop-blur-sm">
-              {accounts.map((account) => (
-                <SelectItem key={account.id} value={account.id} className="rounded-xl focus:bg-accent">
-                  {account.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+      {/* Right section - Dashboard Controls, Dark mode toggle, Profile */}
+      <div className="flex items-center gap-2 md:gap-3">
+        {/* Date picker and Views - only show on dashboard/data-view pages */}
+        {showDashboardControls && (
+          <div className="flex items-center gap-2">
+            <div className="hidden sm:block">
+              <DatePicker
+                value={dateRange}
+                onChange={setDateRange}
+              />
+            </div>
+            
+            <ViewsManager
+              accountId={selectedAccountId}
+              currentUserId={currentUserId}
+              onViewChange={handleViewChange}
+            />
+          </div>
         )}
 
         {/* Dark mode toggle - Pill shaped */}
         <button
           onClick={toggleDarkMode}
           className={cn(
-            "rounded-full p-2.5 transition-all duration-200",
+            "rounded-full p-2 md:p-2.5 transition-all duration-200",
             "bg-muted/50 backdrop-blur-sm border border-border/50",
             "hover:bg-muted/80",
             "focus:outline-none focus:ring-2 focus:ring-primary/20"
