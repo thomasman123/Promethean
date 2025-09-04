@@ -12,13 +12,47 @@
 
 /* Popover content styling */
 [data-radix-popper-content-wrapper] {
-  animation: fadeIn 0.2s ease-out !important;
+  animation: fadeIn 0.15s ease-out !important;
+  opacity: 1 !important;
+}
+
+/* Fix for all Radix UI dropdown positioning glitches */
+[data-radix-popper-content-wrapper] {
+  will-change: transform, opacity !important;
+}
+
+/* Prevent initial positioning glitch */
+[data-radix-popper-content-wrapper][data-side="bottom"] {
+  --radix-popper-transform-origin: top !important;
+}
+
+[data-radix-popper-content-wrapper][data-side="top"] {
+  --radix-popper-transform-origin: bottom !important;
+}
+
+/* Fix Select dropdown positioning */
+[data-radix-select-content] {
+  will-change: transform, opacity !important;
+  animation: fadeIn 0.15s ease-out !important;
+}
+
+/* Fix DropdownMenu positioning */
+[data-radix-dropdown-menu-content] {
+  will-change: transform, opacity !important;
+  animation: fadeIn 0.15s ease-out !important;
+}
+
+/* Prevent layout shift on open */
+[data-radix-popper-content-wrapper],
+[data-radix-select-content],
+[data-radix-dropdown-menu-content] {
+  pointer-events: auto !important;
 }
 
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(-4px);
+    transform: translateY(-2px);
   }
   to {
     opacity: 1;

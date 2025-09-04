@@ -201,7 +201,7 @@ export function ViewsManager({
             <ChevronDown className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-56 rounded-2xl">
+        <DropdownMenuContent align="start" sideOffset={5} className="w-56 rounded-2xl">
           {/* Create new view */}
           <DropdownMenuItem
             onClick={() => setIsCreateDialogOpen(true)}

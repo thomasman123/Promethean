@@ -70,7 +70,7 @@ export function DatePicker({
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="end" sideOffset={5}>
+      <PopoverContent className="w-auto p-0" align="start" sideOffset={5}>
         <Calendar
           mode="range"
           defaultMonth={date?.from}
