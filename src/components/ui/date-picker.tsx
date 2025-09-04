@@ -98,7 +98,7 @@ export function DatePicker({
           <Button
             variant="outline"
             className={cn(
-              "w-[260px] h-10 px-4 justify-start text-left font-normal rounded-full",
+              "w-[240px] h-10 px-4 justify-start text-left font-normal rounded-full text-sm",
               "bg-muted/50 backdrop-blur-sm border border-border/50",
               "hover:bg-muted/80 transition-all duration-200",
               !date && "text-muted-foreground"
@@ -108,11 +108,10 @@ export function DatePicker({
             {date?.from ? (
               date.to ? (
                 <>
-                  {format(date.from, "LLL dd, y")} -{" "}
-                  {format(date.to, "LLL dd, y")}
+                  {format(date.from, "MMM dd")} - {format(date.to, "MMM dd, y")}
                 </>
               ) : (
-                format(date.from, "LLL dd, y")
+                format(date.from, "MMM dd, y")
               )
             ) : (
               <span>Pick a date</span>

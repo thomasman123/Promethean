@@ -196,39 +196,41 @@ export function TopBar() {
       isScrolled ? "bg-background/80 backdrop-blur-md border-b" : "bg-transparent"
     )}>
       {/* Left section - Logo and Account Selector */}
-      <div className="flex items-center gap-2 md:gap-4">
+      <div className="flex items-center gap-3">
         {/* Logo */}
         <div className="flex items-center gap-2">
-          <Sword className="h-5 w-5 md:h-6 md:w-6 text-primary" />
+          <Sword className="h-5 w-5 text-primary" />
         </div>
 
-        {/* Account Dropdown - hide on mobile when dashboard controls are shown */}
-        {accounts.length > 0 && (
-          <Select value={selectedAccountId} onValueChange={handleAccountChange}>
-            <SelectTrigger className={cn(
-              "w-[140px] md:w-[200px] h-9 md:h-10 px-3 md:px-4 rounded-full text-sm md:text-base",
-              "bg-muted/50 backdrop-blur-sm border border-border/50",
-              "hover:bg-muted/80 transition-all duration-200",
-              "focus:outline-none focus:ring-2 focus:ring-primary/20",
-              showDashboardControls && "hidden sm:flex"
-            )}>
-              <SelectValue placeholder="Select account" />
-            </SelectTrigger>
-            <SelectContent className="rounded-2xl border bg-popover/95 backdrop-blur-sm">
-              {accounts.map((account) => (
-                <SelectItem key={account.id} value={account.id} className="rounded-xl focus:bg-accent">
-                  {account.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
+        {/* Account Dropdown - Always visible with loading state */}
+        <Select 
+          value={selectedAccountId} 
+          onValueChange={handleAccountChange}
+          disabled={accounts.length === 0}
+        >
+          <SelectTrigger className={cn(
+            "w-[180px] h-10 px-4 rounded-full text-sm font-normal",
+            "bg-muted/50 backdrop-blur-sm border border-border/50",
+            "hover:bg-muted/80 transition-all duration-200",
+            "focus:outline-none focus:ring-2 focus:ring-primary/20",
+            "disabled:opacity-50 disabled:cursor-not-allowed"
+          )}>
+            <SelectValue placeholder={accounts.length === 0 ? "Loading..." : "Select account"} />
+          </SelectTrigger>
+          <SelectContent className="rounded-2xl border bg-popover/95 backdrop-blur-sm">
+            {accounts.map((account) => (
+              <SelectItem key={account.id} value={account.id} className="rounded-xl focus:bg-accent">
+                {account.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Center section - Main Navigation with Icon Only */}
       <div className={cn(
         "absolute left-1/2 transform -translate-x-1/2",
-        "flex items-center gap-2 px-2 py-1 rounded-full",
+        "flex items-center gap-2 px-3 py-1.5 rounded-full",
         "bg-muted/50 backdrop-blur-sm border border-border/50"
       )}>
         {navItems.map((item) => {
@@ -305,30 +307,28 @@ export function TopBar() {
       </div>
 
       {/* Right section - Dashboard Controls, Dark mode toggle, Profile */}
-      <div className="flex items-center gap-2 md:gap-3">
+      <div className="flex items-center gap-3">
         {/* Date picker and Views - only show on dashboard/data-view pages */}
         {showDashboardControls && (
-          <div className="flex items-center gap-2">
-            <div className="hidden sm:block">
-              <DatePicker
-                value={dateRange}
-                onChange={setDateRange}
-              />
-            </div>
+          <>
+            <DatePicker
+              value={dateRange}
+              onChange={setDateRange}
+            />
             
             <ViewsManager
               accountId={selectedAccountId}
               currentUserId={currentUserId}
               onViewChange={handleViewChange}
             />
-          </div>
+          </>
         )}
 
         {/* Dark mode toggle - Pill shaped */}
         <button
           onClick={toggleDarkMode}
           className={cn(
-            "rounded-full p-2 md:p-2.5 transition-all duration-200",
+            "rounded-full p-2.5 transition-all duration-200",
             "bg-muted/50 backdrop-blur-sm border border-border/50",
             "hover:bg-muted/80",
             "focus:outline-none focus:ring-2 focus:ring-primary/20"

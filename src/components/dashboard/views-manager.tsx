@@ -188,13 +188,14 @@ export function ViewsManager({
           <Button
             variant="outline"
             className={cn(
-              "h-10 px-4 gap-2 rounded-full",
+              "h-10 px-4 gap-2 rounded-full text-sm font-normal",
               "bg-muted/50 backdrop-blur-sm border border-border/50",
               "hover:bg-muted/80 transition-all duration-200",
+              "focus:outline-none focus:ring-2 focus:ring-primary/20",
               className
             )}
           >
-            <span className="text-sm">
+            <span>
               {currentView ? currentView.name : "Select View"}
             </span>
             <ChevronDown className="h-4 w-4" />
