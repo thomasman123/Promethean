@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Sword } from "lucide-react"
@@ -22,6 +22,28 @@ export default function LoginPage() {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
+
+  // Clear any corrupted auth data on mount
+  useEffect(() => {
+    // Clear any localStorage items that might contain corrupted auth data
+    const authKeys = Object.keys(localStorage).filter(key => 
+      key.startsWith('sb-') || 
+      key.includes('supabase') || 
+      key.includes('auth')
+    )
+    authKeys.forEach(key => {
+      try {
+        const value = localStorage.getItem(key)
+        // Check if value starts with "base64-" which indicates corrupted data
+        if (value && value.startsWith('base64-')) {
+          console.log('Clearing corrupted auth data:', key)
+          localStorage.removeItem(key)
+        }
+      } catch (e) {
+        console.error('Error cleaning auth data:', e)
+      }
+    })
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
