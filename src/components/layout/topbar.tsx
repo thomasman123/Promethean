@@ -18,12 +18,14 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 
 export function TopBar() {
   const [isDarkMode, setIsDarkMode] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null)
   const pathname = usePathname()
+  const router = useRouter()
 
   useEffect(() => {
     // Initialize dark mode from localStorage or system preference
@@ -84,6 +86,14 @@ export function TopBar() {
     },
   ]
 
+  const handleIconClick = (item: typeof navItems[0]) => {
+    if (item.dropdownItems && item.dropdownItems.length > 0) {
+      router.push(item.dropdownItems[0].href)
+    } else {
+      router.push(item.href)
+    }
+  }
+
   return (
     <div className={cn(
       "fixed top-0 left-0 right-0 z-50 flex h-16 items-center justify-between px-6 transition-all duration-200",
@@ -116,7 +126,7 @@ export function TopBar() {
 
       {/* Center section - Main Navigation with Icon Only */}
       <div className={cn(
-        "flex items-center gap-3 px-3 py-1.5 rounded-full",
+        "flex items-center gap-4 px-4 py-2 rounded-full",
         "bg-muted/50 backdrop-blur-sm border border-border/50"
       )}>
         {navItems.map((item) => {
@@ -125,21 +135,39 @@ export function TopBar() {
           
           if (item.dropdownItems) {
             return (
-              <DropdownMenu key={item.href}>
-                <DropdownMenuTrigger asChild>
+              <DropdownMenu 
+                key={item.href} 
+                open={openDropdown === item.href}
+                onOpenChange={(open) => setOpenDropdown(open ? item.href : null)}
+              >
+                <DropdownMenuTrigger 
+                  asChild
+                  onMouseEnter={() => setOpenDropdown(item.href)}
+                  onMouseLeave={(e) => {
+                    // Check if mouse is moving to dropdown content
+                    const rect = e.currentTarget.getBoundingClientRect()
+                    const isMovingDown = e.clientY > rect.bottom
+                    if (!isMovingDown) {
+                      setOpenDropdown(null)
+                    }
+                  }}
+                >
                   <button
+                    onClick={() => handleIconClick(item)}
                     className={cn(
-                      "flex items-center justify-center p-2.5 rounded-full transition-all duration-200",
+                      "flex items-center justify-center p-3 rounded-full transition-all duration-200",
                       "hover:bg-accent/50 focus:outline-none focus:ring-2 focus:ring-primary/20",
                       isActive && "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90"
                     )}
                   >
-                    <Icon className="h-4 w-4" />
+                    <Icon className="h-5 w-5" />
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent 
                   align="center" 
                   className="w-56 rounded-2xl border bg-popover/95 backdrop-blur-sm mt-2"
+                  onMouseEnter={() => setOpenDropdown(item.href)}
+                  onMouseLeave={() => setOpenDropdown(null)}
                 >
                   {item.dropdownItems.map((dropdownItem) => {
                     const DropdownIcon = dropdownItem.icon
@@ -165,12 +193,12 @@ export function TopBar() {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex items-center justify-center p-2.5 rounded-full transition-all duration-200",
+                "flex items-center justify-center p-3 rounded-full transition-all duration-200",
                 "hover:bg-accent/50 focus:outline-none focus:ring-2 focus:ring-primary/20",
                 isActive && "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90"
               )}
             >
-              <Icon className="h-4 w-4" />
+              <Icon className="h-5 w-5" />
             </Link>
           )
         })}
