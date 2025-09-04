@@ -67,7 +67,7 @@ export async function middleware(req: NextRequest) {
   }
 
   const isProtectedRoute = (path: string) => {
-    const publicPaths = ['/auth', '/auth/callback', '/auth/supabase-callback', '/api/auth/callback']
+    const publicPaths = ['/login', '/signup', '/auth', '/auth/callback', '/auth/supabase-callback', '/api/auth/callback']
     return !publicPaths.some(publicPath => path.startsWith(publicPath))
   }
 
@@ -78,7 +78,7 @@ export async function middleware(req: NextRequest) {
 
   // Check if authenticated for protected routes
   if (!session && isProtectedRoute(req.nextUrl.pathname)) {
-    return NextResponse.redirect(new URL('/auth', req.url))
+    return NextResponse.redirect(new URL('/login', req.url))
   }
 
   // Allow access to landing page (/) for everyone and to reset-password

@@ -15,7 +15,7 @@ export default function HomePage() {
       if (session) {
         router.push("/dashboard")
       } else {
-        router.push("/auth")
+        router.push("/login")
       }
       setChecking(false)
     }
