@@ -4,52 +4,6 @@
 
 @import "react-day-picker/style.css";
 
-/* Calendar fixes */
-.rdp-day {
-  @apply h-9 w-9 p-0 font-normal aria-selected:opacity-100;
-}
-
-.rdp-day[data-selected-single="true"] {
-  @apply bg-primary text-primary-foreground;
-}
-
-.rdp-day[data-range-start="true"] {
-  @apply bg-primary text-primary-foreground;
-}
-
-.rdp-day[data-range-end="true"] {
-  @apply bg-primary text-primary-foreground;
-}
-
-.rdp-day[data-range-middle="true"] {
-  @apply bg-accent text-accent-foreground;
-}
-
-.rdp-day:not([data-selected-single="true"]):not([data-range-start="true"]):not([data-range-end="true"]):not([data-range-middle="true"]):hover {
-  @apply bg-accent text-accent-foreground;
-}
-
-.rdp-day[data-today="true"]:not([data-selected-single="true"]):not([data-range-start="true"]):not([data-range-end="true"]) {
-  @apply bg-accent text-accent-foreground;
-}
-
-.rdp-day[data-disabled="true"] {
-  @apply text-muted-foreground opacity-50;
-}
-
-.rdp-day[data-outside="true"] {
-  @apply text-muted-foreground opacity-50;
-}
-
-/* Remove button styling from calendar days */
-.rdp button {
-  @apply border-0 bg-transparent;
-}
-
-.rdp button:focus-visible {
-  @apply outline-none ring-2 ring-ring ring-offset-2;
-}
-
 @layer base {
   :root {
     --background: 0 0% 100%;
