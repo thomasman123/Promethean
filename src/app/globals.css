@@ -19,6 +19,13 @@
 /* Fix for all Radix UI dropdown positioning glitches */
 [data-radix-popper-content-wrapper] {
   will-change: transform, opacity !important;
+  /* Hide initially until properly positioned */
+  visibility: hidden;
+}
+
+/* Show once positioned */
+[data-radix-popper-content-wrapper][data-state="open"] {
+  visibility: visible !important;
 }
 
 /* Prevent initial positioning glitch */
@@ -28,6 +35,14 @@
 
 [data-radix-popper-content-wrapper][data-side="top"] {
   --radix-popper-transform-origin: bottom !important;
+}
+
+[data-radix-popper-content-wrapper][data-side="left"] {
+  --radix-popper-transform-origin: right !important;
+}
+
+[data-radix-popper-content-wrapper][data-side="right"] {
+  --radix-popper-transform-origin: left !important;
 }
 
 /* Fix Select dropdown positioning */
@@ -42,13 +57,21 @@
   animation: fadeIn 0.15s ease-out !important;
 }
 
+/* Fix Popover positioning */
+[data-radix-popover-content] {
+  will-change: transform, opacity !important;
+  animation: fadeIn 0.15s ease-out !important;
+}
+
 /* Prevent layout shift on open */
 [data-radix-popper-content-wrapper],
 [data-radix-select-content],
-[data-radix-dropdown-menu-content] {
+[data-radix-dropdown-menu-content],
+[data-radix-popover-content] {
   pointer-events: auto !important;
 }
 
+/* Enhanced animation with proper initial state */
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -58,6 +81,30 @@
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* Ensure dropdown content is properly positioned before showing */
+[data-radix-select-viewport],
+[data-radix-dropdown-menu-viewport] {
+  will-change: scroll-position;
+}
+
+/* Additional fix for initial flash */
+[data-radix-select-trigger][data-state="open"] + [data-radix-popper-content-wrapper],
+[data-radix-dropdown-menu-trigger][data-state="open"] + [data-radix-popper-content-wrapper],
+[data-radix-popover-trigger][data-state="open"] + [data-radix-popper-content-wrapper] {
+  visibility: visible !important;
+}
+
+/* Prevent dropdown flash at 0,0 position */
+[data-radix-popper-content-wrapper]:not([data-state]) {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Ensure dropdowns start from correct position */
+[data-radix-collection-item] {
+  will-change: background-color;
 }
 
 /* Calendar container */
