@@ -8,15 +8,11 @@ export async function GET(request: NextRequest) {
     // Get all cookies
     const allCookies = cookieStore.getAll()
     
-    // Clear any Supabase-related cookies
+    // Only clear cookies that are actually corrupted
     allCookies.forEach(cookie => {
-      if (
-        cookie.name.startsWith('sb-') || 
-        cookie.name.includes('supabase') ||
-        cookie.name.includes('auth') ||
-        cookie.value.startsWith('base64-')
-      ) {
-        console.log('Clearing cookie:', cookie.name)
+      // Only delete if the cookie value is corrupted (starts with base64-)
+      if (cookie.value.startsWith('base64-') && cookie.name.startsWith('sb-')) {
+        console.log('Clearing corrupted cookie:', cookie.name)
         cookieStore.delete(cookie.name)
       }
     })

@@ -23,24 +23,22 @@ export default function LoginPage() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
 
-  // Clear any corrupted auth data on mount
+  // Clear only corrupted auth data on mount
   useEffect(() => {
-    // Clear any localStorage items that might contain corrupted auth data
+    // Only clear localStorage items that are actually corrupted
     const authKeys = Object.keys(localStorage).filter(key => 
-      key.startsWith('sb-') || 
-      key.includes('supabase') || 
-      key.includes('auth')
+      key.startsWith('sb-') || key.includes('supabase')
     )
     authKeys.forEach(key => {
       try {
         const value = localStorage.getItem(key)
-        // Check if value starts with "base64-" which indicates corrupted data
-        if (value && value.startsWith('base64-')) {
-          console.log('Clearing corrupted auth data:', key)
+        // Only remove if value is actually corrupted (starts with "base64-")
+        if (value && typeof value === 'string' && value.startsWith('base64-')) {
+          console.log('Clearing corrupted localStorage item:', key)
           localStorage.removeItem(key)
         }
       } catch (e) {
-        console.error('Error cleaning auth data:', e)
+        console.error('Error cleaning localStorage:', e)
       }
     })
   }, [])

@@ -3,14 +3,21 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
 export async function middleware(req: NextRequest) {
-  // Check if any cookies have corrupted base64 data
-  const hasCorruptedCookies = req.cookies.getAll().some(cookie => 
-    cookie.value.startsWith('base64-') && cookie.name.startsWith('sb-')
-  )
+  // Skip cookie cleanup check for auth routes to prevent loops
+  const isAuthRoute = req.nextUrl.pathname.includes('/login') || 
+                      req.nextUrl.pathname.includes('/api/auth') ||
+                      req.nextUrl.pathname.includes('/signup')
   
-  // If corrupted cookies found and not already on cleanup route, redirect to cleanup
-  if (hasCorruptedCookies && !req.nextUrl.pathname.includes('/api/auth/cleanup')) {
-    return NextResponse.redirect(new URL('/api/auth/cleanup', req.url))
+  // Only check for corrupted cookies on non-auth routes
+  if (!isAuthRoute) {
+    const hasCorruptedCookies = req.cookies.getAll().some(cookie => 
+      cookie.value.startsWith('base64-') && cookie.name.startsWith('sb-')
+    )
+    
+    // If corrupted cookies found and not already on cleanup route, redirect to cleanup
+    if (hasCorruptedCookies && !req.nextUrl.pathname.includes('/api/auth/cleanup')) {
+      return NextResponse.redirect(new URL('/api/auth/cleanup', req.url))
+    }
   }
 
   let supabaseResponse = NextResponse.next({
