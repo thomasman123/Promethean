@@ -1,7 +1,7 @@
 "use client"
 
 import { cn } from "@/lib/utils"
-import { Sword, Home, RefreshCw, Settings, Sun, Moon, LogOut, ChevronDown } from "lucide-react"
+import { Sword, Home, RefreshCw, Settings, Sun, Moon, LogOut, ChevronDown, LayoutDashboard, Database, Calendar, Users, CreditCard } from "lucide-react"
 import { useState, useEffect } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
@@ -57,9 +57,31 @@ export function TopBar() {
   }
 
   const navItems = [
-    { href: "/", label: "Overview", icon: Home },
-    { href: "/update-data", label: "Update Data", icon: RefreshCw },
-    { href: "/account", label: "Account", icon: Settings },
+    { 
+      href: "/", 
+      label: "Overview", 
+      icon: Home,
+      dropdownItems: [
+        { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+        { href: "/data-view", label: "Data View", icon: Database }
+      ]
+    },
+    { 
+      href: "/update-data", 
+      label: "Update Data", 
+      icon: RefreshCw,
+      dropdownItems: [
+        { href: "/update-data/appointments-discoveries", label: "Appointments/Discoveries", icon: Calendar },
+        { href: "/update-data/follow-ups", label: "Follow Ups", icon: Users },
+        { href: "/update-data/payment-plans", label: "Payment Plans", icon: CreditCard }
+      ]
+    },
+    { 
+      href: "/account", 
+      label: "Account", 
+      icon: Settings,
+      dropdownItems: null
+    },
   ]
 
   return (
@@ -92,28 +114,63 @@ export function TopBar() {
         </Select>
       </div>
 
-      {/* Center section - Main Navigation */}
+      {/* Center section - Main Navigation with Icon Only */}
       <div className={cn(
-        "flex items-center gap-1 px-1 py-1 rounded-full",
+        "flex items-center gap-3 px-3 py-1.5 rounded-full",
         "bg-muted/50 backdrop-blur-sm border border-border/50"
       )}>
         {navItems.map((item) => {
           const Icon = item.icon
-          const isActive = pathname === item.href
+          const isActive = pathname === item.href || pathname.startsWith(item.href + "/")
+          
+          if (item.dropdownItems) {
+            return (
+              <DropdownMenu key={item.href}>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    className={cn(
+                      "flex items-center justify-center p-2.5 rounded-full transition-all duration-200",
+                      "hover:bg-accent/50 focus:outline-none focus:ring-2 focus:ring-primary/20",
+                      isActive && "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90"
+                    )}
+                  >
+                    <Icon className="h-4 w-4" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent 
+                  align="center" 
+                  className="w-56 rounded-2xl border bg-popover/95 backdrop-blur-sm mt-2"
+                >
+                  {item.dropdownItems.map((dropdownItem) => {
+                    const DropdownIcon = dropdownItem.icon
+                    return (
+                      <DropdownMenuItem key={dropdownItem.href} asChild>
+                        <Link 
+                          href={dropdownItem.href}
+                          className="flex items-center gap-3 rounded-xl px-3 py-2.5 cursor-pointer"
+                        >
+                          <DropdownIcon className="h-4 w-4 text-muted-foreground" />
+                          <span>{dropdownItem.label}</span>
+                        </Link>
+                      </DropdownMenuItem>
+                    )
+                  })}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )
+          }
           
           return (
             <Link
               key={item.href}
               href={item.href}
               className={cn(
-                "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200",
-                isActive
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                "flex items-center justify-center p-2.5 rounded-full transition-all duration-200",
+                "hover:bg-accent/50 focus:outline-none focus:ring-2 focus:ring-primary/20",
+                isActive && "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90"
               )}
             >
               <Icon className="h-4 w-4" />
-              <span>{item.label}</span>
             </Link>
           )
         })}
