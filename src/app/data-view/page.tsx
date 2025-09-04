@@ -2,30 +2,41 @@
 
 import { useState, useEffect, useMemo } from "react"
 import { TopBar } from "@/components/layout/topbar"
-import { TablesManager } from "@/components/data-view/tables-manager"
-import { RoleFilterDropdown, type RoleFilter } from "@/components/data-view/role-filter"
 import { UserMetricsTable, type UserMetric } from "@/components/data-view/user-metrics-table"
 import { useDashboard } from "@/lib/dashboard-context"
 import { supabase } from "@/lib/supabase"
 import { ColumnDef } from "@tanstack/react-table"
-import { ArrowUpDown, MoreHorizontal } from "lucide-react"
+import { ArrowUpDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 
 export default function DataViewPage() {
   const { selectedAccountId } = useDashboard()
-  const [currentTableId, setCurrentTableId] = useState<string | null>(null)
-  const [roleFilter, setRoleFilter] = useState<RoleFilter>('both')
   const [users, setUsers] = useState<UserMetric[]>([])
   const [tableConfig, setTableConfig] = useState<any>(null)
   const [loading, setLoading] = useState(false)
+
+  // Get role filter and table ID from URL params or localStorage
+  const [roleFilter, setRoleFilter] = useState<'both' | 'setter' | 'rep'>('both')
+  const [currentTableId, setCurrentTableId] = useState<string | null>(null)
+
+  // Listen for custom events from topbar
+  useEffect(() => {
+    const handleRoleFilterChange = (event: CustomEvent) => {
+      setRoleFilter(event.detail.roleFilter)
+    }
+    
+    const handleTableChange = (event: CustomEvent) => {
+      setCurrentTableId(event.detail.tableId)
+    }
+
+    window.addEventListener('roleFilterChanged' as any, handleRoleFilterChange)
+    window.addEventListener('tableChanged' as any, handleTableChange)
+
+    return () => {
+      window.removeEventListener('roleFilterChanged' as any, handleRoleFilterChange)
+      window.removeEventListener('tableChanged' as any, handleTableChange)
+    }
+  }, [])
 
   // Load users based on role filter
   useEffect(() => {
@@ -166,28 +177,6 @@ export default function DataViewPage() {
       <TopBar />
       
       <main className="pt-16">
-        {/* Top bar with dropdowns */}
-        <div className="border-b">
-          <div className="flex items-center justify-between px-6 py-3">
-            <h1 className="text-lg font-semibold">Data View</h1>
-            <div className="flex items-center gap-2">
-              {selectedAccountId && (
-                <>
-                  <RoleFilterDropdown
-                    value={roleFilter}
-                    onChange={setRoleFilter}
-                  />
-                  <TablesManager
-                    accountId={selectedAccountId}
-                    currentTableId={currentTableId}
-                    onTableChange={setCurrentTableId}
-                  />
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-
         {/* Data table */}
         <div className="p-6">
           {currentTableId ? (

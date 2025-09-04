@@ -16,6 +16,8 @@ import { usePathname, useRouter } from "next/navigation"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import { DatePicker } from "@/components/ui/date-picker"
 import { ViewsManager } from "@/components/dashboard/views-manager"
+import { TablesManager } from "@/components/data-view/tables-manager"
+import { RoleFilterDropdown, type RoleFilter } from "@/components/data-view/role-filter"
 import { useDashboard } from "@/lib/dashboard-context"
 
 interface Account {
@@ -31,6 +33,8 @@ export function TopBar() {
   const [hoverTimeout, setHoverTimeout] = useState<NodeJS.Timeout | null>(null)
   const [accounts, setAccounts] = useState<Account[]>([])
   const [currentUserId, setCurrentUserId] = useState<string>("")
+  const [currentTableId, setCurrentTableId] = useState<string | null>(null)
+  const [roleFilter, setRoleFilter] = useState<RoleFilter>('both')
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClientComponentClient()
@@ -126,6 +130,18 @@ export function TopBar() {
 
   const handleViewChange = (viewId: string) => {
     setCurrentViewId(viewId)
+  }
+
+  const handleRoleFilterChange = (newRoleFilter: RoleFilter) => {
+    setRoleFilter(newRoleFilter)
+    // Dispatch custom event for data view page to listen to
+    window.dispatchEvent(new CustomEvent('roleFilterChanged', { detail: { roleFilter: newRoleFilter } }))
+  }
+
+  const handleTableChange = (tableId: string | null) => {
+    setCurrentTableId(tableId)
+    // Dispatch custom event for data view page to listen to
+    window.dispatchEvent(new CustomEvent('tableChanged', { detail: { tableId } }))
   }
 
   const navItems = [
@@ -316,13 +332,28 @@ export function TopBar() {
               onChange={setDateRange}
             />
             
-            {/* Only show ViewsManager on dashboard page */}
+            {/* Show ViewsManager on dashboard page */}
             {pathname === "/dashboard" && (
               <ViewsManager
                 accountId={selectedAccountId}
                 currentUserId={currentUserId}
                 onViewChange={handleViewChange}
               />
+            )}
+            
+            {/* Show RoleFilter and TablesManager on data-view page */}
+            {pathname === "/data-view" && selectedAccountId && (
+              <>
+                <RoleFilterDropdown
+                  value={roleFilter}
+                  onChange={handleRoleFilterChange}
+                />
+                <TablesManager
+                  accountId={selectedAccountId}
+                  currentTableId={currentTableId}
+                  onTableChange={handleTableChange}
+                />
+              </>
             )}
           </>
         )}
