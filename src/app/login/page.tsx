@@ -6,7 +6,7 @@ import Link from "next/link"
 import { Sword } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
+import { createBrowserClient } from "@supabase/ssr"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -16,7 +16,12 @@ export default function LoginPage() {
   const [success, setSuccess] = useState(false)
   
   const router = useRouter()
-  const supabase = createClientComponentClient()
+  
+  // Create Supabase client using the newer SSR approach
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -32,10 +37,14 @@ export default function LoginPage() {
       if (error) {
         setError(error.message)
         setLoading(false)
-      } else {
+      } else if (data.session) {
         setSuccess(true)
-        // Use window.location for a hard redirect to ensure proper navigation
-        window.location.href = "/dashboard"
+        // First, refresh the router to ensure cookies are set
+        router.refresh()
+        // Then navigate to dashboard
+        setTimeout(() => {
+          router.push("/dashboard")
+        }, 100)
       }
     } catch (err) {
       setError("An unexpected error occurred")
