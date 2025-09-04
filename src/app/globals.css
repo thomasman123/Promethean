@@ -102,4 +102,20 @@
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     @apply bg-muted-foreground/30;
   }
+  
+  /* Pill-shaped component overrides */
+  /* Select components */
+  [data-radix-popper-content-wrapper] {
+    @apply !rounded-2xl;
+  }
+  
+  /* Dropdown menu items */
+  [role="menuitem"] {
+    @apply !rounded-xl;
+  }
+  
+  /* Select items */
+  [role="option"] {
+    @apply !rounded-xl;
+  }
 } 

@@ -26,6 +26,15 @@ export function TopBar() {
   const pathname = usePathname()
 
   useEffect(() => {
+    // Initialize dark mode from localStorage or system preference
+    const stored = localStorage.getItem('theme')
+    if (stored === 'dark' || (!stored && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      setIsDarkMode(true)
+      document.documentElement.classList.add('dark')
+    }
+  }, [])
+
+  useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 10)
     }
@@ -33,6 +42,19 @@ export function TopBar() {
     window.addEventListener("scroll", handleScroll)
     return () => window.removeEventListener("scroll", handleScroll)
   }, [])
+
+  const toggleDarkMode = () => {
+    const newMode = !isDarkMode
+    setIsDarkMode(newMode)
+    
+    if (newMode) {
+      document.documentElement.classList.add('dark')
+      localStorage.setItem('theme', 'dark')
+    } else {
+      document.documentElement.classList.remove('dark')
+      localStorage.setItem('theme', 'light')
+    }
+  }
 
   const navItems = [
     { href: "/", label: "Overview", icon: Home },
@@ -52,19 +74,20 @@ export function TopBar() {
           <Sword className="h-6 w-6 text-primary" />
         </div>
 
-        {/* Account Dropdown - Styled like a combobox */}
+        {/* Account Dropdown - Styled with pill shape */}
         <Select defaultValue="account1">
           <SelectTrigger className={cn(
-            "w-[200px] h-9 px-3 rounded-lg",
-            "bg-background/50 backdrop-blur-sm border",
-            "hover:bg-background/80 transition-colors"
+            "w-[200px] h-10 px-4 rounded-full",
+            "bg-muted/50 backdrop-blur-sm border border-border/50",
+            "hover:bg-muted/80 transition-all duration-200",
+            "focus:outline-none focus:ring-2 focus:ring-primary/20"
           )}>
             <SelectValue placeholder="Select account" />
           </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="account1">Production Account</SelectItem>
-            <SelectItem value="account2">Development Account</SelectItem>
-            <SelectItem value="account3">Staging Account</SelectItem>
+          <SelectContent className="rounded-2xl border bg-popover/95 backdrop-blur-sm">
+            <SelectItem value="account1" className="rounded-xl focus:bg-accent">Production Account</SelectItem>
+            <SelectItem value="account2" className="rounded-xl focus:bg-accent">Development Account</SelectItem>
+            <SelectItem value="account3" className="rounded-xl focus:bg-accent">Staging Account</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -72,7 +95,7 @@ export function TopBar() {
       {/* Center section - Main Navigation */}
       <div className={cn(
         "flex items-center gap-1 px-1 py-1 rounded-full",
-        "bg-background/50 backdrop-blur-sm border"
+        "bg-muted/50 backdrop-blur-sm border border-border/50"
       )}>
         {navItems.map((item) => {
           const Icon = item.icon
@@ -85,7 +108,7 @@ export function TopBar() {
               className={cn(
                 "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200",
                 isActive
-                  ? "bg-primary text-primary-foreground"
+                  ? "bg-primary text-primary-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
               )}
             >
@@ -101,29 +124,31 @@ export function TopBar() {
         {/* Placeholder for future context-specific dropdowns */}
         <div className="w-[120px]" />
 
-        {/* Dark mode toggle */}
+        {/* Dark mode toggle - Pill shaped */}
         <button
-          onClick={() => setIsDarkMode(!isDarkMode)}
+          onClick={toggleDarkMode}
           className={cn(
-            "rounded-lg p-2 text-muted-foreground transition-colors",
-            "hover:bg-accent hover:text-accent-foreground"
+            "rounded-full p-2.5 transition-all duration-200",
+            "bg-muted/50 backdrop-blur-sm border border-border/50",
+            "hover:bg-muted/80",
+            "focus:outline-none focus:ring-2 focus:ring-primary/20"
           )}
         >
-          {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+          {isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
         </button>
 
         {/* Profile dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="rounded-full focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2">
-              <Avatar className="h-8 w-8">
+            <button className="rounded-full focus:outline-none focus:ring-2 focus:ring-primary/20 focus:ring-offset-2 focus:ring-offset-background">
+              <Avatar className="h-9 w-9 border border-border/50">
                 <AvatarImage src="/avatar.jpg" alt="User" />
-                <AvatarFallback>U</AvatarFallback>
+                <AvatarFallback className="bg-muted">U</AvatarFallback>
               </Avatar>
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuItem className="cursor-pointer">
+          <DropdownMenuContent align="end" className="w-48 rounded-2xl border bg-popover/95 backdrop-blur-sm">
+            <DropdownMenuItem className="cursor-pointer rounded-xl focus:bg-accent">
               <LogOut className="mr-2 h-4 w-4" />
               <span>Sign out</span>
             </DropdownMenuItem>
