@@ -1,6 +1,5 @@
 "use client"
 
-import { Sidebar } from "@/components/layout/sidebar"
 import { TopBar } from "@/components/layout/topbar"
 import { StatsCard } from "@/components/ui/stats-card"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -8,17 +7,12 @@ import { BarChart3, Cpu, Wrench, Calendar } from "lucide-react"
 
 export default function HomePage() {
   return (
-    <div className="flex h-screen bg-background">
-      {/* Sidebar */}
-      <Sidebar />
+    <div className="min-h-screen bg-background">
+      {/* Top bar */}
+      <TopBar />
       
-      {/* Main content */}
-      <div className="flex-1 flex flex-col">
-        {/* Top bar */}
-        <TopBar />
-        
-        {/* Page content */}
-        <main className="flex-1 overflow-y-auto p-6">
+      {/* Page content */}
+      <main className="pt-16 p-6">
           <div className="max-w-7xl mx-auto space-y-6">
             {/* Page header */}
             <div>
@@ -109,7 +103,6 @@ export default function HomePage() {
             </div>
           </div>
         </main>
-      </div>
     </div>
   )
 } 
