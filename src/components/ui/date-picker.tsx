@@ -101,15 +101,14 @@ export function DatePicker({
       <PopoverTrigger asChild>
         <Button
           variant="outline"
+          size="sm"
           className={cn(
-            "w-[240px] h-10 px-4 justify-start text-left font-normal rounded-full text-sm",
-            "bg-muted/50 backdrop-blur-sm border border-border/50",
-            "hover:bg-muted/80 transition-all duration-200",
+            "h-8 justify-start text-left font-normal",
             !date && "text-muted-foreground",
             className
           )}
         >
-          <CalendarIcon className="mr-2 h-4 w-4" />
+          <CalendarIcon className="h-4 w-4 mr-2" />
           {date?.from ? (
             date.to ? (
               <>

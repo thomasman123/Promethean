@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
-import { ChevronDown, Plus, Copy, Trash2, Lock, Users, Globe } from "lucide-react"
+import { ChevronDown, Plus, Copy, Trash2, Lock, Users, Globe, Eye } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -40,18 +40,12 @@ interface View {
 }
 
 interface ViewsManagerProps {
-  accountId?: string
-  currentUserId?: string
-  onViewChange?: (viewId: string) => void
-  className?: string
+  accountId: string
+  currentUserId: string
+  onViewChange: (viewId: string) => void
 }
 
-export function ViewsManager({ 
-  accountId, 
-  currentUserId,
-  onViewChange,
-  className 
-}: ViewsManagerProps) {
+export function ViewsManager({ accountId, currentUserId, onViewChange }: ViewsManagerProps) {
   const [views, setViews] = useState<View[]>([])
   const [currentView, setCurrentView] = useState<View | null>(null)
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
@@ -185,20 +179,16 @@ export function ViewsManager({
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button
+          <Button 
             variant="outline"
-            className={cn(
-              "h-10 px-4 gap-2 rounded-full text-sm font-normal",
-              "bg-muted/50 backdrop-blur-sm border border-border/50",
-              "hover:bg-muted/80 transition-all duration-200",
-              "focus:outline-none focus:ring-2 focus:ring-primary/20",
-              className
-            )}
+            size="sm"
+            className="h-8"
           >
-            <span>
-              {currentView ? currentView.name : "Select View"}
+            <Eye className="h-4 w-4 mr-2" />
+            <span className="max-w-[150px] truncate">
+              {currentView?.name || 'Select View'}
             </span>
-            <ChevronDown className="h-4 w-4" />
+            <ChevronDown className="h-4 w-4 ml-2" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" sideOffset={5} className="w-56 rounded-2xl">

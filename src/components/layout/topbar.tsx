@@ -1,7 +1,7 @@
 "use client"
 
 import { cn } from "@/lib/utils"
-import { Sword, Home, RefreshCw, Settings, Sun, Moon, LogOut, ChevronDown, LayoutDashboard, Database, Calendar, Users, CreditCard } from "lucide-react"
+import { Sword, Home, RefreshCw, Settings, Sun, Moon, LogOut, ChevronDown, LayoutDashboard, Database, Calendar, Users, CreditCard, Building2 } from "lucide-react"
 import { useState, useEffect, useRef } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
@@ -10,13 +10,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
@@ -202,29 +196,35 @@ export function TopBar() {
           <Sword className="h-5 w-5 text-primary" />
         </div>
 
-        {/* Account Dropdown - Always visible with loading state */}
-        <Select 
-          value={selectedAccountId} 
-          onValueChange={handleAccountChange}
-          disabled={accounts.length === 0}
-        >
-          <SelectTrigger className={cn(
-            "w-[180px] h-10 px-4 rounded-full text-sm font-normal",
-            "bg-muted/50 backdrop-blur-sm border border-border/50",
-            "hover:bg-muted/80 transition-all duration-200",
-            "focus:outline-none focus:ring-2 focus:ring-primary/20",
-            "disabled:opacity-50 disabled:cursor-not-allowed"
-          )}>
-            <SelectValue placeholder={accounts.length === 0 ? "Loading..." : "Select account"} />
-          </SelectTrigger>
-          <SelectContent className="rounded-2xl border bg-popover/95 backdrop-blur-sm">
+        {/* Account Dropdown - Updated to match new design */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="h-8"
+              disabled={accounts.length === 0}
+            >
+              <Building2 className="h-4 w-4 mr-2" />
+              {accounts.length === 0 
+                ? "Loading..." 
+                : accounts.find(a => a.id === selectedAccountId)?.name || "Select Account"
+              }
+              <ChevronDown className="h-4 w-4 ml-2" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-56">
             {accounts.map((account) => (
-              <SelectItem key={account.id} value={account.id} className="rounded-xl focus:bg-accent">
+              <DropdownMenuItem
+                key={account.id}
+                onSelect={() => handleAccountChange(account.id)}
+                className={selectedAccountId === account.id ? 'font-semibold' : ''}
+              >
                 {account.name}
-              </SelectItem>
+              </DropdownMenuItem>
             ))}
-          </SelectContent>
-        </Select>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* Center section - Main Navigation with Icon Only */}
@@ -308,7 +308,7 @@ export function TopBar() {
 
       {/* Right section - Dashboard Controls, Dark mode toggle, Profile */}
       <div className="flex items-center gap-3">
-        {/* Date picker and Views - only show on dashboard/data-view pages */}
+        {/* Date picker and Views - only show on appropriate pages */}
         {showDashboardControls && (
           <>
             <DatePicker
@@ -316,26 +316,26 @@ export function TopBar() {
               onChange={setDateRange}
             />
             
-            <ViewsManager
-              accountId={selectedAccountId}
-              currentUserId={currentUserId}
-              onViewChange={handleViewChange}
-            />
+            {/* Only show ViewsManager on dashboard page */}
+            {pathname === "/dashboard" && (
+              <ViewsManager
+                accountId={selectedAccountId}
+                currentUserId={currentUserId}
+                onViewChange={handleViewChange}
+              />
+            )}
           </>
         )}
 
-        {/* Dark mode toggle - Pill shaped */}
-        <button
+        {/* Dark mode toggle - Updated to match new design */}
+        <Button
+          variant="outline"
+          size="icon"
           onClick={toggleDarkMode}
-          className={cn(
-            "rounded-full p-2.5 transition-all duration-200",
-            "bg-muted/50 backdrop-blur-sm border border-border/50",
-            "hover:bg-muted/80",
-            "focus:outline-none focus:ring-2 focus:ring-primary/20"
-          )}
+          className="h-8 w-8"
         >
           {isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-        </button>
+        </Button>
 
         {/* Profile dropdown */}
         <DropdownMenu>
