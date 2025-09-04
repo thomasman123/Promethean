@@ -12,50 +12,46 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Get user profile to check role
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
-
-    if (profile?.role === 'admin') {
-      // Admins see all accounts
-      const { data: accounts, error } = await supabase
-        .from('accounts')
-        .select('id, name, description')
-        .eq('is_active', true)
-        .order('name')
-
-      if (error) {
-        console.error('Error fetching accounts for admin:', error)
-        return NextResponse.json({ accounts: [] })
-      }
-
-      return NextResponse.json({ accounts: accounts || [] })
-    } else {
-      // For non-admins, we'll use raw SQL to bypass RLS issues
+    // Try the function approach first
+    try {
       const { data, error } = await supabase.rpc('get_user_accounts', {
         p_user_id: user.id
       })
 
-      if (error) {
-        console.error('Error calling get_user_accounts:', error)
-        // Fallback: just get all accounts (temporary workaround)
-        const { data: allAccounts } = await supabase
-          .from('accounts')
-          .select('id, name, description')
-          .eq('is_active', true)
-          .order('name')
-          
-        return NextResponse.json({ accounts: allAccounts || [] })
+      if (!error && data) {
+        return NextResponse.json({ accounts: data })
       }
-
-      return NextResponse.json({ accounts: data || [] })
+    } catch (funcError) {
+      console.log('Function approach failed, trying simple function:', funcError)
     }
+
+    // Fallback to simple function that just returns all accounts
+    try {
+      const { data, error } = await supabase.rpc('get_all_accounts_simple')
+      
+      if (!error && data) {
+        return NextResponse.json({ accounts: data })
+      }
+    } catch (simpleFuncError) {
+      console.log('Simple function failed, direct query:', simpleFuncError)
+    }
+
+    // Last resort: direct query to accounts table
+    const { data: accounts, error } = await supabase
+      .from('accounts')
+      .select('id, name, description')
+      .eq('is_active', true)
+      .order('name')
+
+    if (error) {
+      console.error('Direct accounts query error:', error)
+      return NextResponse.json({ accounts: [] })
+    }
+
+    return NextResponse.json({ accounts: accounts || [] })
+    
   } catch (error) {
     console.error('Get accounts error:', error)
-    // Return empty accounts rather than error
     return NextResponse.json({ accounts: [] })
   }
 } 
