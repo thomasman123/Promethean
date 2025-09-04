@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react"
 import { TopBar } from "@/components/layout/topbar"
 import { UserMetricsTable, type UserMetric } from "@/components/data-view/user-metrics-table"
 import { useDashboard } from "@/lib/dashboard-context"
-import { supabase } from "@/lib/supabase"
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import { ColumnDef } from "@tanstack/react-table"
 import { ArrowUpDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -14,6 +14,7 @@ export default function DataViewPage() {
   const [users, setUsers] = useState<UserMetric[]>([])
   const [tableConfig, setTableConfig] = useState<any>(null)
   const [loading, setLoading] = useState(false)
+  const supabase = createClientComponentClient()
 
   // Get role filter and table ID from URL params or localStorage
   const [roleFilter, setRoleFilter] = useState<'both' | 'setter' | 'rep'>('both')
@@ -53,18 +54,19 @@ export default function DataViewPage() {
   async function loadUsers() {
     setLoading(true)
     
+    // Query profiles through account_access table
     let query = supabase
-      .from('profiles')
-      .select('*')
+      .from('account_access')
+      .select(`
+        user_id,
+        profiles!inner (
+          id,
+          email,
+          full_name,
+          role
+        )
+      `)
       .eq('account_id', selectedAccountId)
-      .order('name')
-
-    // Apply role filter
-    if (roleFilter === 'setter') {
-      query = query.eq('role', 'setter')
-    } else if (roleFilter === 'rep') {
-      query = query.eq('role', 'rep')
-    }
 
     const { data, error } = await query
 
@@ -75,13 +77,20 @@ export default function DataViewPage() {
     }
 
     // Transform users to UserMetric format
-    const userMetrics: UserMetric[] = (data || []).map(user => ({
-      id: user.user_id,
-      name: user.name || 'Unknown',
-      email: user.email || '',
-      role: user.role as 'setter' | 'rep',
-      // Add more metrics here as needed
-    }))
+    const userMetrics: UserMetric[] = (data || []).map(access => {
+      const profile = (access as any).profiles
+      // Filter by role
+      if (roleFilter !== 'both' && profile.role !== roleFilter) {
+        return null
+      }
+      return {
+        id: profile.id,
+        name: profile.full_name || 'Unknown',
+        email: profile.email || '',
+        role: profile.role as 'setter' | 'rep',
+        // Add more metrics here as needed
+      }
+    }).filter(Boolean) as UserMetric[]
 
     setUsers(userMetrics)
     setLoading(false)

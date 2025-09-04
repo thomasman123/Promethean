@@ -22,7 +22,7 @@ CREATE POLICY "Users can view data tables for their account" ON public.data_tabl
   FOR SELECT
   USING (
     account_id IN (
-      SELECT account_id FROM profiles WHERE user_id = auth.uid()
+      SELECT aa.account_id FROM account_access aa WHERE aa.user_id = auth.uid()
     )
   );
 
@@ -31,7 +31,7 @@ CREATE POLICY "Users can create data tables for their account" ON public.data_ta
   FOR INSERT
   WITH CHECK (
     account_id IN (
-      SELECT account_id FROM profiles WHERE user_id = auth.uid()
+      SELECT aa.account_id FROM account_access aa WHERE aa.user_id = auth.uid()
     )
   );
 
@@ -40,7 +40,7 @@ CREATE POLICY "Users can update data tables for their account" ON public.data_ta
   FOR UPDATE
   USING (
     account_id IN (
-      SELECT account_id FROM profiles WHERE user_id = auth.uid()
+      SELECT aa.account_id FROM account_access aa WHERE aa.user_id = auth.uid()
     )
   );
 
@@ -49,7 +49,7 @@ CREATE POLICY "Users can delete data tables for their account" ON public.data_ta
   FOR DELETE
   USING (
     account_id IN (
-      SELECT account_id FROM profiles WHERE user_id = auth.uid()
+      SELECT aa.account_id FROM account_access aa WHERE aa.user_id = auth.uid()
     )
   );
 

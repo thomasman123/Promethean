@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { Plus, Table2, ChevronDown, Trash2, Edit } from 'lucide-react'
 import {
   DropdownMenu,
@@ -45,6 +45,7 @@ export function TablesManager({ accountId, currentTableId, onTableChange }: Tabl
   const [newTable, setNewTable] = useState({ name: '', description: '' })
   const [loading, setLoading] = useState(false)
   const { toast } = useToast()
+  const supabase = createClientComponentClient()
 
   useEffect(() => {
     loadTables()
