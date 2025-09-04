@@ -92,67 +92,62 @@ export function DatePicker({
   ]
 
   return (
-    <div className={cn("grid gap-2", className)}>
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button
-            variant="outline"
-            className={cn(
-              "w-[240px] h-10 px-4 justify-start text-left font-normal rounded-full text-sm",
-              "bg-muted/50 backdrop-blur-sm border border-border/50",
-              "hover:bg-muted/80 transition-all duration-200",
-              !date && "text-muted-foreground"
-            )}
-          >
-            <CalendarIcon className="mr-2 h-4 w-4" />
-            {date?.from ? (
-              date.to ? (
-                <>
-                  {format(date.from, "MMM dd")} - {format(date.to, "MMM dd, y")}
-                </>
-              ) : (
-                format(date.from, "MMM dd, y")
-              )
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          className={cn(
+            "w-[240px] h-10 px-4 justify-start text-left font-normal rounded-full text-sm",
+            "bg-muted/50 backdrop-blur-sm border border-border/50",
+            "hover:bg-muted/80 transition-all duration-200",
+            !date && "text-muted-foreground",
+            className
+          )}
+        >
+          <CalendarIcon className="mr-2 h-4 w-4" />
+          {date?.from ? (
+            date.to ? (
+              <>
+                {format(date.from, "MMM dd")} - {format(date.to, "MMM dd, y")}
+              </>
             ) : (
-              <span>Pick a date</span>
-            )}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="start">
-          <div className="flex">
-            {/* Presets sidebar */}
-            <div className="border-r bg-muted/5">
-              <div className="p-2 space-y-1">
-                {presets.map((preset) => (
-                  <button
-                    key={preset.label}
-                    onClick={() => {
-                      const value = preset.getValue()
-                      handleSelect({ from: value.from, to: value.to })
-                    }}
-                    className={cn(
-                      "w-full text-left px-2 py-1 text-sm rounded",
-                      "hover:bg-accent hover:text-accent-foreground transition-colors"
-                    )}
-                  >
-                    {preset.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            
-            {/* Calendar */}
+              format(date.from, "MMM dd, y")
+            )
+          ) : (
+            <span>Pick a date</span>
+          )}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0" align="start">
+        <div className="flex h-full">
+          <div className="w-[140px] p-3 border-r">
+            {presets.map((preset) => (
+              <button
+                key={preset.label}
+                onClick={() => {
+                  const value = preset.getValue()
+                  handleSelect({ from: value.from, to: value.to })
+                }}
+                className={cn(
+                  "w-full text-left px-3 py-1.5 text-sm rounded-md mb-1",
+                  "hover:bg-accent hover:text-accent-foreground"
+                )}
+              >
+                {preset.label}
+              </button>
+            ))}
+          </div>
+          <div className="p-3">
             <Calendar
               mode="range"
               defaultMonth={date?.from}
               selected={date}
               onSelect={handleSelect}
               numberOfMonths={2}
-              className="p-2"
             />
           </div>
-        </PopoverContent>
-      </Popover>
-    </div>
+        </div>
+      </PopoverContent>
+    </Popover>
   )
 } 
