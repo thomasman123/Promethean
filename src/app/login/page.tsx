@@ -13,6 +13,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+  const [success, setSuccess] = useState(false)
   
   const router = useRouter()
   const supabase = createClientComponentClient()
@@ -30,12 +31,18 @@ export default function LoginPage() {
 
       if (error) {
         setError(error.message)
+        setLoading(false)
       } else {
-        router.push("/dashboard")
+        setSuccess(true)
+        // Refresh the router to update the session
+        router.refresh()
+        // Small delay to show success message
+        setTimeout(() => {
+          router.push("/dashboard")
+        }, 500)
       }
     } catch (err) {
       setError("An unexpected error occurred")
-    } finally {
       setLoading(false)
     }
   }
@@ -89,12 +96,18 @@ export default function LoginPage() {
               </p>
             )}
 
+            {success && (
+              <p className="text-sm text-green-600 dark:text-green-400 text-center">
+                Login successful! Redirecting...
+              </p>
+            )}
+
             <Button
               type="submit"
-              disabled={loading}
+              disabled={loading || success}
               className="w-full h-12 rounded-full"
             >
-              {loading ? "Signing in..." : "Sign in"}
+              {success ? "Redirecting..." : loading ? "Signing in..." : "Sign in"}
             </Button>
           </form>
 

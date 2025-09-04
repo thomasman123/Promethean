@@ -14,6 +14,7 @@ export default function SignupPage() {
   const [confirmPassword, setConfirmPassword] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+  const [success, setSuccess] = useState(false)
   
   const router = useRouter()
   const supabase = createClientComponentClient()
@@ -45,6 +46,7 @@ export default function SignupPage() {
 
       if (error) {
         setError(error.message)
+        setLoading(false)
       } else {
         // Auto sign in after signup
         const { error: signInError } = await supabase.auth.signInWithPassword({
@@ -53,14 +55,17 @@ export default function SignupPage() {
         })
         
         if (!signInError) {
-          router.push("/dashboard")
+          setSuccess(true)
+          router.refresh()
+          setTimeout(() => {
+            router.push("/dashboard")
+          }, 500)
         } else {
           router.push("/login")
         }
       }
     } catch (err) {
       setError("An unexpected error occurred")
-    } finally {
       setLoading(false)
     }
   }
@@ -94,7 +99,7 @@ export default function SignupPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 className="h-12 rounded-full px-5"
-                disabled={loading}
+                disabled={loading || success}
               />
               
               <Input
@@ -104,7 +109,7 @@ export default function SignupPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 className="h-12 rounded-full px-5"
-                disabled={loading}
+                disabled={loading || success}
               />
               
               <Input
@@ -114,7 +119,7 @@ export default function SignupPage() {
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
                 className="h-12 rounded-full px-5"
-                disabled={loading}
+                disabled={loading || success}
               />
             </div>
 
@@ -124,12 +129,18 @@ export default function SignupPage() {
               </p>
             )}
 
+            {success && (
+              <p className="text-sm text-green-600 dark:text-green-400 text-center">
+                Account created! Redirecting...
+              </p>
+            )}
+
             <Button
               type="submit"
-              disabled={loading}
+              disabled={loading || success}
               className="w-full h-12 rounded-full"
             >
-              {loading ? "Creating account..." : "Create account"}
+              {success ? "Redirecting..." : loading ? "Creating account..." : "Create account"}
             </Button>
           </form>
 
