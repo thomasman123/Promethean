@@ -2,7 +2,7 @@
 
 import { cn } from "@/lib/utils"
 import { Sword, Home, RefreshCw, Settings, Sun, Moon, LogOut, ChevronDown, LayoutDashboard, Database, Calendar, Users, CreditCard } from "lucide-react"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   DropdownMenu,
@@ -24,6 +24,7 @@ export function TopBar() {
   const [isDarkMode, setIsDarkMode] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
+  const [hoverTimeout, setHoverTimeout] = useState<NodeJS.Timeout | null>(null)
   const pathname = usePathname()
   const router = useRouter()
 
@@ -94,6 +95,26 @@ export function TopBar() {
     }
   }
 
+  const handleMouseEnter = (itemHref: string) => {
+    if (hoverTimeout) {
+      clearTimeout(hoverTimeout)
+    }
+    const timeout = setTimeout(() => {
+      setOpenDropdown(itemHref)
+    }, 200) // 200ms delay
+    setHoverTimeout(timeout)
+  }
+
+  const handleMouseLeave = () => {
+    if (hoverTimeout) {
+      clearTimeout(hoverTimeout)
+    }
+    const timeout = setTimeout(() => {
+      setOpenDropdown(null)
+    }, 100) // Small delay before closing
+    setHoverTimeout(timeout)
+  }
+
   return (
     <div className={cn(
       "fixed top-0 left-0 right-0 z-50 flex h-16 items-center justify-between px-6 transition-all duration-200",
@@ -138,8 +159,8 @@ export function TopBar() {
               <div
                 key={item.href}
                 className="relative"
-                onMouseEnter={() => setOpenDropdown(item.href)}
-                onMouseLeave={() => setOpenDropdown(null)}
+                onMouseEnter={() => handleMouseEnter(item.href)}
+                onMouseLeave={handleMouseLeave}
               >
                 <button
                   onClick={() => handleIconClick(item)}
@@ -153,21 +174,28 @@ export function TopBar() {
                 </button>
                 
                 {openDropdown === item.href && (
-                  <div className={cn(
-                    "absolute top-full left-1/2 transform -translate-x-1/2 mt-2 z-50",
-                    "w-56 rounded-2xl border bg-popover/95 backdrop-blur-sm shadow-lg",
-                    "animate-in fade-in-0 zoom-in-95 duration-200"
-                  )}>
-                    <div className="p-1">
+                  <div 
+                    className={cn(
+                      "absolute top-full left-1/2 transform -translate-x-1/2 mt-2 z-50",
+                      "rounded-full border bg-popover/95 backdrop-blur-sm shadow-lg",
+                      "animate-in fade-in-0 zoom-in-95 duration-200"
+                    )}
+                    onMouseEnter={() => {
+                      if (hoverTimeout) clearTimeout(hoverTimeout)
+                      setOpenDropdown(item.href)
+                    }}
+                    onMouseLeave={handleMouseLeave}
+                  >
+                    <div className="flex items-center gap-1 px-1 py-1">
                       {item.dropdownItems.map((dropdownItem) => {
                         const DropdownIcon = dropdownItem.icon
                         return (
                           <Link
                             key={dropdownItem.href}
                             href={dropdownItem.href}
-                            className="flex items-center gap-3 rounded-xl px-3 py-2.5 cursor-pointer hover:bg-accent transition-colors"
+                            className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs cursor-pointer hover:bg-accent transition-colors whitespace-nowrap"
                           >
-                            <DropdownIcon className="h-4 w-4 text-muted-foreground" />
+                            <DropdownIcon className="h-3 w-3 text-muted-foreground" />
                             <span>{dropdownItem.label}</span>
                           </Link>
                         )
