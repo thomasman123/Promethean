@@ -118,38 +118,38 @@ export function DatePicker({
             )}
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-auto p-0 rounded-2xl" align="start">
+        <PopoverContent className="w-auto p-0" align="start">
           <div className="flex">
             {/* Presets sidebar */}
-            <div className="w-40 border-r p-3 space-y-1">
-              {presets.map((preset) => (
-                <button
-                  key={preset.label}
-                  onClick={() => {
-                    const value = preset.getValue()
-                    handleSelect({ from: value.from, to: value.to })
-                  }}
-                  className={cn(
-                    "w-full text-left px-3 py-2 text-sm rounded-xl",
-                    "hover:bg-accent transition-colors"
-                  )}
-                >
-                  {preset.label}
-                </button>
-              ))}
+            <div className="border-r bg-muted/10">
+              <div className="p-3 space-y-1">
+                {presets.map((preset) => (
+                  <button
+                    key={preset.label}
+                    onClick={() => {
+                      const value = preset.getValue()
+                      handleSelect({ from: value.from, to: value.to })
+                    }}
+                    className={cn(
+                      "w-full text-left px-3 py-1.5 text-sm rounded-md",
+                      "hover:bg-accent hover:text-accent-foreground transition-colors"
+                    )}
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+              </div>
             </div>
             
             {/* Calendar */}
-            <div className="p-3">
-              <Calendar
-                initialFocus
-                mode="range"
-                defaultMonth={date?.from}
-                selected={date}
-                onSelect={handleSelect}
-                numberOfMonths={2}
-              />
-            </div>
+            <Calendar
+              mode="range"
+              defaultMonth={date?.from}
+              selected={date}
+              onSelect={handleSelect}
+              numberOfMonths={2}
+              className="p-3"
+            />
           </div>
         </PopoverContent>
       </Popover>
