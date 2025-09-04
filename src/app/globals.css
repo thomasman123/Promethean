@@ -4,19 +4,74 @@
 
 @import "react-day-picker/style.css";
 
-/* Fix calendar button styling */
+/* Complete calendar override - force compact sizing */
+[data-slot="calendar"],
+.rdp {
+  font-size: 14px !important;
+}
+
+/* Force calendar container sizing */
+[data-slot="calendar"] .rdp-root {
+  transform: scale(0.85) !important;
+  transform-origin: top left !important;
+}
+
+/* Month container */
+[data-slot="calendar"] .rdp-month {
+  width: 280px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Month caption */
+[data-slot="calendar"] .rdp-month_caption {
+  height: 36px !important;
+  margin-bottom: 4px !important;
+  font-size: 14px !important;
+}
+
+/* Weekdays header */
+[data-slot="calendar"] .rdp-weekdays {
+  height: 32px !important;
+  margin-bottom: 2px !important;
+}
+
+[data-slot="calendar"] .rdp-weekday {
+  width: 36px !important;
+  height: 32px !important;
+  font-size: 12px !important;
+  font-weight: normal !important;
+}
+
+/* Week rows */
+[data-slot="calendar"] .rdp-week {
+  margin: 0 !important;
+  height: 32px !important;
+}
+
+/* Day cells and buttons */
+[data-slot="calendar"] .rdp-day_button,
 [data-slot="calendar"] button[data-day] {
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
-  height: 2.25rem !important;
-  width: 2.25rem !important;
+  height: 32px !important;
+  width: 36px !important;
   padding: 0 !important;
-  font-size: 0.875rem !important;
+  margin: 0 !important;
+  font-size: 13px !important;
   font-weight: normal !important;
-  border-radius: 0.375rem !important;
+  border-radius: 6px !important;
 }
 
+[data-slot="calendar"] .rdp-day {
+  width: 36px !important;
+  height: 32px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+/* Selected states */
 [data-slot="calendar"] button[data-day]:hover:not([data-selected-single="true"]):not([data-range-start="true"]):not([data-range-end="true"]) {
   background-color: hsl(var(--accent)) !important;
   color: hsl(var(--accent-foreground)) !important;
@@ -42,6 +97,21 @@
 [data-slot="calendar"] button[data-day][data-disabled="true"] {
   opacity: 0.5 !important;
   cursor: not-allowed !important;
+}
+
+/* Navigation buttons */
+[data-slot="calendar"] .rdp-button_previous,
+[data-slot="calendar"] .rdp-button_next {
+  width: 24px !important;
+  height: 24px !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: none !important;
+}
+
+/* Multiple months layout */
+[data-slot="calendar"] .rdp-months {
+  gap: 16px !important;
 }
 
 @layer base {
