@@ -3,6 +3,16 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
 export async function middleware(req: NextRequest) {
+  // Check if any cookies have corrupted base64 data
+  const hasCorruptedCookies = req.cookies.getAll().some(cookie => 
+    cookie.value.startsWith('base64-') && cookie.name.startsWith('sb-')
+  )
+  
+  // If corrupted cookies found and not already on cleanup route, redirect to cleanup
+  if (hasCorruptedCookies && !req.nextUrl.pathname.includes('/api/auth/cleanup')) {
+    return NextResponse.redirect(new URL('/api/auth/cleanup', req.url))
+  }
+
   let supabaseResponse = NextResponse.next({
     request: {
       headers: req.headers,
@@ -49,6 +59,10 @@ export async function middleware(req: NextRequest) {
     }
   } catch (error) {
     console.log('Middleware - Error getting session:', error)
+    // If there's an error getting session and it might be due to corrupted cookies
+    if (error instanceof Error && error.message.includes('JSON')) {
+      return NextResponse.redirect(new URL('/api/auth/cleanup', req.url))
+    }
   }
 
   // If a password recovery is in progress, force user to the reset page until cleared
