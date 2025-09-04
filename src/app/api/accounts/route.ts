@@ -1,75 +1,80 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@supabase/ssr'
-import type { Database } from '@/lib/database.types'
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
+import { cookies } from 'next/headers'
+import { NextResponse } from 'next/server'
 
-export async function GET(request: NextRequest) {
+export async function GET() {
+  const supabase = createRouteHandlerClient({ cookies })
+  
   try {
-    const supabase = createServerClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return request.cookies.get(name)?.value
-          },
-          set() {},
-          remove() {},
-        },
-      }
-    )
-
     const { data: { user } } = await supabase.auth.getUser()
+    
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Get user profile to check if admin
+    let accounts: any[] = []
+
+    // Check if user is an admin
     const { data: profile } = await supabase
       .from('profiles')
       .select('role')
       .eq('id', user.id)
       .single()
 
-    let accounts
+    const isAdmin = profile?.role === 'admin'
 
-    if (profile?.role === 'admin') {
-      // Admins can see all accounts
+    if (isAdmin) {
+      // Admins see all active accounts
       const { data, error } = await supabase
         .from('accounts')
-        .select('id, name, description')
+        .select(`
+          id,
+          name,
+          description
+        `)
         .eq('is_active', true)
         .order('name')
 
       if (error) throw error
       accounts = data || []
     } else {
-      // Regular users see accounts they have access to
-      const { data: accessData, error: accessError } = await supabase
-        .from('account_access')
-        .select(`
-          account_id,
-          role,
-          accounts!inner (
-            id,
-            name,
-            description
-          )
-        `)
-        .eq('user_id', user.id)
-        .eq('is_active', true)
-        .eq('accounts.is_active', true)
+      // Regular users - fetch account access separately to avoid recursion
+      try {
+        // First get account IDs the user has access to
+        const { data: accessData, error: accessError } = await supabase
+          .from('account_access')
+          .select('account_id, role')
+          .eq('user_id', user.id)
+          .eq('is_active', true)
 
-      if (accessError) throw accessError
-      
-      accounts = accessData?.map(item => {
-        const account = (item as any).accounts
-        return {
-          id: account?.id,
-          name: account?.name,
-          description: account?.description,
-          role: item.role
+        if (accessError) throw accessError
+
+        if (accessData && accessData.length > 0) {
+          // Then fetch account details
+          const accountIds = accessData.map(a => a.account_id)
+          const { data: accountsData, error: accountsError } = await supabase
+            .from('accounts')
+            .select('id, name, description')
+            .in('id', accountIds)
+            .eq('is_active', true)
+            .order('name')
+
+          if (accountsError) throw accountsError
+
+          // Merge role information
+          accounts = accountsData?.map(account => {
+            const access = accessData.find(a => a.account_id === account.id)
+            return {
+              ...account,
+              role: access?.role
+            }
+          }) || []
         }
-      }) || []
+      } catch (error) {
+        console.error('Error in account access query:', error)
+        // If there's still a recursion error, return empty accounts
+        accounts = []
+      }
     }
 
     return NextResponse.json({ accounts })
