@@ -66,6 +66,21 @@ export async function middleware(req: NextRequest) {
     console.log('Middleware - Session exists:', !!session, 'Path:', req.nextUrl.pathname)
   }
 
+  const isProtectedRoute = (path: string) => {
+    const publicPaths = ['/auth', '/auth/callback', '/auth/supabase-callback', '/api/auth/callback']
+    return !publicPaths.some(publicPath => path.startsWith(publicPath))
+  }
+
+  // Allow public routes
+  if (!isProtectedRoute(req.nextUrl.pathname)) {
+    return supabaseResponse
+  }
+
+  // Check if authenticated for protected routes
+  if (!session && isProtectedRoute(req.nextUrl.pathname)) {
+    return NextResponse.redirect(new URL('/auth', req.url))
+  }
+
   // Allow access to landing page (/) for everyone and to reset-password
   if (req.nextUrl.pathname === '/' || req.nextUrl.pathname === '/reset-password' || req.nextUrl.pathname === '/forgot-password') {
     return supabaseResponse
@@ -169,6 +184,9 @@ export const config = {
     '/dashboard/:path*',
     '/admin/:path*',
     '/account/:path*',
+    '/update-data/:path*',
+    '/data-view',
+    '/auth',
     '/login',
     '/signup',
   ],

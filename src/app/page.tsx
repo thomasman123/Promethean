@@ -1,21 +1,37 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 
 export default function HomePage() {
   const router = useRouter()
+  const [checking, setChecking] = useState(true)
+  const supabase = createClientComponentClient()
 
   useEffect(() => {
-    // Redirect to dashboard on root page load
-    router.push("/dashboard")
-  }, [router])
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session) {
+        router.push("/dashboard")
+      } else {
+        router.push("/auth")
+      }
+      setChecking(false)
+    }
 
-  return (
-    <div className="min-h-screen bg-background flex items-center justify-center">
-      <div className="text-center">
-        <p className="text-muted-foreground">Redirecting to dashboard...</p>
+    checkAuth()
+  }, [router, supabase])
+
+  if (checking) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
       </div>
-    </div>
-  )
+    )
+  }
+
+  return null
 } 

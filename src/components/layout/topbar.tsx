@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/select"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 
 interface Account {
   id: string
@@ -35,6 +36,7 @@ export function TopBar() {
   const [selectedAccountId, setSelectedAccountId] = useState<string>("")
   const pathname = usePathname()
   const router = useRouter()
+  const supabase = createClientComponentClient()
 
   useEffect(() => {
     // Initialize dark mode from localStorage or system preference
@@ -101,6 +103,11 @@ export function TopBar() {
       document.documentElement.classList.remove('dark')
       localStorage.setItem('theme', 'light')
     }
+  }
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut()
+    router.push("/auth")
   }
 
   const navItems = [
@@ -298,7 +305,10 @@ export function TopBar() {
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48 rounded-2xl border bg-popover/95 backdrop-blur-sm">
-            <DropdownMenuItem className="cursor-pointer rounded-xl focus:bg-accent">
+            <DropdownMenuItem 
+              onClick={handleSignOut}
+              className="cursor-pointer rounded-xl focus:bg-accent"
+            >
               <LogOut className="mr-2 h-4 w-4" />
               <span>Sign out</span>
             </DropdownMenuItem>
