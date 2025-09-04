@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react"
 import { TopBar } from "@/components/layout/topbar"
 import { UserMetricsTable, type UserMetric } from "@/components/data-view/user-metrics-table"
 import { useDashboard } from "@/lib/dashboard-context"
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
+import { createBrowserClient } from "@supabase/ssr"
 import { ColumnDef } from "@tanstack/react-table"
 import { ArrowUpDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -14,7 +14,10 @@ export default function DataViewPage() {
   const [users, setUsers] = useState<UserMetric[]>([])
   const [tableConfig, setTableConfig] = useState<any>(null)
   const [loading, setLoading] = useState(false)
-  const supabase = createClientComponentClient()
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
 
   // Get role filter and table ID from URL params or localStorage
   const [roleFilter, setRoleFilter] = useState<'both' | 'setter' | 'rep'>('both')

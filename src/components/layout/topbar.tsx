@@ -13,7 +13,7 @@ import {
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
+import { createBrowserClient } from "@supabase/ssr"
 import { DatePicker } from "@/components/ui/date-picker"
 import { ViewsManager } from "@/components/dashboard/views-manager"
 import { TablesManager } from "@/components/data-view/tables-manager"
@@ -37,7 +37,10 @@ export function TopBar() {
   const [roleFilter, setRoleFilter] = useState<RoleFilter>('both')
   const pathname = usePathname()
   const router = useRouter()
-  const supabase = createClientComponentClient()
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
   const { dateRange, setDateRange, selectedAccountId, setSelectedAccountId, setCurrentViewId } = useDashboard()
 
   // Show date/view controls only on dashboard and data-view pages
@@ -96,6 +99,8 @@ export function TopBar() {
             localStorage.setItem('selectedAccountId', data.accounts[0].id)
           }
         }
+      } else {
+        console.error('Failed to load accounts - response not ok:', response.status)
       }
     } catch (error) {
       console.error('Failed to load accounts:', error)
