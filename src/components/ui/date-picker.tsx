@@ -97,56 +97,61 @@ export function DatePicker({
   }
 
   return (
-    <div className={cn("flex items-center gap-2", className)}>
-      {/* Date preset buttons */}
-      <div className="flex items-center gap-1">
-        {datePresets.map((preset) => (
-          <Button
-            key={preset.label}
-            variant="ghost"
-            size="sm"
-            onClick={() => handlePresetClick(preset)}
-            className={cn(
-              "h-8 px-3 text-xs font-normal rounded-full",
-              "hover:bg-muted/80 transition-all duration-200",
-              date?.from && date?.to && 
-              preset.getValue().from.getTime() === date.from.getTime() &&
-              preset.getValue().to.getTime() === date.to.getTime() &&
-              "bg-muted/80"
-            )}
-          >
-            {preset.label}
-          </Button>
-        ))}
-      </div>
-
-      {/* Date picker button */}
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button
-            variant="outline"
-            className={cn(
-              "w-[240px] h-10 px-4 justify-start text-left font-normal rounded-full text-sm",
-              "bg-muted/50 backdrop-blur-sm border border-border/50",
-              "hover:bg-muted/80 transition-all duration-200",
-              !date && "text-muted-foreground"
-            )}
-          >
-            <CalendarIcon className="mr-2 h-4 w-4" />
-            {date?.from ? (
-              date.to ? (
-                <>
-                  {format(date.from, "MMM dd")} - {format(date.to, "MMM dd, y")}
-                </>
-              ) : (
-                format(date.from, "MMM dd, y")
-              )
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          className={cn(
+            "w-[240px] h-10 px-4 justify-start text-left font-normal rounded-full text-sm",
+            "bg-muted/50 backdrop-blur-sm border border-border/50",
+            "hover:bg-muted/80 transition-all duration-200",
+            !date && "text-muted-foreground",
+            className
+          )}
+        >
+          <CalendarIcon className="mr-2 h-4 w-4" />
+          {date?.from ? (
+            date.to ? (
+              <>
+                {format(date.from, "MMM dd")} - {format(date.to, "MMM dd, y")}
+              </>
             ) : (
-              <span>Pick a date</span>
-            )}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="start" sideOffset={5}>
+              format(date.from, "MMM dd, y")
+            )
+          ) : (
+            <span>Pick a date</span>
+          )}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0" align="start" sideOffset={5}>
+        <div className="flex">
+          {/* Date preset buttons - vertical layout on the left */}
+          <div className="flex flex-col gap-1 p-3 border-r">
+            {datePresets.map((preset) => {
+              const presetRange = preset.getValue()
+              const isActive = date?.from && date?.to && 
+                presetRange.from.getTime() === date.from.getTime() &&
+                presetRange.to.getTime() === date.to.getTime()
+              
+              return (
+                <Button
+                  key={preset.label}
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handlePresetClick(preset)}
+                  className={cn(
+                    "h-8 px-3 text-xs font-normal justify-start whitespace-nowrap",
+                    "hover:bg-muted transition-all duration-200",
+                    isActive && "bg-muted"
+                  )}
+                >
+                  {preset.label}
+                </Button>
+              )
+            })}
+          </div>
+
+          {/* Calendar */}
           <Calendar
             mode="range"
             defaultMonth={date?.from}
@@ -154,10 +159,10 @@ export function DatePicker({
             onSelect={handleSelect}
             numberOfMonths={2}
             showOutsideDays={false}
-            className="rounded-lg border shadow-sm"
+            className="rounded-lg border-0"
           />
-        </PopoverContent>
-      </Popover>
-    </div>
+        </div>
+      </PopoverContent>
+    </Popover>
   )
 } 
