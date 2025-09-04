@@ -54,47 +54,79 @@ export default function DataViewPage() {
   async function loadUsers() {
     setLoading(true)
     
-    // Query profiles through account_access table with explicit relationship
-    let query = supabase
-      .from('account_access')
-      .select(`
-        user_id,
-        profiles:user_id (
-          id,
-          email,
-          full_name,
-          role
-        )
-      `)
-      .eq('account_id', selectedAccountId)
+    try {
+      // First, try using an RPC function if it exists
+      const { data: rpcData, error: rpcError } = await supabase
+        .rpc('get_account_users', { p_account_id: selectedAccountId })
 
-    const { data, error } = await query
-
-    if (error) {
-      console.error('Error loading users:', error)
-      setLoading(false)
-      return
+      if (!rpcError && rpcData) {
+        // Use RPC data
+        const userMetrics: UserMetric[] = rpcData
+          .filter((user: any) => roleFilter === 'both' || user.role === roleFilter)
+          .map((user: any) => ({
+            id: user.user_id,
+            name: user.full_name || 'Unknown',
+            email: user.email || '',
+            role: user.role as 'setter' | 'rep',
+          }))
+        
+        setUsers(userMetrics)
+        setLoading(false)
+        return
+      }
+    } catch (e) {
+      console.log('RPC function not available, falling back to direct query')
     }
 
-    // Transform users to UserMetric format
-    const userMetrics: UserMetric[] = (data || []).map(access => {
-      const profile = (access as any).profiles
-      if (!profile) return null
-      // Filter by role
-      if (roleFilter !== 'both' && profile.role !== roleFilter) {
-        return null
-      }
-      return {
-        id: profile.id,
-        name: profile.full_name || 'Unknown',
-        email: profile.email || '',
-        role: profile.role as 'setter' | 'rep',
-        // Add more metrics here as needed
-      }
-    }).filter(Boolean) as UserMetric[]
+    // Fallback: Try direct query with simpler approach
+    try {
+      // Get current user's account IDs first
+      const { data: userAccess } = await supabase
+        .from('account_access')
+        .select('account_id')
+        .eq('user_id', (await supabase.auth.getUser()).data.user?.id)
+        .eq('account_id', selectedAccountId)
+        .single()
 
-    setUsers(userMetrics)
-    setLoading(false)
+      if (!userAccess) {
+        console.error('User does not have access to this account')
+        setLoading(false)
+        return
+      }
+
+      // Now get all users for this account
+      const { data: accountUsers, error } = await supabase
+        .from('account_access')
+        .select('user_id')
+        .eq('account_id', selectedAccountId)
+
+      if (error) throw error
+
+      // Get profile data for each user
+      const userIds = accountUsers?.map(au => au.user_id) || []
+      const { data: profiles, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .in('id', userIds)
+
+      if (profileError) throw profileError
+
+      // Transform to UserMetric format
+      const userMetrics: UserMetric[] = (profiles || [])
+        .filter(profile => roleFilter === 'both' || profile.role === roleFilter)
+        .map(profile => ({
+          id: profile.id,
+          name: profile.full_name || 'Unknown',
+          email: profile.email || '',
+          role: profile.role as 'setter' | 'rep',
+        }))
+
+      setUsers(userMetrics)
+    } catch (error) {
+      console.error('Error loading users:', error)
+    } finally {
+      setLoading(false)
+    }
   }
 
   async function loadTableConfig() {
