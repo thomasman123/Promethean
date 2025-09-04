@@ -3,6 +3,7 @@
 import * as React from "react"
 import { format, startOfDay, endOfDay, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subMonths } from "date-fns"
 import { Calendar as CalendarIcon } from "lucide-react"
+import { DateRange } from "react-day-picker"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
@@ -12,14 +13,12 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 
-interface DateRange {
-  from: Date | undefined
-  to: Date | undefined
-}
-
 interface DatePickerProps {
-  value?: DateRange
-  onChange?: (range: DateRange) => void
+  value?: {
+    from: Date | undefined
+    to: Date | undefined
+  }
+  onChange?: (range: { from: Date | undefined; to: Date | undefined }) => void
   className?: string
 }
 
@@ -28,15 +27,20 @@ export function DatePicker({
   onChange,
   className,
 }: DatePickerProps) {
-  const [date, setDate] = React.useState<DateRange>(value)
+  const [date, setDate] = React.useState<DateRange | undefined>(
+    value.from && value.to ? { from: value.from, to: value.to } : undefined
+  )
 
   React.useEffect(() => {
-    setDate(value)
+    setDate(value.from && value.to ? { from: value.from, to: value.to } : undefined)
   }, [value])
 
-  const handleSelect = (newDate: DateRange) => {
+  const handleSelect = (newDate: DateRange | undefined) => {
     setDate(newDate)
-    onChange?.(newDate)
+    onChange?.({
+      from: newDate?.from,
+      to: newDate?.to
+    })
   }
 
   const presets = [
@@ -57,15 +61,15 @@ export function DatePicker({
     {
       label: "This Week",
       getValue: () => ({
-        from: startOfWeek(new Date()),
-        to: endOfWeek(new Date()),
+        from: startOfWeek(new Date(), { weekStartsOn: 1 }),
+        to: endOfWeek(new Date(), { weekStartsOn: 1 }),
       }),
     },
     {
       label: "Last Week",
       getValue: () => ({
-        from: startOfWeek(subDays(new Date(), 7)),
-        to: endOfWeek(subDays(new Date(), 7)),
+        from: startOfWeek(subDays(new Date(), 7), { weekStartsOn: 1 }),
+        to: endOfWeek(subDays(new Date(), 7), { weekStartsOn: 1 }),
       }),
     },
     {
@@ -122,7 +126,10 @@ export function DatePicker({
               {presets.map((preset) => (
                 <button
                   key={preset.label}
-                  onClick={() => handleSelect(preset.getValue())}
+                  onClick={() => {
+                    const value = preset.getValue()
+                    handleSelect({ from: value.from, to: value.to })
+                  }}
                   className={cn(
                     "w-full text-left px-3 py-2 text-sm rounded-xl",
                     "hover:bg-accent transition-colors"
