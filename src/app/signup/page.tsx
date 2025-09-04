@@ -56,10 +56,7 @@ export default function SignupPage() {
         
         if (!signInError) {
           setSuccess(true)
-          router.refresh()
-          setTimeout(() => {
-            router.push("/dashboard")
-          }, 500)
+          window.location.href = "/dashboard"
         } else {
           router.push("/login")
         }

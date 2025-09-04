@@ -34,12 +34,8 @@ export default function LoginPage() {
         setLoading(false)
       } else {
         setSuccess(true)
-        // Refresh the router to update the session
-        router.refresh()
-        // Small delay to show success message
-        setTimeout(() => {
-          router.push("/dashboard")
-        }, 500)
+        // Use window.location for a hard redirect to ensure proper navigation
+        window.location.href = "/dashboard"
       }
     } catch (err) {
       setError("An unexpected error occurred")
