@@ -20,11 +20,19 @@ import {
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 
+interface Account {
+  id: string
+  name: string
+  description?: string
+}
+
 export function TopBar() {
   const [isDarkMode, setIsDarkMode] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
   const [hoverTimeout, setHoverTimeout] = useState<NodeJS.Timeout | null>(null)
+  const [accounts, setAccounts] = useState<Account[]>([])
+  const [selectedAccountId, setSelectedAccountId] = useState<string>("")
   const pathname = usePathname()
   const router = useRouter()
 
@@ -38,6 +46,11 @@ export function TopBar() {
   }, [])
 
   useEffect(() => {
+    // Load user accounts
+    loadUserAccounts()
+  }, [])
+
+  useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 10)
     }
@@ -45,6 +58,37 @@ export function TopBar() {
     window.addEventListener("scroll", handleScroll)
     return () => window.removeEventListener("scroll", handleScroll)
   }, [])
+
+  const loadUserAccounts = async () => {
+    try {
+      const response = await fetch('/api/team')
+      if (response.ok) {
+        const data = await response.json()
+        if (data.accounts && data.accounts.length > 0) {
+          setAccounts(data.accounts)
+          
+          // Set first account as selected if none selected
+          const savedAccountId = localStorage.getItem('selectedAccountId')
+          if (savedAccountId && data.accounts.find((a: Account) => a.id === savedAccountId)) {
+            setSelectedAccountId(savedAccountId)
+          } else {
+            setSelectedAccountId(data.accounts[0].id)
+            localStorage.setItem('selectedAccountId', data.accounts[0].id)
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load accounts:', error)
+    }
+  }
+
+  const handleAccountChange = (accountId: string) => {
+    setSelectedAccountId(accountId)
+    localStorage.setItem('selectedAccountId', accountId)
+    
+    // Trigger a custom event for other components to listen to
+    window.dispatchEvent(new CustomEvent('accountChanged', { detail: { accountId } }))
+  }
 
   const toggleDarkMode = () => {
     const newMode = !isDarkMode
@@ -128,21 +172,25 @@ export function TopBar() {
         </div>
 
         {/* Account Dropdown - Styled with pill shape */}
-        <Select defaultValue="account1">
-          <SelectTrigger className={cn(
-            "w-[200px] h-10 px-4 rounded-full",
-            "bg-muted/50 backdrop-blur-sm border border-border/50",
-            "hover:bg-muted/80 transition-all duration-200",
-            "focus:outline-none focus:ring-2 focus:ring-primary/20"
-          )}>
-            <SelectValue placeholder="Select account" />
-          </SelectTrigger>
-          <SelectContent className="rounded-2xl border bg-popover/95 backdrop-blur-sm">
-            <SelectItem value="account1" className="rounded-xl focus:bg-accent">Production Account</SelectItem>
-            <SelectItem value="account2" className="rounded-xl focus:bg-accent">Development Account</SelectItem>
-            <SelectItem value="account3" className="rounded-xl focus:bg-accent">Staging Account</SelectItem>
-          </SelectContent>
-        </Select>
+        {accounts.length > 0 && (
+          <Select value={selectedAccountId} onValueChange={handleAccountChange}>
+            <SelectTrigger className={cn(
+              "w-[200px] h-10 px-4 rounded-full",
+              "bg-muted/50 backdrop-blur-sm border border-border/50",
+              "hover:bg-muted/80 transition-all duration-200",
+              "focus:outline-none focus:ring-2 focus:ring-primary/20"
+            )}>
+              <SelectValue placeholder="Select account" />
+            </SelectTrigger>
+            <SelectContent className="rounded-2xl border bg-popover/95 backdrop-blur-sm">
+              {accounts.map((account) => (
+                <SelectItem key={account.id} value={account.id} className="rounded-xl focus:bg-accent">
+                  {account.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       {/* Center section - Main Navigation with Icon Only */}
