@@ -126,7 +126,7 @@ export function TopBar() {
 
       {/* Center section - Main Navigation with Icon Only */}
       <div className={cn(
-        "flex items-center gap-4 px-4 py-2 rounded-full",
+        "flex items-center gap-2 px-2 py-1 rounded-full",
         "bg-muted/50 backdrop-blur-sm border border-border/50"
       )}>
         {navItems.map((item) => {
@@ -135,56 +135,47 @@ export function TopBar() {
           
           if (item.dropdownItems) {
             return (
-              <DropdownMenu 
-                key={item.href} 
-                open={openDropdown === item.href}
-                onOpenChange={(open) => setOpenDropdown(open ? item.href : null)}
+              <div
+                key={item.href}
+                className="relative"
+                onMouseEnter={() => setOpenDropdown(item.href)}
+                onMouseLeave={() => setOpenDropdown(null)}
               >
-                <DropdownMenuTrigger 
-                  asChild
-                  onMouseEnter={() => setOpenDropdown(item.href)}
-                  onMouseLeave={(e) => {
-                    // Check if mouse is moving to dropdown content
-                    const rect = e.currentTarget.getBoundingClientRect()
-                    const isMovingDown = e.clientY > rect.bottom
-                    if (!isMovingDown) {
-                      setOpenDropdown(null)
-                    }
-                  }}
+                <button
+                  onClick={() => handleIconClick(item)}
+                  className={cn(
+                    "flex items-center justify-center p-2 rounded-full transition-all duration-200",
+                    "hover:bg-accent/50 focus:outline-none focus:ring-2 focus:ring-primary/20",
+                    isActive && "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90"
+                  )}
                 >
-                  <button
-                    onClick={() => handleIconClick(item)}
-                    className={cn(
-                      "flex items-center justify-center p-3 rounded-full transition-all duration-200",
-                      "hover:bg-accent/50 focus:outline-none focus:ring-2 focus:ring-primary/20",
-                      isActive && "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90"
-                    )}
-                  >
-                    <Icon className="h-5 w-5" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent 
-                  align="center" 
-                  className="w-56 rounded-2xl border bg-popover/95 backdrop-blur-sm mt-2"
-                  onMouseEnter={() => setOpenDropdown(item.href)}
-                  onMouseLeave={() => setOpenDropdown(null)}
-                >
-                  {item.dropdownItems.map((dropdownItem) => {
-                    const DropdownIcon = dropdownItem.icon
-                    return (
-                      <DropdownMenuItem key={dropdownItem.href} asChild>
-                        <Link 
-                          href={dropdownItem.href}
-                          className="flex items-center gap-3 rounded-xl px-3 py-2.5 cursor-pointer"
-                        >
-                          <DropdownIcon className="h-4 w-4 text-muted-foreground" />
-                          <span>{dropdownItem.label}</span>
-                        </Link>
-                      </DropdownMenuItem>
-                    )
-                  })}
-                </DropdownMenuContent>
-              </DropdownMenu>
+                  <Icon className="h-4 w-4" />
+                </button>
+                
+                {openDropdown === item.href && (
+                  <div className={cn(
+                    "absolute top-full left-1/2 transform -translate-x-1/2 mt-2 z-50",
+                    "w-56 rounded-2xl border bg-popover/95 backdrop-blur-sm shadow-lg",
+                    "animate-in fade-in-0 zoom-in-95 duration-200"
+                  )}>
+                    <div className="p-1">
+                      {item.dropdownItems.map((dropdownItem) => {
+                        const DropdownIcon = dropdownItem.icon
+                        return (
+                          <Link
+                            key={dropdownItem.href}
+                            href={dropdownItem.href}
+                            className="flex items-center gap-3 rounded-xl px-3 py-2.5 cursor-pointer hover:bg-accent transition-colors"
+                          >
+                            <DropdownIcon className="h-4 w-4 text-muted-foreground" />
+                            <span>{dropdownItem.label}</span>
+                          </Link>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
             )
           }
           
@@ -193,12 +184,12 @@ export function TopBar() {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex items-center justify-center p-3 rounded-full transition-all duration-200",
+                "flex items-center justify-center p-2 rounded-full transition-all duration-200",
                 "hover:bg-accent/50 focus:outline-none focus:ring-2 focus:ring-primary/20",
                 isActive && "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90"
               )}
             >
-              <Icon className="h-5 w-5" />
+              <Icon className="h-4 w-4" />
             </Link>
           )
         })}
