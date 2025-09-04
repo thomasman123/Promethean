@@ -10,6 +10,28 @@
   font-size: 14px !important;
 }
 
+/* Popover content styling */
+[data-radix-popper-content-wrapper] {
+  animation: fadeIn 0.2s ease-out !important;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Calendar container */
+[data-slot="calendar"] {
+  border-radius: 12px !important;
+  overflow: hidden !important;
+}
+
 /* Force calendar container sizing */
 [data-slot="calendar"] .rdp-root {
   transform: scale(0.85) !important;
@@ -62,6 +84,7 @@
   font-size: 13px !important;
   font-weight: normal !important;
   border-radius: 6px !important;
+  transition: all 0.15s ease !important;
 }
 
 [data-slot="calendar"] .rdp-day {
@@ -71,7 +94,17 @@
   margin: 0 !important;
 }
 
-/* Selected states */
+/* Hide outside month days completely */
+[data-slot="calendar"] button[data-day][data-outside="true"] {
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+[data-slot="calendar"] .rdp-day_outside {
+  visibility: hidden !important;
+}
+
+/* Selected states with smooth transitions */
 [data-slot="calendar"] button[data-day]:hover:not([data-selected-single="true"]):not([data-range-start="true"]):not([data-range-end="true"]) {
   background-color: hsl(var(--accent)) !important;
   color: hsl(var(--accent-foreground)) !important;
@@ -90,10 +123,6 @@
   border-radius: 0 !important;
 }
 
-[data-slot="calendar"] button[data-day][data-outside="true"] {
-  opacity: 0.5 !important;
-}
-
 [data-slot="calendar"] button[data-day][data-disabled="true"] {
   opacity: 0.5 !important;
   cursor: not-allowed !important;
@@ -107,11 +136,25 @@
   padding: 0 !important;
   background: transparent !important;
   border: none !important;
+  border-radius: 6px !important;
+  transition: all 0.15s ease !important;
+}
+
+[data-slot="calendar"] .rdp-button_previous:hover,
+[data-slot="calendar"] .rdp-button_next:hover {
+  background-color: hsl(var(--accent)) !important;
 }
 
 /* Multiple months layout */
 [data-slot="calendar"] .rdp-months {
   gap: 16px !important;
+  padding: 12px !important;
+}
+
+/* Popover styling */
+[data-radix-popper-content-wrapper] > div {
+  border-radius: 12px !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
 }
 
 @layer base {
