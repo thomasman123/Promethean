@@ -4,6 +4,46 @@
 
 @import "react-day-picker/style.css";
 
+/* Fix calendar button styling */
+[data-slot="calendar"] button[data-day] {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  height: 2.25rem !important;
+  width: 2.25rem !important;
+  padding: 0 !important;
+  font-size: 0.875rem !important;
+  font-weight: normal !important;
+  border-radius: 0.375rem !important;
+}
+
+[data-slot="calendar"] button[data-day]:hover:not([data-selected-single="true"]):not([data-range-start="true"]):not([data-range-end="true"]) {
+  background-color: hsl(var(--accent)) !important;
+  color: hsl(var(--accent-foreground)) !important;
+}
+
+[data-slot="calendar"] button[data-selected-single="true"],
+[data-slot="calendar"] button[data-range-start="true"],
+[data-slot="calendar"] button[data-range-end="true"] {
+  background-color: hsl(var(--primary)) !important;
+  color: hsl(var(--primary-foreground)) !important;
+}
+
+[data-slot="calendar"] button[data-range-middle="true"] {
+  background-color: hsl(var(--accent)) !important;
+  color: hsl(var(--accent-foreground)) !important;
+  border-radius: 0 !important;
+}
+
+[data-slot="calendar"] button[data-day][data-outside="true"] {
+  opacity: 0.5 !important;
+}
+
+[data-slot="calendar"] button[data-day][data-disabled="true"] {
+  opacity: 0.5 !important;
+  cursor: not-allowed !important;
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;
