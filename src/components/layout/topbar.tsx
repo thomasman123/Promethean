@@ -164,37 +164,17 @@ export function TopBar() {
       "fixed top-0 left-0 right-0 z-50 flex h-16 items-center justify-between px-6 transition-all duration-200",
       isScrolled ? "bg-background/80 backdrop-blur-md border-b" : "bg-transparent"
     )}>
-      {/* Left section - Logo and Account Dropdown */}
+      {/* Left section - Logo */}
       <div className="flex items-center gap-4">
         {/* Logo */}
         <div className="flex items-center gap-2">
           <Sword className="h-6 w-6 text-primary" />
         </div>
-
-        {/* Account Dropdown - Styled with pill shape */}
-        {accounts.length > 0 && (
-          <Select value={selectedAccountId} onValueChange={handleAccountChange}>
-            <SelectTrigger className={cn(
-              "w-[200px] h-10 px-4 rounded-full",
-              "bg-muted/50 backdrop-blur-sm border border-border/50",
-              "hover:bg-muted/80 transition-all duration-200",
-              "focus:outline-none focus:ring-2 focus:ring-primary/20"
-            )}>
-              <SelectValue placeholder="Select account" />
-            </SelectTrigger>
-            <SelectContent className="rounded-2xl border bg-popover/95 backdrop-blur-sm">
-              {accounts.map((account) => (
-                <SelectItem key={account.id} value={account.id} className="rounded-xl focus:bg-accent">
-                  {account.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
       </div>
 
       {/* Center section - Main Navigation with Icon Only */}
       <div className={cn(
+        "absolute left-1/2 transform -translate-x-1/2",
         "flex items-center gap-2 px-2 py-1 rounded-full",
         "bg-muted/50 backdrop-blur-sm border border-border/50"
       )}>
@@ -271,10 +251,28 @@ export function TopBar() {
         })}
       </div>
 
-      {/* Right section - Placeholder, Dark mode toggle, Profile */}
+      {/* Right section - Account Selector, Dark mode toggle, Profile */}
       <div className="flex items-center gap-3">
-        {/* Placeholder for future context-specific dropdowns */}
-        <div className="w-[120px]" />
+        {/* Account Dropdown */}
+        {accounts.length > 0 && (
+          <Select value={selectedAccountId} onValueChange={handleAccountChange}>
+            <SelectTrigger className={cn(
+              "w-[200px] h-10 px-4 rounded-full",
+              "bg-muted/50 backdrop-blur-sm border border-border/50",
+              "hover:bg-muted/80 transition-all duration-200",
+              "focus:outline-none focus:ring-2 focus:ring-primary/20"
+            )}>
+              <SelectValue placeholder="Select account" />
+            </SelectTrigger>
+            <SelectContent className="rounded-2xl border bg-popover/95 backdrop-blur-sm">
+              {accounts.map((account) => (
+                <SelectItem key={account.id} value={account.id} className="rounded-xl focus:bg-accent">
+                  {account.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
 
         {/* Dark mode toggle - Pill shaped */}
         <button
