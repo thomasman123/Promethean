@@ -81,7 +81,7 @@ export function TopBar() {
 
   const loadUserAccounts = async () => {
     try {
-      const response = await fetch('/api/accounts')
+      const response = await fetch('/api/accounts-simple')
       if (response.ok) {
         const data = await response.json()
         if (data.accounts && data.accounts.length > 0) {
@@ -99,6 +99,8 @@ export function TopBar() {
       }
     } catch (error) {
       console.error('Failed to load accounts:', error)
+      // Don't crash, just set empty accounts
+      setAccounts([])
     }
   }
 
