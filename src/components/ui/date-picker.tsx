@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { format, startOfDay, endOfDay, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subMonths } from "date-fns"
+import { format } from "date-fns"
 import { Calendar as CalendarIcon } from "lucide-react"
 import { DateRange } from "react-day-picker"
 import { cn } from "@/lib/utils"
@@ -43,54 +43,6 @@ export function DatePicker({
     })
   }
 
-  const presets = [
-    {
-      label: "Today",
-      getValue: () => ({
-        from: startOfDay(new Date()),
-        to: endOfDay(new Date()),
-      }),
-    },
-    {
-      label: "Yesterday",
-      getValue: () => ({
-        from: startOfDay(subDays(new Date(), 1)),
-        to: endOfDay(subDays(new Date(), 1)),
-      }),
-    },
-    {
-      label: "This Week",
-      getValue: () => ({
-        from: startOfWeek(new Date(), { weekStartsOn: 1 }),
-        to: endOfWeek(new Date(), { weekStartsOn: 1 }),
-      }),
-    },
-    {
-      label: "Last Week",
-      getValue: () => ({
-        from: startOfWeek(subDays(new Date(), 7), { weekStartsOn: 1 }),
-        to: endOfWeek(subDays(new Date(), 7), { weekStartsOn: 1 }),
-      }),
-    },
-    {
-      label: "This Month",
-      getValue: () => ({
-        from: startOfMonth(new Date()),
-        to: endOfMonth(new Date()),
-      }),
-    },
-    {
-      label: "Last Month",
-      getValue: () => {
-        const lastMonth = subMonths(new Date(), 1)
-        return {
-          from: startOfMonth(lastMonth),
-          to: endOfMonth(lastMonth),
-        }
-      },
-    },
-  ]
-
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -119,34 +71,14 @@ export function DatePicker({
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start">
-        <div className="flex h-full">
-          <div className="w-[140px] p-3 border-r">
-            {presets.map((preset) => (
-              <button
-                key={preset.label}
-                onClick={() => {
-                  const value = preset.getValue()
-                  handleSelect({ from: value.from, to: value.to })
-                }}
-                className={cn(
-                  "w-full text-left px-3 py-1.5 text-sm rounded-md mb-1",
-                  "hover:bg-accent hover:text-accent-foreground"
-                )}
-              >
-                {preset.label}
-              </button>
-            ))}
-          </div>
-          <div className="p-3">
-            <Calendar
-              mode="range"
-              defaultMonth={date?.from}
-              selected={date}
-              onSelect={handleSelect}
-              numberOfMonths={2}
-            />
-          </div>
-        </div>
+        <Calendar
+          mode="range"
+          defaultMonth={date?.from}
+          selected={date}
+          onSelect={handleSelect}
+          numberOfMonths={2}
+          className="rounded-lg border shadow-sm"
+        />
       </PopoverContent>
     </Popover>
   )
