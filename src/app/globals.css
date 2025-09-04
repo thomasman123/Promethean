@@ -27,6 +27,23 @@
   }
 }
 
+/* Fix calendar navigation arrow colors - make them black instead of blue */
+.rdp-button_previous svg,
+.rdp-button_next svg {
+  color: currentColor !important;
+}
+
+.rdp-button_previous,
+.rdp-button_next {
+  color: hsl(var(--foreground)) !important;
+}
+
+.rdp-button_previous:hover,
+.rdp-button_next:hover {
+  color: hsl(var(--foreground)) !important;
+  background-color: hsl(var(--muted)) !important;
+}
+
 /* Calendar container */
 [data-slot="calendar"] {
   border-radius: 12px !important;
