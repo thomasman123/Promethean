@@ -21,20 +21,21 @@ export function DrawingLayer({ isActive, zoom, pan, color, onPathComplete }: Dra
   const [isDrawing, setIsDrawing] = useState(false)
   const [currentPoints, setCurrentPoints] = useState<Point[]>([])
 
-  // Simple coordinate conversion - like Miro clone
+  // Coordinate conversion adapted for zoom system
   const pointerEventToCanvasPoint = useCallback((e: React.PointerEvent | PointerEvent) => {
     if (!canvasRef.current) return { x: 0, y: 0 }
     
     const rect = canvasRef.current.getBoundingClientRect()
     
-    // Convert to canvas coordinates, accounting for zoom and pan
-    const canvasX = (e.clientX - rect.left) / zoom
-    const canvasY = (e.clientY - rect.top) / zoom
+    // Get position relative to canvas center (like InfiniteCanvas)
+    const centerX = (e.clientX - rect.left) - rect.width / 2
+    const centerY = (e.clientY - rect.top) - rect.height / 2
     
-    // Apply pan offset (inverse)
+    // Apply inverse transform: scale(zoom) translate(pan.x, pan.y)
+    // Inverse: translate(-pan.x, -pan.y) scale(1/zoom)
     return {
-      x: canvasX - pan.x,
-      y: canvasY - pan.y
+      x: centerX / zoom - pan.x,
+      y: centerY / zoom - pan.y
     }
   }, [zoom, pan])
 
@@ -163,15 +164,13 @@ export function DrawingLayer({ isActive, zoom, pan, color, onPathComplete }: Dra
       style={{ cursor: 'crosshair' }}
       onPointerDown={handlePointerDown}
     >
-      {/* Simple SVG with transform - like Miro clone */}
+      {/* SVG with transform matching InfiniteCanvas coordinate system */}
       <svg
         className="absolute inset-0 w-full h-full"
         style={{ overflow: 'visible' }}
       >
         <g
-          style={{
-            transform: `scale(${zoom}) translate(${pan.x}px, ${pan.y}px)`,
-          }}
+          transform={`translate(${(canvasRef.current?.clientWidth || 1000) / 2}, ${(canvasRef.current?.clientHeight || 1000) / 2}) scale(${zoom}) translate(${pan.x}, ${pan.y})`}
         >
           {/* Drawing preview */}
           {isDrawing && currentPoints.length > 0 && (
