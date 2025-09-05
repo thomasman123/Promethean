@@ -224,36 +224,33 @@ export function DrawingLayer({ isActive, zoom, pan, color, onPathComplete }: Dra
       style={{ cursor: 'crosshair' }}
       onMouseDown={handleMouseDown}
     >
-      {/* Use a div with CSS transform instead of SVG - matches InfiniteCanvas exactly */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          transform: `scale(${zoom}) translate(${pan.x}px, ${pan.y}px)`,
-          transformOrigin: 'center center'
-        }}
-      >
-        {/* SVG for drawing preview - now properly positioned */}
-        <svg
-          className="absolute inset-0 w-full h-full"
-          style={{ 
-            overflow: 'visible',
-            left: '50%',
-            top: '50%',
-            transform: 'translate(-50%, -50%)'
-          }}
-        >
-          {isDrawing && previewPath && (
-            <path
-              d={previewPath}
-              fill="none"
-              stroke={color}
-              strokeWidth={2 / zoom}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          )}
-        </svg>
-      </div>
+             {/* Use a div with CSS transform instead of SVG - matches InfiniteCanvas exactly */}
+       <div
+         className="absolute inset-0 pointer-events-none"
+         style={{
+           transform: `scale(${zoom}) translate(${pan.x}px, ${pan.y}px)`,
+           transformOrigin: 'center center'
+         }}
+       >
+         {/* SVG with centered coordinate system */}
+         <svg
+           className="absolute inset-0 w-full h-full"
+           style={{ overflow: 'visible' }}
+         >
+           <g transform={`translate(${(canvasRef.current?.clientWidth || 1000) / 2}, ${(canvasRef.current?.clientHeight || 1000) / 2})`}>
+             {isDrawing && previewPath && (
+               <path
+                 d={previewPath}
+                 fill="none"
+                 stroke={color}
+                 strokeWidth={2 / zoom}
+                 strokeLinecap="round"
+                 strokeLinejoin="round"
+               />
+             )}
+           </g>
+         </svg>
+       </div>
     </div>
   )
 } 
