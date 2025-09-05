@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No session created' }, { status: 400 })
     }
     
-    // Create response with proper cookie headers
+    // Create response
     const response = NextResponse.json({ 
       success: true,
       user: {
@@ -47,16 +47,10 @@ export async function POST(request: NextRequest) {
       }
     })
     
-    // Ensure cookies are set in the response
-    const allCookies = cookieStore.getAll()
-    allCookies.forEach(cookie => {
-      response.cookies.set(cookie.name, cookie.value, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        path: '/'
-      })
-    })
+    // The Supabase server client should have already set the cookies
+    // Log what cookies were set for debugging
+    const supabaseCookies = cookieStore.getAll().filter(c => c.name.startsWith('sb-'))
+    console.log('Login - Supabase cookies set:', supabaseCookies.map(c => c.name))
     
     return response
     

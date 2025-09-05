@@ -72,6 +72,16 @@ export async function middleware(req: NextRequest) {
     }
   }
 
+  // Debug logging for auth issues
+  if (req.nextUrl.pathname.startsWith('/dashboard') || req.nextUrl.pathname.startsWith('/api/accounts')) {
+    console.log('Middleware - Auth check:', {
+      path: req.nextUrl.pathname,
+      hasSession: !!session,
+      userId: session?.user?.id,
+      cookieCount: req.cookies.getAll().filter(c => c.name.startsWith('sb-')).length
+    })
+  }
+
   // If a password recovery is in progress, force user to the reset page until cleared
   const recoveryPending = req.cookies.get('recovery_pending')?.value === '1'
   if (recoveryPending) {
@@ -82,40 +92,39 @@ export async function middleware(req: NextRequest) {
     }
   }
 
-  // Debug: Only log for troubleshooting when needed
-  if (process.env.NODE_ENV === 'development') {
-    console.log('Middleware - Session exists:', !!session, 'Path:', req.nextUrl.pathname)
-  }
+  // Define public routes that don't require authentication
+  const publicRoutes = [
+    '/login',
+    '/signup',
+    '/auth',
+    '/api/auth/login',
+    '/api/auth/callback',
+    '/api/auth/supabase-callback',
+    '/api/auth/cleanup',
+    '/api/auth/test',
+    '/',
+    '/reset-password',
+    '/forgot-password'
+  ]
 
-  const isProtectedRoute = (path: string) => {
-    const publicPaths = ['/login', '/signup', '/auth', '/auth/callback', '/auth/supabase-callback', '/api/auth/callback']
-    return !publicPaths.some(publicPath => path.startsWith(publicPath))
-  }
+  const isPublicRoute = publicRoutes.some(route => req.nextUrl.pathname.startsWith(route))
 
-  // Allow public routes
-  if (!isProtectedRoute(req.nextUrl.pathname)) {
+  // Allow public routes without authentication
+  if (isPublicRoute) {
+    // But redirect to dashboard if already authenticated and trying to access login/signup
+    if (session && (req.nextUrl.pathname === '/login' || req.nextUrl.pathname === '/signup')) {
+      return NextResponse.redirect(new URL('/dashboard', req.url))
+    }
     return supabaseResponse
   }
 
-  // Check if authenticated for protected routes
-  if (!session && isProtectedRoute(req.nextUrl.pathname)) {
+  // For all other routes, require authentication
+  if (!session) {
+    console.log('Middleware - No session, redirecting to login from:', req.nextUrl.pathname)
     return NextResponse.redirect(new URL('/login', req.url))
   }
 
-  // Allow access to landing page (/) for everyone and to reset-password
-  if (req.nextUrl.pathname === '/' || req.nextUrl.pathname === '/reset-password' || req.nextUrl.pathname === '/forgot-password') {
-    return supabaseResponse
-  }
-
-  // Require authentication for dashboard
-  if (req.nextUrl.pathname.startsWith('/dashboard') && !session) {
-    return NextResponse.redirect(new URL('/', req.url))
-  }
-
-  // Redirect to login if user is not authenticated and trying to access protected routes
-  if (!session && (req.nextUrl.pathname.startsWith('/admin') || req.nextUrl.pathname.startsWith('/account'))) {
-    return NextResponse.redirect(new URL('/login', req.url))
-  }
+  // The authentication check is already handled above, so we know session exists here
 
   // Check admin access for admin routes
   if (session && req.nextUrl.pathname.startsWith('/admin')) {
