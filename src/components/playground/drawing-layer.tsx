@@ -19,144 +19,136 @@ interface DrawingLayerProps {
 export function DrawingLayer({ isActive, zoom, pan, color, onPathComplete }: DrawingLayerProps) {
   const canvasRef = useRef<HTMLDivElement>(null)
   const [isDrawing, setIsDrawing] = useState(false)
-  const [currentPoints, setCurrentPoints] = useState<Point[]>([])
+  const [worldPoints, setWorldPoints] = useState<Point[]>([])
 
-  // EXACT copy of Miro's pointerEventToCanvasPoint but adapted for zoom
-  const pointerEventToCanvasPoint = useCallback((e: React.PointerEvent | PointerEvent) => {
+  // Convert screen (client) coordinates to world coordinates (inverse of InfiniteCanvas transform)
+  const screenToWorld = useCallback((clientX: number, clientY: number) => {
     if (!canvasRef.current) return { x: 0, y: 0 }
-    
     const rect = canvasRef.current.getBoundingClientRect()
-    
-    // Miro's approach: e.clientX - camera.x, but we need to account for zoom and container offset
-    const canvasX = e.clientX - rect.left
-    const canvasY = e.clientY - rect.top
-    
-    // Convert to world coordinates accounting for zoom and pan
-    // The transform is: scale(zoom) translate(pan.x, pan.y) with center origin
-    const centerX = canvasX - rect.width / 2
-    const centerY = canvasY - rect.height / 2
-    
+    const localX = clientX - rect.left
+    const localY = clientY - rect.top
+    const centeredX = localX - rect.width / 2
+    const centeredY = localY - rect.height / 2
     return {
-      x: Math.round(centerX / zoom - pan.x),
-      y: Math.round(centerY / zoom - pan.y)
+      x: centeredX / zoom - pan.x,
+      y: centeredY / zoom - pan.y
     }
   }, [zoom, pan])
 
-  // Simple path creation like Miro
-  const createPathFromPoints = (points: Point[]) => {
+  // Convert world coordinates to local screen coordinates (relative to canvasRef top-left)
+  const worldToLocalScreen = useCallback((worldX: number, worldY: number) => {
+    if (!canvasRef.current) return { x: 0, y: 0 }
+    const rect = canvasRef.current.getBoundingClientRect()
+    const centeredX = (worldX + pan.x) * zoom
+    const centeredY = (worldY + pan.y) * zoom
+    return {
+      x: centeredX + rect.width / 2,
+      y: centeredY + rect.height / 2
+    }
+  }, [zoom, pan])
+
+  // Build an SVG path string from an array of screen-local points
+  const buildScreenPath = useCallback((points: Point[]) => {
     if (points.length === 0) return ''
     if (points.length === 1) return `M ${points[0].x} ${points[0].y}`
-    
-    let path = `M ${points[0].x} ${points[0].y}`
+    let d = `M ${points[0].x} ${points[0].y}`
     for (let i = 1; i < points.length; i++) {
-      path += ` L ${points[i].x} ${points[i].y}`
+      d += ` L ${points[i].x} ${points[i].y}`
     }
-    return path
-  }
+    return d
+  }, [])
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     if (!isActive || e.button !== 0) return
-    
     e.preventDefault()
     e.stopPropagation()
-    
-    const point = pointerEventToCanvasPoint(e)
+    const w = screenToWorld(e.clientX, e.clientY)
     setIsDrawing(true)
-    setCurrentPoints([point])
-  }, [isActive, pointerEventToCanvasPoint])
+    setWorldPoints([w])
+  }, [isActive, screenToWorld])
 
   const handlePointerMove = useCallback((e: React.PointerEvent | PointerEvent) => {
     if (!isDrawing || !isActive) return
-    
-    const point = pointerEventToCanvasPoint(e)
-    setCurrentPoints(prev => [...prev, point])
-  }, [isDrawing, isActive, pointerEventToCanvasPoint])
+    const w = screenToWorld(e.clientX, e.clientY)
+    setWorldPoints(prev => [...prev, w])
+  }, [isDrawing, isActive, screenToWorld])
 
   const handlePointerUp = useCallback(() => {
-    if (!isDrawing || currentPoints.length < 2) {
+    if (!isDrawing || worldPoints.length < 2) {
       setIsDrawing(false)
-      setCurrentPoints([])
+      setWorldPoints([])
       return
     }
-    
-    // Calculate bounding box
-    let minX = currentPoints[0].x
-    let minY = currentPoints[0].y
-    let maxX = currentPoints[0].x
-    let maxY = currentPoints[0].y
-    
-    currentPoints.forEach(point => {
-      minX = Math.min(minX, point.x)
-      minY = Math.min(minY, point.y)
-      maxX = Math.max(maxX, point.x)
-      maxY = Math.max(maxY, point.y)
-    })
-    
-    // Add padding
+
+    // Compute bounds in world space
+    let minX = worldPoints[0].x
+    let minY = worldPoints[0].y
+    let maxX = worldPoints[0].x
+    let maxY = worldPoints[0].y
+    for (const p of worldPoints) {
+      if (p.x < minX) minX = p.x
+      if (p.y < minY) minY = p.y
+      if (p.x > maxX) maxX = p.x
+      if (p.y > maxY) maxY = p.y
+    }
     const padding = 5
     const bounds = {
       x: minX - padding,
       y: minY - padding,
-      width: maxX - minX + 2 * padding,
-      height: maxY - minY + 2 * padding
+      width: (maxX - minX) + padding * 2,
+      height: (maxY - minY) + padding * 2
     }
-    
-    // Create path relative to bounds
-    const relativePoints = currentPoints.map(point => ({
-      x: point.x - bounds.x,
-      y: point.y - bounds.y
-    }))
-    
-    const path = createPathFromPoints(relativePoints)
-    
-    // Clear state
-    setIsDrawing(false)
-    setCurrentPoints([])
-    
-    // Create the drawing element
-    onPathComplete(path, bounds)
-  }, [isDrawing, currentPoints, onPathComplete])
 
-  // Global pointer event handlers
+    // Convert world points to element-local coordinates
+    const localPoints = worldPoints.map(p => ({ x: p.x - bounds.x, y: p.y - bounds.y }))
+    const path = buildScreenPath(localPoints)
+
+    setIsDrawing(false)
+    setWorldPoints([])
+
+    onPathComplete(path, bounds)
+  }, [isDrawing, worldPoints, buildScreenPath, onPathComplete])
+
+  // Global pointer listeners while drawing
   useEffect(() => {
     if (!isDrawing) return
-
-    const handleGlobalPointerMove = (e: PointerEvent) => handlePointerMove(e)
-    const handleGlobalPointerUp = () => handlePointerUp()
-    
-    document.addEventListener('pointermove', handleGlobalPointerMove)
-    document.addEventListener('pointerup', handleGlobalPointerUp)
-    document.addEventListener('pointercancel', handleGlobalPointerUp)
-    
+    const move = (e: PointerEvent) => handlePointerMove(e)
+    const up = () => handlePointerUp()
+    document.addEventListener('pointermove', move)
+    document.addEventListener('pointerup', up)
+    document.addEventListener('pointercancel', up)
     return () => {
-      document.removeEventListener('pointermove', handleGlobalPointerMove)
-      document.removeEventListener('pointerup', handleGlobalPointerUp)
-      document.removeEventListener('pointercancel', handleGlobalPointerUp)
+      document.removeEventListener('pointermove', move)
+      document.removeEventListener('pointerup', up)
+      document.removeEventListener('pointercancel', up)
     }
   }, [isDrawing, handlePointerMove, handlePointerUp])
 
-  // Handle escape key
+  // Escape cancels
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
+    const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isDrawing) {
         setIsDrawing(false)
-        setCurrentPoints([])
+        setWorldPoints([])
       }
     }
-
-    document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
   }, [isDrawing])
 
-  // Clean up when tool becomes inactive
+  // Deactivate cleanup
   useEffect(() => {
     if (!isActive && isDrawing) {
       setIsDrawing(false)
-      setCurrentPoints([])
+      setWorldPoints([])
     }
   }, [isActive, isDrawing])
 
   if (!isActive) return null
+
+  // Build preview path in screen space (no transforms)
+  const previewScreenPoints = worldPoints.map(p => worldToLocalScreen(p.x, p.y))
+  const previewPath = buildScreenPath(previewScreenPoints)
 
   return (
     <div
@@ -165,29 +157,17 @@ export function DrawingLayer({ isActive, zoom, pan, color, onPathComplete }: Dra
       style={{ cursor: 'crosshair' }}
       onPointerDown={handlePointerDown}
     >
-      {/* EXACT copy of Miro's SVG structure but with zoom */}
-      <svg
-        className="h-full w-full"
-        style={{ overflow: 'visible' }}
-      >
-        <g
-          style={{
-            transform: `scale(${zoom}) translate(${pan.x}px, ${pan.y}px)`,
-            transformOrigin: 'center center'
-          }}
-        >
-          {/* Drawing preview */}
-          {isDrawing && currentPoints.length > 0 && (
-            <path
-              d={createPathFromPoints(currentPoints)}
-              fill="none"
-              stroke={color}
-              strokeWidth={2 / zoom}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          )}
-        </g>
+      <svg className="absolute inset-0 w-full h-full" style={{ overflow: 'visible' }}>
+        {isDrawing && previewPath && (
+          <path
+            d={previewPath}
+            fill="none"
+            stroke={color}
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        )}
       </svg>
     </div>
   )
