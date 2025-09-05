@@ -1,4 +1,6 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Promethean
+
+A modern data analytics platform built with Next.js and Supabase. The application runs on `app.getpromethean.com`.
 
 ## Getting Started
 
@@ -19,6 +21,33 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+
+## Production Setup
+
+### Domain Configuration
+
+The application is configured to run on the subdomain `app.getpromethean.com`. The main marketing website should be hosted separately on `www.getpromethean.com`.
+
+### Environment Variables
+
+Set the following environment variable for production:
+
+```bash
+NEXT_PUBLIC_APP_URL=https://app.getpromethean.com
+```
+
+For local development:
+
+```bash
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+```
+
+### Vercel Deployment
+
+The app includes a `vercel.json` configuration that:
+- Sets up the domain alias to `app.getpromethean.com`
+- Configures security headers
+- Redirects the root path to `/dashboard`
 
 ## Learn More
 

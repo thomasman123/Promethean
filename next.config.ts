@@ -9,7 +9,27 @@ const nextConfig: NextConfig = {
     // Allow production builds to complete even if there are type errors
     ignoreBuildErrors: true,
   },
-  /* config options here */
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          {
+            key: 'X-DNS-Prefetch-Control',
+            value: 'on'
+          },
+          {
+            key: 'Strict-Transport-Security',
+            value: 'max-age=63072000; includeSubDomains; preload'
+          }
+        ],
+      },
+    ]
+  },
+  // Configure allowed hosts for production
+  images: {
+    domains: ['app.getpromethean.com'],
+  },
 };
 
 export default nextConfig;
