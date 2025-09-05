@@ -20,6 +20,7 @@ export function DrawingLayer({ isActive, zoom, pan, color, onPathComplete }: Dra
   const canvasRef = useRef<HTMLDivElement>(null)
   const [isDrawing, setIsDrawing] = useState(false)
   const [worldPoints, setWorldPoints] = useState<Point[]>([])
+  const [screenPoints, setScreenPoints] = useState<Point[]>([])
 
   // Convert screen (client) coordinates to world coordinates (inverse of InfiniteCanvas transform)
   const screenToWorld = useCallback((clientX: number, clientY: number) => {
@@ -62,21 +63,28 @@ export function DrawingLayer({ isActive, zoom, pan, color, onPathComplete }: Dra
     if (!isActive || e.button !== 0) return
     e.preventDefault()
     e.stopPropagation()
+    const rect = canvasRef.current?.getBoundingClientRect()
     const w = screenToWorld(e.clientX, e.clientY)
+    const s = rect ? { x: e.clientX - rect.left, y: e.clientY - rect.top } : { x: 0, y: 0 }
     setIsDrawing(true)
     setWorldPoints([w])
+    setScreenPoints([s])
   }, [isActive, screenToWorld])
 
   const handlePointerMove = useCallback((e: React.PointerEvent | PointerEvent) => {
     if (!isDrawing || !isActive) return
+    const rect = canvasRef.current?.getBoundingClientRect()
     const w = screenToWorld(e.clientX, e.clientY)
+    const s = rect ? { x: e.clientX - rect.left, y: e.clientY - rect.top } : { x: 0, y: 0 }
     setWorldPoints(prev => [...prev, w])
+    setScreenPoints(prev => [...prev, s])
   }, [isDrawing, isActive, screenToWorld])
 
   const handlePointerUp = useCallback(() => {
     if (!isDrawing || worldPoints.length < 2) {
       setIsDrawing(false)
       setWorldPoints([])
+      setScreenPoints([])
       return
     }
 
@@ -105,6 +113,7 @@ export function DrawingLayer({ isActive, zoom, pan, color, onPathComplete }: Dra
 
     setIsDrawing(false)
     setWorldPoints([])
+    setScreenPoints([])
 
     onPathComplete(path, bounds)
   }, [isDrawing, worldPoints, buildScreenPath, onPathComplete])
@@ -130,6 +139,7 @@ export function DrawingLayer({ isActive, zoom, pan, color, onPathComplete }: Dra
       if (e.key === 'Escape' && isDrawing) {
         setIsDrawing(false)
         setWorldPoints([])
+        setScreenPoints([])
       }
     }
     document.addEventListener('keydown', onKey)
@@ -141,14 +151,14 @@ export function DrawingLayer({ isActive, zoom, pan, color, onPathComplete }: Dra
     if (!isActive && isDrawing) {
       setIsDrawing(false)
       setWorldPoints([])
+      setScreenPoints([])
     }
   }, [isActive, isDrawing])
 
   if (!isActive) return null
 
-  // Build preview path in screen space (no transforms)
-  const previewScreenPoints = worldPoints.map(p => worldToLocalScreen(p.x, p.y))
-  const previewPath = buildScreenPath(previewScreenPoints)
+  // Build preview path from raw screen points (no transforms)
+  const previewPath = buildScreenPath(screenPoints)
 
   return (
     <div
