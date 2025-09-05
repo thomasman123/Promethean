@@ -497,6 +497,15 @@ export default function PlaygroundPage() {
                   currentTool={selectedTool || 'select'}
                 />
               ))}
+              
+              {/* Drawing Layer - inside canvas for correct coordinate system */}
+              <DrawingLayer
+                isActive={selectedTool === 'pencil'}
+                zoom={1}
+                pan={{ x: 0, y: 0 }}
+                color={drawingColor}
+                onPathComplete={handleDrawingComplete}
+              />
             </InfiniteCanvas>
 
             {/* Snap Guides */}
@@ -510,15 +519,6 @@ export default function PlaygroundPage() {
             )}
 
             {/* Transform Handles - disabled for now to fix placement issues */}
-
-            {/* Drawing Layer */}
-            <DrawingLayer
-              isActive={selectedTool === 'pencil'}
-              zoom={zoom}
-              pan={pan}
-              color={drawingColor}
-              onPathComplete={handleDrawingComplete}
-            />
 
             {/* Autosave Status */}
             <div className="absolute top-4 left-4">
