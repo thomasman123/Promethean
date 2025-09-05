@@ -47,28 +47,25 @@ export function InfiniteCanvas({
 
   // Handle mouse wheel for zoom
   const handleWheel = (e: WheelEvent) => {
-    // Only zoom if Ctrl/Cmd is pressed, otherwise allow normal scroll
-    if (e.ctrlKey || e.metaKey) {
-      e.preventDefault()
+    e.preventDefault()
+    
+    const delta = e.deltaY * -0.01
+    const newZoom = Math.min(Math.max(0.1, zoom * (1 + delta)), 5)
+    
+    // Zoom towards mouse position
+    const rect = canvasRef.current?.getBoundingClientRect()
+    if (rect) {
+      const mouseX = e.clientX - rect.left - rect.width / 2
+      const mouseY = e.clientY - rect.top - rect.height / 2
       
-      const delta = e.deltaY * -0.01
-      const newZoom = Math.min(Math.max(0.1, zoom * (1 + delta)), 5)
+      const zoomRatio = newZoom / zoom
+      const newPanX = mouseX * (1 - zoomRatio) / newZoom + pan.x * zoomRatio
+      const newPanY = mouseY * (1 - zoomRatio) / newZoom + pan.y * zoomRatio
       
-      // Zoom towards mouse position
-      const rect = canvasRef.current?.getBoundingClientRect()
-      if (rect) {
-        const mouseX = e.clientX - rect.left - rect.width / 2
-        const mouseY = e.clientY - rect.top - rect.height / 2
-        
-        const zoomRatio = newZoom / zoom
-        const newPanX = mouseX * (1 - zoomRatio) / newZoom + pan.x * zoomRatio
-        const newPanY = mouseY * (1 - zoomRatio) / newZoom + pan.y * zoomRatio
-        
-        onPanChange({ x: newPanX, y: newPanY })
-      }
-      
-      onZoomChange(newZoom)
+      onPanChange({ x: newPanX, y: newPanY })
     }
+    
+    onZoomChange(newZoom)
   }
 
   // Handle mouse down for panning

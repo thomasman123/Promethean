@@ -120,15 +120,34 @@ export function DrawingLayer({ isActive, zoom, pan, color, onPathComplete }: Dra
       return
     }
     
-    const bounds = getPathBounds(currentPath)
+    // Get raw bounds without padding first
+    let minX = currentPath[0].x
+    let minY = currentPath[0].y
+    let maxX = currentPath[0].x
+    let maxY = currentPath[0].y
     
-    // Convert path to be relative to bounds
+    currentPath.forEach(p => {
+      minX = Math.min(minX, p.x)
+      minY = Math.min(minY, p.y)
+      maxX = Math.max(maxX, p.x)
+      maxY = Math.max(maxY, p.y)
+    })
+    
+    // Convert path to be relative to the top-left of bounds
     const relativePath = currentPath.map(p => ({
-      x: p.x - bounds.x,
-      y: p.y - bounds.y
+      x: p.x - minX + 5,  // Add padding inside the relative coordinates
+      y: p.y - minY + 5
     }))
     
     const finalPath = smoothPath(relativePath)
+    
+    // Create bounds with padding
+    const bounds = {
+      x: minX - 5,
+      y: minY - 5,
+      width: maxX - minX + 10,
+      height: maxY - minY + 10
+    }
     
     onPathComplete(finalPath, bounds)
     
