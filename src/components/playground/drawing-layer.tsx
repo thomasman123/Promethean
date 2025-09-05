@@ -95,6 +95,12 @@ export function DrawingLayer({ isActive, zoom, pan, color, onPathComplete }: Dra
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (!isActive) return
     
+    // Only start drawing on primary button (left click)
+    if (e.button !== 0) return
+    
+    e.preventDefault()
+    e.stopPropagation()
+    
     const worldPos = screenToWorld(e.clientX, e.clientY)
     setIsDrawing(true)
     setCurrentPath([worldPos])
@@ -103,6 +109,15 @@ export function DrawingLayer({ isActive, zoom, pan, color, onPathComplete }: Dra
 
   const handleMouseMove = useCallback((e: React.MouseEvent | MouseEvent) => {
     if (!isDrawing || !isActive) return
+    
+    // Check if mouse button is still pressed
+    if (e.buttons !== 1) {
+      // Mouse button was released but we didn't get the mouseup event
+      setIsDrawing(false)
+      setCurrentPath([])
+      setPreviewPath('')
+      return
+    }
     
     const worldPos = screenToWorld(e.clientX, e.clientY)
     const newPath = [...currentPath, worldPos]
@@ -113,7 +128,10 @@ export function DrawingLayer({ isActive, zoom, pan, color, onPathComplete }: Dra
   }, [isDrawing, isActive, currentPath, screenToWorld])
 
   const handleMouseUp = useCallback(() => {
-    if (!isDrawing || currentPath.length < 2) {
+    // Always clear drawing state on mouse up
+    if (!isDrawing) return
+    
+    if (currentPath.length < 2) {
       setIsDrawing(false)
       setCurrentPath([])
       setPreviewPath('')
@@ -159,6 +177,15 @@ export function DrawingLayer({ isActive, zoom, pan, color, onPathComplete }: Dra
     // Then call the completion callback
     onPathComplete(finalPath, bounds)
   }, [isDrawing, currentPath, onPathComplete])
+
+  // Clear drawing state when tool becomes inactive
+  useEffect(() => {
+    if (!isActive && isDrawing) {
+      setIsDrawing(false)
+      setCurrentPath([])
+      setPreviewPath('')
+    }
+  }, [isActive, isDrawing])
 
   // Handle escape to cancel
   useEffect(() => {
