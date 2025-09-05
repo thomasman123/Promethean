@@ -21,35 +21,36 @@ export function DrawingLayer({ isActive, zoom, pan, color, onPathComplete }: Dra
   const [isDrawing, setIsDrawing] = useState(false)
   const [currentPoints, setCurrentPoints] = useState<Point[]>([])
 
-  // Coordinate conversion adapted for zoom system
+  // EXACT copy of Miro's pointerEventToCanvasPoint but adapted for zoom
   const pointerEventToCanvasPoint = useCallback((e: React.PointerEvent | PointerEvent) => {
     if (!canvasRef.current) return { x: 0, y: 0 }
     
     const rect = canvasRef.current.getBoundingClientRect()
     
-    // Get position relative to canvas center (like InfiniteCanvas)
-    const centerX = (e.clientX - rect.left) - rect.width / 2
-    const centerY = (e.clientY - rect.top) - rect.height / 2
+    // Miro's approach: e.clientX - camera.x, but we need to account for zoom and container offset
+    const canvasX = e.clientX - rect.left
+    const canvasY = e.clientY - rect.top
     
-    // Apply inverse transform: scale(zoom) translate(pan.x, pan.y)
-    // Inverse: translate(-pan.x, -pan.y) scale(1/zoom)
+    // Convert to world coordinates accounting for zoom and pan
+    // The transform is: scale(zoom) translate(pan.x, pan.y) with center origin
+    const centerX = canvasX - rect.width / 2
+    const centerY = canvasY - rect.height / 2
+    
     return {
-      x: centerX / zoom - pan.x,
-      y: centerY / zoom - pan.y
+      x: Math.round(centerX / zoom - pan.x),
+      y: Math.round(centerY / zoom - pan.y)
     }
   }, [zoom, pan])
 
-  // Create SVG path from points
+  // Simple path creation like Miro
   const createPathFromPoints = (points: Point[]) => {
     if (points.length === 0) return ''
     if (points.length === 1) return `M ${points[0].x} ${points[0].y}`
     
     let path = `M ${points[0].x} ${points[0].y}`
-    
     for (let i = 1; i < points.length; i++) {
       path += ` L ${points[i].x} ${points[i].y}`
     }
-    
     return path
   }
 
@@ -164,13 +165,16 @@ export function DrawingLayer({ isActive, zoom, pan, color, onPathComplete }: Dra
       style={{ cursor: 'crosshair' }}
       onPointerDown={handlePointerDown}
     >
-      {/* SVG with transform matching InfiniteCanvas coordinate system */}
+      {/* EXACT copy of Miro's SVG structure but with zoom */}
       <svg
-        className="absolute inset-0 w-full h-full"
+        className="h-full w-full"
         style={{ overflow: 'visible' }}
       >
         <g
-          transform={`translate(${(canvasRef.current?.clientWidth || 1000) / 2}, ${(canvasRef.current?.clientHeight || 1000) / 2}) scale(${zoom}) translate(${pan.x}, ${pan.y})`}
+          style={{
+            transform: `scale(${zoom}) translate(${pan.x}px, ${pan.y}px)`,
+            transformOrigin: 'center center'
+          }}
         >
           {/* Drawing preview */}
           {isDrawing && currentPoints.length > 0 && (
