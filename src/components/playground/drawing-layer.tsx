@@ -22,18 +22,21 @@ export function DrawingLayer({ isActive, zoom, pan, color, onPathComplete }: Dra
   const [currentPath, setCurrentPath] = useState<Point[]>([])
   const [previewPath, setPreviewPath] = useState<string>('')
 
-  // Convert screen coordinates to local coordinates
-  // Account for the large drawing area offset
-  const screenToLocal = useCallback((screenX: number, screenY: number) => {
+  // Convert screen coordinates to world coordinates
+  const screenToWorld = useCallback((screenX: number, screenY: number) => {
     if (!svgRef.current) return { x: 0, y: 0 }
     
     const rect = svgRef.current.getBoundingClientRect()
-    // Since our div is offset by -5000px, we need to account for that
-    const x = screenX - rect.left
-    const y = screenY - rect.top
+    // Get position relative to canvas center
+    const relativeX = screenX - rect.left - rect.width / 2
+    const relativeY = screenY - rect.top - rect.height / 2
+    
+    // Apply zoom and pan inverse transform
+    const x = relativeX / zoom - pan.x
+    const y = relativeY / zoom - pan.y
     
     return { x, y }
-  }, [])
+  }, [zoom, pan])
 
   // Smooth path using Catmull-Rom spline
   const smoothPath = (points: Point[]) => {
@@ -98,11 +101,11 @@ export function DrawingLayer({ isActive, zoom, pan, color, onPathComplete }: Dra
     e.preventDefault()
     e.stopPropagation()
     
-    const worldPos = screenToLocal(e.clientX, e.clientY)
+    const worldPos = screenToWorld(e.clientX, e.clientY)
     setIsDrawing(true)
     setCurrentPath([worldPos])
     setPreviewPath(`M ${worldPos.x} ${worldPos.y}`)
-  }, [isActive, screenToLocal])
+  }, [isActive, screenToWorld])
 
   const handleMouseMove = useCallback((e: React.MouseEvent | MouseEvent) => {
     if (!isDrawing || !isActive) return
@@ -116,13 +119,13 @@ export function DrawingLayer({ isActive, zoom, pan, color, onPathComplete }: Dra
       return
     }
     
-    const worldPos = screenToLocal(e.clientX, e.clientY)
+    const worldPos = screenToWorld(e.clientX, e.clientY)
     const newPath = [...currentPath, worldPos]
     setCurrentPath(newPath)
     
     // Update preview with smoothed path
     setPreviewPath(smoothPath(newPath))
-  }, [isDrawing, isActive, currentPath, screenToLocal])
+  }, [isDrawing, isActive, currentPath, screenToWorld])
 
   const handleMouseUp = useCallback(() => {
     // Always clear drawing state on mouse up
@@ -226,15 +229,8 @@ export function DrawingLayer({ isActive, zoom, pan, color, onPathComplete }: Dra
 
   return (
     <div
-      className={cn("absolute", isActive ? "pointer-events-auto" : "pointer-events-none")}
-      style={{ 
-        cursor: isActive ? 'crosshair' : 'default',
-        // Make the drawing area much larger than viewport to cover panned areas
-        top: '-5000px',
-        left: '-5000px',
-        width: '10000px',
-        height: '10000px'
-      }}
+      className={cn("absolute inset-0", isActive ? "pointer-events-auto" : "pointer-events-none")}
+      style={{ cursor: isActive ? 'crosshair' : 'default' }}
       onMouseDown={handleMouseDown}
     >
       <svg
@@ -242,18 +238,21 @@ export function DrawingLayer({ isActive, zoom, pan, color, onPathComplete }: Dra
         className="absolute inset-0 w-full h-full"
         style={{ overflow: 'visible' }}
       >
-      {/* Preview path while drawing - no transform needed as we're in the transformed space */}
-      {isDrawing && previewPath && (
-        <path
-          d={previewPath}
-          fill="none"
-          stroke={color}
-          strokeWidth={2}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="pointer-events-none"
-        />
-      )}
+      {/* Transform group to handle pan/zoom */}
+      <g transform={`translate(${svgRef.current?.clientWidth ? svgRef.current.clientWidth / 2 : 0}, ${svgRef.current?.clientHeight ? svgRef.current.clientHeight / 2 : 0}) scale(${zoom}) translate(${pan.x}, ${pan.y})`}>
+        {/* Preview path while drawing */}
+        {isDrawing && previewPath && (
+          <path
+            d={previewPath}
+            fill="none"
+            stroke={color}
+            strokeWidth={2 / zoom}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="pointer-events-none"
+          />
+        )}
+      </g>
     </svg>
     </div>
   )
