@@ -23,6 +23,7 @@ export interface CanvasElementData {
   color?: string
   selected?: boolean
   path?: string  // For drawing elements
+  rotation?: number  // Rotation in degrees
 }
 
 interface CanvasElementProps {
@@ -33,6 +34,8 @@ interface CanvasElementProps {
   onDuplicate: (id: string) => void
   onUpdate: (id: string, updates: Partial<CanvasElementData>) => void
   onDragStart: (id: string, startX: number, startY: number) => void
+  onBringToFront: (id: string) => void
+  onSendToBack: (id: string) => void
   zoom: number
 }
 
@@ -44,6 +47,8 @@ export function CanvasElement({
   onDuplicate,
   onUpdate,
   onDragStart,
+  onBringToFront,
+  onSendToBack,
   zoom
 }: CanvasElementProps) {
   const elementRef = useRef<HTMLDivElement>(null)
@@ -65,11 +70,19 @@ export function CanvasElement({
     }
   }
 
-  const handleDoubleClick = () => {
+  const handleDoubleClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
     if (element.type === 'text') {
       setIsEditing(true)
     }
   }
+
+  // Start editing text immediately when created
+  useEffect(() => {
+    if (element.type === 'text' && element.content === 'Click to edit' && isSelected) {
+      setIsEditing(true)
+    }
+  }, [element.type, element.content, isSelected])
 
   const renderShape = () => {
     if (element.type !== 'shape' || !element.content?.shapeType) return null
@@ -213,6 +226,8 @@ export function CanvasElement({
             top: element.y,
             width: element.width || 100,
             height: element.height || 100,
+            transform: element.rotation ? `rotate(${element.rotation}deg)` : undefined,
+            transformOrigin: 'center'
           }}
           onMouseDown={handleMouseDown}
           onDoubleClick={handleDoubleClick}
@@ -275,14 +290,15 @@ export function CanvasElement({
             </svg>
           )}
 
-          {/* Selection handles */}
+          {/* Selection outline */}
           {isSelected && (
-            <>
-              <div className="absolute -top-1 -left-1 w-2 h-2 bg-primary rounded-full" />
-              <div className="absolute -top-1 -right-1 w-2 h-2 bg-primary rounded-full" />
-              <div className="absolute -bottom-1 -left-1 w-2 h-2 bg-primary rounded-full" />
-              <div className="absolute -bottom-1 -right-1 w-2 h-2 bg-primary rounded-full" />
-            </>
+            <div 
+              className="absolute inset-0 border-2 border-primary pointer-events-none"
+              style={{
+                transform: element.rotation ? `rotate(${element.rotation}deg)` : undefined,
+                transformOrigin: 'center'
+              }}
+            />
           )}
         </div>
       </ContextMenuTrigger>
@@ -296,9 +312,13 @@ export function CanvasElement({
           <Palette className="h-4 w-4 mr-2" />
           Change Color
         </ContextMenuItem>
-        <ContextMenuItem>
+        <ContextMenuItem onClick={() => onBringToFront(element.id)}>
           <Layers className="h-4 w-4 mr-2" />
           Bring to Front
+        </ContextMenuItem>
+        <ContextMenuItem onClick={() => onSendToBack(element.id)}>
+          <Layers className="h-4 w-4 mr-2" />
+          Send to Back
         </ContextMenuItem>
         <ContextMenuSeparator />
         <ContextMenuItem onClick={() => onDelete(element.id)} className="text-destructive">

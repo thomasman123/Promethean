@@ -201,14 +201,33 @@ export default function PlaygroundPage() {
   // Handle canvas click
   const handleCanvasClick = useCallback((e: React.MouseEvent, worldPos: { x: number, y: number }) => {
     if (selectedTool === 'text') {
-      addElement('text', worldPos, 'New Text')
+      // Create text element and immediately select it
+      const newElement: CanvasElementData = {
+        id: Date.now().toString(),
+        type: 'text',
+        x: worldPos.x,
+        y: worldPos.y,
+        width: 200,
+        height: 40,
+        content: 'Click to edit',
+        color: drawingColor
+      }
+      
+      if (currentPage) {
+        const updatedPage = {
+          ...currentPage,
+          elements: [...currentPage.elements, newElement]
+        }
+        setPages(pages.map(p => p.id === currentPage.id ? updatedPage : p))
+        setSelectedElements(new Set([newElement.id]))
+      }
     } else if (selectedTool === 'shapes') {
       addElement('shape', worldPos, { shapeType: selectedShape })
     } else if (selectedTool === 'select') {
       // Clear selection when clicking on empty canvas
       setSelectedElements(new Set())
     }
-  }, [selectedTool, selectedShape])
+  }, [selectedTool, selectedShape, currentPage, pages, drawingColor])
 
   // Handle widget creation
   const handleCreateWidget = (type: WidgetType, metric: string) => {
