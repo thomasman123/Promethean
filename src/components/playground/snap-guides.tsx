@@ -92,8 +92,11 @@ export function SnapGuides({ elements, activeElement, zoom, pan }: SnapGuidesPro
   if (snapLines.length === 0) return null
 
   return (
-    <svg className="absolute inset-0 pointer-events-none" style={{ overflow: 'visible' }}>
-      <g transform={`translate(${window.innerWidth / 2}, ${window.innerHeight / 2}) scale(${zoom}) translate(${pan.x}, ${pan.y})`}>
+    <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ overflow: 'visible' }}>
+      <g 
+        transform={`scale(${zoom}) translate(${pan.x}, ${pan.y})`}
+        style={{ transformOrigin: '50% 50%' }}
+      >
         {snapLines.map((line, index) => (
           <line
             key={index}

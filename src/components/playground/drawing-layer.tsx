@@ -120,8 +120,15 @@ export function DrawingLayer({ isActive, zoom, pan, color, onPathComplete }: Dra
       return
     }
     
-    const finalPath = smoothPath(currentPath)
     const bounds = getPathBounds(currentPath)
+    
+    // Convert path to be relative to bounds
+    const relativePath = currentPath.map(p => ({
+      x: p.x - bounds.x,
+      y: p.y - bounds.y
+    }))
+    
+    const finalPath = smoothPath(relativePath)
     
     onPathComplete(finalPath, bounds)
     

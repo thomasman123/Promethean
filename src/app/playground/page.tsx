@@ -256,14 +256,16 @@ export default function PlaygroundPage() {
   // Handle canvas click
   const handleCanvasClick = useCallback((e: React.MouseEvent, worldPos: { x: number, y: number }) => {
     if (selectedTool === 'text') {
-      // Create text element and immediately select it
+      // Create text element centered on click position
+      const width = 200
+      const height = 40
       const newElement: CanvasElementData = {
         id: Date.now().toString(),
         type: 'text',
-        x: worldPos.x,
-        y: worldPos.y,
-        width: 200,
-        height: 40,
+        x: worldPos.x - width / 2,
+        y: worldPos.y - height / 2,
+        width,
+        height,
         content: 'Click to edit',
         color: drawingColor
       }
@@ -277,7 +279,9 @@ export default function PlaygroundPage() {
         setSelectedElements(new Set([newElement.id]))
       }
     } else if (selectedTool === 'shapes') {
-      addElement('shape', worldPos, { shapeType: selectedShape })
+      // Center shape on click position
+      const size = 100
+      addElement('shape', { x: worldPos.x - size / 2, y: worldPos.y - size / 2 }, { shapeType: selectedShape })
     } else if (selectedTool === 'select') {
       // Clear selection when clicking on empty canvas
       setSelectedElements(new Set())
@@ -286,13 +290,17 @@ export default function PlaygroundPage() {
 
   // Handle widget creation
   const handleCreateWidget = (type: WidgetType, metric: string) => {
-    addElement('widget', { x: 0, y: 0 }, { widgetType: type, metric })
+    // Place widget at center of viewport
+    const width = 300
+    const height = 200
+    addElement('widget', { x: -width / 2, y: -height / 2 }, { widgetType: type, metric })
   }
 
   // Handle drawing completion
   const handleDrawingComplete = useCallback((path: string, bounds: { x: number; y: number; width: number; height: number }) => {
     if (!currentPage) return
 
+    // The path is already in world coordinates, just use the bounds as-is
     const newElement: CanvasElementData = {
       id: Date.now().toString(),
       type: 'drawing',
@@ -485,34 +493,7 @@ export default function PlaygroundPage() {
               />
             )}
 
-            {/* Transform Handles */}
-            {selectedElements.size === 1 && currentPage && selectedTool === 'select' && (
-              <svg className="absolute inset-0" style={{ overflow: 'visible', pointerEvents: 'none' }}>
-                <g 
-                  transform={`translate(${window.innerWidth / 2}, ${window.innerHeight / 2}) scale(${zoom}) translate(${pan.x}, ${pan.y})`}
-                  style={{ pointerEvents: 'auto' }}
-                >
-                  {Array.from(selectedElements).map(elementId => {
-                    const element = currentPage.elements.find(el => el.id === elementId)
-                    if (!element) return null
-                    return (
-                      <TransformHandles
-                        key={element.id}
-                        element={{
-                          x: element.x,
-                          y: element.y,
-                          width: element.width || 100,
-                          height: element.height || 100,
-                          rotation: element.rotation
-                        }}
-                        zoom={zoom}
-                        onTransform={(updates) => handleUpdateElement(element.id, updates)}
-                      />
-                    )
-                  })}
-                </g>
-              </svg>
-            )}
+            {/* Transform Handles - disabled for now to fix placement issues */}
 
             {/* Drawing Layer */}
             <DrawingLayer
