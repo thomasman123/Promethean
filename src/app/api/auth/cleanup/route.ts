@@ -10,6 +10,11 @@ export async function GET(request: NextRequest) {
     
     // Only clear cookies that are actually corrupted
     allCookies.forEach(cookie => {
+      // NEVER delete auth tokens - they are JWT tokens and valid!
+      if (cookie.name.includes('-auth-token')) {
+        return // Skip auth tokens completely
+      }
+      
       // Only delete if the cookie value is corrupted (starts with base64-)
       if (cookie.value.startsWith('base64-') && cookie.name.startsWith('sb-')) {
         console.log('Clearing corrupted cookie:', cookie.name)

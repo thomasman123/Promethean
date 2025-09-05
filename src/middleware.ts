@@ -10,9 +10,14 @@ export async function middleware(req: NextRequest) {
   
   // Only check for corrupted cookies on non-auth routes
   if (!isAuthRoute) {
-    const hasCorruptedCookies = req.cookies.getAll().some(cookie => 
-      cookie.value.startsWith('base64-') && cookie.name.startsWith('sb-')
-    )
+    const hasCorruptedCookies = req.cookies.getAll().some(cookie => {
+      // NEVER consider auth tokens as corrupted - they are valid JWTs
+      if (cookie.name.includes('-auth-token')) {
+        return false
+      }
+      // Only cookies that start with base64- are corrupted
+      return cookie.value.startsWith('base64-') && cookie.name.startsWith('sb-')
+    })
     
     // If corrupted cookies found and not already on cleanup route, redirect to cleanup
     if (hasCorruptedCookies && !req.nextUrl.pathname.includes('/api/auth/cleanup')) {
