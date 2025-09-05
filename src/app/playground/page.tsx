@@ -481,6 +481,7 @@ export default function PlaygroundPage() {
                   onBringToFront={handleBringToFront}
                   onSendToBack={handleSendToBack}
                   zoom={zoom}
+                  currentTool={selectedTool || 'select'}
                 />
               ))}
             </InfiniteCanvas>

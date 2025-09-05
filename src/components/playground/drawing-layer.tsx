@@ -133,20 +133,22 @@ export function DrawingLayer({ isActive, zoom, pan, color, onPathComplete }: Dra
       maxY = Math.max(maxY, p.y)
     })
     
-    // Convert path to be relative to the top-left of bounds
+    // Convert path to be relative to the top-left of bounds (with padding)
     const relativePath = currentPath.map(p => ({
-      x: p.x - minX,
-      y: p.y - minY
+      x: p.x - minX + strokePadding,
+      y: p.y - minY + strokePadding
     }))
     
     const finalPath = smoothPath(relativePath)
     
     // Create bounds with minimum size for thin strokes
+    // Add small padding for stroke width
+    const strokePadding = 2
     const bounds = {
-      x: minX,
-      y: minY,
-      width: Math.max(maxX - minX, 10),
-      height: Math.max(maxY - minY, 10)
+      x: minX - strokePadding,
+      y: minY - strokePadding,
+      width: Math.max(maxX - minX, 10) + strokePadding * 2,
+      height: Math.max(maxY - minY, 10) + strokePadding * 2
     }
     
     onPathComplete(finalPath, bounds)

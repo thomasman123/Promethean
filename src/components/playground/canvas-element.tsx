@@ -37,6 +37,7 @@ interface CanvasElementProps {
   onBringToFront: (id: string) => void
   onSendToBack: (id: string) => void
   zoom: number
+  currentTool: string
 }
 
 export function CanvasElement({
@@ -49,7 +50,8 @@ export function CanvasElement({
   onDragStart,
   onBringToFront,
   onSendToBack,
-  zoom
+  zoom,
+  currentTool
 }: CanvasElementProps) {
   const elementRef = useRef<HTMLDivElement>(null)
   const [isEditing, setIsEditing] = useState(false)
@@ -58,6 +60,9 @@ export function CanvasElement({
     e.stopPropagation()
     const isMultiSelect = e.shiftKey || e.metaKey || e.ctrlKey
     onSelect(element.id, isMultiSelect)
+    
+    // Only allow dragging with the select tool
+    if (currentTool !== 'select') return
     
     // Only start drag if not editing text and not about to edit
     if (!isEditing && element.type !== 'text') {
@@ -278,7 +283,6 @@ export function CanvasElement({
             <svg 
               width={element.width} 
               height={element.height} 
-              viewBox={`-2 -2 ${(element.width || 0) + 4} ${(element.height || 0) + 4}`}
               className="absolute inset-0"
               style={{ overflow: 'visible' }}
             >
