@@ -101,7 +101,7 @@ export function DrawingLayer({ isActive, zoom, pan, color, onPathComplete }: Dra
     setPreviewPath(`M ${worldPos.x} ${worldPos.y}`)
   }, [isActive, screenToWorld])
 
-  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+  const handleMouseMove = useCallback((e: React.MouseEvent | MouseEvent) => {
     if (!isDrawing || !isActive) return
     
     const worldPos = screenToWorld(e.clientX, e.clientY)
@@ -151,11 +151,13 @@ export function DrawingLayer({ isActive, zoom, pan, color, onPathComplete }: Dra
       height: Math.max(maxY - minY, 10) + strokePadding * 2
     }
     
-    onPathComplete(finalPath, bounds)
-    
+    // Clear state first to prevent any race conditions
     setIsDrawing(false)
     setCurrentPath([])
     setPreviewPath('')
+    
+    // Then call the completion callback
+    onPathComplete(finalPath, bounds)
   }, [isDrawing, currentPath, onPathComplete])
 
   // Handle escape to cancel
@@ -172,18 +174,28 @@ export function DrawingLayer({ isActive, zoom, pan, color, onPathComplete }: Dra
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [isDrawing])
 
-  // Add global mouse up listener
+  // Add global mouse listeners when drawing
   useEffect(() => {
     if (isDrawing) {
-      window.addEventListener('mouseup', handleMouseUp)
-      window.addEventListener('mouseleave', handleMouseUp)
+      const handleGlobalMouseMove = (e: MouseEvent) => {
+        handleMouseMove(e)
+      }
+      
+      const handleGlobalMouseUp = () => {
+        handleMouseUp()
+      }
+      
+      window.addEventListener('mousemove', handleGlobalMouseMove)
+      window.addEventListener('mouseup', handleGlobalMouseUp)
+      window.addEventListener('mouseleave', handleGlobalMouseUp)
       
       return () => {
-        window.removeEventListener('mouseup', handleMouseUp)
-        window.removeEventListener('mouseleave', handleMouseUp)
+        window.removeEventListener('mousemove', handleGlobalMouseMove)
+        window.removeEventListener('mouseup', handleGlobalMouseUp)
+        window.removeEventListener('mouseleave', handleGlobalMouseUp)
       }
     }
-  }, [isDrawing, handleMouseUp])
+  }, [isDrawing, handleMouseMove, handleMouseUp])
 
   if (!isActive) return null
 
@@ -192,8 +204,6 @@ export function DrawingLayer({ isActive, zoom, pan, color, onPathComplete }: Dra
       className={cn("absolute inset-0", isActive ? "pointer-events-auto" : "pointer-events-none")}
       style={{ cursor: isActive ? 'crosshair' : 'default' }}
       onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
     >
       <svg
         ref={svgRef}
