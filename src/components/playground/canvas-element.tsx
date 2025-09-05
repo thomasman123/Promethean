@@ -80,7 +80,9 @@ export function CanvasElement({
   // Start editing text immediately when created
   useEffect(() => {
     if (element.type === 'text' && element.content === 'Click to edit' && isSelected) {
-      setIsEditing(true)
+      // Small delay to ensure the element is rendered before entering edit mode
+      const timer = setTimeout(() => setIsEditing(true), 50)
+      return () => clearTimeout(timer)
     }
   }, [element.type, element.content, isSelected])
 

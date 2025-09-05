@@ -19,6 +19,10 @@ import { ShapesToolbar, ShapeType } from '@/components/playground/shapes-toolbar
 import { WidgetModal, WidgetType } from '@/components/playground/widget-modal'
 import { CanvasElement, CanvasElementData } from '@/components/playground/canvas-element'
 import { DrawingLayer } from '@/components/playground/drawing-layer'
+import { TransformHandles } from '@/components/playground/transform-handles'
+import { SnapGuides, snapToGuides } from '@/components/playground/snap-guides'
+import { useUndoRedo } from '@/hooks/use-undo-redo'
+import { AutosaveStatus } from '@/components/playground/autosave-status'
 
 interface Page {
   id: string
@@ -46,10 +50,15 @@ export default function PlaygroundPage() {
     startY: number
     elementStartX: number
     elementStartY: number
+    elementWidth: number
+    elementHeight: number
   } | null>(null)
   const [drawingColor, setDrawingColor] = useState('#000000')
   const [isSpacePressed, setIsSpacePressed] = useState(false)
   const [previousTool, setPreviousTool] = useState<ToolType>('select')
+  const [lastSaved, setLastSaved] = useState<Date | null>(null)
+  const [isSaving, setIsSaving] = useState(false)
+  const [draggedElement, setDraggedElement] = useState<CanvasElementData | null>(null)
 
   const currentPage = pages.find(p => p.id === currentPageId)
 
@@ -167,9 +176,42 @@ export default function PlaygroundPage() {
       startX: clientX,
       startY: clientY,
       elementStartX: element.x,
-      elementStartY: element.y
+      elementStartY: element.y,
+      elementWidth: element.width || 100,
+      elementHeight: element.height || 100
     })
   }, [currentPage])
+
+  // Handle z-order changes
+  const handleBringToFront = useCallback((elementId: string) => {
+    if (!currentPage) return
+
+    const element = currentPage.elements.find(el => el.id === elementId)
+    if (!element) return
+
+    const otherElements = currentPage.elements.filter(el => el.id !== elementId)
+    const updatedPage = {
+      ...currentPage,
+      elements: [...otherElements, element]
+    }
+
+    setPages(pages.map(p => p.id === currentPage.id ? updatedPage : p))
+  }, [currentPage, pages])
+
+  const handleSendToBack = useCallback((elementId: string) => {
+    if (!currentPage) return
+
+    const element = currentPage.elements.find(el => el.id === elementId)
+    if (!element) return
+
+    const otherElements = currentPage.elements.filter(el => el.id !== elementId)
+    const updatedPage = {
+      ...currentPage,
+      elements: [element, ...otherElements]
+    }
+
+    setPages(pages.map(p => p.id === currentPage.id ? updatedPage : p))
+  }, [currentPage, pages])
 
   // Handle mouse move for dragging
   useEffect(() => {
@@ -179,9 +221,22 @@ export default function PlaygroundPage() {
       const dx = (e.clientX - dragInfo.startX) / zoom
       const dy = (e.clientY - dragInfo.startY) / zoom
 
+      // Apply snapping
+      const snappedPosition = snapToGuides(
+        {
+          x: dragInfo.elementStartX + dx,
+          y: dragInfo.elementStartY + dy
+        },
+        dragInfo.elementWidth || 100,
+        dragInfo.elementHeight || 100,
+        currentPage?.elements || [],
+        dragInfo.elementId,
+        5 / zoom
+      )
+
       handleUpdateElement(dragInfo.elementId, {
-        x: dragInfo.elementStartX + dx,
-        y: dragInfo.elementStartY + dy
+        x: snappedPosition.x,
+        y: snappedPosition.y
       })
     }
 
@@ -413,10 +468,51 @@ export default function PlaygroundPage() {
                   onDuplicate={handleDuplicateElement}
                   onUpdate={handleUpdateElement}
                   onDragStart={handleDragStart}
+                  onBringToFront={handleBringToFront}
+                  onSendToBack={handleSendToBack}
                   zoom={zoom}
                 />
               ))}
             </InfiniteCanvas>
+
+            {/* Snap Guides */}
+            {dragInfo && (
+              <SnapGuides
+                elements={currentPage?.elements || []}
+                activeElement={currentPage?.elements.find(el => el.id === dragInfo.elementId) || null}
+                zoom={zoom}
+                pan={pan}
+              />
+            )}
+
+            {/* Transform Handles */}
+            {selectedElements.size === 1 && currentPage && selectedTool === 'select' && (
+              <svg className="absolute inset-0" style={{ overflow: 'visible', pointerEvents: 'none' }}>
+                <g 
+                  transform={`translate(${window.innerWidth / 2}, ${window.innerHeight / 2}) scale(${zoom}) translate(${pan.x}, ${pan.y})`}
+                  style={{ pointerEvents: 'auto' }}
+                >
+                  {Array.from(selectedElements).map(elementId => {
+                    const element = currentPage.elements.find(el => el.id === elementId)
+                    if (!element) return null
+                    return (
+                      <TransformHandles
+                        key={element.id}
+                        element={{
+                          x: element.x,
+                          y: element.y,
+                          width: element.width || 100,
+                          height: element.height || 100,
+                          rotation: element.rotation
+                        }}
+                        zoom={zoom}
+                        onTransform={(updates) => handleUpdateElement(element.id, updates)}
+                      />
+                    )
+                  })}
+                </g>
+              </svg>
+            )}
 
             {/* Drawing Layer */}
             <DrawingLayer
@@ -426,6 +522,15 @@ export default function PlaygroundPage() {
               color={drawingColor}
               onPathComplete={handleDrawingComplete}
             />
+
+            {/* Autosave Status */}
+            <div className="absolute top-4 left-4">
+              <AutosaveStatus 
+                lastSaved={lastSaved} 
+                isSaving={isSaving} 
+                hasError={false} 
+              />
+            </div>
 
             {/* Zoom controls */}
             <div className="absolute top-4 right-4 flex gap-2">

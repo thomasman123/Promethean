@@ -27,8 +27,13 @@ export function DrawingLayer({ isActive, zoom, pan, color, onPathComplete }: Dra
     if (!svgRef.current) return { x: 0, y: 0 }
     
     const rect = svgRef.current.getBoundingClientRect()
-    const x = (screenX - rect.left - rect.width / 2) / zoom - pan.x
-    const y = (screenY - rect.top - rect.height / 2) / zoom - pan.y
+    // Get position relative to canvas center
+    const relativeX = screenX - rect.left - rect.width / 2
+    const relativeY = screenY - rect.top - rect.height / 2
+    
+    // Apply zoom and pan inverse transform
+    const x = relativeX / zoom - pan.x
+    const y = relativeY / zoom - pan.y
     
     return { x, y }
   }, [zoom, pan])
@@ -155,14 +160,18 @@ export function DrawingLayer({ isActive, zoom, pan, color, onPathComplete }: Dra
   if (!isActive) return null
 
   return (
-    <svg
-      ref={svgRef}
+    <div
       className={cn("absolute inset-0", isActive ? "pointer-events-auto" : "pointer-events-none")}
       style={{ cursor: isActive ? 'crosshair' : 'default' }}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
     >
+      <svg
+        ref={svgRef}
+        className="absolute inset-0 w-full h-full"
+        style={{ overflow: 'visible' }}
+      >
       {/* Transform group to handle pan/zoom */}
       <g transform={`translate(${svgRef.current?.clientWidth ? svgRef.current.clientWidth / 2 : 0}, ${svgRef.current?.clientHeight ? svgRef.current.clientHeight / 2 : 0}) scale(${zoom}) translate(${pan.x}, ${pan.y})`}>
         {/* Preview path while drawing */}
@@ -179,5 +188,6 @@ export function DrawingLayer({ isActive, zoom, pan, color, onPathComplete }: Dra
         )}
       </g>
     </svg>
+    </div>
   )
 } 

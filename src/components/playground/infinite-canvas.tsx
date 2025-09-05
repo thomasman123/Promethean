@@ -34,8 +34,13 @@ export function InfiniteCanvas({
     if (!canvasRef.current) return { x: 0, y: 0 }
     
     const rect = canvasRef.current.getBoundingClientRect()
-    const x = (screenX - rect.left - rect.width / 2) / zoom - pan.x
-    const y = (screenY - rect.top - rect.height / 2) / zoom - pan.y
+    // Get position relative to canvas center
+    const relativeX = screenX - rect.left - rect.width / 2
+    const relativeY = screenY - rect.top - rect.height / 2
+    
+    // Apply zoom and pan inverse transform
+    const x = relativeX / zoom - pan.x
+    const y = relativeY / zoom - pan.y
     
     return { x, y }
   }
