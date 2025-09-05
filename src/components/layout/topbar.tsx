@@ -1,7 +1,7 @@
 "use client"
 
 import { cn } from "@/lib/utils"
-import { Sword, Home, RefreshCw, Settings, Sun, Moon, LogOut, ChevronDown, LayoutDashboard, Database, Calendar, Users, CreditCard, Building2 } from "lucide-react"
+import { Sword, Home, RefreshCw, Settings, Sun, Moon, LogOut, ChevronDown, LayoutDashboard, Database, Calendar, Users, CreditCard, Building2, Palette } from "lucide-react"
 import { useState, useEffect, useRef } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
@@ -158,7 +158,8 @@ export function TopBar() {
       icon: Home,
       dropdownItems: [
         { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-        { href: "/data-view", label: "Data View", icon: Database }
+        { href: "/data-view", label: "Data View", icon: Database },
+        { href: "/playground", label: "Playground", icon: Palette }
       ]
     },
     { 
