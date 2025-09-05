@@ -8,6 +8,7 @@ import {
   Type, 
   Plus,
   ChevronLeft,
+  ChevronRight,
   BarChart3,
   MousePointer,
   Hand,
@@ -398,9 +399,21 @@ export default function PlaygroundPage() {
         <div className="flex-1 flex overflow-hidden">
           {/* Left Sidebar - Pages */}
           <div className={cn(
-            "bg-card border-r transition-all duration-300 flex flex-col",
-            isSidebarOpen ? "w-64" : "w-0"
+            "bg-card border-r transition-all duration-300 flex flex-col relative",
+            isSidebarOpen ? "w-64" : "w-12"
           )}>
+            {/* Toggle Button - Always Visible */}
+            {!isSidebarOpen && (
+              <Button
+                size="icon"
+                variant="ghost"
+                className="absolute top-4 left-1"
+                onClick={() => setIsSidebarOpen(true)}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            )}
+            
             {isSidebarOpen && (
               <>
                 <div className="p-4 border-b flex items-center justify-between">

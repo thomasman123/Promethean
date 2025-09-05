@@ -138,6 +138,9 @@ export function DrawingLayer({ isActive, zoom, pan, color, onPathComplete }: Dra
       return
     }
     
+    // Add small padding for stroke width
+    const strokePadding = 2
+    
     // Get bounds without padding
     let minX = currentPath[0].x
     let minY = currentPath[0].y
@@ -160,8 +163,6 @@ export function DrawingLayer({ isActive, zoom, pan, color, onPathComplete }: Dra
     const finalPath = smoothPath(relativePath)
     
     // Create bounds with minimum size for thin strokes
-    // Add small padding for stroke width
-    const strokePadding = 2
     const bounds = {
       x: minX - strokePadding,
       y: minY - strokePadding,
