@@ -23,11 +23,12 @@ export function DrawingLayer({ isActive, zoom, pan, color, onPathComplete }: Dra
   const [previewPath, setPreviewPath] = useState<string>('')
 
   // Convert screen coordinates to local coordinates
-  // Since we're now inside the transformed canvas, we just need relative position
+  // Account for the large drawing area offset
   const screenToLocal = useCallback((screenX: number, screenY: number) => {
     if (!svgRef.current) return { x: 0, y: 0 }
     
     const rect = svgRef.current.getBoundingClientRect()
+    // Since our div is offset by -5000px, we need to account for that
     const x = screenX - rect.left
     const y = screenY - rect.top
     
@@ -225,8 +226,15 @@ export function DrawingLayer({ isActive, zoom, pan, color, onPathComplete }: Dra
 
   return (
     <div
-      className={cn("absolute inset-0", isActive ? "pointer-events-auto" : "pointer-events-none")}
-      style={{ cursor: isActive ? 'crosshair' : 'default' }}
+      className={cn("absolute", isActive ? "pointer-events-auto" : "pointer-events-none")}
+      style={{ 
+        cursor: isActive ? 'crosshair' : 'default',
+        // Make the drawing area much larger than viewport to cover panned areas
+        top: '-5000px',
+        left: '-5000px',
+        width: '10000px',
+        height: '10000px'
+      }}
       onMouseDown={handleMouseDown}
     >
       <svg
