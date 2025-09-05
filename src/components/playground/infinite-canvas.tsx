@@ -11,6 +11,7 @@ interface InfiniteCanvasProps {
   onPanChange: (pan: { x: number; y: number }) => void
   className?: string
   onCanvasClick?: (e: MouseEvent, worldPos: { x: number; y: number }) => void
+  isPanMode?: boolean
 }
 
 export function InfiniteCanvas({
@@ -20,7 +21,8 @@ export function InfiniteCanvas({
   onZoomChange,
   onPanChange,
   className,
-  onCanvasClick
+  onCanvasClick,
+  isPanMode = false
 }: InfiniteCanvasProps) {
   const canvasRef = useRef<HTMLDivElement>(null)
   const [isPanning, setIsPanning] = useState(false)
@@ -40,34 +42,39 @@ export function InfiniteCanvas({
 
   // Handle mouse wheel for zoom
   const handleWheel = (e: WheelEvent) => {
-    e.preventDefault()
-    
-    const delta = e.deltaY * -0.001
-    const newZoom = Math.min(Math.max(0.1, zoom + delta), 5)
-    
-    // Zoom towards mouse position
-    const rect = canvasRef.current?.getBoundingClientRect()
-    if (rect) {
-      const mouseX = e.clientX - rect.left - rect.width / 2
-      const mouseY = e.clientY - rect.top - rect.height / 2
+    // Only zoom if Ctrl/Cmd is pressed, otherwise allow normal scroll
+    if (e.ctrlKey || e.metaKey) {
+      e.preventDefault()
       
-      const zoomRatio = newZoom / zoom
-      const newPanX = mouseX * (1 - zoomRatio) / newZoom + pan.x * zoomRatio
-      const newPanY = mouseY * (1 - zoomRatio) / newZoom + pan.y * zoomRatio
+      const delta = e.deltaY * -0.01
+      const newZoom = Math.min(Math.max(0.1, zoom * (1 + delta)), 5)
       
-      onPanChange({ x: newPanX, y: newPanY })
+      // Zoom towards mouse position
+      const rect = canvasRef.current?.getBoundingClientRect()
+      if (rect) {
+        const mouseX = e.clientX - rect.left - rect.width / 2
+        const mouseY = e.clientY - rect.top - rect.height / 2
+        
+        const zoomRatio = newZoom / zoom
+        const newPanX = mouseX * (1 - zoomRatio) / newZoom + pan.x * zoomRatio
+        const newPanY = mouseY * (1 - zoomRatio) / newZoom + pan.y * zoomRatio
+        
+        onPanChange({ x: newPanX, y: newPanY })
+      }
+      
+      onZoomChange(newZoom)
     }
-    
-    onZoomChange(newZoom)
   }
 
   // Handle mouse down for panning
   const handleMouseDown = (e: MouseEvent) => {
-    if (e.button === 1 || (e.button === 0 && e.shiftKey)) {
+    // Middle mouse button or left button with shift/space
+    if (e.button === 1 || (e.button === 0 && (e.shiftKey || e.currentTarget.classList.contains('pan-mode')))) {
       e.preventDefault()
       setIsPanning(true)
       setStartMouse({ x: e.clientX, y: e.clientY })
       setStartPan(pan)
+      document.body.style.cursor = 'grabbing'
     }
   }
 
@@ -116,7 +123,7 @@ export function InfiniteCanvas({
       ref={canvasRef}
       className={cn(
         "relative w-full h-full overflow-hidden",
-        isPanning ? "cursor-grabbing" : "cursor-grab",
+        isPanning ? "cursor-grabbing" : isPanMode ? "cursor-grab pan-mode" : "cursor-auto",
         className
       )}
       onWheel={handleWheel}

@@ -22,6 +22,7 @@ export interface CanvasElementData {
   content?: any
   color?: string
   selected?: boolean
+  path?: string  // For drawing elements
 }
 
 interface CanvasElementProps {
@@ -53,8 +54,14 @@ export function CanvasElement({
     const isMultiSelect = e.shiftKey || e.metaKey || e.ctrlKey
     onSelect(element.id, isMultiSelect)
     
-    if (!isEditing) {
+    // Only start drag if not editing text and not about to edit
+    if (!isEditing && element.type !== 'text') {
       onDragStart(element.id, e.clientX, e.clientY)
+    } else if (element.type === 'text' && !isEditing) {
+      // For text, only drag if already selected (prevents accidental drag when trying to edit)
+      if (isSelected) {
+        onDragStart(element.id, e.clientX, e.clientY)
+      }
     }
   }
 
@@ -248,6 +255,24 @@ export function CanvasElement({
                 Chart Preview
               </div>
             </div>
+          )}
+          
+          {element.type === 'drawing' && element.path && (
+            <svg 
+              width={element.width} 
+              height={element.height} 
+              className="absolute inset-0"
+              style={{ overflow: 'visible' }}
+            >
+              <path
+                d={element.path}
+                fill="none"
+                stroke={element.color || 'currentColor'}
+                strokeWidth={2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
           )}
 
           {/* Selection handles */}

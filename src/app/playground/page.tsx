@@ -18,6 +18,7 @@ import { InfiniteCanvas } from '@/components/playground/infinite-canvas'
 import { ShapesToolbar, ShapeType } from '@/components/playground/shapes-toolbar'
 import { WidgetModal, WidgetType } from '@/components/playground/widget-modal'
 import { CanvasElement, CanvasElementData } from '@/components/playground/canvas-element'
+import { DrawingLayer } from '@/components/playground/drawing-layer'
 
 interface Page {
   id: string
@@ -47,6 +48,8 @@ export default function PlaygroundPage() {
     elementStartY: number
   } | null>(null)
   const [drawingColor, setDrawingColor] = useState('#000000')
+  const [isSpacePressed, setIsSpacePressed] = useState(false)
+  const [previousTool, setPreviousTool] = useState<ToolType>('select')
 
   const currentPage = pages.find(p => p.id === currentPageId)
 
@@ -212,6 +215,98 @@ export default function PlaygroundPage() {
     addElement('widget', { x: 0, y: 0 }, { widgetType: type, metric })
   }
 
+  // Handle drawing completion
+  const handleDrawingComplete = useCallback((path: string, bounds: { x: number; y: number; width: number; height: number }) => {
+    if (!currentPage) return
+
+    const newElement: CanvasElementData = {
+      id: Date.now().toString(),
+      type: 'drawing',
+      x: bounds.x,
+      y: bounds.y,
+      width: bounds.width,
+      height: bounds.height,
+      path: path,
+      color: drawingColor
+    }
+
+    const updatedPage = {
+      ...currentPage,
+      elements: [...currentPage.elements, newElement]
+    }
+
+    setPages(pages.map(p => p.id === currentPage.id ? updatedPage : p))
+  }, [currentPage, pages, drawingColor])
+
+  // Handle keyboard events for spacebar panning
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.code === 'Space' && !e.repeat && !isSpacePressed) {
+        e.preventDefault()
+        setIsSpacePressed(true)
+        setPreviousTool(selectedTool)
+        setSelectedTool('hand')
+      }
+
+      // Tool shortcuts
+      switch(e.key.toLowerCase()) {
+        case 'v':
+          if (!e.metaKey && !e.ctrlKey) setSelectedTool('select')
+          break
+        case 'h':
+          if (!e.metaKey && !e.ctrlKey) setSelectedTool('hand')
+          break
+        case 'p':
+          if (!e.metaKey && !e.ctrlKey) setSelectedTool('pencil')
+          break
+        case 't':
+          if (!e.metaKey && !e.ctrlKey) setSelectedTool('text')
+          break
+        case 's':
+          if (!e.metaKey && !e.ctrlKey) setSelectedTool('shapes')
+          break
+      }
+
+      // Undo/Redo
+      if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
+        if (e.shiftKey) {
+          // Redo
+          console.log('Redo')
+        } else {
+          // Undo
+          console.log('Undo')
+        }
+      }
+
+      // Delete
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        selectedElements.forEach(id => handleDeleteElement(id))
+      }
+
+      // Duplicate
+      if ((e.metaKey || e.ctrlKey) && e.key === 'd') {
+        e.preventDefault()
+        selectedElements.forEach(id => handleDuplicateElement(id))
+      }
+    }
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.code === 'Space') {
+        e.preventDefault()
+        setIsSpacePressed(false)
+        setSelectedTool(previousTool)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    window.addEventListener('keyup', handleKeyUp)
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+      window.removeEventListener('keyup', handleKeyUp)
+    }
+  }, [selectedTool, previousTool, isSpacePressed, selectedElements, handleDeleteElement, handleDuplicateElement])
+
   return (
     <div className="h-screen flex flex-col bg-background">
       {/* Main Frame Container */}
@@ -286,7 +381,7 @@ export default function PlaygroundPage() {
               onZoomChange={setZoom}
               onPanChange={setPan}
               onCanvasClick={selectedTool === 'hand' ? undefined : handleCanvasClick}
-              className={selectedTool === 'hand' ? 'cursor-grab' : ''}
+              isPanMode={selectedTool === 'hand'}
             >
               {/* Canvas elements */}
               {currentPage?.elements.map(element => (
@@ -304,12 +399,22 @@ export default function PlaygroundPage() {
               ))}
             </InfiniteCanvas>
 
+            {/* Drawing Layer */}
+            <DrawingLayer
+              isActive={selectedTool === 'pencil'}
+              zoom={zoom}
+              pan={pan}
+              color={drawingColor}
+              onPathComplete={handleDrawingComplete}
+            />
+
             {/* Zoom controls */}
             <div className="absolute top-4 right-4 flex gap-2">
               <Button
                 size="sm"
                 variant="secondary"
                 onClick={() => setZoom(Math.max(0.25, zoom - 0.25))}
+                title="Zoom Out"
               >
                 -
               </Button>
@@ -320,8 +425,51 @@ export default function PlaygroundPage() {
                 size="sm"
                 variant="secondary"
                 onClick={() => setZoom(Math.min(3, zoom + 0.25))}
+                title="Zoom In"
               >
                 +
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => {
+                  // Fit to content
+                  if (currentPage && currentPage.elements.length > 0) {
+                    let minX = Infinity, minY = Infinity
+                    let maxX = -Infinity, maxY = -Infinity
+                    
+                    currentPage.elements.forEach(el => {
+                      minX = Math.min(minX, el.x)
+                      minY = Math.min(minY, el.y)
+                      maxX = Math.max(maxX, el.x + (el.width || 100))
+                      maxY = Math.max(maxY, el.y + (el.height || 100))
+                    })
+                    
+                    const width = maxX - minX
+                    const height = maxY - minY
+                    const centerX = (minX + maxX) / 2
+                    const centerY = (minY + maxY) / 2
+                    
+                    // Calculate zoom to fit
+                    const padding = 100
+                    const viewportWidth = window.innerWidth - 300 // Approximate canvas width
+                    const viewportHeight = window.innerHeight - 200 // Approximate canvas height
+                    
+                    const scaleX = (viewportWidth - padding) / width
+                    const scaleY = (viewportHeight - padding) / height
+                    const newZoom = Math.min(Math.max(0.1, Math.min(scaleX, scaleY)), 2)
+                    
+                    setZoom(newZoom)
+                    setPan({ x: -centerX, y: -centerY })
+                  } else {
+                    // Reset to default
+                    setZoom(1)
+                    setPan({ x: 0, y: 0 })
+                  }
+                }}
+                title="Fit to Content"
+              >
+                Fit
               </Button>
             </div>
           </div>
