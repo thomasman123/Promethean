@@ -17,155 +17,182 @@ interface DrawingLayerProps {
 }
 
 export function DrawingLayer({ isActive, zoom, pan, color, onPathComplete }: DrawingLayerProps) {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const svgRef = useRef<SVGSVGElement>(null)
+  const canvasRef = useRef<HTMLDivElement>(null)
   const [isDrawing, setIsDrawing] = useState(false)
   const [currentPath, setCurrentPath] = useState<Point[]>([])
   const [previewPath, setPreviewPath] = useState<string>('')
 
-  // Convert screen coordinates to world coordinates - EXACTLY matching InfiniteCanvas
-  const screenToWorld = useCallback((screenX: number, screenY: number) => {
-    if (!containerRef.current) return { x: 0, y: 0 }
+  // BULLETPROOF coordinate conversion - exactly matching InfiniteCanvas
+  const screenToWorld = useCallback((clientX: number, clientY: number) => {
+    if (!canvasRef.current) return { x: 0, y: 0 }
     
-    const rect = containerRef.current.getBoundingClientRect()
-    // Get position relative to canvas center - EXACTLY like InfiniteCanvas
-    const relativeX = screenX - rect.left - rect.width / 2
-    const relativeY = screenY - rect.top - rect.height / 2
+    const rect = canvasRef.current.getBoundingClientRect()
     
-    // Apply zoom and pan inverse transform - EXACTLY like InfiniteCanvas
-    const x = relativeX / zoom - pan.x
-    const y = relativeY / zoom - pan.y
+    // Step 1: Convert to canvas-relative coordinates (0,0 at top-left of canvas)
+    const canvasX = clientX - rect.left
+    const canvasY = clientY - rect.top
     
-    return { x, y }
+    // Step 2: Convert to center-relative coordinates (0,0 at center of canvas)
+    const centerX = canvasX - rect.width / 2
+    const centerY = canvasY - rect.height / 2
+    
+    // Step 3: Apply inverse transform - EXACTLY like InfiniteCanvas does
+    // InfiniteCanvas transform: scale(zoom) translate(pan.x, pan.y) with center origin
+    // Inverse: translate(-pan.x, -pan.y) scale(1/zoom)
+    const worldX = centerX / zoom - pan.x
+    const worldY = centerY / zoom - pan.y
+    
+    return { x: worldX, y: worldY }
   }, [zoom, pan])
 
-  // Smooth path using Catmull-Rom spline
-  const smoothPath = (points: Point[]) => {
-    if (points.length < 2) return ''
-    if (points.length === 2) {
-      return `M ${points[0].x} ${points[0].y} L ${points[1].x} ${points[1].y}`
-    }
+  // Convert world coordinates back to screen coordinates for verification
+  const worldToScreen = useCallback((worldX: number, worldY: number) => {
+    if (!canvasRef.current) return { x: 0, y: 0 }
+    
+    const rect = canvasRef.current.getBoundingClientRect()
+    
+    // Apply forward transform: scale(zoom) translate(pan.x, pan.y)
+    const centerX = (worldX + pan.x) * zoom
+    const centerY = (worldY + pan.y) * zoom
+    
+    // Convert from center-relative to canvas-relative
+    const canvasX = centerX + rect.width / 2
+    const canvasY = centerY + rect.height / 2
+    
+    // Convert to screen coordinates
+    const screenX = canvasX + rect.left
+    const screenY = canvasY + rect.top
+    
+    return { x: screenX, y: screenY }
+  }, [zoom, pan])
+
+  // Create smooth path from points
+  const createSmoothPath = (points: Point[]) => {
+    if (points.length === 0) return ''
+    if (points.length === 1) return `M ${points[0].x} ${points[0].y}`
+    if (points.length === 2) return `M ${points[0].x} ${points[0].y} L ${points[1].x} ${points[1].y}`
 
     let path = `M ${points[0].x} ${points[0].y}`
     
-    for (let i = 1; i < points.length - 2; i++) {
-      const p0 = points[i - 1]
-      const p1 = points[i]
-      const p2 = points[i + 1]
-      const p3 = points[i + 2]
+    // Use quadratic curves for smoothness
+    for (let i = 1; i < points.length - 1; i++) {
+      const prev = points[i - 1]
+      const curr = points[i]
+      const next = points[i + 1]
       
-      const cp1x = p1.x + (p2.x - p0.x) / 6
-      const cp1y = p1.y + (p2.y - p0.y) / 6
-      const cp2x = p2.x - (p3.x - p1.x) / 6
-      const cp2y = p2.y - (p3.y - p1.y) / 6
+      // Control point is the current point
+      const cpX = curr.x
+      const cpY = curr.y
       
-      path += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p2.x} ${p2.y}`
+      // End point is midway to next point
+      const endX = (curr.x + next.x) / 2
+      const endY = (curr.y + next.y) / 2
+      
+      path += ` Q ${cpX} ${cpY} ${endX} ${endY}`
     }
     
-    // Handle last segment
-    const lastIndex = points.length - 1
-    path += ` L ${points[lastIndex].x} ${points[lastIndex].y}`
+    // Final line to last point
+    const lastPoint = points[points.length - 1]
+    path += ` L ${lastPoint.x} ${lastPoint.y}`
     
     return path
   }
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if (!isActive) return
-    
-    // Only start drawing on primary button (left click)
-    if (e.button !== 0) return
+    if (!isActive || e.button !== 0) return
     
     e.preventDefault()
     e.stopPropagation()
     
-    const worldPos = screenToWorld(e.clientX, e.clientY)
+    const worldPoint = screenToWorld(e.clientX, e.clientY)
     setIsDrawing(true)
-    setCurrentPath([worldPos])
-    setPreviewPath(`M ${worldPos.x} ${worldPos.y}`)
+    setCurrentPath([worldPoint])
+    setPreviewPath(`M ${worldPoint.x} ${worldPoint.y}`)
   }, [isActive, screenToWorld])
 
   const handleMouseMove = useCallback((e: React.MouseEvent | MouseEvent) => {
     if (!isDrawing || !isActive) return
     
-    // Check if mouse button is still pressed
+    // Check if still drawing
     if (e.buttons !== 1) {
-      // Mouse button was released but we didn't get the mouseup event
       setIsDrawing(false)
       setCurrentPath([])
       setPreviewPath('')
       return
     }
     
-    const worldPos = screenToWorld(e.clientX, e.clientY)
-    const newPath = [...currentPath, worldPos]
+    const worldPoint = screenToWorld(e.clientX, e.clientY)
+    const newPath = [...currentPath, worldPoint]
     setCurrentPath(newPath)
-    
-    // Update preview with smoothed path
-    setPreviewPath(smoothPath(newPath))
+    setPreviewPath(createSmoothPath(newPath))
   }, [isDrawing, isActive, currentPath, screenToWorld])
 
   const handleMouseUp = useCallback(() => {
-    // Always clear drawing state on mouse up
-    if (!isDrawing) return
-    
-    if (currentPath.length < 2) {
+    if (!isDrawing || currentPath.length < 2) {
       setIsDrawing(false)
       setCurrentPath([])
       setPreviewPath('')
       return
     }
     
-    // Add small padding for stroke width
-    const strokePadding = 2
-    
-    // Get bounds without padding
+    // Calculate bounding box in world coordinates
     let minX = currentPath[0].x
     let minY = currentPath[0].y
     let maxX = currentPath[0].x
     let maxY = currentPath[0].y
     
-    currentPath.forEach(p => {
-      minX = Math.min(minX, p.x)
-      minY = Math.min(minY, p.y)
-      maxX = Math.max(maxX, p.x)
-      maxY = Math.max(maxY, p.y)
+    currentPath.forEach(point => {
+      minX = Math.min(minX, point.x)
+      minY = Math.min(minY, point.y)
+      maxX = Math.max(maxX, point.x)
+      maxY = Math.max(maxY, point.y)
     })
     
-    // Convert path to be relative to the top-left of bounds (with padding)
-    const relativePath = currentPath.map(p => ({
-      x: p.x - minX + strokePadding,
-      y: p.y - minY + strokePadding
-    }))
-    
-    const finalPath = smoothPath(relativePath)
-    
-    // Create bounds with minimum size for thin strokes - these are in WORLD coordinates
+    // Add padding for stroke
+    const padding = 3
     const bounds = {
-      x: minX - strokePadding,
-      y: minY - strokePadding,
-      width: Math.max(maxX - minX, 10) + strokePadding * 2,
-      height: Math.max(maxY - minY, 10) + strokePadding * 2
+      x: minX - padding,
+      y: minY - padding,
+      width: maxX - minX + 2 * padding,
+      height: maxY - minY + 2 * padding
     }
     
-    // Clear state first to prevent any race conditions
+    // Create path relative to bounds
+    const relativePath = currentPath.map(point => ({
+      x: point.x - bounds.x,
+      y: point.y - bounds.y
+    }))
+    
+    const finalPath = createSmoothPath(relativePath)
+    
+    // Clear state
     setIsDrawing(false)
     setCurrentPath([])
     setPreviewPath('')
     
-    // Then call the completion callback
+    // Create the drawing element
     onPathComplete(finalPath, bounds)
   }, [isDrawing, currentPath, onPathComplete])
 
-  // Clear drawing state when tool becomes inactive
+  // Global mouse event handlers
   useEffect(() => {
-    if (!isActive && isDrawing) {
-      setIsDrawing(false)
-      setCurrentPath([])
-      setPreviewPath('')
-    }
-  }, [isActive, isDrawing])
+    if (!isDrawing) return
 
-  // Handle escape to cancel
+    const handleGlobalMouseMove = (e: MouseEvent) => handleMouseMove(e)
+    const handleGlobalMouseUp = () => handleMouseUp()
+    
+    document.addEventListener('mousemove', handleGlobalMouseMove)
+    document.addEventListener('mouseup', handleGlobalMouseUp)
+    document.addEventListener('mouseleave', handleGlobalMouseUp)
+    
+    return () => {
+      document.removeEventListener('mousemove', handleGlobalMouseMove)
+      document.removeEventListener('mouseup', handleGlobalMouseUp)
+      document.removeEventListener('mouseleave', handleGlobalMouseUp)
+    }
+  }, [isDrawing, handleMouseMove, handleMouseUp])
+
+  // Handle escape key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isDrawing) {
@@ -175,50 +202,46 @@ export function DrawingLayer({ isActive, zoom, pan, color, onPathComplete }: Dra
       }
     }
 
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
   }, [isDrawing])
 
-  // Add global mouse listeners when drawing
+  // Clean up when tool becomes inactive
   useEffect(() => {
-    if (isDrawing) {
-      const handleGlobalMouseMove = (e: MouseEvent) => {
-        handleMouseMove(e)
-      }
-      
-      const handleGlobalMouseUp = () => {
-        handleMouseUp()
-      }
-      
-      window.addEventListener('mousemove', handleGlobalMouseMove)
-      window.addEventListener('mouseup', handleGlobalMouseUp)
-      window.addEventListener('mouseleave', handleGlobalMouseUp)
-      
-      return () => {
-        window.removeEventListener('mousemove', handleGlobalMouseMove)
-        window.removeEventListener('mouseup', handleGlobalMouseUp)
-        window.removeEventListener('mouseleave', handleGlobalMouseUp)
-      }
+    if (!isActive && isDrawing) {
+      setIsDrawing(false)
+      setCurrentPath([])
+      setPreviewPath('')
     }
-  }, [isDrawing, handleMouseMove, handleMouseUp])
+  }, [isActive, isDrawing])
 
   if (!isActive) return null
 
   return (
     <div
-      ref={containerRef}
-      className={cn("absolute inset-0", isActive ? "pointer-events-auto" : "pointer-events-none")}
-      style={{ cursor: isActive ? 'crosshair' : 'default' }}
+      ref={canvasRef}
+      className={cn("absolute inset-0", "pointer-events-auto")}
+      style={{ cursor: 'crosshair' }}
       onMouseDown={handleMouseDown}
     >
-      <svg
-        ref={svgRef}
-        className="absolute inset-0 w-full h-full"
-        style={{ overflow: 'visible' }}
+      {/* Use a div with CSS transform instead of SVG - matches InfiniteCanvas exactly */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          transform: `scale(${zoom}) translate(${pan.x}px, ${pan.y}px)`,
+          transformOrigin: 'center center'
+        }}
       >
-        {/* Transform group to match EXACTLY with InfiniteCanvas transform system */}
-        <g transform={`translate(${containerRef.current?.clientWidth ? containerRef.current.clientWidth / 2 : 0}, ${containerRef.current?.clientHeight ? containerRef.current.clientHeight / 2 : 0}) scale(${zoom}) translate(${pan.x}, ${pan.y})`}>
-          {/* Preview path while drawing */}
+        {/* SVG for drawing preview - now properly positioned */}
+        <svg
+          className="absolute inset-0 w-full h-full"
+          style={{ 
+            overflow: 'visible',
+            left: '50%',
+            top: '50%',
+            transform: 'translate(-50%, -50%)'
+          }}
+        >
           {isDrawing && previewPath && (
             <path
               d={previewPath}
@@ -227,11 +250,10 @@ export function DrawingLayer({ isActive, zoom, pan, color, onPathComplete }: Dra
               strokeWidth={2 / zoom}
               strokeLinecap="round"
               strokeLinejoin="round"
-              className="pointer-events-none"
             />
           )}
-        </g>
-      </svg>
+        </svg>
+      </div>
     </div>
   )
 } 
