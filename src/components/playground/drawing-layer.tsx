@@ -17,21 +17,22 @@ interface DrawingLayerProps {
 }
 
 export function DrawingLayer({ isActive, zoom, pan, color, onPathComplete }: DrawingLayerProps) {
+  const containerRef = useRef<HTMLDivElement>(null)
   const svgRef = useRef<SVGSVGElement>(null)
   const [isDrawing, setIsDrawing] = useState(false)
   const [currentPath, setCurrentPath] = useState<Point[]>([])
   const [previewPath, setPreviewPath] = useState<string>('')
 
-  // Convert screen coordinates to world coordinates
+  // Convert screen coordinates to world coordinates - EXACTLY matching InfiniteCanvas
   const screenToWorld = useCallback((screenX: number, screenY: number) => {
-    if (!svgRef.current) return { x: 0, y: 0 }
+    if (!containerRef.current) return { x: 0, y: 0 }
     
-    const rect = svgRef.current.getBoundingClientRect()
-    // Get position relative to canvas center
+    const rect = containerRef.current.getBoundingClientRect()
+    // Get position relative to canvas center - EXACTLY like InfiniteCanvas
     const relativeX = screenX - rect.left - rect.width / 2
     const relativeY = screenY - rect.top - rect.height / 2
     
-    // Apply zoom and pan inverse transform
+    // Apply zoom and pan inverse transform - EXACTLY like InfiniteCanvas
     const x = relativeX / zoom - pan.x
     const y = relativeY / zoom - pan.y
     
@@ -66,30 +67,6 @@ export function DrawingLayer({ isActive, zoom, pan, color, onPathComplete }: Dra
     path += ` L ${points[lastIndex].x} ${points[lastIndex].y}`
     
     return path
-  }
-
-  // Calculate bounds of path
-  const getPathBounds = (points: Point[]) => {
-    if (points.length === 0) return { x: 0, y: 0, width: 0, height: 0 }
-    
-    let minX = points[0].x
-    let minY = points[0].y
-    let maxX = points[0].x
-    let maxY = points[0].y
-    
-    points.forEach(p => {
-      minX = Math.min(minX, p.x)
-      minY = Math.min(minY, p.y)
-      maxX = Math.max(maxX, p.x)
-      maxY = Math.max(maxY, p.y)
-    })
-    
-    return {
-      x: minX - 5,
-      y: minY - 5,
-      width: maxX - minX + 10,
-      height: maxY - minY + 10
-    }
   }
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -162,7 +139,7 @@ export function DrawingLayer({ isActive, zoom, pan, color, onPathComplete }: Dra
     
     const finalPath = smoothPath(relativePath)
     
-    // Create bounds with minimum size for thin strokes
+    // Create bounds with minimum size for thin strokes - these are in WORLD coordinates
     const bounds = {
       x: minX - strokePadding,
       y: minY - strokePadding,
@@ -229,6 +206,7 @@ export function DrawingLayer({ isActive, zoom, pan, color, onPathComplete }: Dra
 
   return (
     <div
+      ref={containerRef}
       className={cn("absolute inset-0", isActive ? "pointer-events-auto" : "pointer-events-none")}
       style={{ cursor: isActive ? 'crosshair' : 'default' }}
       onMouseDown={handleMouseDown}
@@ -238,22 +216,22 @@ export function DrawingLayer({ isActive, zoom, pan, color, onPathComplete }: Dra
         className="absolute inset-0 w-full h-full"
         style={{ overflow: 'visible' }}
       >
-      {/* Transform group to handle pan/zoom */}
-      <g transform={`translate(${svgRef.current?.clientWidth ? svgRef.current.clientWidth / 2 : 0}, ${svgRef.current?.clientHeight ? svgRef.current.clientHeight / 2 : 0}) scale(${zoom}) translate(${pan.x}, ${pan.y})`}>
-        {/* Preview path while drawing */}
-        {isDrawing && previewPath && (
-          <path
-            d={previewPath}
-            fill="none"
-            stroke={color}
-            strokeWidth={2 / zoom}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="pointer-events-none"
-          />
-        )}
-      </g>
-    </svg>
+        {/* Transform group to match EXACTLY with InfiniteCanvas transform system */}
+        <g transform={`translate(${containerRef.current?.clientWidth ? containerRef.current.clientWidth / 2 : 0}, ${containerRef.current?.clientHeight ? containerRef.current.clientHeight / 2 : 0}) scale(${zoom}) translate(${pan.x}, ${pan.y})`}>
+          {/* Preview path while drawing */}
+          {isDrawing && previewPath && (
+            <path
+              d={previewPath}
+              fill="none"
+              stroke={color}
+              strokeWidth={2 / zoom}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="pointer-events-none"
+            />
+          )}
+        </g>
+      </svg>
     </div>
   )
 } 
