@@ -49,17 +49,24 @@ export default function LoginPage() {
     setLoading(true)
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      // Use server-side login endpoint for proper cookie handling
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+        credentials: 'include', // Important for cookies
       })
 
-      if (error) {
-        setError(error.message)
+      const data = await response.json()
+
+      if (!response.ok) {
+        setError(data.error || 'Login failed')
         setLoading(false)
-      } else if (data.session) {
+      } else {
         setSuccess(true)
-        // Use window.location for more reliable redirect after auth
+        // Use window.location for full page refresh with new auth state
         window.location.href = "/dashboard"
       }
     } catch (err) {
