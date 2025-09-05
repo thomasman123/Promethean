@@ -278,6 +278,7 @@ export function CanvasElement({
             <svg 
               width={element.width} 
               height={element.height} 
+              viewBox={`-2 -2 ${(element.width || 0) + 4} ${(element.height || 0) + 4}`}
               className="absolute inset-0"
               style={{ overflow: 'visible' }}
             >
