@@ -101,34 +101,51 @@ export function TopBar({ onAddWidget }: TopBarProps) {
   }
 
   const loadUserAccounts = async () => {
-    if (!effectiveUser) return
+    if (!effectiveUser) {
+      console.log('🔍 [TopBar] No effective user, skipping account load')
+      return
+    }
+    
+    console.log('🔍 [TopBar] Loading accounts for effective user:', effectiveUser.id, 'role:', effectiveUser.role)
     
     try {
       // Use the API endpoint which properly handles impersonation
+      console.log('🔍 [TopBar] Calling /api/accounts-simple...')
       const response = await fetch('/api/accounts-simple')
       const data = await response.json()
       
+      console.log('🔍 [TopBar] API response status:', response.status)
+      console.log('🔍 [TopBar] API response data:', data)
+      
       if (!response.ok) {
-        console.error('Failed to load accounts:', data.error)
+        console.error('❌ [TopBar] Failed to load accounts:', data.error)
         setAccounts([])
         return
       }
 
       const accountsData = data.accounts || []
+      console.log('✅ [TopBar] Setting accounts:', accountsData.length, 'accounts')
+      console.log('🔍 [TopBar] Account details:', accountsData.map((a: Account) => ({ id: a.id, name: a.name })))
       setAccounts(accountsData)
       
       // Set first account as selected if none selected or current selection is not available
       if (accountsData.length > 0) {
         const savedAccountId = localStorage.getItem('selectedAccountId')
+        console.log('🔍 [TopBar] Saved account ID from localStorage:', savedAccountId)
+        
         if (savedAccountId && accountsData.find((a: Account) => a.id === savedAccountId)) {
+          console.log('✅ [TopBar] Using saved account:', savedAccountId)
           setSelectedAccountId(savedAccountId)
         } else {
+          console.log('✅ [TopBar] Using first account:', accountsData[0].id, accountsData[0].name)
           setSelectedAccountId(accountsData[0].id)
           localStorage.setItem('selectedAccountId', accountsData[0].id)
         }
+      } else {
+        console.log('⚠️ [TopBar] No accounts available')
       }
     } catch (error) {
-      console.error('Failed to load accounts:', error)
+      console.error('❌ [TopBar] Failed to load accounts:', error)
       setAccounts([])
     }
   }
