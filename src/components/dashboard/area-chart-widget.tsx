@@ -1,8 +1,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Bar, BarChart, CartesianGrid, LabelList, XAxis, YAxis } from "recharts"
-import { format, startOfDay, eachDayOfInterval, parseISO, startOfWeek, startOfMonth, eachWeekOfInterval, eachMonthOfInterval, differenceInDays, endOfWeek, endOfMonth } from "date-fns"
+import { Area, AreaChart, CartesianGrid, XAxis } from "recharts"
+import { format, eachDayOfInterval, parseISO, startOfWeek, startOfMonth, eachWeekOfInterval, eachMonthOfInterval, differenceInDays, endOfWeek, endOfMonth } from "date-fns"
 
 import {
   ChartConfig,
@@ -15,13 +15,13 @@ import { METRICS_REGISTRY } from "@/lib/metrics/registry"
 import { useDashboard } from "@/lib/dashboard-context"
 import { TimeResult } from "@/lib/metrics/types"
 
-interface BarChartWidgetProps {
+interface AreaChartWidgetProps {
   metric: string
 }
 
 type AggregationType = 'daily' | 'weekly' | 'monthly'
 
-export function BarChartWidget({ metric }: BarChartWidgetProps) {
+export function AreaChartWidget({ metric }: AreaChartWidgetProps) {
   const [data, setData] = useState<Array<{ date: string; value: number; label: string }>>([])
   const [loading, setLoading] = useState(true)
   const { selectedAccountId, dateRange } = useDashboard()
@@ -65,7 +65,7 @@ export function BarChartWidget({ metric }: BarChartWidgetProps) {
               end: format(dateRange.to, 'yyyy-MM-dd')
             }
           },
-          vizType: 'bar' // This tells the metrics engine to return time series data
+          vizType: 'area' // This tells the metrics engine to return time series data
         })
       })
 
@@ -206,11 +206,11 @@ export function BarChartWidget({ metric }: BarChartWidgetProps) {
 
   return (
     <ChartContainer config={chartConfig} className="h-full w-full [&>div]:!aspect-auto">
-      <BarChart
+      <AreaChart
         accessibilityLayer
         data={data}
         margin={{
-          top: 25, // Increased to prevent label clipping
+          top: 10,
           right: 12,
           left: 12,
           bottom: 25,
@@ -236,18 +236,15 @@ export function BarChartWidget({ metric }: BarChartWidgetProps) {
             />
           }
         />
-        <Bar dataKey="value" fill="var(--color-value)" radius={8}>
-          {data.length <= 20 && (
-            <LabelList
-              position="top"
-              offset={10}
-              className="fill-foreground"
-              fontSize={11}
-              formatter={(value) => formatValue(Number(value))}
-            />
-          )}
-        </Bar>
-      </BarChart>
+        <Area
+          dataKey="value"
+          type="linear"
+          fill="var(--color-value)"
+          fillOpacity={0.4}
+          stroke="var(--color-value)"
+          strokeWidth={2}
+        />
+      </AreaChart>
     </ChartContainer>
   )
 } 

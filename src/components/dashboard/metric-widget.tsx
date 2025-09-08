@@ -107,6 +107,11 @@ export function MetricWidget({ metric, type }: MetricWidgetProps) {
     return <LineChartWidget metric={metric} />
   }
   
+  if (type === "area") {
+    const AreaChartWidget = require('./area-chart-widget').AreaChartWidget
+    return <AreaChartWidget metric={metric} />
+  }
+  
   // Other chart types placeholder
   return (
     <div className="h-full flex items-center justify-center">

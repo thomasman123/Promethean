@@ -211,51 +211,37 @@ export function LineChartWidget({ metric }: LineChartWidgetProps) {
         data={data}
         margin={{
           top: 10,
-          right: 5,
-          left: -10,
+          right: 12,
+          left: 12,
           bottom: 25,
         }}
       >
-        <CartesianGrid strokeDasharray="3 3" vertical={false} />
+        <CartesianGrid vertical={false} />
         <XAxis
           dataKey="label"
           tickLine={false}
-          tickMargin={5}
           axisLine={false}
+          tickMargin={8}
           tick={{ fontSize: 11 }}
-          angle={data.length > 7 ? -45 : 0}
-          textAnchor={data.length > 7 ? "end" : "middle"}
-          height={data.length > 7 ? 50 : 25}
-        />
-        <YAxis
-          tickLine={false}
-          axisLine={false}
-          width={40}
-          tick={{ fontSize: 11 }}
-          tickFormatter={(value) => {
-            if (metricInfo?.unit === 'percent') {
-              return `${(value * 100).toFixed(0)}%`
-            } else if (metricInfo?.unit === 'currency') {
-              return `$${value.toLocaleString('en-US', { notation: 'compact' })}`
-            }
-            return value.toLocaleString('en-US', { notation: 'compact' })
-          }}
+          angle={data.length > 10 ? -45 : 0}
+          textAnchor={data.length > 10 ? "end" : "middle"}
+          height={data.length > 10 ? 50 : 25}
         />
         <ChartTooltip
           cursor={false}
           content={
             <ChartTooltipContent 
+              hideLabel 
               formatter={(value) => formatValue(value as number)}
             />
           }
         />
-        <Line 
-          type="monotone" 
-          dataKey="value" 
-          stroke="var(--color-value)" 
+        <Line
+          dataKey="value"
+          type="linear"
+          stroke="var(--color-value)"
           strokeWidth={2}
-          dot={{ r: 3 }}
-          activeDot={{ r: 5 }}
+          dot={false}
         />
       </LineChart>
     </ChartContainer>
