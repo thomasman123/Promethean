@@ -252,14 +252,9 @@ export default function DashboardPage() {
     const newWidgets = [...widgets, widget]
     setWidgets(newWidgets)
     
-    // Calculate position for new widget
-    const findEmptyPosition = () => {
-      const currentLayout = layouts.lg
-      const maxY = Math.max(...currentLayout.map(item => item.y + item.h), 0)
-      return { x: 0, y: maxY }
-    }
-    
-    const position = findEmptyPosition()
+    // With vertical compacting, new widgets can be placed at (0, 0)
+    // The grid will automatically push them to the first available position
+    const position = { x: 0, y: 0 }
     
     // Add layout for the new widget across all breakpoints
     const newLayouts = { ...layouts }
