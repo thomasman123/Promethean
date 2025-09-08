@@ -381,7 +381,7 @@ export default function DashboardPage() {
               resizeHandles={["se"]}
               isDraggable={true}
               isResizable={true}
-              compactType={null}
+              compactType="vertical"
               preventCollision={false}
             >
               {widgets.map((widget) => (
