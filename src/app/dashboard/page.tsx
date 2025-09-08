@@ -33,8 +33,8 @@ const defaultLayouts = {
     { i: "widget-2", x: 1, y: 0, w: 1, h: 2 },
     { i: "widget-3", x: 2, y: 0, w: 1, h: 2 },
     { i: "widget-4", x: 3, y: 0, w: 1, h: 2 },
-    { i: "widget-5", x: 0, y: 2, w: 2, h: 3 }, // Chart widget
-    { i: "widget-6", x: 2, y: 2, w: 2, h: 3 }, // Chart widget
+    { i: "widget-5", x: 0, y: 2, w: 2, h: 2 }, // Chart widget
+    { i: "widget-6", x: 2, y: 2, w: 2, h: 2 }, // Chart widget
     { i: "widget-7", x: 4, y: 0, w: 1, h: 2 },
     { i: "widget-8", x: 5, y: 0, w: 1, h: 2 },
     { i: "widget-9", x: 4, y: 2, w: 2, h: 2 }
@@ -44,22 +44,22 @@ const defaultLayouts = {
     { i: "widget-2", x: 1, y: 0, w: 1, h: 2 },
     { i: "widget-3", x: 2, y: 0, w: 1, h: 2 },
     { i: "widget-4", x: 3, y: 0, w: 1, h: 2 },
-    { i: "widget-5", x: 0, y: 2, w: 2, h: 3 },
-    { i: "widget-6", x: 2, y: 2, w: 2, h: 3 },
-    { i: "widget-7", x: 0, y: 5, w: 1, h: 2 },
-    { i: "widget-8", x: 1, y: 5, w: 1, h: 2 },
-    { i: "widget-9", x: 2, y: 5, w: 2, h: 2 },
+    { i: "widget-5", x: 0, y: 2, w: 2, h: 2 },
+    { i: "widget-6", x: 2, y: 2, w: 2, h: 2 },
+    { i: "widget-7", x: 0, y: 4, w: 1, h: 2 },
+    { i: "widget-8", x: 1, y: 4, w: 1, h: 2 },
+    { i: "widget-9", x: 2, y: 4, w: 2, h: 2 },
   ],
   sm: [
     { i: "widget-1", x: 0, y: 0, w: 2, h: 2 },
     { i: "widget-2", x: 0, y: 2, w: 2, h: 2 },
     { i: "widget-3", x: 0, y: 4, w: 2, h: 2 },
     { i: "widget-4", x: 0, y: 6, w: 2, h: 2 },
-    { i: "widget-5", x: 0, y: 8, w: 2, h: 3 },
-    { i: "widget-6", x: 0, y: 11, w: 2, h: 3 },
-    { i: "widget-7", x: 0, y: 14, w: 2, h: 2 },
-    { i: "widget-8", x: 0, y: 16, w: 2, h: 2 },
-    { i: "widget-9", x: 0, y: 18, w: 2, h: 2 },
+    { i: "widget-5", x: 0, y: 8, w: 2, h: 2 },
+    { i: "widget-6", x: 0, y: 10, w: 2, h: 2 },
+    { i: "widget-7", x: 0, y: 12, w: 2, h: 2 },
+    { i: "widget-8", x: 0, y: 14, w: 2, h: 2 },
+    { i: "widget-9", x: 0, y: 16, w: 2, h: 2 },
   ],
 }
 
@@ -196,7 +196,7 @@ export default function DashboardPage() {
         case "bar":
         case "line":
         case "area":
-          return { w: 2, h: 3 } // One column wider and one row taller than KPI
+          return { w: 2, h: 2 } // 2 columns wide, 2 rows tall (same height as KPI)
         default:
           return { w: 1, h: 2 }
       }
