@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts"
+import { Area, AreaChart, CartesianGrid, XAxis, YAxis, Legend } from "recharts"
 import { format, eachDayOfInterval, parseISO, startOfWeek, startOfMonth, eachWeekOfInterval, eachMonthOfInterval, differenceInDays, endOfWeek, endOfMonth } from "date-fns"
 
 import {
@@ -9,6 +9,8 @@ import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
+  ChartLegend,
+  ChartLegendContent,
 } from "@/components/ui/chart"
 
 import { METRICS_REGISTRY } from "@/lib/metrics/registry"
@@ -16,17 +18,21 @@ import { useDashboard } from "@/lib/dashboard-context"
 import { TimeResult } from "@/lib/metrics/types"
 
 interface AreaChartWidgetProps {
-  metric: string
+  metrics: string[]
 }
 
 type AggregationType = 'daily' | 'weekly' | 'monthly'
 
-export function AreaChartWidget({ metric }: AreaChartWidgetProps) {
-  const [data, setData] = useState<Array<{ date: string; value: number; label: string }>>([])
+const CHART_COLORS = [
+  "hsl(var(--chart-1))",
+  "hsl(var(--chart-2))",
+  "hsl(var(--chart-3))",
+]
+
+export function AreaChartWidget({ metrics }: AreaChartWidgetProps) {
+  const [data, setData] = useState<Array<Record<string, any>>>([])
   const [loading, setLoading] = useState(true)
   const { selectedAccountId, dateRange } = useDashboard()
-  
-  const metricInfo = METRICS_REGISTRY[metric]
 
   // Determine aggregation type based on date range
   const getAggregationType = (): AggregationType => {
@@ -44,128 +50,144 @@ export function AreaChartWidget({ metric }: AreaChartWidgetProps) {
   }
 
   useEffect(() => {
-    if (selectedAccountId && metric && dateRange.from && dateRange.to) {
-      fetchMetricData()
+    if (selectedAccountId && metrics.length > 0 && dateRange.from && dateRange.to) {
+      fetchMetricsData()
     }
-  }, [selectedAccountId, metric, dateRange])
+  }, [selectedAccountId, metrics, dateRange])
 
-  const fetchMetricData = async () => {
+  const fetchMetricsData = async () => {
     setLoading(true)
     try {
-      // Fetch current period data with time breakdown
-      const response = await fetch('/api/metrics', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          metricName: metric,
-          filters: {
-            accountId: selectedAccountId,
-            dateRange: {
-              start: format(dateRange.from, 'yyyy-MM-dd'),
-              end: format(dateRange.to, 'yyyy-MM-dd')
-            }
-          },
-          vizType: 'area' // This tells the metrics engine to return time series data
-        })
-      })
+      const aggregationType = getAggregationType()
+      
+      // Fetch data for all metrics
+      const metricsData = await Promise.all(
+        metrics.map(async (metric) => {
+          const response = await fetch('/api/metrics', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              metricName: metric,
+              filters: {
+                accountId: selectedAccountId,
+                dateRange: {
+                  start: format(dateRange.from, 'yyyy-MM-dd'),
+                  end: format(dateRange.to, 'yyyy-MM-dd')
+                }
+              },
+              vizType: 'area'
+            })
+          })
 
-      if (response.ok) {
-        const result = await response.json()
-        if (result.result?.type === 'time' && result.result.data) {
-          const timeData = result.result as TimeResult
-          const aggregationType = getAggregationType()
-          
-          // Create a map for quick lookup
-          const dataMap = new Map(
-            timeData.data.map(item => [item.date, item.value])
-          )
-          
-          let aggregatedData: Array<{ date: string; value: number; label: string }> = []
-          
-          if (aggregationType === 'daily') {
-            // Daily aggregation
-            const allDays = eachDayOfInterval({
-              start: dateRange.from,
-              end: dateRange.to
+          if (response.ok) {
+            const result = await response.json()
+            if (result.result?.type === 'time' && result.result.data) {
+              return {
+                metric,
+                data: result.result.data as TimeResult['data']
+              }
+            }
+          }
+          return { metric, data: [] }
+        })
+      )
+
+      // Process data similar to bar chart
+      let datePoints: Array<{ date: string; label: string }> = []
+      
+      if (aggregationType === 'daily') {
+        const allDays = eachDayOfInterval({
+          start: dateRange.from,
+          end: dateRange.to
+        })
+        datePoints = allDays.map(day => ({
+          date: format(day, 'yyyy-MM-dd'),
+          label: format(day, 'MMM dd')
+        }))
+      } else if (aggregationType === 'weekly') {
+        const weeks = eachWeekOfInterval({
+          start: dateRange.from,
+          end: dateRange.to
+        }, { weekStartsOn: 0 })
+        datePoints = weeks.map(weekStart => ({
+          date: format(weekStart, 'yyyy-MM-dd'),
+          label: `Week ${format(weekStart, 'w')}`
+        }))
+      } else {
+        const months = eachMonthOfInterval({
+          start: dateRange.from,
+          end: dateRange.to
+        })
+        datePoints = months.map(monthStart => ({
+          date: format(monthStart, 'yyyy-MM-dd'),
+          label: format(monthStart, 'MMM yyyy')
+        }))
+      }
+
+      // Aggregate data for weekly/monthly
+      const aggregatedMetricsData = metricsData.map(({ metric, data }) => {
+        if (aggregationType === 'daily') {
+          return { metric, data }
+        }
+
+        // Aggregate data for weekly/monthly
+        const aggregatedData = datePoints.map(point => {
+          if (aggregationType === 'weekly') {
+            const weekStart = parseISO(point.date)
+            const weekEnd = endOfWeek(weekStart, { weekStartsOn: 0 })
+            
+            const weekData = data.filter(d => {
+              const date = parseISO(d.date)
+              return date >= weekStart && date <= weekEnd && 
+                     date >= dateRange.from && date <= dateRange.to
             })
             
-            aggregatedData = allDays.map(day => {
-              const dateStr = format(day, 'yyyy-MM-dd')
-              return {
-                date: dateStr,
-                value: dataMap.get(dateStr) || 0,
-                label: format(day, 'MMM dd')
-              }
-            })
-          } else if (aggregationType === 'weekly') {
-            // Weekly aggregation
-            const weeks = eachWeekOfInterval({
-              start: dateRange.from,
-              end: dateRange.to
-            }, { weekStartsOn: 0 }) // Sunday as start of week
-            
-            aggregatedData = weeks.map(weekStart => {
-              const weekEnd = endOfWeek(weekStart, { weekStartsOn: 0 })
-              let weekTotal = 0
-              
-              // Sum all days in this week
-              const daysInWeek = eachDayOfInterval({
-                start: weekStart < dateRange.from ? dateRange.from : weekStart,
-                end: weekEnd > dateRange.to ? dateRange.to : weekEnd
-              })
-              
-              daysInWeek.forEach(day => {
-                const dateStr = format(day, 'yyyy-MM-dd')
-                weekTotal += dataMap.get(dateStr) || 0
-              })
-              
-              return {
-                date: format(weekStart, 'yyyy-MM-dd'),
-                value: weekTotal,
-                label: `Week ${format(weekStart, 'w')}`
-              }
-            })
+            const sum = weekData.reduce((acc, d) => acc + d.value, 0)
+            return { date: point.date, value: sum }
           } else {
             // Monthly aggregation
-            const months = eachMonthOfInterval({
-              start: dateRange.from,
-              end: dateRange.to
+            const monthStart = parseISO(point.date)
+            const monthEnd = endOfMonth(monthStart)
+            
+            const monthData = data.filter(d => {
+              const date = parseISO(d.date)
+              return date >= monthStart && date <= monthEnd && 
+                     date >= dateRange.from && date <= dateRange.to
             })
             
-            aggregatedData = months.map(monthStart => {
-              const monthEnd = endOfMonth(monthStart)
-              let monthTotal = 0
-              
-              // Sum all days in this month
-              const daysInMonth = eachDayOfInterval({
-                start: monthStart < dateRange.from ? dateRange.from : monthStart,
-                end: monthEnd > dateRange.to ? dateRange.to : monthEnd
-              })
-              
-              daysInMonth.forEach(day => {
-                const dateStr = format(day, 'yyyy-MM-dd')
-                monthTotal += dataMap.get(dateStr) || 0
-              })
-              
-              return {
-                date: format(monthStart, 'yyyy-MM-dd'),
-                value: monthTotal,
-                label: format(monthStart, 'MMM yyyy')
-              }
-            })
+            const sum = monthData.reduce((acc, d) => acc + d.value, 0)
+            return { date: point.date, value: sum }
           }
-          
-          setData(aggregatedData)
+        })
+
+        return { metric, data: aggregatedData }
+      })
+
+      // Combine data from all metrics
+      const combinedData = datePoints.map(point => {
+        const dataPoint: Record<string, any> = {
+          date: point.date,
+          label: point.label
         }
-      }
+
+        aggregatedMetricsData.forEach(({ metric, data }) => {
+          const metricData = data.find(d => d.date === point.date)
+          dataPoint[metric] = metricData?.value || 0
+        })
+
+        return dataPoint
+      })
+
+      setData(combinedData)
     } catch (error) {
-      console.error('Failed to fetch metric data:', error)
+      console.error('Failed to fetch metrics data:', error)
     } finally {
       setLoading(false)
     }
   }
 
-  const formatValue = (val: number): string => {
+  const formatValue = (val: number, metric: string): string => {
+    const metricInfo = METRICS_REGISTRY[metric]
     if (!metricInfo) return val.toString()
 
     switch (metricInfo.unit) {
@@ -189,12 +211,15 @@ export function AreaChartWidget({ metric }: AreaChartWidgetProps) {
     }
   }
 
-  const chartConfig = {
-    value: {
+  // Build chart config for all metrics
+  const chartConfig: ChartConfig = {}
+  metrics.forEach((metric, index) => {
+    const metricInfo = METRICS_REGISTRY[metric]
+    chartConfig[metric] = {
       label: metricInfo?.name || metric,
-      color: "hsl(var(--chart-1))",
-    },
-  } satisfies ChartConfig
+      color: CHART_COLORS[index % CHART_COLORS.length],
+    }
+  })
 
   if (loading) {
     return (
@@ -213,7 +238,7 @@ export function AreaChartWidget({ metric }: AreaChartWidgetProps) {
           top: 10,
           right: 5,
           left: -5,
-          bottom: 25,
+          bottom: metrics.length > 1 ? 40 : 25,
         }}
       >
         <CartesianGrid vertical={false} />
@@ -233,9 +258,11 @@ export function AreaChartWidget({ metric }: AreaChartWidgetProps) {
           width={45}
           tick={{ fontSize: 11 }}
           tickFormatter={(value) => {
-            if (metricInfo?.unit === 'percent') {
+            // Use the first metric's unit for Y-axis formatting
+            const firstMetricInfo = METRICS_REGISTRY[metrics[0]]
+            if (firstMetricInfo?.unit === 'percent') {
               return `${(value * 100).toFixed(0)}%`
-            } else if (metricInfo?.unit === 'currency') {
+            } else if (firstMetricInfo?.unit === 'currency') {
               return `$${value.toLocaleString('en-US', { notation: 'compact' })}`
             }
             return value.toLocaleString('en-US', { notation: 'compact' })
@@ -246,17 +273,27 @@ export function AreaChartWidget({ metric }: AreaChartWidgetProps) {
           content={
             <ChartTooltipContent 
               indicator="dot"
-              formatter={(value, name) => [formatValue(value as number), metricInfo?.name || metric]}
+              formatter={(value, name) => [
+                formatValue(value as number, name as string), 
+                METRICS_REGISTRY[name as string]?.name || name
+              ]}
             />
           }
         />
-        <Area
-          dataKey="value"
-          type="linear"
-          fill="var(--color-value)"
-          fillOpacity={0.4}
-          stroke="var(--color-value)"
-        />
+        {metrics.map((metric, index) => (
+          <Area
+            key={metric}
+            dataKey={metric}
+            type="linear"
+            fill={`var(--color-${metric})`}
+            fillOpacity={0.4}
+            stroke={`var(--color-${metric})`}
+            stackId={metrics.length > 1 ? "1" : undefined}
+          />
+        ))}
+        {metrics.length > 1 && (
+          <ChartLegend content={<ChartLegendContent />} />
+        )}
       </AreaChart>
     </ChartContainer>
   )

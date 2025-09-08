@@ -309,9 +309,19 @@ export default function DashboardPage() {
   }, [widgets, layouts, saveViewData])
 
   const renderWidgetContent = (widget: WidgetConfig) => {
-    // If widget has a metric, use MetricWidget component
-    if (widget.metric) {
+    // For KPI widgets with single metric
+    if (widget.type === "kpi" && widget.metric) {
       return <MetricWidget metric={widget.metric} type={widget.type} />
+    }
+    
+    // For chart widgets with multiple metrics
+    if ((widget.type === "bar" || widget.type === "line" || widget.type === "area") && widget.metrics) {
+      return <MetricWidget metrics={widget.metrics} type={widget.type} />
+    }
+    
+    // For backward compatibility - chart with single metric
+    if ((widget.type === "bar" || widget.type === "line" || widget.type === "area") && widget.metric) {
+      return <MetricWidget metrics={[widget.metric]} type={widget.type} />
     }
     
     // Otherwise render placeholder content

@@ -34,7 +34,8 @@ export interface WidgetConfig {
   id: string
   type: "kpi" | "bar" | "line" | "area"
   title: string
-  metric?: string // Will be set in step 2
+  metric?: string // For single metric (KPI)
+  metrics?: string[] // For multiple metrics (charts)
   options?: Record<string, any> // Additional options from step 3
 }
 
@@ -71,12 +72,16 @@ export function AddWidgetModal({ open, onOpenChange, onAddWidget }: AddWidgetMod
   const [currentStep, setCurrentStep] = useState<Step>("visualization")
   const [selectedVisualization, setSelectedVisualization] = useState<string | null>(null)
   const [selectedMetric, setSelectedMetric] = useState<string | null>(null)
+  const [selectedMetrics, setSelectedMetrics] = useState<string[]>([])
   const [widgetTitle, setWidgetTitle] = useState("")
+  
+  const isChartType = selectedVisualization && ["bar", "line", "area"].includes(selectedVisualization)
   
   const handleReset = () => {
     setCurrentStep("visualization")
     setSelectedVisualization(null)
     setSelectedMetric(null)
+    setSelectedMetrics([])
     setWidgetTitle("")
   }
 
@@ -102,13 +107,20 @@ export function AddWidgetModal({ open, onOpenChange, onAddWidget }: AddWidgetMod
   }
 
   const handleCreate = () => {
-    if (!selectedVisualization || !selectedMetric) return
+    if (!selectedVisualization) return
+    if (isChartType && selectedMetrics.length === 0) return
+    if (!isChartType && !selectedMetric) return
+
+    const defaultTitle = isChartType 
+      ? selectedMetrics.map(m => METRICS_REGISTRY[m]?.name || m).join(' vs ')
+      : METRICS_REGISTRY[selectedMetric!]?.name || `New ${visualizationTypes.find(v => v.id === selectedVisualization)?.name}`
 
     const widget: WidgetConfig = {
       id: `widget-${Date.now()}`,
       type: selectedVisualization as WidgetConfig["type"],
-      title: widgetTitle || METRICS_REGISTRY[selectedMetric]?.name || `New ${visualizationTypes.find(v => v.id === selectedVisualization)?.name}`,
-      metric: selectedMetric,
+      title: widgetTitle || defaultTitle,
+      metric: isChartType ? undefined : (selectedMetric || undefined),
+      metrics: isChartType ? selectedMetrics : undefined,
       options: {} // Additional options can be added here
     }
 
@@ -118,7 +130,12 @@ export function AddWidgetModal({ open, onOpenChange, onAddWidget }: AddWidgetMod
 
   const canProceed = () => {
     if (currentStep === "visualization") return !!selectedVisualization
-    if (currentStep === "metric") return !!selectedMetric
+    if (currentStep === "metric") {
+      if (isChartType) {
+        return selectedMetrics.length > 0
+      }
+      return !!selectedMetric
+    }
     return true
   }
 
@@ -163,10 +180,47 @@ export function AddWidgetModal({ open, onOpenChange, onAddWidget }: AddWidgetMod
 
           {/* Step 2: Metric Selection */}
           {currentStep === "metric" && (
-            <MetricSelector
-              selectedMetric={selectedMetric}
-              onSelect={setSelectedMetric}
-            />
+            <div>
+              {isChartType ? (
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    Select up to 3 metrics to display on your {selectedVisualization} chart
+                  </p>
+                  <MetricSelector
+                    selectedMetric={null}
+                    onSelect={(metric) => {
+                      if (!selectedMetrics.includes(metric) && selectedMetrics.length < 3) {
+                        setSelectedMetrics([...selectedMetrics, metric])
+                      }
+                    }}
+                  />
+                  {selectedMetrics.length > 0 && (
+                    <div className="space-y-2">
+                      <Label>Selected Metrics ({selectedMetrics.length}/3)</Label>
+                      <div className="space-y-2">
+                        {selectedMetrics.map((metric) => (
+                          <div key={metric} className="flex items-center justify-between p-2 bg-muted rounded-md">
+                            <span className="text-sm">{METRICS_REGISTRY[metric]?.name || metric}</span>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setSelectedMetrics(selectedMetrics.filter(m => m !== metric))}
+                            >
+                              Remove
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <MetricSelector
+                  selectedMetric={selectedMetric}
+                  onSelect={setSelectedMetric}
+                />
+              )}
+            </div>
           )}
 
           {/* Step 3: Widget Options */}
@@ -176,7 +230,11 @@ export function AddWidgetModal({ open, onOpenChange, onAddWidget }: AddWidgetMod
                 <Label htmlFor="widget-title">Widget Title</Label>
                 <Input
                   id="widget-title"
-                  placeholder={selectedMetric ? METRICS_REGISTRY[selectedMetric]?.name : `New ${visualizationTypes.find(v => v.id === selectedVisualization)?.name}`}
+                  placeholder={
+                    isChartType 
+                      ? selectedMetrics.map(m => METRICS_REGISTRY[m]?.name || m).join(' vs ')
+                      : (selectedMetric ? METRICS_REGISTRY[selectedMetric]?.name : `New ${visualizationTypes.find(v => v.id === selectedVisualization)?.name}`)
+                  }
                   value={widgetTitle}
                   onChange={(e) => setWidgetTitle(e.target.value)}
                   className="mt-2"

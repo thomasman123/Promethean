@@ -6,16 +6,17 @@ import { useDashboard } from "@/lib/dashboard-context"
 import { format } from "date-fns"
 
 interface MetricWidgetProps {
-  metric: string
+  metric?: string // For KPI widgets
+  metrics?: string[] // For chart widgets
   type: "kpi" | "bar" | "line" | "area"
 }
 
-export function MetricWidget({ metric, type }: MetricWidgetProps) {
+export function MetricWidget({ metric, metrics, type }: MetricWidgetProps) {
   const [value, setValue] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const { selectedAccountId, dateRange } = useDashboard()
   
-  const metricInfo = METRICS_REGISTRY[metric]
+  const metricInfo = metric ? METRICS_REGISTRY[metric] : null
 
   useEffect(() => {
     if (selectedAccountId && metric && dateRange.from && dateRange.to) {
@@ -97,19 +98,19 @@ export function MetricWidget({ metric, type }: MetricWidgetProps) {
   }
 
   // Chart types - dynamically import the appropriate chart component
-  if (type === "bar") {
+  if (type === "bar" && metrics) {
     const BarChartWidget = require('./bar-chart-widget').BarChartWidget
-    return <BarChartWidget metric={metric} />
+    return <BarChartWidget metrics={metrics} />
   }
   
-  if (type === "line") {
+  if (type === "line" && metrics) {
     const LineChartWidget = require('./line-chart-widget').LineChartWidget
-    return <LineChartWidget metric={metric} />
+    return <LineChartWidget metrics={metrics} />
   }
   
-  if (type === "area") {
+  if (type === "area" && metrics) {
     const AreaChartWidget = require('./area-chart-widget').AreaChartWidget
-    return <AreaChartWidget metric={metric} />
+    return <AreaChartWidget metrics={metrics} />
   }
   
   // Other chart types placeholder
