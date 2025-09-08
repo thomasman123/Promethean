@@ -96,11 +96,17 @@ export function MetricWidget({ metric, type }: MetricWidgetProps) {
     )
   }
 
-  // Chart types
+  // Chart types - dynamically import the appropriate chart component
+  if (type === "bar") {
+    const BarChartWidget = require('./bar-chart-widget').BarChartWidget
+    return <BarChartWidget metric={metric} />
+  }
+  
+  // Other chart types placeholder
   return (
     <div className="h-full flex items-center justify-center">
       <span className="text-muted-foreground text-sm">
-        {loading ? 'Loading...' : `${metricInfo?.name || metric} chart`}
+        {loading ? 'Loading...' : `${metricInfo?.name || metric} ${type} chart (coming soon)`}
       </span>
     </div>
   )
