@@ -58,7 +58,7 @@ export function BarChartWidget({ metric }: BarChartWidgetProps) {
               end: format(dateRange.to, 'yyyy-MM-dd')
             }
           },
-          breakdownType: 'time'
+          vizType: 'bar' // This tells the metrics engine to return time series data
         })
       })
 
