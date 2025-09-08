@@ -42,10 +42,11 @@ interface View {
 interface ViewsManagerProps {
   accountId: string
   currentUserId: string
+  currentViewId?: string
   onViewChange: (viewId: string) => void
 }
 
-export function ViewsManager({ accountId, currentUserId, onViewChange }: ViewsManagerProps) {
+export function ViewsManager({ accountId, currentUserId, currentViewId, onViewChange }: ViewsManagerProps) {
   const [views, setViews] = useState<View[]>([])
   const [currentView, setCurrentView] = useState<View | null>(null)
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
@@ -61,6 +62,16 @@ export function ViewsManager({ accountId, currentUserId, onViewChange }: ViewsMa
     }
   }, [accountId])
 
+  // Sync currentView with currentViewId
+  useEffect(() => {
+    if (currentViewId && views.length > 0) {
+      const view = views.find(v => v.id === currentViewId)
+      if (view) {
+        setCurrentView(view)
+      }
+    }
+  }, [currentViewId, views])
+
   const loadViews = async () => {
     if (!accountId) return
     
@@ -70,11 +81,19 @@ export function ViewsManager({ accountId, currentUserId, onViewChange }: ViewsMa
         const data = await response.json()
         setViews(data.views || [])
         
-        // Set default view if exists
-        const defaultView = data.views?.find((v: View) => v.isDefault)
-        if (defaultView) {
-          setCurrentView(defaultView)
-          onViewChange?.(defaultView.id)
+        // If there's a currentViewId, find and set that view
+        if (currentViewId) {
+          const view = data.views?.find((v: View) => v.id === currentViewId)
+          if (view) {
+            setCurrentView(view)
+          }
+        } else {
+          // Otherwise set default view if exists
+          const defaultView = data.views?.find((v: View) => v.isDefault)
+          if (defaultView) {
+            setCurrentView(defaultView)
+            onViewChange?.(defaultView.id)
+          }
         }
       }
     } catch (error) {
@@ -211,14 +230,20 @@ export function ViewsManager({ accountId, currentUserId, onViewChange }: ViewsMa
               {scopeViews.map((view) => (
                 <div
                   key={view.id}
-                  className="flex items-center justify-between px-2 py-1 hover:bg-accent rounded-xl"
+                  className={cn(
+                    "flex items-center justify-between px-2 py-1 hover:bg-accent rounded-xl",
+                    currentView?.id === view.id && "bg-accent/50"
+                  )}
                 >
                   <button
                     onClick={() => handleSelectView(view.id)}
                     className="flex items-center gap-2 flex-1 text-left"
                   >
                     {getScopeIcon(view.scope)}
-                    <span className="text-sm">{view.name}</span>
+                    <span className={cn(
+                      "text-sm",
+                      currentView?.id === view.id && "font-semibold"
+                    )}>{view.name}</span>
                   </button>
                   {view.createdBy === currentUserId && (
                     <div className="flex items-center gap-1">

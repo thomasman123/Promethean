@@ -47,7 +47,7 @@ export function TopBar({ onAddWidget }: TopBarProps) {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
-  const { dateRange, setDateRange, selectedAccountId, setSelectedAccountId, setCurrentViewId } = useDashboard()
+  const { dateRange, setDateRange, selectedAccountId, setSelectedAccountId, setCurrentViewId, currentViewId } = useDashboard()
 
   // Show date/view controls only on dashboard and data-view pages
   const showDashboardControls = pathname === "/dashboard" || pathname === "/data-view"
@@ -349,11 +349,12 @@ export function TopBar({ onAddWidget }: TopBarProps) {
             {/* Show ViewsManager and Add Widget button on dashboard page */}
             {pathname === "/dashboard" && (
               <>
-              <ViewsManager
-                accountId={selectedAccountId}
-                currentUserId={currentUserId}
-                onViewChange={handleViewChange}
-              />
+                <ViewsManager
+                  accountId={selectedAccountId}
+                  currentUserId={currentUserId}
+                  currentViewId={currentViewId}
+                  onViewChange={handleViewChange}
+                />
                 <Button
                   variant="outline"
                   size="sm"
