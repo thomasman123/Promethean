@@ -29,37 +29,37 @@ const defaultWidgets: WidgetConfig[] = [
 // Simplified layouts - focus on consistency
 const defaultLayouts = {
   lg: [
-    { i: "widget-1", x: 0, y: 0, w: 1, h: 2 },
-    { i: "widget-2", x: 1, y: 0, w: 1, h: 2 },
-    { i: "widget-3", x: 2, y: 0, w: 1, h: 2 },
-    { i: "widget-4", x: 3, y: 0, w: 1, h: 2 },
-    { i: "widget-5", x: 0, y: 2, w: 2, h: 2 }, // Chart widget
-    { i: "widget-6", x: 2, y: 2, w: 2, h: 2 }, // Chart widget
-    { i: "widget-7", x: 4, y: 0, w: 1, h: 2 },
-    { i: "widget-8", x: 5, y: 0, w: 1, h: 2 },
-    { i: "widget-9", x: 4, y: 2, w: 2, h: 2 }
+    { i: "widget-1", x: 0, y: 0, w: 1, h: 1 },
+    { i: "widget-2", x: 1, y: 0, w: 1, h: 1 },
+    { i: "widget-3", x: 2, y: 0, w: 1, h: 1 },
+    { i: "widget-4", x: 3, y: 0, w: 1, h: 1 },
+    { i: "widget-5", x: 0, y: 1, w: 2, h: 2, minW: 2, minH: 2 }, // Chart widget with min size
+    { i: "widget-6", x: 2, y: 1, w: 2, h: 2, minW: 2, minH: 2 }, // Chart widget with min size
+    { i: "widget-7", x: 4, y: 0, w: 1, h: 1 },
+    { i: "widget-8", x: 5, y: 0, w: 1, h: 1 },
+    { i: "widget-9", x: 4, y: 1, w: 2, h: 1 }
   ],
   md: [
-    { i: "widget-1", x: 0, y: 0, w: 1, h: 2 },
-    { i: "widget-2", x: 1, y: 0, w: 1, h: 2 },
-    { i: "widget-3", x: 2, y: 0, w: 1, h: 2 },
-    { i: "widget-4", x: 3, y: 0, w: 1, h: 2 },
-    { i: "widget-5", x: 0, y: 2, w: 2, h: 2 },
-    { i: "widget-6", x: 2, y: 2, w: 2, h: 2 },
-    { i: "widget-7", x: 0, y: 4, w: 1, h: 2 },
-    { i: "widget-8", x: 1, y: 4, w: 1, h: 2 },
-    { i: "widget-9", x: 2, y: 4, w: 2, h: 2 },
+    { i: "widget-1", x: 0, y: 0, w: 1, h: 1 },
+    { i: "widget-2", x: 1, y: 0, w: 1, h: 1 },
+    { i: "widget-3", x: 2, y: 0, w: 1, h: 1 },
+    { i: "widget-4", x: 3, y: 0, w: 1, h: 1 },
+    { i: "widget-5", x: 0, y: 1, w: 2, h: 2, minW: 2, minH: 2 },
+    { i: "widget-6", x: 2, y: 1, w: 2, h: 2, minW: 2, minH: 2 },
+    { i: "widget-7", x: 0, y: 3, w: 1, h: 1 },
+    { i: "widget-8", x: 1, y: 3, w: 1, h: 1 },
+    { i: "widget-9", x: 2, y: 3, w: 2, h: 1 },
   ],
   sm: [
-    { i: "widget-1", x: 0, y: 0, w: 2, h: 2 },
-    { i: "widget-2", x: 0, y: 2, w: 2, h: 2 },
-    { i: "widget-3", x: 0, y: 4, w: 2, h: 2 },
-    { i: "widget-4", x: 0, y: 6, w: 2, h: 2 },
-    { i: "widget-5", x: 0, y: 8, w: 2, h: 2 },
-    { i: "widget-6", x: 0, y: 10, w: 2, h: 2 },
-    { i: "widget-7", x: 0, y: 12, w: 2, h: 2 },
-    { i: "widget-8", x: 0, y: 14, w: 2, h: 2 },
-    { i: "widget-9", x: 0, y: 16, w: 2, h: 2 },
+    { i: "widget-1", x: 0, y: 0, w: 2, h: 1 },
+    { i: "widget-2", x: 0, y: 1, w: 2, h: 1 },
+    { i: "widget-3", x: 0, y: 2, w: 2, h: 1 },
+    { i: "widget-4", x: 0, y: 3, w: 2, h: 1 },
+    { i: "widget-5", x: 0, y: 4, w: 2, h: 2, minW: 2, minH: 2 },
+    { i: "widget-6", x: 0, y: 6, w: 2, h: 2, minW: 2, minH: 2 },
+    { i: "widget-7", x: 0, y: 8, w: 2, h: 1 },
+    { i: "widget-8", x: 0, y: 9, w: 2, h: 1 },
+    { i: "widget-9", x: 0, y: 10, w: 2, h: 1 },
   ],
 }
 
@@ -114,8 +114,29 @@ export default function DashboardPage() {
             setLayouts(defaultLayouts)
           } else if (viewData.widgets && viewData.layouts) {
             // New format - widgets and layouts
-            setWidgets(viewData.widgets)
-            setLayouts(viewData.layouts)
+            const loadedWidgets = viewData.widgets
+            let loadedLayouts = viewData.layouts
+            
+            // Apply minimum size constraints to chart widgets in loaded layouts
+            Object.keys(loadedLayouts).forEach((breakpoint) => {
+              loadedLayouts[breakpoint] = loadedLayouts[breakpoint].map((item: any) => {
+                const widget = loadedWidgets.find((w: WidgetConfig) => w.id === item.i)
+                if (widget && ['bar', 'line', 'area'].includes(widget.type)) {
+                  // Enforce minimum 2x2 size for charts
+                  return {
+                    ...item,
+                    w: Math.max(item.w, 2),
+                    h: Math.max(item.h, 2),
+                    minW: 2,
+                    minH: 2
+                  }
+                }
+                return item
+              })
+            })
+            
+            setWidgets(loadedWidgets)
+            setLayouts(loadedLayouts)
           } else {
             // No widgets yet
             setWidgets(defaultWidgets)
@@ -167,9 +188,29 @@ export default function DashboardPage() {
   }, [currentViewId, widgets, layouts])
 
   const handleLayoutChange = useCallback((currentLayout: any, allLayouts: any) => {
-    setLayouts(allLayouts)
-    saveViewData(undefined, allLayouts)
-  }, [saveViewData])
+    // Apply minimum size constraints to chart widgets
+    const constrainedLayouts = { ...allLayouts }
+    
+    Object.keys(constrainedLayouts).forEach((breakpoint) => {
+      constrainedLayouts[breakpoint] = constrainedLayouts[breakpoint].map((item: any) => {
+        const widget = widgets.find(w => w.id === item.i)
+        if (widget && ['bar', 'line', 'area'].includes(widget.type)) {
+          // Enforce minimum 2x2 size for charts
+          return {
+            ...item,
+            w: Math.max(item.w, 2),
+            h: Math.max(item.h, 2),
+            minW: 2,
+            minH: 2
+          }
+        }
+        return item
+      })
+    })
+    
+    setLayouts(constrainedLayouts)
+    saveViewData(undefined, constrainedLayouts)
+  }, [saveViewData, widgets])
 
   const handleAddWidget = useCallback((widget: WidgetConfig) => {
     // Add the new widget to the widgets array
@@ -192,22 +233,25 @@ export default function DashboardPage() {
     const getDefaultSize = (type: string) => {
       switch (type) {
         case "kpi":
-          return { w: 1, h: 2 }
+          return { w: 1, h: 1 } // 1x1 for KPI widgets
         case "bar":
         case "line":
         case "area":
-          return { w: 2, h: 2 } // 2 columns wide, 2 rows tall (same height as KPI)
+          return { w: 2, h: 2 } // 2x2 minimum for charts
         default:
-          return { w: 1, h: 2 }
+          return { w: 1, h: 1 }
       }
     }
     
     const size = getDefaultSize(widget.type)
     
-    // Add to all breakpoint layouts
-    newLayouts.lg.push({ i: widget.id, x: position.x, y: position.y, ...size })
-    newLayouts.md.push({ i: widget.id, x: 0, y: position.y, ...size })
-    newLayouts.sm.push({ i: widget.id, x: 0, y: position.y, w: 2, h: size.h })
+    // Add to all breakpoint layouts with minimum size constraints for charts
+    const isChart = ['bar', 'line', 'area'].includes(widget.type)
+    const minConstraints = isChart ? { minW: 2, minH: 2 } : {}
+    
+    newLayouts.lg.push({ i: widget.id, x: position.x, y: position.y, ...size, ...minConstraints })
+    newLayouts.md.push({ i: widget.id, x: 0, y: position.y, ...size, ...minConstraints })
+    newLayouts.sm.push({ i: widget.id, x: 0, y: position.y, w: 2, h: isChart ? 2 : 1, ...minConstraints })
     
     setLayouts(newLayouts)
     saveViewData(newWidgets, newLayouts)
@@ -286,7 +330,7 @@ export default function DashboardPage() {
               onLayoutChange={handleLayoutChange}
               breakpoints={{ lg: 1200, md: 768, sm: 0 }}
               cols={{ lg: 6, md: 4, sm: 2 }}
-              rowHeight={120}
+              rowHeight={60}
               margin={[16, 16]}
               containerPadding={[0, 0]}
               resizeHandles={["se"]}
