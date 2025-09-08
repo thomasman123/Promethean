@@ -108,10 +108,45 @@ export default function DashboardPage() {
         if (currentView && currentView.widgets) {
           // Load widgets and layouts from the view
           const viewData = currentView.widgets as ViewData
+          
+          // One-time fix: Reset all widget sizes to proper minimums
+          const resetKey = `dashboardReset_${selectedAccountId}_${currentViewId}_v2`
+          const hasReset = localStorage.getItem(resetKey)
+          
+          if (!hasReset) {
+            // Force reset to default layouts with proper sizes
+            localStorage.setItem(resetKey, 'true')
+            const resetLayouts = JSON.parse(JSON.stringify(defaultLayouts))
+            setWidgets(defaultWidgets)
+            setLayouts(resetLayouts)
+            saveViewData(defaultWidgets, resetLayouts)
+            return
+          }
           if (Array.isArray(viewData)) {
             // Old format - just widgets array
-            setWidgets(viewData)
-            setLayouts(defaultLayouts)
+            const loadedWidgets = viewData
+            let loadedLayouts = JSON.parse(JSON.stringify(defaultLayouts))
+            
+            // Apply minimum size constraints to chart widgets
+            Object.keys(loadedLayouts).forEach((breakpoint) => {
+              loadedLayouts[breakpoint] = loadedLayouts[breakpoint].map((item: any) => {
+                const widget = loadedWidgets.find((w: WidgetConfig) => w.id === item.i)
+                if (widget && ['bar', 'line', 'area'].includes(widget.type)) {
+                  // Enforce minimum 2x2 size for charts
+                  return {
+                    ...item,
+                    w: Math.max(item.w, 2),
+                    h: Math.max(item.h, 2),
+                    minW: 2,
+                    minH: 2
+                  }
+                }
+                return item
+              })
+            })
+            
+            setWidgets(loadedWidgets)
+            setLayouts(loadedLayouts)
           } else if (viewData.widgets && viewData.layouts) {
             // New format - widgets and layouts
             const loadedWidgets = viewData.widgets
@@ -330,7 +365,7 @@ export default function DashboardPage() {
               onLayoutChange={handleLayoutChange}
               breakpoints={{ lg: 1200, md: 768, sm: 0 }}
               cols={{ lg: 6, md: 4, sm: 2 }}
-              rowHeight={60}
+              rowHeight={120}
               margin={[16, 16]}
               containerPadding={[0, 0]}
               resizeHandles={["se"]}
