@@ -124,6 +124,45 @@ export function BarChartWidget({ metrics }: BarChartWidgetProps) {
         }))
       }
 
+      // Aggregate data for weekly/monthly
+      const aggregatedMetricsData = metricsData.map(({ metric, data }) => {
+        if (aggregationType === 'daily') {
+          return { metric, data }
+        }
+
+        // Aggregate data for weekly/monthly
+        const aggregatedData = datePoints.map(point => {
+          if (aggregationType === 'weekly') {
+            const weekStart = parseISO(point.date)
+            const weekEnd = endOfWeek(weekStart, { weekStartsOn: 0 })
+            
+            const weekData = data.filter(d => {
+              const date = parseISO(d.date)
+              return date >= weekStart && date <= weekEnd && 
+                     date >= dateRange.from && date <= dateRange.to
+            })
+            
+            const sum = weekData.reduce((acc, d) => acc + d.value, 0)
+            return { date: point.date, value: sum }
+          } else {
+            // Monthly aggregation
+            const monthStart = parseISO(point.date)
+            const monthEnd = endOfMonth(monthStart)
+            
+            const monthData = data.filter(d => {
+              const date = parseISO(d.date)
+              return date >= monthStart && date <= monthEnd && 
+                     date >= dateRange.from && date <= dateRange.to
+            })
+            
+            const sum = monthData.reduce((acc, d) => acc + d.value, 0)
+            return { date: point.date, value: sum }
+          }
+        })
+
+        return { metric, data: aggregatedData }
+      })
+
       // Combine data from all metrics
       const combinedData = datePoints.map(point => {
         const dataPoint: Record<string, any> = {
@@ -131,7 +170,7 @@ export function BarChartWidget({ metrics }: BarChartWidgetProps) {
           label: point.label
         }
 
-        metricsData.forEach(({ metric, data }) => {
+        aggregatedMetricsData.forEach(({ metric, data }) => {
           const metricData = data.find(d => d.date === point.date)
           dataPoint[metric] = metricData?.value || 0
         })
