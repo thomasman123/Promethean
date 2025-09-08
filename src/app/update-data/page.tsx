@@ -351,7 +351,7 @@ export default function UpdateDataPage() {
       <TopBar />
       
       <main className="pt-16 h-screen">
-        <div className="h-full max-w-7xl mx-auto p-6">
+        <div className="h-full p-6">
           {/* Stats Overview */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
             <Card>

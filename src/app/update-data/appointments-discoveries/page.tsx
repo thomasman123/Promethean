@@ -268,7 +268,7 @@ export default function AppointmentsDiscoveriesPage() {
       <TopBar />
       
       <main className="pt-16 h-screen">
-        <div className="h-full max-w-7xl mx-auto p-6">
+        <div className="h-full p-6">
           {/* Search Bar */}
           <div className="mb-6">
             <div className="relative">
