@@ -15,16 +15,18 @@ interface WidgetProps {
 export function Widget({ title, children, className, onRemove }: WidgetProps) {
   return (
     <div className={cn(
-      "h-full rounded-lg bg-muted/50 p-6",
+      "h-full rounded-lg bg-muted/50",
       "border border-border/30",
       "backdrop-blur-sm",
-      "relative group",
+      "relative group flex flex-col",
       className
     )}>
       {title && (
-        <h3 className="text-sm font-medium text-muted-foreground mb-4">
-          {title}
-        </h3>
+        <div className="px-4 pt-4 pb-2">
+          <h3 className="text-sm font-medium text-muted-foreground">
+            {title}
+          </h3>
+        </div>
       )}
       
       {onRemove && (
@@ -41,7 +43,7 @@ export function Widget({ title, children, className, onRemove }: WidgetProps) {
         </Button>
       )}
       
-      <div className="h-full">
+      <div className="flex-1 px-4 pb-4">
         {children}
       </div>
     </div>
