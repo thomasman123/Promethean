@@ -9,7 +9,6 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   Table,
   TableBody,
@@ -28,9 +27,10 @@ import {
 import { createBrowserClient } from "@supabase/ssr"
 import { Database } from "@/lib/database.types"
 import { useToast } from "@/hooks/use-toast"
-import { Search, Filter, Edit, Calendar, Building2, Users } from "lucide-react"
+import { Search, Edit, Calendar } from "lucide-react"
 import { useImpersonation } from "@/hooks/use-impersonation"
 import { useEffectiveUser } from "@/hooks/use-effective-user"
+import { useDashboard } from "@/lib/dashboard-context"
 import { cn } from "@/lib/utils"
 
 interface AppointmentData {
@@ -72,21 +72,11 @@ interface DiscoveryData {
   data_filled: boolean
 }
 
-interface Account {
-  id: string
-  name: string
-  description: string | null
-}
-
 export default function AppointmentsDiscoveriesPage() {
   const [appointments, setAppointments] = useState<AppointmentData[]>([])
   const [discoveries, setDiscoveries] = useState<DiscoveryData[]>([])
-  const [accounts, setAccounts] = useState<Account[]>([])
   const [loading, setLoading] = useState(true)
-  const [accountsLoading, setAccountsLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
-  const [selectedAccount, setSelectedAccount] = useState<string>("all")
-  const [userFilter, setUserFilter] = useState<"all" | "owned" | "setter" | "sales_rep">("owned")
   const [selectedAppointment, setSelectedAppointment] = useState<AppointmentData | null>(null)
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [editForm, setEditForm] = useState<any>({})
@@ -94,6 +84,7 @@ export default function AppointmentsDiscoveriesPage() {
   const { toast } = useToast()
   const { isImpersonating } = useImpersonation()
   const { user: effectiveUser, loading: userLoading } = useEffectiveUser()
+  const { selectedAccountId } = useDashboard()
 
   const supabase = createBrowserClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -101,14 +92,10 @@ export default function AppointmentsDiscoveriesPage() {
   )
 
   useEffect(() => {
-    fetchAccounts()
-  }, [])
-
-  useEffect(() => {
-    if (effectiveUser && !accountsLoading) {
+    if (effectiveUser) {
       fetchData()
     }
-  }, [effectiveUser, activeTab, selectedAccount, userFilter, accountsLoading])
+  }, [effectiveUser, activeTab, selectedAccountId])
 
   useEffect(() => {
     // Listen for tab change from topbar
@@ -122,23 +109,6 @@ export default function AppointmentsDiscoveriesPage() {
     }
   }, [])
 
-  const fetchAccounts = async () => {
-    try {
-      const response = await fetch('/api/accounts-simple')
-      const data = await response.json()
-      setAccounts(data.accounts || [])
-    } catch (error) {
-      console.error('Error fetching accounts:', error)
-      toast({
-        title: "Error",
-        description: "Failed to load accounts",
-        variant: "destructive"
-      })
-    } finally {
-      setAccountsLoading(false)
-    }
-  }
-
   const fetchData = async () => {
     if (!effectiveUser) return
     
@@ -146,16 +116,14 @@ export default function AppointmentsDiscoveriesPage() {
     try {
       console.log('🔍 [appointments-discoveries] Fetching data with filters:', {
         effectiveUser: effectiveUser.id,
-        selectedAccount,
-        userFilter,
+        selectedAccountId,
         activeTab
       })
 
       // Create API endpoint call that handles impersonation properly
       const queryParams = new URLSearchParams({
         user_id: effectiveUser.id,
-        account_id: selectedAccount === 'all' ? '' : selectedAccount,
-        user_filter: userFilter,
+        account_id: selectedAccountId || '',
         tab: activeTab
       })
 
@@ -302,25 +270,13 @@ export default function AppointmentsDiscoveriesPage() {
     }
   }
 
-  const getUserRoleBadge = (appointment: AppointmentData | DiscoveryData) => {
-    const roles = []
-    if (appointment.setter_user_id === effectiveUser?.id) roles.push('Setter')
-    if (appointment.sales_rep_user_id === effectiveUser?.id) roles.push('Sales Rep')
-    
-    return roles.map((role, index) => (
-      <Badge key={role} variant="outline" className="text-xs">
-        {role}
-      </Badge>
-    ))
-  }
-
   return (
     <div className="min-h-screen bg-background">
       <TopBar />
       
       <main className={cn("h-screen", isImpersonating ? "pt-[104px]" : "pt-16")}>
         <div className="h-full p-6">
-          {userLoading || accountsLoading ? (
+          {userLoading ? (
             <div className="flex items-center justify-center h-full">
               <div className="text-center">
                 <div className="text-lg text-muted-foreground">Loading...</div>
@@ -328,47 +284,8 @@ export default function AppointmentsDiscoveriesPage() {
             </div>
           ) : (
             <>
-              {/* Filters */}
-              <div className="mb-6 space-y-4">
-                <div className="flex flex-wrap gap-4">
-                  {/* Account Filter */}
-                  <div className="flex items-center space-x-2">
-                    <Building2 className="h-4 w-4 text-muted-foreground" />
-                    <Label htmlFor="account-select" className="text-sm font-medium">Account:</Label>
-                    <Select value={selectedAccount} onValueChange={setSelectedAccount}>
-                      <SelectTrigger className="w-48">
-                        <SelectValue placeholder="Select account" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Accounts</SelectItem>
-                        {accounts.map((account) => (
-                          <SelectItem key={account.id} value={account.id}>
-                            {account.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* User Filter */}
-                  <div className="flex items-center space-x-2">
-                    <Users className="h-4 w-4 text-muted-foreground" />
-                    <Label htmlFor="user-filter" className="text-sm font-medium">Show:</Label>
-                    <Select value={userFilter} onValueChange={(value: any) => setUserFilter(value)}>
-                      <SelectTrigger className="w-48">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="owned">My Records</SelectItem>
-                        <SelectItem value="setter">Where I'm Setter</SelectItem>
-                        <SelectItem value="sales_rep">Where I'm Sales Rep</SelectItem>
-                        <SelectItem value="all">All Records</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                {/* Search Bar */}
+              {/* Search Bar */}
+              <div className="mb-6">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                   <Input
@@ -380,11 +297,22 @@ export default function AppointmentsDiscoveriesPage() {
                 </div>
               </div>
 
+              {/* Info Message */}
+              <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-sm text-blue-800">
+                  {activeTab === 'appointments' 
+                    ? 'Showing appointments where you are the sales representative'
+                    : 'Showing discoveries where you are the setter'
+                  }
+                  {selectedAccountId && ' • Filtered by selected account'}
+                </p>
+              </div>
+
               {/* Content based on active tab */}
               {activeTab === "appointments" ? (
                 <Card>
                   <CardHeader>
-                    <CardTitle>Appointments ({filteredAppointments.length})</CardTitle>
+                    <CardTitle>My Appointments ({filteredAppointments.length})</CardTitle>
                   </CardHeader>
                   <CardContent className="p-0">
                     {loading ? (
@@ -393,7 +321,7 @@ export default function AppointmentsDiscoveriesPage() {
                       </div>
                     ) : filteredAppointments.length === 0 ? (
                       <div className="p-8 text-center text-muted-foreground">
-                        No appointments found with current filters.
+                        No appointments found where you are the sales representative.
                       </div>
                     ) : (
                       <Table>
@@ -403,8 +331,6 @@ export default function AppointmentsDiscoveriesPage() {
                             <TableHead>Account</TableHead>
                             <TableHead>Date</TableHead>
                             <TableHead>Setter</TableHead>
-                            <TableHead>Sales Rep</TableHead>
-                            <TableHead>My Role</TableHead>
                             <TableHead>Call Outcome</TableHead>
                             <TableHead>Show Outcome</TableHead>
                             <TableHead>Cash</TableHead>
@@ -431,12 +357,6 @@ export default function AppointmentsDiscoveriesPage() {
                                 </div>
                               </TableCell>
                               <TableCell>{apt.setter}</TableCell>
-                              <TableCell>{apt.sales_rep || '-'}</TableCell>
-                              <TableCell>
-                                <div className="flex gap-1">
-                                  {getUserRoleBadge(apt)}
-                                </div>
-                              </TableCell>
                               <TableCell>{getCallOutcomeBadge(apt.call_outcome)}</TableCell>
                               <TableCell>{getShowOutcomeBadge(apt.show_outcome)}</TableCell>
                               <TableCell>
@@ -468,7 +388,7 @@ export default function AppointmentsDiscoveriesPage() {
               ) : (
                 <Card>
                   <CardHeader>
-                    <CardTitle>Discoveries ({filteredDiscoveries.length})</CardTitle>
+                    <CardTitle>My Discoveries ({filteredDiscoveries.length})</CardTitle>
                   </CardHeader>
                   <CardContent className="p-0">
                     {loading ? (
@@ -477,7 +397,7 @@ export default function AppointmentsDiscoveriesPage() {
                       </div>
                     ) : filteredDiscoveries.length === 0 ? (
                       <div className="p-8 text-center text-muted-foreground">
-                        No discoveries found with current filters.
+                        No discoveries found where you are the setter.
                       </div>
                     ) : (
                       <Table>
@@ -486,9 +406,7 @@ export default function AppointmentsDiscoveriesPage() {
                             <TableHead>Contact</TableHead>
                             <TableHead>Account</TableHead>
                             <TableHead>Date</TableHead>
-                            <TableHead>Setter</TableHead>
                             <TableHead>Sales Rep</TableHead>
-                            <TableHead>My Role</TableHead>
                             <TableHead>Call Outcome</TableHead>
                             <TableHead>Show Outcome</TableHead>
                             <TableHead>Lead Quality</TableHead>
@@ -513,13 +431,7 @@ export default function AppointmentsDiscoveriesPage() {
                                   {new Date(disc.date_booked_for).toLocaleDateString()}
                                 </div>
                               </TableCell>
-                              <TableCell>{disc.setter}</TableCell>
                               <TableCell>{disc.sales_rep || '-'}</TableCell>
-                              <TableCell>
-                                <div className="flex gap-1">
-                                  {getUserRoleBadge(disc)}
-                                </div>
-                              </TableCell>
                               <TableCell>{getCallOutcomeBadge(disc.call_outcome)}</TableCell>
                               <TableCell>{disc.show_outcome || '-'}</TableCell>
                               <TableCell>
