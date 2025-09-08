@@ -33,11 +33,11 @@ const defaultLayouts = {
     { i: "widget-2", x: 1, y: 0, w: 1, h: 2 },
     { i: "widget-3", x: 2, y: 0, w: 1, h: 2 },
     { i: "widget-4", x: 3, y: 0, w: 1, h: 2 },
-    { i: "widget-5", x: 0, y: 2, w: 3, h: 4 }, // Increased size for chart
-    { i: "widget-6", x: 3, y: 2, w: 3, h: 4 }, // Increased size for chart
+    { i: "widget-5", x: 0, y: 2, w: 2, h: 3 }, // Chart widget
+    { i: "widget-6", x: 2, y: 2, w: 2, h: 3 }, // Chart widget
     { i: "widget-7", x: 4, y: 0, w: 1, h: 2 },
     { i: "widget-8", x: 5, y: 0, w: 1, h: 2 },
-    { i: "widget-9", x: 0, y: 6, w: 2, h: 2 }, // Moved down due to larger charts
+    { i: "widget-9", x: 4, y: 2, w: 2, h: 2 }
   ],
   md: [
     { i: "widget-1", x: 0, y: 0, w: 1, h: 2 },
@@ -196,7 +196,7 @@ export default function DashboardPage() {
         case "bar":
         case "line":
         case "area":
-          return { w: 3, h: 4 } // Increased size for charts
+          return { w: 2, h: 3 } // One column wider and one row taller than KPI
         default:
           return { w: 1, h: 2 }
       }

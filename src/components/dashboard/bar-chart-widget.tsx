@@ -122,7 +122,7 @@ export function BarChartWidget({ metric }: BarChartWidgetProps) {
               return {
                 date: format(weekStart, 'yyyy-MM-dd'),
                 value: weekTotal,
-                label: `Week of ${format(weekStart, 'MMM dd')}`
+                label: `Week ${format(weekStart, 'w')}`
               }
             })
           } else {
