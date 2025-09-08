@@ -64,7 +64,7 @@ export function Widget({ title, children, className, onRemove, reducedPadding }:
       {/* Content */}
       <div className={cn(
         "flex-1 min-h-0 overflow-hidden",
-        reducedPadding ? "p-2" : "p-4"
+        reducedPadding ? "p-1" : "p-4"
       )}>
         {children}
       </div>

@@ -102,6 +102,11 @@ export function MetricWidget({ metric, type }: MetricWidgetProps) {
     return <BarChartWidget metric={metric} />
   }
   
+  if (type === "line") {
+    const LineChartWidget = require('./line-chart-widget').LineChartWidget
+    return <LineChartWidget metric={metric} />
+  }
+  
   // Other chart types placeholder
   return (
     <div className="h-full flex items-center justify-center">
