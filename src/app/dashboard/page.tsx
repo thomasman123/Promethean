@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect, useRef } from "react"
 import { Responsive, WidthProvider } from "react-grid-layout"
 import { TopBar } from "@/components/layout/topbar"
 import { Widget } from "@/components/dashboard/widget"
+import { MetricWidget } from "@/components/dashboard/metric-widget"
 import { WidgetConfig } from "@/components/dashboard/add-widget-modal"
 import { useDashboard } from "@/lib/dashboard-context"
 import { METRICS_REGISTRY } from "@/lib/metrics/registry"
@@ -214,22 +215,17 @@ export default function DashboardPage() {
   }, [widgets, layouts, saveViewData])
 
   const renderWidgetContent = (widget: WidgetConfig) => {
-    // Get metric info if available
-    const metricInfo = widget.metric ? METRICS_REGISTRY[widget.metric] : null
+    // If widget has a metric, use MetricWidget component
+    if (widget.metric) {
+      return <MetricWidget metric={widget.metric} type={widget.type} />
+    }
     
-    // Sample content based on widget type
+    // Otherwise render placeholder content
     switch (widget.type) {
       case "kpi":
         return (
           <div className="flex flex-col items-center justify-center h-full">
-            <span className="text-4xl font-bold">
-              {metricInfo && metricInfo.unit === 'currency' && '$'}
-              --
-              {metricInfo && metricInfo.unit === 'percent' && '%'}
-            </span>
-            <span className="text-sm text-muted-foreground mt-2">
-              {metricInfo ? metricInfo.description : 'No data'}
-            </span>
+            <span className="text-4xl font-bold">--</span>
           </div>
         )
       case "bar":
@@ -237,9 +233,7 @@ export default function DashboardPage() {
       case "area":
         return (
           <div className="flex items-center justify-center h-full">
-            <span className="text-muted-foreground">
-              {metricInfo ? `${metricInfo.name} chart visualization` : 'Chart visualization goes here'}
-            </span>
+            <span className="text-muted-foreground">Chart visualization goes here</span>
           </div>
         )
       default:
