@@ -99,12 +99,25 @@ export async function GET() {
       console.log('🔍 [accounts-simple] Admin accounts:', accounts.map(a => ({ id: a.id, name: a.name })))
     } else {
       console.log('🔍 [accounts-simple] Loading user-specific accounts...')
+      
+      // First, let's check if the user has any account_access records at all
+      console.log('🔍 [accounts-simple] Checking raw account_access records...')
+      const { data: rawAccessData, error: rawAccessError } = await supabase
+        .from('account_access')
+        .select('*')
+        .eq('user_id', effectiveUserId)
+        .eq('is_active', true)
+      
+      console.log('🔍 [accounts-simple] Raw account_access records:', rawAccessData)
+      console.log('🔍 [accounts-simple] Raw account_access error:', rawAccessError)
+      
       // Non-admin effective user - show only their accounts
       const { data, error } = await supabase
         .from('account_access')
         .select(`
           role,
-          accounts (
+          account_id,
+          accounts!inner (
             id,
             name,
             description,
