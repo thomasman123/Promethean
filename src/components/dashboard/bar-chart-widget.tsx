@@ -210,21 +210,21 @@ export function BarChartWidget({ metric }: BarChartWidgetProps) {
         accessibilityLayer
         data={data}
         margin={{
-          top: 20,
-          right: 12,
-          left: 12,
-          bottom: 60, // Increased for rotated labels
+          top: 10,
+          right: 5,
+          left: 5,
+          bottom: 45, // For rotated labels
         }}
       >
         <CartesianGrid vertical={false} />
         <XAxis
           dataKey="label"
           tickLine={false}
-          tickMargin={10}
+          tickMargin={8}
           axisLine={false}
           angle={data.length > 7 ? -45 : 0}
           textAnchor={data.length > 7 ? "end" : "middle"}
-          height={data.length > 7 ? 80 : 30}
+          height={data.length > 7 ? 60 : 30}
         />
         <YAxis
           tickLine={false}
@@ -251,7 +251,7 @@ export function BarChartWidget({ metric }: BarChartWidgetProps) {
           {data.length <= 20 && (
             <LabelList
               position="top"
-              offset={12}
+              offset={8}
               className="fill-foreground"
               fontSize={11}
               formatter={(value) => formatValue(Number(value))}

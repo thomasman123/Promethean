@@ -16,9 +16,10 @@ interface WidgetProps {
   children: ReactNode
   className?: string
   onRemove?: () => void
+  reducedPadding?: boolean
 }
 
-export function Widget({ title, children, className, onRemove }: WidgetProps) {
+export function Widget({ title, children, className, onRemove, reducedPadding }: WidgetProps) {
   return (
     <div className={cn(
       "h-full w-full rounded-lg bg-card border shadow-sm",
@@ -61,7 +62,10 @@ export function Widget({ title, children, className, onRemove }: WidgetProps) {
       </DropdownMenu>
       
       {/* Content */}
-      <div className="flex-1 p-4 min-h-0 overflow-hidden">
+      <div className={cn(
+        "flex-1 min-h-0 overflow-hidden",
+        reducedPadding ? "p-2" : "p-4"
+      )}>
         {children}
       </div>
     </div>

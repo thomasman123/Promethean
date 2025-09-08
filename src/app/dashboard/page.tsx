@@ -379,6 +379,7 @@ export default function DashboardPage() {
                   <Widget 
                     title={widget.title}
                     onRemove={() => handleRemoveWidget(widget.id)}
+                    reducedPadding={['bar', 'line', 'area'].includes(widget.type)}
                   >
                     {renderWidgetContent(widget)}
                   </Widget>
