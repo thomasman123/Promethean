@@ -6,6 +6,7 @@ import { TopBar } from "@/components/layout/topbar"
 import { Widget } from "@/components/dashboard/widget"
 import { WidgetConfig } from "@/components/dashboard/add-widget-modal"
 import { useDashboard } from "@/lib/dashboard-context"
+import { METRICS_REGISTRY } from "@/lib/metrics/registry"
 import "react-grid-layout/css/styles.css"
 import "react-resizable/css/styles.css"
 
@@ -13,15 +14,15 @@ const ResponsiveGridLayout = WidthProvider(Responsive)
 
 // Initial sample widgets
 const initialWidgets: WidgetConfig[] = [
-  { id: "widget-1", type: "kpi", title: "Total Appointments" },
-  { id: "widget-2", type: "kpi", title: "Show Rate" },
-  { id: "widget-3", type: "kpi", title: "Answer Rate" },
-  { id: "widget-4", type: "kpi", title: "Speed to Lead" },
+  { id: "widget-1", type: "kpi", title: "Total Appointments", metric: "total_appointments" },
+  { id: "widget-2", type: "kpi", title: "Show Rate", metric: "show_up_rate" },
+  { id: "widget-3", type: "kpi", title: "Answer Rate", metric: "answers_dials" },
+  { id: "widget-4", type: "kpi", title: "Speed to Lead", metric: "speed_to_lead" },
   { id: "widget-5", type: "line", title: "Performance Overview" },
   { id: "widget-6", type: "area", title: "Recent Activity" },
-  { id: "widget-7", type: "kpi", title: "Revenue" },
+  { id: "widget-7", type: "kpi", title: "Revenue", metric: "cash_collected" },
   { id: "widget-8", type: "kpi", title: "Active Users" },
-  { id: "widget-9", type: "kpi", title: "Conversion Rate" },
+  { id: "widget-9", type: "kpi", title: "Conversion Rate", metric: "appointment_to_sale_rate" },
 ]
 
 // Default layouts for different breakpoints
@@ -112,13 +113,22 @@ export default function DashboardPage() {
   }
 
   const renderWidgetContent = (widget: WidgetConfig) => {
+    // Get metric info if available
+    const metricInfo = widget.metric ? METRICS_REGISTRY[widget.metric] : null
+    
     // Sample content based on widget type
     switch (widget.type) {
       case "kpi":
         return (
           <div className="flex flex-col items-center justify-center h-full">
-            <span className="text-4xl font-bold">--</span>
-            <span className="text-sm text-muted-foreground mt-2">No data</span>
+            <span className="text-4xl font-bold">
+              {metricInfo && metricInfo.unit === 'currency' && '$'}
+              --
+              {metricInfo && metricInfo.unit === 'percent' && '%'}
+            </span>
+            <span className="text-sm text-muted-foreground mt-2">
+              {metricInfo ? metricInfo.description : 'No data'}
+            </span>
           </div>
         )
       case "bar":
@@ -126,7 +136,9 @@ export default function DashboardPage() {
       case "area":
         return (
           <div className="flex items-center justify-center h-full">
-            <span className="text-muted-foreground">Chart visualization goes here</span>
+            <span className="text-muted-foreground">
+              {metricInfo ? `${metricInfo.name} chart visualization` : 'Chart visualization goes here'}
+            </span>
           </div>
         )
       default:

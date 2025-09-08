@@ -21,6 +21,8 @@ import {
   ArrowRight 
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { MetricSelector } from "@/components/dashboard/metric-selector"
+import { METRICS_REGISTRY } from "@/lib/metrics/registry"
 
 interface AddWidgetModalProps {
   open: boolean
@@ -68,11 +70,13 @@ const visualizationTypes = [
 export function AddWidgetModal({ open, onOpenChange, onAddWidget }: AddWidgetModalProps) {
   const [currentStep, setCurrentStep] = useState<Step>("visualization")
   const [selectedVisualization, setSelectedVisualization] = useState<string | null>(null)
+  const [selectedMetric, setSelectedMetric] = useState<string | null>(null)
   const [widgetTitle, setWidgetTitle] = useState("")
   
   const handleReset = () => {
     setCurrentStep("visualization")
     setSelectedVisualization(null)
+    setSelectedMetric(null)
     setWidgetTitle("")
   }
 
@@ -98,13 +102,13 @@ export function AddWidgetModal({ open, onOpenChange, onAddWidget }: AddWidgetMod
   }
 
   const handleCreate = () => {
-    if (!selectedVisualization) return
+    if (!selectedVisualization || !selectedMetric) return
 
     const widget: WidgetConfig = {
       id: `widget-${Date.now()}`,
       type: selectedVisualization as WidgetConfig["type"],
-      title: widgetTitle || `New ${visualizationTypes.find(v => v.id === selectedVisualization)?.name}`,
-      metric: undefined, // Will be set when metric selector is implemented
+      title: widgetTitle || METRICS_REGISTRY[selectedMetric]?.name || `New ${visualizationTypes.find(v => v.id === selectedVisualization)?.name}`,
+      metric: selectedMetric,
       options: {} // Additional options can be added here
     }
 
@@ -114,7 +118,7 @@ export function AddWidgetModal({ open, onOpenChange, onAddWidget }: AddWidgetMod
 
   const canProceed = () => {
     if (currentStep === "visualization") return !!selectedVisualization
-    if (currentStep === "metric") return true // For now, always allow proceeding
+    if (currentStep === "metric") return !!selectedMetric
     return true
   }
 
@@ -157,14 +161,12 @@ export function AddWidgetModal({ open, onOpenChange, onAddWidget }: AddWidgetMod
             </div>
           )}
 
-          {/* Step 2: Metric Selection (Placeholder) */}
+          {/* Step 2: Metric Selection */}
           {currentStep === "metric" && (
-            <div className="space-y-4">
-              <div className="text-center py-12 text-muted-foreground">
-                <p className="text-lg">Metric selector will be implemented here</p>
-                <p className="text-sm mt-2">This will be a custom metric selector component</p>
-              </div>
-            </div>
+            <MetricSelector
+              selectedMetric={selectedMetric}
+              onSelect={setSelectedMetric}
+            />
           )}
 
           {/* Step 3: Widget Options */}
@@ -174,7 +176,7 @@ export function AddWidgetModal({ open, onOpenChange, onAddWidget }: AddWidgetMod
                 <Label htmlFor="widget-title">Widget Title</Label>
                 <Input
                   id="widget-title"
-                  placeholder={`New ${visualizationTypes.find(v => v.id === selectedVisualization)?.name}`}
+                  placeholder={selectedMetric ? METRICS_REGISTRY[selectedMetric]?.name : `New ${visualizationTypes.find(v => v.id === selectedVisualization)?.name}`}
                   value={widgetTitle}
                   onChange={(e) => setWidgetTitle(e.target.value)}
                   className="mt-2"
