@@ -224,20 +224,20 @@ export class MetricsEngine {
         dateSeriesInterval = "'1 month'::interval"
         localColumn = 'local_month'
         joinCondition = `${baseTable}.${localColumn} = date_series.date`
-        dateDisplay = "TO_CHAR(date_series.date, 'Mon YYYY') as date"
+        dateDisplay = "TO_CHAR(date_series.date, 'YYYY-MM-DD') as date"
         break
       case 'week':
         dateSeriesInterval = "'1 week'::interval"
         localColumn = 'local_week'
         joinCondition = `${baseTable}.${localColumn} = date_series.date`
-        dateDisplay = "TO_CHAR(date_series.date, 'YYYY-\"W\"WW') as date"
+        dateDisplay = "TO_CHAR(date_series.date, 'YYYY-MM-DD') as date"
         break
       case 'day':
       default:
         dateSeriesInterval = "'1 day'::interval"
         localColumn = 'local_date'
         joinCondition = `${baseTable}.${localColumn} = date_series.date`
-        dateDisplay = "TO_CHAR(date_series.date, 'Mon DD') as date"
+        dateDisplay = "TO_CHAR(date_series.date, 'YYYY-MM-DD') as date"
         break
     }
 
@@ -348,18 +348,18 @@ WHERE speed_to_lead_seconds IS NOT NULL
       case 'month':
         dateSeriesInterval = "'1 month'::interval"
         dateGrouping = "DATE_TRUNC('month', contacts.date_added AT TIME ZONE 'UTC')::date"
-        dateDisplay = "TO_CHAR(date_series.date, 'Mon YYYY') as date"
+        dateDisplay = "TO_CHAR(date_series.date, 'YYYY-MM-DD') as date"
         break
       case 'week':
         dateSeriesInterval = "'1 week'::interval"
         dateGrouping = "DATE_TRUNC('week', contacts.date_added AT TIME ZONE 'UTC')::date"
-        dateDisplay = "TO_CHAR(date_series.date, 'YYYY-\"W\"WW') as date"
+        dateDisplay = "TO_CHAR(date_series.date, 'YYYY-MM-DD') as date"
         break
       case 'day':
       default:
         dateSeriesInterval = "'1 day'::interval"
         dateGrouping = "DATE_TRUNC('day', contacts.date_added AT TIME ZONE 'UTC')::date"
-        dateDisplay = "TO_CHAR(date_series.date, 'Mon DD') as date"
+        dateDisplay = "TO_CHAR(date_series.date, 'YYYY-MM-DD') as date"
         break
     }
 
@@ -445,22 +445,22 @@ WHERE speed_to_lead_seconds IS NOT NULL
       startDate: startDate.toISOString(),
       endDate: endDate.toISOString(),
       diffInDays,
-      willUse: diffInDays >= 60 ? 'month' : diffInDays >= 14 ? 'week' : 'day',
+      willUse: diffInDays > 90 ? 'month' : diffInDays > 14 ? 'week' : 'day',
       logic: {
-        isMonth: diffInDays >= 60,
-        isWeek: diffInDays >= 14 && diffInDays < 60,
-        isDay: diffInDays < 14
+        isMonth: diffInDays > 90,
+        isWeek: diffInDays > 14 && diffInDays <= 90,
+        isDay: diffInDays <= 14
       },
       appliedFiltersParams: appliedFilters.params
     })
     
-    // 2+ months (60+ days) → monthly aggregation
-    if (diffInDays >= 60) {
+    // > 90 days → monthly aggregation
+    if (diffInDays > 90) {
       return 'month'
     }
     
-    // 2+ weeks (14-59 days) → weekly aggregation  
-    if (diffInDays >= 14) {
+    // 15-90 days → weekly aggregation  
+    if (diffInDays > 14) {
       return 'week'
     }
     
