@@ -211,15 +211,28 @@ export function BarChartWidget({ metrics }: BarChartWidgetProps) {
     }
   }
 
-  // Build chart config for all metrics
+  // Build chart config for all metrics and determine which use percentage
   const chartConfig: ChartConfig = {}
+  const percentageMetrics: string[] = []
+  const numberMetrics: string[] = []
+  
   metrics.forEach((metric, index) => {
     const metricInfo = METRICS_REGISTRY[metric]
     chartConfig[metric] = {
       label: metricInfo?.name || metric,
       color: CHART_COLORS[index % CHART_COLORS.length],
     }
+    
+    if (metricInfo?.unit === 'percent') {
+      percentageMetrics.push(metric)
+    } else {
+      numberMetrics.push(metric)
+    }
   })
+  
+  const hasPercentages = percentageMetrics.length > 0
+  const hasNumbers = numberMetrics.length > 0
+  const hasBothTypes = hasPercentages && hasNumbers
 
   if (loading) {
     return (
@@ -236,8 +249,8 @@ export function BarChartWidget({ metrics }: BarChartWidgetProps) {
         data={data}
         margin={{
           top: 25,
-          right: 5,
-          left: -5,
+          right: hasPercentages ? 40 : 5,
+          left: hasNumbers ? -5 : 5,
           bottom: metrics.length > 1 ? 40 : 25,
         }}
       >
@@ -252,22 +265,38 @@ export function BarChartWidget({ metrics }: BarChartWidgetProps) {
           textAnchor={data.length > 10 ? "end" : "middle"}
           height={data.length > 10 ? 50 : 25}
         />
-        <YAxis
-          tickLine={false}
-          axisLine={false}
-          width={45}
-          tick={{ fontSize: 11 }}
-          tickFormatter={(value) => {
-            // Use the first metric's unit for Y-axis formatting
-            const firstMetricInfo = METRICS_REGISTRY[metrics[0]]
-            if (firstMetricInfo?.unit === 'percent') {
-              return `${(value * 100).toFixed(0)}%`
-            } else if (firstMetricInfo?.unit === 'currency') {
-              return `$${value.toLocaleString('en-US', { notation: 'compact' })}`
-            }
-            return value.toLocaleString('en-US', { notation: 'compact' })
-          }}
-        />
+        {/* Primary Y-axis for numbers */}
+        {hasNumbers && (
+          <YAxis
+            yAxisId="numbers"
+            tickLine={false}
+            axisLine={false}
+            width={45}
+            tick={{ fontSize: 11 }}
+            tickFormatter={(value) => {
+              // Format based on the first number metric
+              const firstNumberMetric = numberMetrics[0]
+              const metricInfo = METRICS_REGISTRY[firstNumberMetric]
+              if (metricInfo?.unit === 'currency') {
+                return `$${value.toLocaleString('en-US', { notation: 'compact' })}`
+              }
+              return value.toLocaleString('en-US', { notation: 'compact' })
+            }}
+          />
+        )}
+        {/* Secondary Y-axis for percentages */}
+        {hasPercentages && (
+          <YAxis
+            yAxisId="percentages"
+            orientation="right"
+            tickLine={false}
+            axisLine={false}
+            width={45}
+            tick={{ fontSize: 11 }}
+            domain={[0, 1]}
+            tickFormatter={(value) => `${(value * 100).toFixed(0)}%`}
+          />
+        )}
         <ChartTooltip
           cursor={false}
           content={
@@ -279,14 +308,19 @@ export function BarChartWidget({ metrics }: BarChartWidgetProps) {
             />
           }
         />
-        {metrics.map((metric, index) => (
-          <Bar 
-            key={metric}
-            dataKey={metric} 
-            fill={`var(--color-${metric})`} 
-            radius={[4, 4, 0, 0]}
-          />
-        ))}
+        {metrics.map((metric, index) => {
+          const metricInfo = METRICS_REGISTRY[metric]
+          const isPercentage = metricInfo?.unit === 'percent'
+          return (
+            <Bar 
+              key={metric}
+              dataKey={metric} 
+              fill={`var(--color-${metric})`} 
+              radius={[4, 4, 0, 0]}
+              yAxisId={isPercentage ? "percentages" : "numbers"}
+            />
+          )
+        })}
         {metrics.length > 1 && (
           <ChartLegend content={<ChartLegendContent />} />
         )}
