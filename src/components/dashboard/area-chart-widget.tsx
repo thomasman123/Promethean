@@ -245,6 +245,7 @@ export function AreaChartWidget({ metric }: AreaChartWidgetProps) {
           cursor={false}
           content={
             <ChartTooltipContent 
+              indicator="dot"
               formatter={(value, name) => [formatValue(value as number), metricInfo?.name || metric]}
             />
           }
@@ -255,7 +256,6 @@ export function AreaChartWidget({ metric }: AreaChartWidgetProps) {
           fill="var(--color-value)"
           fillOpacity={0.4}
           stroke="var(--color-value)"
-          strokeWidth={2}
         />
       </AreaChart>
     </ChartContainer>
