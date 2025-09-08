@@ -4,10 +4,8 @@ import { useState, useCallback } from "react"
 import { Responsive, WidthProvider } from "react-grid-layout"
 import { TopBar } from "@/components/layout/topbar"
 import { Widget } from "@/components/dashboard/widget"
-import { AddWidgetModal, WidgetConfig } from "@/components/dashboard/add-widget-modal"
+import { WidgetConfig } from "@/components/dashboard/add-widget-modal"
 import { useDashboard } from "@/lib/dashboard-context"
-import { Button } from "@/components/ui/button"
-import { Plus } from "lucide-react"
 import "react-grid-layout/css/styles.css"
 import "react-resizable/css/styles.css"
 
@@ -67,7 +65,6 @@ export default function DashboardPage() {
   const { selectedAccountId, currentViewId } = useDashboard()
   const [layouts, setLayouts] = useState(defaultLayouts)
   const [widgets, setWidgets] = useState<WidgetConfig[]>(initialWidgets)
-  const [showAddWidgetModal, setShowAddWidgetModal] = useState(false)
 
   const handleLayoutChange = useCallback((currentLayout: any, allLayouts: any) => {
     setLayouts(allLayouts)
@@ -139,18 +136,10 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <TopBar />
+      <TopBar onAddWidget={handleAddWidget} />
       
       <main className="pt-16 h-screen overflow-y-auto">
         <div className="p-4 md:p-6 lg:p-8">
-          {/* Add Widget Button */}
-          <div className="mb-6 flex justify-end">
-            <Button onClick={() => setShowAddWidgetModal(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Widget
-            </Button>
-          </div>
-
           <ResponsiveGridLayout
             className="layout"
             layouts={layouts}
@@ -174,12 +163,6 @@ export default function DashboardPage() {
           </ResponsiveGridLayout>
         </div>
       </main>
-
-      <AddWidgetModal
-        open={showAddWidgetModal}
-        onOpenChange={setShowAddWidgetModal}
-        onAddWidget={handleAddWidget}
-      />
     </div>
   )
 } 

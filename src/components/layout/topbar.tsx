@@ -1,7 +1,7 @@
 "use client"
 
 import { cn } from "@/lib/utils"
-import { Sword, Home, RefreshCw, Settings, Sun, Moon, LogOut, ChevronDown, LayoutDashboard, Database, Calendar, Users, CreditCard, Building2, Palette } from "lucide-react"
+import { Sword, Home, RefreshCw, Settings, Sun, Moon, LogOut, ChevronDown, LayoutDashboard, Database, Calendar, Users, CreditCard, Building2, Palette, Plus } from "lucide-react"
 import { useState, useEffect, useRef } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
@@ -18,6 +18,7 @@ import { DatePicker } from "@/components/ui/date-picker"
 import { ViewsManager } from "@/components/dashboard/views-manager"
 import { TablesManager } from "@/components/data-view/tables-manager"
 import { RoleFilterDropdown, type RoleFilter } from "@/components/data-view/role-filter"
+import { AddWidgetModal, WidgetConfig } from "@/components/dashboard/add-widget-modal"
 import { useDashboard } from "@/lib/dashboard-context"
 
 interface Account {
@@ -26,7 +27,11 @@ interface Account {
   description?: string
 }
 
-export function TopBar() {
+interface TopBarProps {
+  onAddWidget?: (widget: WidgetConfig) => void
+}
+
+export function TopBar({ onAddWidget }: TopBarProps) {
   const [isDarkMode, setIsDarkMode] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
@@ -35,6 +40,7 @@ export function TopBar() {
   const [currentUserId, setCurrentUserId] = useState<string>("")
   const [currentTableId, setCurrentTableId] = useState<string | null>(null)
   const [roleFilter, setRoleFilter] = useState<RoleFilter>('both')
+  const [showAddWidgetModal, setShowAddWidgetModal] = useState(false)
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createBrowserClient(
@@ -340,13 +346,24 @@ export function TopBar() {
               onChange={setDateRange}
             />
             
-            {/* Show ViewsManager on dashboard page */}
+            {/* Show ViewsManager and Add Widget button on dashboard page */}
             {pathname === "/dashboard" && (
-              <ViewsManager
-                accountId={selectedAccountId}
-                currentUserId={currentUserId}
-                onViewChange={handleViewChange}
-              />
+              <>
+                <ViewsManager
+                  accountId={selectedAccountId}
+                  currentUserId={currentUserId}
+                  onViewChange={handleViewChange}
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8"
+                  onClick={() => setShowAddWidgetModal(true)}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Widget
+                </Button>
+              </>
             )}
             
             {/* Show RoleFilter and TablesManager on data-view page */}
@@ -396,6 +413,15 @@ export function TopBar() {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
+      {/* Add Widget Modal */}
+      {pathname === "/dashboard" && onAddWidget && (
+        <AddWidgetModal
+          open={showAddWidgetModal}
+          onOpenChange={setShowAddWidgetModal}
+          onAddWidget={onAddWidget}
+        />
+      )}
     </div>
   )
 } 
