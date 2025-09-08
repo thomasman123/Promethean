@@ -19,12 +19,12 @@ export async function GET(request: NextRequest) {
   
   if (error) {
     console.log('❌ OAuth error from GHL:', error);
-    return NextResponse.redirect(`${baseUrl}/account/crm-connection?error=${error}`);
+    return NextResponse.redirect(`${baseUrl}/account/ghl-connection?error=${error}`);
   }
   
   if (!code || !state) {
     console.log('❌ Missing code or state:', { code: !!code, state: !!state });
-    return NextResponse.redirect(`${baseUrl}/account/crm-connection?error=missing_parameters`);
+    return NextResponse.redirect(`${baseUrl}/account/ghl-connection?error=missing_parameters`);
   }
 
   // Parse and validate state
@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
       stateData = { accountId: state, nonce: '' };
       console.log('✅ Using legacy state format:', stateData.accountId);
     } else {
-      return NextResponse.redirect(`${baseUrl}/account/crm-connection?error=invalid_state`);
+      return NextResponse.redirect(`${baseUrl}/account/ghl-connection?error=invalid_state`);
     }
   }
 
@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
   
   if (!clientId || !clientSecret) {
     console.log('❌ Missing OAuth config');
-    return NextResponse.redirect(`${baseUrl}/account/crm-connection?error=configuration_error`);
+    return NextResponse.redirect(`${baseUrl}/account/ghl-connection?error=configuration_error`);
   }
   
   try {
@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
     if (!tokenResponse.ok) {
       const errorData = await tokenResponse.json();
       console.error('❌ Token exchange failed:', errorData);
-      return NextResponse.redirect(`${baseUrl}/account/crm-connection?error=token_exchange_failed`);
+      return NextResponse.redirect(`${baseUrl}/account/ghl-connection?error=token_exchange_failed`);
     }
     
     const tokenData = await tokenResponse.json();
@@ -167,8 +167,8 @@ export async function GET(request: NextRequest) {
     
     // Store the OAuth tokens in the accounts table
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-    const supabaseService = createClient(supabaseUrl, serviceKey);
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+    const supabaseService = createClient(supabaseUrl, supabaseServiceKey);
     
     console.log('💾 Updating account:', stateData.accountId, 'with OAuth tokens');
     
@@ -188,13 +188,13 @@ export async function GET(request: NextRequest) {
     
     if (updateError) {
       console.error('❌ Database update error:', updateError);
-      return NextResponse.redirect(`${baseUrl}/account/crm-connection?error=database_error&detail=${encodeURIComponent(updateError.message)}`);
+      return NextResponse.redirect(`${baseUrl}/account/ghl-connection?error=database_error&detail=${encodeURIComponent(updateError.message)}`);
     }
     
     console.log('✅ Account updated successfully with webhook ID:', webhookId);
-    return NextResponse.redirect(`${baseUrl}/account/crm-connection?success=true&webhook=${webhookId ? 'active' : 'failed'}`);
+    return NextResponse.redirect(`${baseUrl}/account/ghl-connection?success=true&webhook=${webhookId ? 'active' : 'failed'}`);
   } catch (error) {
     console.error('❌ OAuth callback error:', error);
-    return NextResponse.redirect(`${baseUrl}/account/crm-connection?error=unknown_error`);
+    return NextResponse.redirect(`${baseUrl}/account/ghl-connection?error=unknown_error`);
   }
 } 

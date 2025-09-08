@@ -196,7 +196,9 @@ export function TopBar({ onAddWidget }: TopBarProps) {
       href: "/account", 
       label: "Account", 
       icon: Settings,
-      dropdownItems: null
+      dropdownItems: [
+        { href: "/account/ghl-connection", label: "GHL Connection", icon: Shield }
+      ]
     },
   ]
 
