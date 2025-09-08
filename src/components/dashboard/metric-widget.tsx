@@ -80,8 +80,8 @@ export function MetricWidget({ metric, type }: MetricWidgetProps) {
 
   if (type === "kpi") {
     return (
-      <div className="flex items-center justify-center h-full">
-        <span className="text-3xl md:text-4xl font-bold">
+      <div className="flex items-center justify-center h-full w-full">
+        <span className="text-3xl md:text-4xl font-bold truncate">
           {loading ? (
             <span className="text-muted-foreground">...</span>
           ) : value !== null ? (
@@ -96,8 +96,8 @@ export function MetricWidget({ metric, type }: MetricWidgetProps) {
 
   // Chart types
   return (
-    <div className="flex items-center justify-center h-full">
-      <span className="text-muted-foreground text-sm">
+    <div className="flex items-center justify-center h-full w-full">
+      <span className="text-muted-foreground text-sm text-center">
         {loading ? 'Loading...' : `${metricInfo?.name || metric} chart visualization`}
       </span>
     </div>

@@ -432,4 +432,14 @@ html {
 .react-resizable-handle-s {
   bottom: 0;
   transform: rotate(45deg);
+}
+
+/* Ensure grid items maintain consistent size */
+.react-grid-item {
+  box-sizing: border-box;
+}
+
+.react-grid-item > div {
+  height: 100% !important;
+  width: 100% !important;
 } 

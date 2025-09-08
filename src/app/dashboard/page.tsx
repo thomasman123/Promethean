@@ -224,7 +224,7 @@ export default function DashboardPage() {
     switch (widget.type) {
       case "kpi":
         return (
-          <div className="flex items-center justify-center h-full">
+          <div className="flex items-center justify-center h-full w-full">
             <span className="text-3xl md:text-4xl font-bold">--</span>
           </div>
         )
@@ -232,8 +232,8 @@ export default function DashboardPage() {
       case "line":
       case "area":
         return (
-          <div className="flex items-center justify-center h-full">
-            <span className="text-muted-foreground text-sm">Chart visualization goes here</span>
+          <div className="flex items-center justify-center h-full w-full">
+            <span className="text-muted-foreground text-sm text-center">Chart visualization goes here</span>
           </div>
         )
       default:
@@ -277,9 +277,11 @@ export default function DashboardPage() {
               containerPadding={[0, 0]}
               margin={[16, 16]}
               resizeHandles={["se"]}
+              compactType={null}
+              preventCollision={false}
             >
               {widgets.map((widget) => (
-                <div key={widget.id}>
+                <div key={widget.id} className="h-full w-full">
                   <Widget 
                     title={widget.title}
                     onRemove={() => handleRemoveWidget(widget.id)}
