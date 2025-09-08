@@ -19,7 +19,8 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Search, UserCheck } from "lucide-react"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Search, UserCheck, Users, Settings2, Shield } from "lucide-react"
 import { createBrowserClient } from "@supabase/ssr"
 import { Database } from "@/lib/database.types"
 import { useToast } from "@/hooks/use-toast"
@@ -126,9 +127,9 @@ export function AdminSettingsModal({ open, onOpenChange }: AdminSettingsModalPro
     if (!role) return <Badge variant="outline">User</Badge>
     switch (role) {
       case 'admin':
-        return <Badge className="bg-purple-100 text-purple-800">Admin</Badge>
+        return <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">Admin</Badge>
       case 'moderator':
-        return <Badge className="bg-blue-100 text-blue-800">Moderator</Badge>
+        return <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">Moderator</Badge>
       default:
         return <Badge variant="outline">User</Badge>
     }
@@ -136,17 +137,27 @@ export function AdminSettingsModal({ open, onOpenChange }: AdminSettingsModalPro
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[80vh]">
-        <DialogHeader>
-          <DialogTitle>Admin Settings</DialogTitle>
+      <DialogContent className="max-w-5xl h-[80vh] p-0 flex flex-col gap-0">
+        <DialogHeader className="px-6 py-4 border-b">
+          <DialogTitle className="text-xl font-semibold flex items-center gap-2">
+            <Shield className="h-5 w-5" />
+            Admin Settings
+          </DialogTitle>
         </DialogHeader>
 
-        <Tabs defaultValue="users" className="mt-4">
-          <TabsList>
-            <TabsTrigger value="users">Users</TabsTrigger>
+        <Tabs defaultValue="users" className="flex-1 flex flex-col">
+          <TabsList className="mx-6 mt-4 grid w-fit grid-cols-2 rounded-lg bg-muted p-1">
+            <TabsTrigger value="users" className="flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              Users
+            </TabsTrigger>
+            <TabsTrigger value="settings" className="flex items-center gap-2" disabled>
+              <Settings2 className="h-4 w-4" />
+              Settings
+            </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="users" className="space-y-4">
+          <TabsContent value="users" className="flex-1 flex flex-col px-6 pb-6 mt-4 space-y-4">
             {/* Search Bar */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -159,59 +170,77 @@ export function AdminSettingsModal({ open, onOpenChange }: AdminSettingsModalPro
             </div>
 
             {/* Users Table */}
-            <div className="border rounded-lg overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>User</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead>Joined</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {loading ? (
+            <div className="flex-1 border rounded-lg overflow-hidden">
+              <ScrollArea className="h-full">
+                <Table>
+                  <TableHeader className="sticky top-0 bg-background border-b">
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8">
-                        Loading users...
-                      </TableCell>
+                      <TableHead className="bg-background">User</TableHead>
+                      <TableHead className="bg-background">Email</TableHead>
+                      <TableHead className="bg-background">Role</TableHead>
+                      <TableHead className="bg-background">Joined</TableHead>
+                      <TableHead className="bg-background text-right">Actions</TableHead>
                     </TableRow>
-                  ) : filteredUsers.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8">
-                        No users found
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    filteredUsers.map((user) => (
-                      <TableRow key={user.id}>
-                        <TableCell>
-                          <div className="font-medium">
-                            {user.full_name || 'Unnamed User'}
-                          </div>
-                        </TableCell>
-                        <TableCell>{user.email}</TableCell>
-                        <TableCell>{getRoleBadge(user.role)}</TableCell>
-                        <TableCell>
-                          {new Date(user.created_at).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleImpersonate(user.id)}
-                            disabled={impersonating === user.id}
-                          >
-                            <UserCheck className="h-4 w-4 mr-2" />
-                            {impersonating === user.id ? 'Impersonating...' : 'Impersonate'}
-                          </Button>
+                  </TableHeader>
+                  <TableBody>
+                    {loading ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                          Loading users...
                         </TableCell>
                       </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
+                    ) : filteredUsers.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                          No users found
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      filteredUsers.map((user) => (
+                        <TableRow key={user.id} className="hover:bg-muted/50">
+                          <TableCell>
+                            <div className="font-medium">
+                              {user.full_name || 'Unnamed User'}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {user.email}
+                          </TableCell>
+                          <TableCell>{getRoleBadge(user.role)}</TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {new Date(user.created_at).toLocaleDateString()}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleImpersonate(user.id)}
+                              disabled={impersonating === user.id}
+                              className="ml-auto"
+                            >
+                              <UserCheck className="h-4 w-4 mr-2" />
+                              {impersonating === user.id ? 'Impersonating...' : 'Impersonate'}
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </ScrollArea>
+            </div>
+
+            {/* User count */}
+            {!loading && (
+              <div className="text-sm text-muted-foreground">
+                Showing {filteredUsers.length} of {users.length} users
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="settings" className="flex-1 px-6 pb-6 mt-4">
+            <div className="flex items-center justify-center h-full text-muted-foreground">
+              Settings coming soon...
             </div>
           </TabsContent>
         </Tabs>
