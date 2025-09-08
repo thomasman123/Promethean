@@ -38,6 +38,7 @@ export async function GET() {
     // Determine effective user (considering impersonation)
     const impersonatedUserId = cookieStore.get('impersonate_user_id')?.value
     let effectiveUserId = user.id
+    let isImpersonating = false
     
     console.log('🔍 [accounts-simple] Checking for impersonation...')
     console.log('🔍 [accounts-simple] impersonate_user_id cookie:', impersonatedUserId)
@@ -55,6 +56,7 @@ export async function GET() {
 
       if (adminProfile?.role === 'admin') {
         effectiveUserId = impersonatedUserId
+        isImpersonating = true
         console.log('✅ [accounts-simple] Impersonation authorized, effective user:', effectiveUserId)
       } else {
         console.log('❌ [accounts-simple] Impersonation denied - user is not admin')
@@ -64,6 +66,7 @@ export async function GET() {
     }
 
     console.log('🔍 [accounts-simple] Final effective user ID:', effectiveUserId)
+    console.log('🔍 [accounts-simple] Is impersonating:', isImpersonating)
 
     // Get effective user's profile to check role
     console.log('🔍 [accounts-simple] Getting effective user profile...')
@@ -100,72 +103,128 @@ export async function GET() {
     } else {
       console.log('🔍 [accounts-simple] Loading user-specific accounts...')
       
-      // First, let's check if the user has any account_access records at all
-      console.log('🔍 [accounts-simple] Checking raw account_access records...')
-      console.log('🔍 [accounts-simple] Query params - user_id:', effectiveUserId, 'type:', typeof effectiveUserId)
-      
-      // Try without is_active filter first
-      const { data: allAccessData, error: allAccessError } = await supabase
-        .from('account_access')
-        .select('*')
-        .eq('user_id', effectiveUserId)
-      
-      console.log('🔍 [accounts-simple] ALL account_access records (no is_active filter):', allAccessData)
-      console.log('🔍 [accounts-simple] ALL account_access error:', allAccessError)
-      
-      const { data: rawAccessData, error: rawAccessError } = await supabase
-        .from('account_access')
-        .select('*')
-        .eq('user_id', effectiveUserId)
-        .eq('is_active', true)
-      
-      console.log('🔍 [accounts-simple] Raw account_access records (with is_active=true):', rawAccessData)
-      console.log('🔍 [accounts-simple] Raw account_access error:', rawAccessError)
-      
-      // Let's also try a broad search to see if there are any records at all
-      const { data: sampleData, error: sampleError } = await supabase
-        .from('account_access')
-        .select('user_id, account_id, is_active')
-        .limit(5)
-      
-      console.log('🔍 [accounts-simple] Sample account_access records (any 5):', sampleData)
-      console.log('🔍 [accounts-simple] Sample error:', sampleError)
-      
-      // Non-admin effective user - show only their accounts
-      const { data, error } = await supabase
-        .from('account_access')
-        .select(`
-          role,
-          account_id,
-          accounts!inner (
-            id,
-            name,
-            description,
-            is_active
-          )
-        `)
-        .eq('user_id', effectiveUserId)
-        .eq('is_active', true)
+      // When impersonating, we need to use admin privileges to query the impersonated user's accounts
+      // because RLS policies use auth.uid() which returns the admin's ID, not the impersonated user's ID
+      if (isImpersonating) {
+        console.log('🔍 [accounts-simple] Using admin privileges for impersonated user query...')
+        
+        // Create a service role client for bypassing RLS
+        const serviceSupabase = createServerClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.SUPABASE_SERVICE_ROLE_KEY!,
+          {
+            cookies: {
+              get() { return undefined },
+              set() {},
+              remove() {},
+            },
+          }
+        )
 
-      console.log('🔍 [accounts-simple] Account access query result:', { data, error })
+        // Query account_access directly with service role to bypass RLS
+        const { data, error } = await serviceSupabase
+          .from('account_access')
+          .select(`
+            role,
+            account_id,
+            accounts!inner (
+              id,
+              name,
+              description,
+              is_active
+            )
+          `)
+          .eq('user_id', effectiveUserId)
+          .eq('is_active', true)
 
-      if (error) {
-        console.error('❌ [accounts-simple] User accounts query error:', error)
-        return NextResponse.json({ accounts: [] })
-      }
+        console.log('🔍 [accounts-simple] Service role query result:', { data, error })
 
-      console.log('🔍 [accounts-simple] Raw account_access data:', JSON.stringify(data, null, 2))
-
-      accounts = (data || []).flatMap((row: any) => {
-        console.log('🔍 [accounts-simple] Processing row:', row)
-        const acc = row.accounts as any | null
-        if (acc && acc.is_active) {
-          console.log('✅ [accounts-simple] Including account:', { id: acc.id, name: acc.name })
-          return [{ id: acc.id, name: acc.name, description: acc.description }]
+        if (error) {
+          console.error('❌ [accounts-simple] Service role query error:', error)
+          return NextResponse.json({ accounts: [] })
         }
-        console.log('❌ [accounts-simple] Excluding account (inactive or null):', acc)
-        return []
-      })
+
+        accounts = (data || []).flatMap((row: any) => {
+          console.log('🔍 [accounts-simple] Processing service role row:', row)
+          const acc = row.accounts as any | null
+          if (acc && acc.is_active) {
+            console.log('✅ [accounts-simple] Including account:', { id: acc.id, name: acc.name })
+            return [{ id: acc.id, name: acc.name, description: acc.description }]
+          }
+          console.log('❌ [accounts-simple] Excluding account (inactive or null):', acc)
+          return []
+        })
+      } else {
+        // Not impersonating - use regular RLS-enabled query
+        console.log('🔍 [accounts-simple] Using regular RLS query for non-impersonated user...')
+        
+        // First, let's check if the user has any account_access records at all
+        console.log('🔍 [accounts-simple] Checking raw account_access records...')
+        console.log('🔍 [accounts-simple] Query params - user_id:', effectiveUserId, 'type:', typeof effectiveUserId)
+        
+        // Try without is_active filter first
+        const { data: allAccessData, error: allAccessError } = await supabase
+          .from('account_access')
+          .select('*')
+          .eq('user_id', effectiveUserId)
+        
+        console.log('🔍 [accounts-simple] ALL account_access records (no is_active filter):', allAccessData)
+        console.log('🔍 [accounts-simple] ALL account_access error:', allAccessError)
+        
+        const { data: rawAccessData, error: rawAccessError } = await supabase
+          .from('account_access')
+          .select('*')
+          .eq('user_id', effectiveUserId)
+          .eq('is_active', true)
+        
+        console.log('🔍 [accounts-simple] Raw account_access records (with is_active=true):', rawAccessData)
+        console.log('🔍 [accounts-simple] Raw account_access error:', rawAccessError)
+        
+        // Let's also try a broad search to see if there are any records at all
+        const { data: sampleData, error: sampleError } = await supabase
+          .from('account_access')
+          .select('user_id, account_id, is_active')
+          .limit(5)
+        
+        console.log('🔍 [accounts-simple] Sample account_access records (any 5):', sampleData)
+        console.log('🔍 [accounts-simple] Sample error:', sampleError)
+        
+        // Non-admin effective user - show only their accounts
+        const { data, error } = await supabase
+          .from('account_access')
+          .select(`
+            role,
+            account_id,
+            accounts!inner (
+              id,
+              name,
+              description,
+              is_active
+            )
+          `)
+          .eq('user_id', effectiveUserId)
+          .eq('is_active', true)
+
+        console.log('🔍 [accounts-simple] Account access query result:', { data, error })
+
+        if (error) {
+          console.error('❌ [accounts-simple] User accounts query error:', error)
+          return NextResponse.json({ accounts: [] })
+        }
+
+        console.log('🔍 [accounts-simple] Raw account_access data:', JSON.stringify(data, null, 2))
+
+        accounts = (data || []).flatMap((row: any) => {
+          console.log('🔍 [accounts-simple] Processing row:', row)
+          const acc = row.accounts as any | null
+          if (acc && acc.is_active) {
+            console.log('✅ [accounts-simple] Including account:', { id: acc.id, name: acc.name })
+            return [{ id: acc.id, name: acc.name, description: acc.description }]
+          }
+          console.log('❌ [accounts-simple] Excluding account (inactive or null):', acc)
+          return []
+        })
+      }
       
       console.log('✅ [accounts-simple] User accounts loaded:', accounts.length, 'accounts')
       console.log('🔍 [accounts-simple] User accounts:', accounts.map(a => ({ id: a.id, name: a.name })))
