@@ -29,7 +29,7 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Check for impersonation
+    // Determine effective user (considering impersonation)
     const impersonatedUserId = cookieStore.get('impersonate_user_id')?.value
     let effectiveUserId = user.id
     
@@ -46,7 +46,7 @@ export async function GET() {
       }
     }
 
-    // Check if effective user is admin
+    // Get effective user's profile to check role
     const { data: effectiveProfile } = await supabase
       .from('profiles')
       .select('role')

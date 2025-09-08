@@ -21,6 +21,7 @@ import { RoleFilterDropdown, type RoleFilter } from "@/components/data-view/role
 import { AddWidgetModal, WidgetConfig } from "@/components/dashboard/add-widget-modal"
 import { AdminSettingsModal } from "./admin-settings-modal"
 import { useDashboard } from "@/lib/dashboard-context"
+import { useEffectiveUser } from "@/hooks/use-effective-user"
 
 interface Account {
   id: string
@@ -53,6 +54,7 @@ export function TopBar({ onAddWidget }: TopBarProps) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
   const { dateRange, setDateRange, selectedAccountId, setSelectedAccountId, setCurrentViewId, currentViewId } = useDashboard()
+  const { user: effectiveUser, loading: effectiveUserLoading } = useEffectiveUser()
 
   // Show date/view controls only on dashboard and data-view pages
   const showDashboardControls = pathname === "/dashboard" || pathname === "/data-view"
@@ -68,10 +70,12 @@ export function TopBar({ onAddWidget }: TopBarProps) {
 
   useEffect(() => {
     // Load user accounts and get current user
-    loadUserAccounts()
-    getCurrentUser()
-    checkImpersonation()
-  }, [])
+    if (effectiveUser && !effectiveUserLoading) {
+      loadUserAccounts()
+      getCurrentUser()
+      checkImpersonation()
+    }
+  }, [effectiveUser, effectiveUserLoading])
 
   useEffect(() => {
     const handleScroll = () => {
@@ -84,6 +88,7 @@ export function TopBar({ onAddWidget }: TopBarProps) {
 
   const getCurrentUser = async () => {
     try {
+      // Get the real user (not effective user) for admin settings dropdown
       const response = await fetch('/api/auth/session')
       if (response.ok) {
         const data = await response.json()
@@ -96,28 +101,73 @@ export function TopBar({ onAddWidget }: TopBarProps) {
   }
 
   const loadUserAccounts = async () => {
+    if (!effectiveUser) return
+    
     try {
-      const response = await fetch('/api/accounts-simple')
-      if (response.ok) {
-        const data = await response.json()
-        if (data.accounts && data.accounts.length > 0) {
-          setAccounts(data.accounts)
-          
-          // Set first account as selected if none selected
-          const savedAccountId = localStorage.getItem('selectedAccountId')
-          if (savedAccountId && data.accounts.find((a: Account) => a.id === savedAccountId)) {
-            setSelectedAccountId(savedAccountId)
-          } else {
-            setSelectedAccountId(data.accounts[0].id)
-            localStorage.setItem('selectedAccountId', data.accounts[0].id)
-          }
+      // Use effective user for account access check
+      const isEffectiveAdmin = effectiveUser.role === 'admin'
+      let accountsData: Account[] = []
+
+      if (isEffectiveAdmin) {
+        // Effective user is admin - show all accounts
+        const { data, error } = await supabase
+          .from('accounts')
+          .select('id, name, description')
+          .eq('is_active', true)
+          .order('name')
+
+        if (error) {
+          console.error('Admin accounts query error:', error)
+          setAccounts([])
+          return
         }
+        
+        accountsData = data || []
       } else {
-        console.error('Failed to load accounts - response not ok:', response.status)
+        // Non-admin effective user - show only their accounts
+        const { data, error } = await supabase
+          .from('account_access')
+          .select(`
+            role,
+            accounts (
+              id,
+              name,
+              description,
+              is_active
+            )
+          `)
+          .eq('user_id', effectiveUser.id)
+          .eq('is_active', true)
+
+        if (error) {
+          console.error('User accounts query error:', error)
+          setAccounts([])
+          return
+        }
+
+        accountsData = (data || []).flatMap((row: any) => {
+          const acc = row.accounts as any | null
+          if (acc && acc.is_active) {
+            return [{ id: acc.id, name: acc.name, description: acc.description }]
+          }
+          return []
+        })
+      }
+
+      setAccounts(accountsData)
+      
+      // Set first account as selected if none selected or current selection is not available
+      if (accountsData.length > 0) {
+        const savedAccountId = localStorage.getItem('selectedAccountId')
+        if (savedAccountId && accountsData.find((a: Account) => a.id === savedAccountId)) {
+          setSelectedAccountId(savedAccountId)
+        } else {
+          setSelectedAccountId(accountsData[0].id)
+          localStorage.setItem('selectedAccountId', accountsData[0].id)
+        }
       }
     } catch (error) {
       console.error('Failed to load accounts:', error)
-      // Don't crash, just set empty accounts
       setAccounts([])
     }
   }
