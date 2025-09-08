@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { TopBar } from "@/components/layout/topbar"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -24,7 +24,7 @@ interface GhlConnectionStatus {
   webhookId: string | null
 }
 
-export default function GHLConnectionPage() {
+function GHLConnectionContent() {
   const [loading, setLoading] = useState(true)
   const [connectionStatus, setConnectionStatus] = useState<GhlConnectionStatus | null>(null)
   const [disconnecting, setDisconnecting] = useState(false)
@@ -479,5 +479,22 @@ export default function GHLConnectionPage() {
         </div>
       </main>
     </div>
+  )
+}
+
+export default function GHLConnectionPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-background">
+        <TopBar />
+        <main className="pt-16 p-6">
+          <div className="flex items-center justify-center h-[calc(100vh-8rem)]">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        </main>
+      </div>
+    }>
+      <GHLConnectionContent />
+    </Suspense>
   )
 } 
