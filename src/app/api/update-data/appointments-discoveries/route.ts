@@ -8,13 +8,11 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const userId = searchParams.get('user_id')
   const accountId = searchParams.get('account_id') || ''
-  const userFilter = searchParams.get('user_filter') || 'owned'
   const tab = searchParams.get('tab') || 'appointments'
   
   console.log('🔍 [appointments-discoveries-api] Query params:', {
     userId,
     accountId,
-    userFilter,
     tab
   })
 
@@ -104,36 +102,8 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Get user's accessible accounts if we need to filter by account access
-    let userAccountIds: string[] = []
-    if (accountId === '' || userFilter !== 'all') {
-      console.log('🔍 [appointments-discoveries-api] Getting user account access...')
-      
-      const { data: accountAccess, error: accessError } = await querySupabase
-        .from('account_access')
-        .select('account_id')
-        .eq('user_id', effectiveUserId)
-        .eq('is_active', true)
-
-      if (accessError) {
-        console.error('❌ [appointments-discoveries-api] Error fetching account access:', accessError)
-        return NextResponse.json({ error: 'Failed to get account access' }, { status: 500 })
-      }
-
-      userAccountIds = (accountAccess || []).map(access => access.account_id)
-      console.log('🔍 [appointments-discoveries-api] User accessible accounts:', userAccountIds)
-
-      if (userAccountIds.length === 0) {
-        console.log('🔍 [appointments-discoveries-api] User has no account access')
-        return NextResponse.json({ 
-          appointments: [], 
-          discoveries: []
-        })
-      }
-    }
-
     if (tab === 'appointments') {
-      console.log('🔍 [appointments-discoveries-api] Fetching appointments...')
+      console.log('🔍 [appointments-discoveries-api] Fetching appointments where user is sales rep...')
       
       let query = querySupabase
         .from('appointments')
@@ -160,32 +130,15 @@ export async function GET(request: NextRequest) {
             is_active
           ),
           contacts!inner (
-            full_name,
+            name,
             email
           )
         `)
+        .eq('sales_rep_user_id', effectiveUserId)
 
-      // Apply account filter
+      // Apply account filter if specified
       if (accountId && accountId !== '') {
         query = query.eq('account_id', accountId)
-      } else if (userAccountIds.length > 0) {
-        query = query.in('account_id', userAccountIds)
-      }
-
-      // Apply user filter
-      switch (userFilter) {
-        case 'setter':
-          query = query.eq('setter_user_id', effectiveUserId)
-          break
-        case 'sales_rep':
-          query = query.eq('sales_rep_user_id', effectiveUserId)
-          break
-        case 'owned':
-          query = query.or(`setter_user_id.eq.${effectiveUserId},sales_rep_user_id.eq.${effectiveUserId}`)
-          break
-        case 'all':
-          // No additional user filter, but still filtered by account access above
-          break
       }
 
       query = query.order('date_booked_for', { ascending: false })
@@ -201,7 +154,7 @@ export async function GET(request: NextRequest) {
         id: apt.id,
         account_id: apt.account_id,
         account_name: apt.accounts?.name || 'Unknown Account',
-        contact_name: apt.contacts?.full_name || 'Unknown Contact',
+        contact_name: apt.contacts?.name || 'Unknown Contact',
         contact_email: apt.contacts?.email || '',
         date_booked_for: apt.date_booked_for,
         setter: apt.setter,
@@ -223,7 +176,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ appointments })
 
     } else {
-      console.log('🔍 [appointments-discoveries-api] Fetching discoveries...')
+      console.log('🔍 [appointments-discoveries-api] Fetching discoveries where user is setter...')
       
       let query = querySupabase
         .from('discoveries')
@@ -245,32 +198,15 @@ export async function GET(request: NextRequest) {
             is_active
           ),
           contacts!inner (
-            full_name,
+            name,
             email
           )
         `)
+        .eq('setter_user_id', effectiveUserId)
 
-      // Apply account filter
+      // Apply account filter if specified
       if (accountId && accountId !== '') {
         query = query.eq('account_id', accountId)
-      } else if (userAccountIds.length > 0) {
-        query = query.in('account_id', userAccountIds)
-      }
-
-      // Apply user filter
-      switch (userFilter) {
-        case 'setter':
-          query = query.eq('setter_user_id', effectiveUserId)
-          break
-        case 'sales_rep':
-          query = query.eq('sales_rep_user_id', effectiveUserId)
-          break
-        case 'owned':
-          query = query.or(`setter_user_id.eq.${effectiveUserId},sales_rep_user_id.eq.${effectiveUserId}`)
-          break
-        case 'all':
-          // No additional user filter, but still filtered by account access above
-          break
       }
 
       query = query.order('date_booked_for', { ascending: false })
@@ -286,7 +222,7 @@ export async function GET(request: NextRequest) {
         id: disc.id,
         account_id: disc.account_id,
         account_name: disc.accounts?.name || 'Unknown Account',
-        contact_name: disc.contacts?.full_name || 'Unknown Contact',
+        contact_name: disc.contacts?.name || 'Unknown Contact',
         contact_email: disc.contacts?.email || '',
         date_booked_for: disc.date_booked_for,
         setter: disc.setter,
