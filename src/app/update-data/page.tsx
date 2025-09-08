@@ -7,9 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { createBrowserClient } from "@supabase/ssr"
 import { Database } from "@/lib/database.types"
-import { Calendar, Clock, TrendingUp, AlertCircle, CheckCircle2, Users } from "lucide-react"
-import { useRouter } from "next/navigation"
-import Link from "next/link"
+import { Calendar, Clock, TrendingUp, AlertCircle, CheckCircle2 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
@@ -34,7 +32,6 @@ export default function UpdateDataPage() {
   const [selectedAppointment, setSelectedAppointment] = useState<TaskAppointment | null>(null)
   const [quickFlowStep, setQuickFlowStep] = useState(0)
   const [quickFlowData, setQuickFlowData] = useState<any>({})
-  const router = useRouter()
   const { toast } = useToast()
   
   const supabase = createBrowserClient<Database>(
@@ -353,25 +350,8 @@ export default function UpdateDataPage() {
     <div className="min-h-screen bg-background">
       <TopBar />
       
-      <main className="pt-16 p-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex justify-between items-center mb-6">
-            <h1 className="text-3xl font-bold">Update Data Overview</h1>
-            <div className="flex gap-2">
-              <Button variant="outline" asChild>
-                <Link href="/update-data/appointments-discoveries">
-                  <Users className="mr-2 h-4 w-4" />
-                  All Appointments
-                </Link>
-              </Button>
-              <Button variant="outline" asChild>
-                <Link href="/update-data/follow-ups">
-                  Follow-ups
-                </Link>
-              </Button>
-            </div>
-          </div>
-
+      <main className="pt-16 h-screen">
+        <div className="h-full max-w-7xl mx-auto p-6">
           {/* Stats Overview */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
             <Card>

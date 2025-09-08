@@ -29,7 +29,6 @@ import { Database } from "@/lib/database.types"
 import { useToast } from "@/hooks/use-toast"
 import { Search, Filter, Edit, Calendar } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useRouter } from "next/navigation"
 
 interface AppointmentData {
   id: string
@@ -72,7 +71,6 @@ export default function AppointmentsDiscoveriesPage() {
   const [editForm, setEditForm] = useState<any>({})
   const [activeTab, setActiveTab] = useState<"appointments" | "discoveries">("appointments")
   const { toast } = useToast()
-  const router = useRouter()
 
   const supabase = createBrowserClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -269,15 +267,8 @@ export default function AppointmentsDiscoveriesPage() {
     <div className="min-h-screen bg-background">
       <TopBar />
       
-      <main className="pt-16 p-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex justify-between items-center mb-6">
-            <h1 className="text-3xl font-bold">Appointments & Discoveries</h1>
-            <Button variant="outline" onClick={() => router.push('/update-data')}>
-              Back to Overview
-            </Button>
-          </div>
-
+      <main className="pt-16 h-screen">
+        <div className="h-full max-w-7xl mx-auto p-6">
           {/* Search Bar */}
           <div className="mb-6">
             <div className="relative">

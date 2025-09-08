@@ -339,6 +339,34 @@ export function TopBar({ onAddWidget }: TopBarProps) {
 
       {/* Right section - Dashboard Controls, Dark mode toggle, Profile */}
       <div className="flex items-center gap-3">
+        {/* Update Data Navigation Buttons */}
+        {pathname.startsWith("/update-data") && (
+          <>
+            {pathname === "/update-data" && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8"
+                onClick={() => router.push("/update-data/appointments-discoveries")}
+              >
+                <Users className="h-4 w-4 mr-2" />
+                All Appointments
+              </Button>
+            )}
+            {pathname === "/update-data/appointments-discoveries" && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8"
+                onClick={() => router.push("/update-data")}
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                Back to Overview
+              </Button>
+            )}
+          </>
+        )}
+
         {/* Date picker and Views - only show on appropriate pages */}
         {showDashboardControls && (
           <>
