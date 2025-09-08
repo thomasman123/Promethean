@@ -211,8 +211,8 @@ export function LineChartWidget({ metric }: LineChartWidgetProps) {
         data={data}
         margin={{
           top: 10,
-          right: 12,
-          left: 12,
+          right: 5,
+          left: -5,
           bottom: 25,
         }}
       >
@@ -227,12 +227,25 @@ export function LineChartWidget({ metric }: LineChartWidgetProps) {
           textAnchor={data.length > 10 ? "end" : "middle"}
           height={data.length > 10 ? 50 : 25}
         />
+        <YAxis
+          tickLine={false}
+          axisLine={false}
+          width={45}
+          tick={{ fontSize: 11 }}
+          tickFormatter={(value) => {
+            if (metricInfo?.unit === 'percent') {
+              return `${(value * 100).toFixed(0)}%`
+            } else if (metricInfo?.unit === 'currency') {
+              return `$${value.toLocaleString('en-US', { notation: 'compact' })}`
+            }
+            return value.toLocaleString('en-US', { notation: 'compact' })
+          }}
+        />
         <ChartTooltip
           cursor={false}
           content={
             <ChartTooltipContent 
-              hideLabel 
-              formatter={(value) => formatValue(value as number)}
+              formatter={(value, name) => [formatValue(value as number), metricInfo?.name || metric]}
             />
           }
         />
