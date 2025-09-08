@@ -102,14 +102,34 @@ export async function GET() {
       
       // First, let's check if the user has any account_access records at all
       console.log('🔍 [accounts-simple] Checking raw account_access records...')
+      console.log('🔍 [accounts-simple] Query params - user_id:', effectiveUserId, 'type:', typeof effectiveUserId)
+      
+      // Try without is_active filter first
+      const { data: allAccessData, error: allAccessError } = await supabase
+        .from('account_access')
+        .select('*')
+        .eq('user_id', effectiveUserId)
+      
+      console.log('🔍 [accounts-simple] ALL account_access records (no is_active filter):', allAccessData)
+      console.log('🔍 [accounts-simple] ALL account_access error:', allAccessError)
+      
       const { data: rawAccessData, error: rawAccessError } = await supabase
         .from('account_access')
         .select('*')
         .eq('user_id', effectiveUserId)
         .eq('is_active', true)
       
-      console.log('🔍 [accounts-simple] Raw account_access records:', rawAccessData)
+      console.log('🔍 [accounts-simple] Raw account_access records (with is_active=true):', rawAccessData)
       console.log('🔍 [accounts-simple] Raw account_access error:', rawAccessError)
+      
+      // Let's also try a broad search to see if there are any records at all
+      const { data: sampleData, error: sampleError } = await supabase
+        .from('account_access')
+        .select('user_id, account_id, is_active')
+        .limit(5)
+      
+      console.log('🔍 [accounts-simple] Sample account_access records (any 5):', sampleData)
+      console.log('🔍 [accounts-simple] Sample error:', sampleError)
       
       // Non-admin effective user - show only their accounts
       const { data, error } = await supabase
