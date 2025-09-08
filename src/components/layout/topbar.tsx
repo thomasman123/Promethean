@@ -1,7 +1,7 @@
 "use client"
 
 import { cn } from "@/lib/utils"
-import { Sword, Home, RefreshCw, Settings, Sun, Moon, LogOut, ChevronDown, LayoutDashboard, Database, Calendar, Users, CreditCard, Building2, Palette, Plus } from "lucide-react"
+import { Sword, Home, RefreshCw, Settings, Sun, Moon, LogOut, ChevronDown, LayoutDashboard, Database, Calendar, Users, CreditCard, Building2, Palette, Plus, FileText } from "lucide-react"
 import { useState, useEffect, useRef } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
@@ -173,6 +173,7 @@ export function TopBar({ onAddWidget }: TopBarProps) {
       label: "Update Data", 
       icon: RefreshCw,
       dropdownItems: [
+        { href: "/update-data", label: "Overview", icon: FileText },
         { href: "/update-data/appointments-discoveries", label: "Appointments/Discoveries", icon: Calendar },
         { href: "/update-data/follow-ups", label: "Follow Ups", icon: Users },
         { href: "/update-data/payment-plans", label: "Payment Plans", icon: CreditCard }
