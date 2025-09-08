@@ -4,11 +4,27 @@ import { useState, useCallback } from "react"
 import { Responsive, WidthProvider } from "react-grid-layout"
 import { TopBar } from "@/components/layout/topbar"
 import { Widget } from "@/components/dashboard/widget"
+import { AddWidgetModal, WidgetConfig } from "@/components/dashboard/add-widget-modal"
 import { useDashboard } from "@/lib/dashboard-context"
+import { Button } from "@/components/ui/button"
+import { Plus } from "lucide-react"
 import "react-grid-layout/css/styles.css"
 import "react-resizable/css/styles.css"
 
 const ResponsiveGridLayout = WidthProvider(Responsive)
+
+// Initial sample widgets
+const initialWidgets: WidgetConfig[] = [
+  { id: "widget-1", type: "kpi", title: "Total Appointments" },
+  { id: "widget-2", type: "kpi", title: "Show Rate" },
+  { id: "widget-3", type: "kpi", title: "Answer Rate" },
+  { id: "widget-4", type: "kpi", title: "Speed to Lead" },
+  { id: "widget-5", type: "line", title: "Performance Overview" },
+  { id: "widget-6", type: "area", title: "Recent Activity" },
+  { id: "widget-7", type: "kpi", title: "Revenue" },
+  { id: "widget-8", type: "kpi", title: "Active Users" },
+  { id: "widget-9", type: "kpi", title: "Conversion Rate" },
+]
 
 // Default layouts for different breakpoints
 const defaultLayouts = {
@@ -50,11 +66,76 @@ const defaultLayouts = {
 export default function DashboardPage() {
   const { selectedAccountId, currentViewId } = useDashboard()
   const [layouts, setLayouts] = useState(defaultLayouts)
+  const [widgets, setWidgets] = useState<WidgetConfig[]>(initialWidgets)
+  const [showAddWidgetModal, setShowAddWidgetModal] = useState(false)
 
   const handleLayoutChange = useCallback((currentLayout: any, allLayouts: any) => {
     setLayouts(allLayouts)
     // Here you could save the layouts to localStorage or a database
   }, [])
+
+  const handleAddWidget = (widget: WidgetConfig) => {
+    // Add the new widget to the widgets array
+    setWidgets(prev => [...prev, widget])
+    
+    // Calculate position for new widget
+    const findEmptyPosition = () => {
+      const currentLayout = layouts.lg
+      const maxY = Math.max(...currentLayout.map(item => item.y + item.h), 0)
+      return { x: 0, y: maxY }
+    }
+    
+    const position = findEmptyPosition()
+    
+    // Add layout for the new widget across all breakpoints
+    const newLayouts = { ...layouts }
+    
+    // Determine default size based on widget type
+    const getDefaultSize = (type: string) => {
+      switch (type) {
+        case "kpi":
+          return { w: 3, h: 3, minW: 2, minH: 2 }
+        case "bar":
+        case "line":
+        case "area":
+          return { w: 6, h: 4, minW: 3, minH: 3 }
+        default:
+          return { w: 3, h: 3, minW: 2, minH: 2 }
+      }
+    }
+    
+    const size = getDefaultSize(widget.type)
+    
+    // Add to all breakpoint layouts
+    newLayouts.lg.push({ i: widget.id, x: position.x, y: position.y, ...size })
+    newLayouts.md.push({ i: widget.id, x: 0, y: position.y, w: widget.type === "kpi" ? 6 : 12, h: size.h, minW: size.minW, minH: size.minH })
+    newLayouts.sm.push({ i: widget.id, x: 0, y: position.y, w: 12, h: size.h, minW: 12, minH: size.minH })
+    
+    setLayouts(newLayouts)
+  }
+
+  const renderWidgetContent = (widget: WidgetConfig) => {
+    // Sample content based on widget type
+    switch (widget.type) {
+      case "kpi":
+        return (
+          <div className="flex flex-col items-center justify-center h-full">
+            <span className="text-4xl font-bold">--</span>
+            <span className="text-sm text-muted-foreground mt-2">No data</span>
+          </div>
+        )
+      case "bar":
+      case "line":
+      case "area":
+        return (
+          <div className="flex items-center justify-center h-full">
+            <span className="text-muted-foreground">Chart visualization goes here</span>
+          </div>
+        )
+      default:
+        return null
+    }
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -62,6 +143,14 @@ export default function DashboardPage() {
       
       <main className="pt-16 h-screen overflow-y-auto">
         <div className="p-4 md:p-6 lg:p-8">
+          {/* Add Widget Button */}
+          <div className="mb-6 flex justify-end">
+            <Button onClick={() => setShowAddWidgetModal(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Widget
+            </Button>
+          </div>
+
           <ResponsiveGridLayout
             className="layout"
             layouts={layouts}
@@ -75,87 +164,22 @@ export default function DashboardPage() {
             margin={[20, 20]}
             resizeHandles={["se", "sw", "ne", "nw"]}
           >
-            <div key="widget-1">
-              <Widget title="Total Appointments">
-                <div className="flex flex-col items-center justify-center h-full">
-                  <span className="text-4xl font-bold">124</span>
-                  <span className="text-sm text-muted-foreground mt-2">This month</span>
-                </div>
-              </Widget>
-            </div>
-            
-            <div key="widget-2">
-              <Widget title="Show Rate">
-                <div className="flex flex-col items-center justify-center h-full">
-                  <span className="text-4xl font-bold">68%</span>
-                  <span className="text-sm text-muted-foreground mt-2">+5% from last month</span>
-                </div>
-              </Widget>
-            </div>
-            
-            <div key="widget-3">
-              <Widget title="Answer Rate">
-                <div className="flex flex-col items-center justify-center h-full">
-                  <span className="text-4xl font-bold">42%</span>
-                  <span className="text-sm text-muted-foreground mt-2">Last 30 days</span>
-                </div>
-              </Widget>
-            </div>
-            
-            <div key="widget-4">
-              <Widget title="Speed to Lead">
-                <div className="flex flex-col items-center justify-center h-full">
-                  <span className="text-4xl font-bold">2.3m</span>
-                  <span className="text-sm text-muted-foreground mt-2">Average response time</span>
-                </div>
-              </Widget>
-            </div>
-            
-            <div key="widget-5">
-              <Widget title="Performance Overview">
-                <div className="flex items-center justify-center h-full">
-                  <span className="text-muted-foreground">Chart visualization goes here</span>
-                </div>
-              </Widget>
-            </div>
-            
-            <div key="widget-6">
-              <Widget title="Recent Activity">
-                <div className="flex items-center justify-center h-full">
-                  <span className="text-muted-foreground">Activity feed goes here</span>
-                </div>
-              </Widget>
-            </div>
-            
-            <div key="widget-7">
-              <Widget title="Revenue">
-                <div className="flex flex-col items-center justify-center h-full">
-                  <span className="text-3xl font-bold">$12,450</span>
-                  <span className="text-sm text-muted-foreground mt-2">This month</span>
-                </div>
-              </Widget>
-            </div>
-            
-            <div key="widget-8">
-              <Widget title="Active Users">
-                <div className="flex flex-col items-center justify-center h-full">
-                  <span className="text-3xl font-bold">892</span>
-                  <span className="text-sm text-muted-foreground mt-2">Currently active</span>
-                </div>
-              </Widget>
-            </div>
-            
-            <div key="widget-9">
-              <Widget title="Conversion Rate">
-                <div className="flex flex-col items-center justify-center h-full">
-                  <span className="text-3xl font-bold">24.8%</span>
-                  <span className="text-sm text-muted-foreground mt-2">Lead to customer</span>
-                </div>
-              </Widget>
-            </div>
+            {widgets.map((widget) => (
+              <div key={widget.id}>
+                <Widget title={widget.title}>
+                  {renderWidgetContent(widget)}
+                </Widget>
+              </div>
+            ))}
           </ResponsiveGridLayout>
         </div>
       </main>
+
+      <AddWidgetModal
+        open={showAddWidgetModal}
+        onOpenChange={setShowAddWidgetModal}
+        onAddWidget={handleAddWidget}
+      />
     </div>
   )
 } 
