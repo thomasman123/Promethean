@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { useToast } from "@/hooks/use-toast"
 import { useImpersonation } from "@/hooks/use-impersonation"
+import { useEffectiveUser } from "@/hooks/use-effective-user"
 import { cn } from "@/lib/utils"
 
 interface TaskAppointment {
@@ -36,6 +37,7 @@ export default function UpdateDataPage() {
   const [quickFlowData, setQuickFlowData] = useState<any>({})
   const { toast } = useToast()
   const { isImpersonating } = useImpersonation()
+  const { user: effectiveUser, loading: userLoading } = useEffectiveUser()
   
   const supabase = createBrowserClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -43,15 +45,16 @@ export default function UpdateDataPage() {
   )
 
   useEffect(() => {
-    fetchTasks()
-  }, [])
+    if (effectiveUser) {
+      fetchTasks()
+    }
+  }, [effectiveUser])
 
   const fetchTasks = async () => {
+    if (!effectiveUser) return
+    
     setLoading(true)
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-
       const today = new Date()
       today.setHours(0, 0, 0, 0)
       const tomorrow = new Date(today)
@@ -59,13 +62,13 @@ export default function UpdateDataPage() {
       const twoDaysAgo = new Date(today)
       twoDaysAgo.setDate(twoDaysAgo.getDate() - 2)
 
-      // Fetch appointments where user is the sales rep
+      // Fetch appointments where effective user is the sales rep
       const [todayRes, pendingRes, completedRes] = await Promise.all([
         // Today's appointments
         supabase
           .from('appointments')
           .select('id, date_booked_for, setter, call_outcome, show_outcome, data_filled, contacts!inner(full_name, email)')
-          .eq('sales_rep_user_id', user.id)
+          .eq('sales_rep_user_id', effectiveUser.id)
           .gte('date_booked_for', today.toISOString())
           .lt('date_booked_for', tomorrow.toISOString())
           .order('date_booked_for'),
@@ -74,7 +77,7 @@ export default function UpdateDataPage() {
         supabase
           .from('appointments')
           .select('id, date_booked_for, setter, call_outcome, show_outcome, data_filled, contacts!inner(full_name, email)')
-          .eq('sales_rep_user_id', user.id)
+          .eq('sales_rep_user_id', effectiveUser.id)
           .eq('data_filled', false)
           .lt('date_booked_for', today.toISOString())
           .order('date_booked_for', { ascending: false })
@@ -84,7 +87,7 @@ export default function UpdateDataPage() {
         supabase
           .from('appointments')
           .select('id, date_booked_for, setter, call_outcome, show_outcome, data_filled, contacts!inner(full_name, email)')
-          .eq('sales_rep_user_id', user.id)
+          .eq('sales_rep_user_id', effectiveUser.id)
           .eq('data_filled', true)
           .gte('updated_at', twoDaysAgo.toISOString())
           .order('updated_at', { ascending: false })
@@ -355,140 +358,150 @@ export default function UpdateDataPage() {
       
       <main className={cn("h-screen", isImpersonating ? "pt-[104px]" : "pt-16")}>
         <div className="h-full p-6">
-          {/* Stats Overview */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Today's Appointments</CardTitle>
-                <Calendar className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{todayAppointments.length}</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Pending Entry</CardTitle>
-                <AlertCircle className="h-4 w-4 text-yellow-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{pendingAppointments.length}</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Completed (48h)</CardTitle>
-                <CheckCircle2 className="h-4 w-4 text-green-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{recentCompleted.length}</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Completion Rate</CardTitle>
-                <TrendingUp className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {pendingAppointments.length + recentCompleted.length > 0 
-                    ? Math.round((recentCompleted.length / (pendingAppointments.length + recentCompleted.length)) * 100)
-                    : 100}%
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Today's Appointments */}
-          {todayAppointments.length > 0 && (
-            <Card className="mb-6">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Clock className="h-5 w-5" />
-                  Today's Appointments
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {todayAppointments.map(apt => (
-                    <div key={apt.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent">
-                      <div>
-                        <p className="font-medium">{apt.contact_name}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {new Date(apt.date_booked_for).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • Set by {apt.setter}
-                        </p>
-                      </div>
-                      <Button size="sm" onClick={() => startQuickFlow(apt)}>
-                        Quick Entry
-                      </Button>
+          {userLoading ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="text-center">
+                <div className="text-lg text-muted-foreground">Loading...</div>
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* Stats Overview */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Today's Appointments</CardTitle>
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{todayAppointments.length}</div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Pending Entry</CardTitle>
+                    <AlertCircle className="h-4 w-4 text-yellow-600" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{pendingAppointments.length}</div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Completed (48h)</CardTitle>
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{recentCompleted.length}</div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Completion Rate</CardTitle>
+                    <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {pendingAppointments.length + recentCompleted.length > 0 
+                        ? Math.round((recentCompleted.length / (pendingAppointments.length + recentCompleted.length)) * 100)
+                        : 100}%
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
+                  </CardContent>
+                </Card>
+              </div>
 
-          {/* Pending Data Entry */}
-          {pendingAppointments.length > 0 && (
-            <Card className="mb-6">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <AlertCircle className="h-5 w-5 text-yellow-600" />
-                  Awaiting Data Entry
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {pendingAppointments.map(apt => (
-                    <div key={apt.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent">
-                      <div>
-                        <p className="font-medium">{apt.contact_name}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {new Date(apt.date_booked_for).toLocaleDateString()} • Set by {apt.setter}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="secondary" className="text-yellow-600">
-                          Pending
-                        </Badge>
-                        <Button size="sm" onClick={() => startQuickFlow(apt)}>
-                          Fill Data
-                        </Button>
-                      </div>
+              {/* Today's Appointments */}
+              {todayAppointments.length > 0 && (
+                <Card className="mb-6">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Clock className="h-5 w-5" />
+                      Today's Appointments
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      {todayAppointments.map(apt => (
+                        <div key={apt.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent">
+                          <div>
+                            <p className="font-medium">{apt.contact_name}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {new Date(apt.date_booked_for).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • Set by {apt.setter}
+                            </p>
+                          </div>
+                          <Button size="sm" onClick={() => startQuickFlow(apt)}>
+                            Quick Entry
+                          </Button>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
+                  </CardContent>
+                </Card>
+              )}
 
-          {/* Recently Completed */}
-          {recentCompleted.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <CheckCircle2 className="h-5 w-5 text-green-600" />
-                  Recently Completed
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {recentCompleted.map(apt => (
-                    <div key={apt.id} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div>
-                        <p className="font-medium">{apt.contact_name}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {new Date(apt.date_booked_for).toLocaleDateString()} • {apt.call_outcome}
-                        </p>
-                      </div>
-                      <Badge variant="outline" className="text-green-600">
-                        Completed
-                      </Badge>
+              {/* Pending Data Entry */}
+              {pendingAppointments.length > 0 && (
+                <Card className="mb-6">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <AlertCircle className="h-5 w-5 text-yellow-600" />
+                      Awaiting Data Entry
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      {pendingAppointments.map(apt => (
+                        <div key={apt.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent">
+                          <div>
+                            <p className="font-medium">{apt.contact_name}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {new Date(apt.date_booked_for).toLocaleDateString()} • Set by {apt.setter}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="secondary" className="text-yellow-600">
+                              Pending
+                            </Badge>
+                            <Button size="sm" onClick={() => startQuickFlow(apt)}>
+                              Fill Data
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Recently Completed */}
+              {recentCompleted.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <CheckCircle2 className="h-5 w-5 text-green-600" />
+                      Recently Completed
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      {recentCompleted.map(apt => (
+                        <div key={apt.id} className="flex items-center justify-between p-3 border rounded-lg">
+                          <div>
+                            <p className="font-medium">{apt.contact_name}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {new Date(apt.date_booked_for).toLocaleDateString()} • {apt.call_outcome}
+                            </p>
+                          </div>
+                          <Badge variant="outline" className="text-green-600">
+                            Completed
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </>
           )}
         </div>
 

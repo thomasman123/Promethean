@@ -29,43 +29,80 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Try the function approach first
-    try {
-      const { data, error } = await supabase.rpc('get_user_accounts', {
-        p_user_id: user.id
-      })
+    // Check for impersonation
+    const impersonatedUserId = cookieStore.get('impersonate_user_id')?.value
+    let effectiveUserId = user.id
+    
+    if (impersonatedUserId) {
+      // Verify the current user is an admin
+      const { data: adminProfile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single()
 
-      if (!error && data) {
-        return NextResponse.json({ accounts: data })
+      if (adminProfile?.role === 'admin') {
+        effectiveUserId = impersonatedUserId
       }
-    } catch (funcError) {
-      console.log('Function approach failed, trying simple function:', funcError)
     }
 
-    // Fallback to simple function that just returns all accounts
-    try {
-      const { data, error } = await supabase.rpc('get_all_accounts_simple')
+    // Check if effective user is admin
+    const { data: effectiveProfile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', effectiveUserId)
+      .single()
+    
+    const isEffectiveAdmin = effectiveProfile?.role === 'admin'
+
+    // Get accounts based on effective user's permissions
+    let accounts: Array<{ id: string; name: string; description: string | null }> = []
+
+    if (isEffectiveAdmin) {
+      // Effective user is admin - show all accounts
+      const { data, error } = await supabase
+        .from('accounts')
+        .select('id, name, description')
+        .eq('is_active', true)
+        .order('name')
+
+      if (error) {
+        console.error('Admin accounts query error:', error)
+        return NextResponse.json({ accounts: [] })
+      }
       
-      if (!error && data) {
-        return NextResponse.json({ accounts: data })
+      accounts = data || []
+    } else {
+      // Non-admin effective user - show only their accounts
+      const { data, error } = await supabase
+        .from('account_access')
+        .select(`
+          role,
+          accounts (
+            id,
+            name,
+            description,
+            is_active
+          )
+        `)
+        .eq('user_id', effectiveUserId)
+        .eq('is_active', true)
+
+      if (error) {
+        console.error('User accounts query error:', error)
+        return NextResponse.json({ accounts: [] })
       }
-    } catch (simpleFuncError) {
-      console.log('Simple function failed, direct query:', simpleFuncError)
+
+      accounts = (data || []).flatMap((row: any) => {
+        const acc = row.accounts as any | null
+        if (acc && acc.is_active) {
+          return [{ id: acc.id, name: acc.name, description: acc.description }]
+        }
+        return []
+      })
     }
 
-    // Last resort: direct query to accounts table
-    const { data: accounts, error } = await supabase
-      .from('accounts')
-      .select('id, name, description')
-      .eq('is_active', true)
-      .order('name')
-
-    if (error) {
-      console.error('Direct accounts query error:', error)
-      return NextResponse.json({ accounts: [] })
-    }
-
-    return NextResponse.json({ accounts: accounts || [] })
+    return NextResponse.json({ accounts })
     
   } catch (error) {
     console.error('Get accounts error:', error)

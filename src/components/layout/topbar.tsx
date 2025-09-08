@@ -45,6 +45,7 @@ export function TopBar({ onAddWidget }: TopBarProps) {
   const [showAddWidgetModal, setShowAddWidgetModal] = useState(false)
   const [showAdminSettingsModal, setShowAdminSettingsModal] = useState(false)
   const [isImpersonating, setIsImpersonating] = useState(false)
+  const [appointmentsTab, setAppointmentsTab] = useState<'appointments' | 'discoveries'>('appointments')
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createBrowserClient(
@@ -161,6 +162,12 @@ export function TopBar({ onAddWidget }: TopBarProps) {
     setCurrentTableId(tableId)
     // Dispatch custom event for data view page to listen to
     window.dispatchEvent(new CustomEvent('tableChanged', { detail: { tableId } }))
+  }
+
+  const handleAppointmentsTabChange = (tab: 'appointments' | 'discoveries') => {
+    setAppointmentsTab(tab)
+    // Dispatch custom event for the page to listen to
+    window.dispatchEvent(new CustomEvent('appointmentsTabChanged', { detail: { tab } }))
   }
 
   const navItems = [
@@ -371,15 +378,44 @@ export function TopBar({ onAddWidget }: TopBarProps) {
               </Button>
             )}
             {pathname === "/update-data/appointments-discoveries" && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8"
-                onClick={() => router.push("/update-data")}
-              >
-                <FileText className="h-4 w-4 mr-2" />
-                Back to Overview
-              </Button>
+              <>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8"
+                    >
+                      <Calendar className="h-4 w-4 mr-2" />
+                      {appointmentsTab === 'appointments' ? 'Appointments' : 'Discoveries'}
+                      <ChevronDown className="h-4 w-4 ml-2" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      onClick={() => handleAppointmentsTabChange('appointments')}
+                      className={appointmentsTab === 'appointments' ? 'font-semibold' : ''}
+                    >
+                      Appointments
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => handleAppointmentsTabChange('discoveries')}
+                      className={appointmentsTab === 'discoveries' ? 'font-semibold' : ''}
+                    >
+                      Discoveries
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8"
+                  onClick={() => router.push("/update-data")}
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  Back to Overview
+                </Button>
+              </>
             )}
           </>
         )}

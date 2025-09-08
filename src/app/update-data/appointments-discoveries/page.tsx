@@ -28,8 +28,8 @@ import { createBrowserClient } from "@supabase/ssr"
 import { Database } from "@/lib/database.types"
 import { useToast } from "@/hooks/use-toast"
 import { Search, Filter, Edit, Calendar } from "lucide-react"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useImpersonation } from "@/hooks/use-impersonation"
+import { useEffectiveUser } from "@/hooks/use-effective-user"
 import { cn } from "@/lib/utils"
 
 interface AppointmentData {
@@ -74,6 +74,7 @@ export default function AppointmentsDiscoveriesPage() {
   const [activeTab, setActiveTab] = useState<"appointments" | "discoveries">("appointments")
   const { toast } = useToast()
   const { isImpersonating } = useImpersonation()
+  const { user: effectiveUser, loading: userLoading } = useEffectiveUser()
 
   const supabase = createBrowserClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -81,27 +82,40 @@ export default function AppointmentsDiscoveriesPage() {
   )
 
   useEffect(() => {
-    fetchData()
+    if (effectiveUser) {
+      fetchData()
+    }
+  }, [effectiveUser, activeTab])
+
+  useEffect(() => {
+    // Listen for tab change from topbar
+    const handleTabChange = (event: CustomEvent) => {
+      setActiveTab(event.detail.tab)
+    }
+    
+    window.addEventListener('appointmentsTabChanged', handleTabChange as any)
+    return () => {
+      window.removeEventListener('appointmentsTabChanged', handleTabChange as any)
+    }
   }, [])
 
   const fetchData = async () => {
+    if (!effectiveUser) return
+    
     setLoading(true)
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-
-      // Fetch appointments where user is the sales rep
+      // Fetch appointments where effective user is the sales rep
       const { data: appointmentsData } = await supabase
         .from('appointments')
         .select('*, contacts!inner(full_name, email)')
-        .eq('sales_rep_user_id', user.id)
+        .eq('sales_rep_user_id', effectiveUser.id)
         .order('date_booked_for', { ascending: false })
 
-      // Fetch discoveries where user is the setter
+      // Fetch discoveries where effective user is the setter
       const { data: discoveriesData } = await supabase
         .from('discoveries')
         .select('*, contacts!inner(full_name, email)')
-        .eq('setter_user_id', user.id)
+        .eq('setter_user_id', effectiveUser.id)
         .order('date_booked_for', { ascending: false })
 
       if (appointmentsData) {
@@ -272,306 +286,303 @@ export default function AppointmentsDiscoveriesPage() {
       
       <main className={cn("h-screen", isImpersonating ? "pt-[104px]" : "pt-16")}>
         <div className="h-full p-6">
-          {/* Search Bar */}
-          <div className="mb-6">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-              <Input
-                placeholder="Search by contact name, email, or setter..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
+          {userLoading ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="text-center">
+                <div className="text-lg text-muted-foreground">Loading...</div>
+              </div>
             </div>
-          </div>
-
-          {/* Tabs */}
-          <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as any)}>
-            <TabsList className="mb-4">
-              <TabsTrigger value="appointments">
-                Appointments ({appointments.length})
-              </TabsTrigger>
-              <TabsTrigger value="discoveries">
-                Discoveries ({discoveries.length})
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="appointments">
-              <Card>
-                <CardContent className="p-0">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Contact</TableHead>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Setter</TableHead>
-                        <TableHead>Call Outcome</TableHead>
-                        <TableHead>Show Outcome</TableHead>
-                        <TableHead>Cash</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredAppointments.map((apt) => (
-                        <TableRow key={apt.id}>
-                          <TableCell>
-                            <div>
-                              <p className="font-medium">{apt.contact_name}</p>
-                              <p className="text-sm text-muted-foreground">{apt.contact_email}</p>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-1">
-                              <Calendar className="h-3 w-3" />
-                              {new Date(apt.date_booked_for).toLocaleDateString()}
-                            </div>
-                          </TableCell>
-                          <TableCell>{apt.setter}</TableCell>
-                          <TableCell>{getCallOutcomeBadge(apt.call_outcome)}</TableCell>
-                          <TableCell>{getShowOutcomeBadge(apt.show_outcome)}</TableCell>
-                          <TableCell>
-                            {apt.cash_collected ? `$${apt.cash_collected.toLocaleString()}` : '-'}
-                          </TableCell>
-                          <TableCell>
-                            {apt.data_filled ? (
-                              <Badge variant="outline" className="text-green-600">Complete</Badge>
-                            ) : (
-                              <Badge variant="outline" className="text-yellow-600">Pending</Badge>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => openEditModal(apt)}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="discoveries">
-              <Card>
-                <CardContent className="p-0">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Contact</TableHead>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Sales Rep</TableHead>
-                        <TableHead>Call Outcome</TableHead>
-                        <TableHead>Show Outcome</TableHead>
-                        <TableHead>Lead Quality</TableHead>
-                        <TableHead>Status</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredDiscoveries.map((disc) => (
-                        <TableRow key={disc.id}>
-                          <TableCell>
-                            <div>
-                              <p className="font-medium">{disc.contact_name}</p>
-                              <p className="text-sm text-muted-foreground">{disc.contact_email}</p>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-1">
-                              <Calendar className="h-3 w-3" />
-                              {new Date(disc.date_booked_for).toLocaleDateString()}
-                            </div>
-                          </TableCell>
-                          <TableCell>{disc.sales_rep || '-'}</TableCell>
-                          <TableCell>{getCallOutcomeBadge(disc.call_outcome)}</TableCell>
-                          <TableCell>{disc.show_outcome || '-'}</TableCell>
-                          <TableCell>
-                            {disc.lead_quality ? (
-                              <div className="flex items-center gap-1">
-                                {[...Array(5)].map((_, i) => (
-                                  <span
-                                    key={i}
-                                    className={i < disc.lead_quality! ? "text-yellow-500" : "text-gray-300"}
-                                  >
-                                    ★
-                                  </span>
-                                ))}
-                              </div>
-                            ) : '-'}
-                          </TableCell>
-                          <TableCell>
-                            {disc.data_filled ? (
-                              <Badge variant="outline" className="text-green-600">Complete</Badge>
-                            ) : (
-                              <Badge variant="outline" className="text-yellow-600">Pending</Badge>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
-
-          {/* Edit Modal */}
-          <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
-            <DialogContent className="max-w-2xl">
-              <DialogHeader>
-                <DialogTitle>Edit Appointment Data</DialogTitle>
-              </DialogHeader>
-              
-              <div className="space-y-4 py-4">
-                {selectedAppointment && (
-                  <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-                    <p className="font-medium">{selectedAppointment.contact_name}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {new Date(selectedAppointment.date_booked_for).toLocaleString()}
-                    </p>
-                  </div>
-                )}
-
-                <div>
-                  <Label>Call Outcome</Label>
-                  <RadioGroup
-                    value={editForm.callOutcome}
-                    onValueChange={(value: string) => setEditForm({...editForm, callOutcome: value})}
-                  >
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="show" id="edit-show" />
-                      <Label htmlFor="edit-show">Show</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="no_show" id="edit-no_show" />
-                      <Label htmlFor="edit-no_show">No Show</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="reschedule" id="edit-reschedule" />
-                      <Label htmlFor="edit-reschedule">Rescheduled</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="cancel" id="edit-cancel" />
-                      <Label htmlFor="edit-cancel">Cancelled</Label>
-                    </div>
-                  </RadioGroup>
-                </div>
-
-                {editForm.callOutcome === 'show' && (
-                  <>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="watched-assets"
-                          checked={editForm.watchedAssets}
-                          onCheckedChange={(checked: boolean) => 
-                            setEditForm({...editForm, watchedAssets: checked})
-                          }
-                        />
-                        <Label htmlFor="watched-assets">Watched Assets</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="pitched"
-                          checked={editForm.pitched}
-                          onCheckedChange={(checked: boolean) => 
-                            setEditForm({...editForm, pitched: checked})
-                          }
-                        />
-                        <Label htmlFor="pitched">Pitched</Label>
-                      </div>
-                    </div>
-
-                    <div>
-                      <Label>Show Outcome</Label>
-                      <RadioGroup
-                        value={editForm.showOutcome}
-                        onValueChange={(value: string) => setEditForm({...editForm, showOutcome: value})}
-                      >
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="won" id="edit-won" />
-                          <Label htmlFor="edit-won">Won 🎉</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="lost" id="edit-lost" />
-                          <Label htmlFor="edit-lost">Lost</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="follow_up" id="edit-follow_up" />
-                          <Label htmlFor="edit-follow_up">Follow Up Needed</Label>
-                        </div>
-                      </RadioGroup>
-                    </div>
-
-                    {editForm.showOutcome === 'won' && (
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <Label>Cash Collected</Label>
-                          <Input
-                            type="number"
-                            placeholder="0.00"
-                            value={editForm.cashCollected}
-                            onChange={(e) => setEditForm({...editForm, cashCollected: e.target.value})}
-                          />
-                        </div>
-                        <div>
-                          <Label>Total Sales Value</Label>
-                          <Input
-                            type="number"
-                            placeholder="0.00"
-                            value={editForm.totalSalesValue}
-                            onChange={(e) => setEditForm({...editForm, totalSalesValue: e.target.value})}
-                          />
-                        </div>
-                      </div>
-                    )}
-
-                    {(editForm.showOutcome === 'lost' || editForm.showOutcome === 'follow_up') && (
-                      <div>
-                        <Label>Objections (comma separated)</Label>
-                        <Input
-                          placeholder="Price, Timing, Need to think..."
-                          value={editForm.objections}
-                          onChange={(e) => setEditForm({...editForm, objections: e.target.value})}
-                        />
-                      </div>
-                    )}
-                  </>
-                )}
-
-                <div>
-                  <Label>Lead Quality</Label>
-                  <div className="flex gap-2 mt-2">
-                    {[1, 2, 3, 4, 5].map(rating => (
-                      <Button
-                        key={rating}
-                        variant={editForm.leadQuality === rating ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setEditForm({...editForm, leadQuality: rating})}
-                      >
-                        {rating}
-                      </Button>
-                    ))}
-                  </div>
+          ) : (
+            <>
+              {/* Search Bar */}
+              <div className="mb-6">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <Input
+                    placeholder="Search by contact name, email, or setter..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
                 </div>
               </div>
 
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setEditModalOpen(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={saveAppointmentData}>
-                  Save Changes
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+              {/* Content based on active tab */}
+              {activeTab === "appointments" ? (
+                <Card>
+                  <CardContent className="p-0">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Contact</TableHead>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Setter</TableHead>
+                          <TableHead>Call Outcome</TableHead>
+                          <TableHead>Show Outcome</TableHead>
+                          <TableHead>Cash</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredAppointments.map((apt) => (
+                          <TableRow key={apt.id}>
+                            <TableCell>
+                              <div>
+                                <p className="font-medium">{apt.contact_name}</p>
+                                <p className="text-sm text-muted-foreground">{apt.contact_email}</p>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-1">
+                                <Calendar className="h-3 w-3" />
+                                {new Date(apt.date_booked_for).toLocaleDateString()}
+                              </div>
+                            </TableCell>
+                            <TableCell>{apt.setter}</TableCell>
+                            <TableCell>{getCallOutcomeBadge(apt.call_outcome)}</TableCell>
+                            <TableCell>{getShowOutcomeBadge(apt.show_outcome)}</TableCell>
+                            <TableCell>
+                              {apt.cash_collected ? `$${apt.cash_collected.toLocaleString()}` : '-'}
+                            </TableCell>
+                            <TableCell>
+                              {apt.data_filled ? (
+                                <Badge variant="outline" className="text-green-600">Complete</Badge>
+                              ) : (
+                                <Badge variant="outline" className="text-yellow-600">Pending</Badge>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => openEditModal(apt)}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card>
+                  <CardContent className="p-0">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Contact</TableHead>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Sales Rep</TableHead>
+                          <TableHead>Call Outcome</TableHead>
+                          <TableHead>Show Outcome</TableHead>
+                          <TableHead>Lead Quality</TableHead>
+                          <TableHead>Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredDiscoveries.map((disc) => (
+                          <TableRow key={disc.id}>
+                            <TableCell>
+                              <div>
+                                <p className="font-medium">{disc.contact_name}</p>
+                                <p className="text-sm text-muted-foreground">{disc.contact_email}</p>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-1">
+                                <Calendar className="h-3 w-3" />
+                                {new Date(disc.date_booked_for).toLocaleDateString()}
+                              </div>
+                            </TableCell>
+                            <TableCell>{disc.sales_rep || '-'}</TableCell>
+                            <TableCell>{getCallOutcomeBadge(disc.call_outcome)}</TableCell>
+                            <TableCell>{disc.show_outcome || '-'}</TableCell>
+                            <TableCell>
+                              {disc.lead_quality ? (
+                                <div className="flex items-center gap-1">
+                                  {[...Array(5)].map((_, i) => (
+                                    <span
+                                      key={i}
+                                      className={i < disc.lead_quality! ? "text-yellow-500" : "text-gray-300"}
+                                    >
+                                      ★
+                                    </span>
+                                  ))}
+                                </div>
+                              ) : '-'}
+                            </TableCell>
+                            <TableCell>
+                              {disc.data_filled ? (
+                                <Badge variant="outline" className="text-green-600">Complete</Badge>
+                              ) : (
+                                <Badge variant="outline" className="text-yellow-600">Pending</Badge>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+              )}
+            </>
+          )}
         </div>
+
+        {/* Edit Modal */}
+        <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Edit Appointment Data</DialogTitle>
+            </DialogHeader>
+            
+            <div className="space-y-4 py-4">
+              {selectedAppointment && (
+                <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                  <p className="font-medium">{selectedAppointment.contact_name}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {new Date(selectedAppointment.date_booked_for).toLocaleString()}
+                  </p>
+                </div>
+              )}
+
+              <div>
+                <Label>Call Outcome</Label>
+                <RadioGroup
+                  value={editForm.callOutcome}
+                  onValueChange={(value: string) => setEditForm({...editForm, callOutcome: value})}
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="show" id="edit-show" />
+                    <Label htmlFor="edit-show">Show</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="no_show" id="edit-no_show" />
+                    <Label htmlFor="edit-no_show">No Show</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="reschedule" id="edit-reschedule" />
+                    <Label htmlFor="edit-reschedule">Rescheduled</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="cancel" id="edit-cancel" />
+                    <Label htmlFor="edit-cancel">Cancelled</Label>
+                  </div>
+                </RadioGroup>
+              </div>
+
+              {editForm.callOutcome === 'show' && (
+                <>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="watched-assets"
+                        checked={editForm.watchedAssets}
+                        onCheckedChange={(checked: boolean) => 
+                          setEditForm({...editForm, watchedAssets: checked})
+                        }
+                      />
+                      <Label htmlFor="watched-assets">Watched Assets</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="pitched"
+                        checked={editForm.pitched}
+                        onCheckedChange={(checked: boolean) => 
+                          setEditForm({...editForm, pitched: checked})
+                        }
+                      />
+                      <Label htmlFor="pitched">Pitched</Label>
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label>Show Outcome</Label>
+                    <RadioGroup
+                      value={editForm.showOutcome}
+                      onValueChange={(value: string) => setEditForm({...editForm, showOutcome: value})}
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="won" id="edit-won" />
+                        <Label htmlFor="edit-won">Won 🎉</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="lost" id="edit-lost" />
+                        <Label htmlFor="edit-lost">Lost</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="follow_up" id="edit-follow_up" />
+                        <Label htmlFor="edit-follow_up">Follow Up Needed</Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+
+                  {editForm.showOutcome === 'won' && (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label>Cash Collected</Label>
+                        <Input
+                          type="number"
+                          placeholder="0.00"
+                          value={editForm.cashCollected}
+                          onChange={(e) => setEditForm({...editForm, cashCollected: e.target.value})}
+                        />
+                      </div>
+                      <div>
+                        <Label>Total Sales Value</Label>
+                        <Input
+                          type="number"
+                          placeholder="0.00"
+                          value={editForm.totalSalesValue}
+                          onChange={(e) => setEditForm({...editForm, totalSalesValue: e.target.value})}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {(editForm.showOutcome === 'lost' || editForm.showOutcome === 'follow_up') && (
+                    <div>
+                      <Label>Objections (comma separated)</Label>
+                      <Input
+                        placeholder="Price, Timing, Need to think..."
+                        value={editForm.objections}
+                        onChange={(e) => setEditForm({...editForm, objections: e.target.value})}
+                      />
+                    </div>
+                  )}
+                </>
+              )}
+
+              <div>
+                <Label>Lead Quality</Label>
+                <div className="flex gap-2 mt-2">
+                  {[1, 2, 3, 4, 5].map(rating => (
+                    <Button
+                      key={rating}
+                      variant={editForm.leadQuality === rating ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setEditForm({...editForm, leadQuality: rating})}
+                    >
+                      {rating}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEditModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={saveAppointmentData}>
+                Save Changes
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   )
