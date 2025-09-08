@@ -318,10 +318,11 @@ export function AreaChartWidget({ metrics }: AreaChartWidgetProps) {
               dataKey={metric}
               type="linear"
               fill={`var(--color-${metric})`}
-              fillOpacity={0.4}
+              fillOpacity={metrics.length > 1 ? 0.2 : 0.4}
               stroke={`var(--color-${metric})`}
+              strokeWidth={2}
               yAxisId={isPercentage ? "percentages" : "numbers"}
-              stackId={hasBothTypes ? undefined : (metrics.length > 1 ? "1" : undefined)}
+              stackId={undefined}
             />
           )
         })}
