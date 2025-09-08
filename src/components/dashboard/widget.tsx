@@ -2,8 +2,14 @@
 
 import { ReactNode } from "react"
 import { cn } from "@/lib/utils"
-import { X } from "lucide-react"
+import { MoreVertical, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 interface WidgetProps {
   title?: string
@@ -28,20 +34,31 @@ export function Widget({ title, children, className, onRemove }: WidgetProps) {
         </div>
       )}
       
-      {/* Remove button */}
-      {onRemove && (
-        <Button
-          size="icon"
-          variant="ghost"
-          className="absolute top-2 right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-          onClick={(e) => {
-            e.stopPropagation()
-            onRemove()
-          }}
-        >
-          <X className="h-3 w-3" />
-        </Button>
-      )}
+      {/* Menu button */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute top-2 right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <MoreVertical className="h-3 w-3" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-48">
+          <DropdownMenuItem
+            onClick={(e) => {
+              e.stopPropagation()
+              onRemove?.()
+            }}
+            className="text-destructive focus:text-destructive"
+          >
+            <Trash2 className="mr-2 h-4 w-4" />
+            Delete
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
       
       {/* Content */}
       <div className="flex-1 p-4 min-h-0 overflow-hidden">
