@@ -22,7 +22,7 @@ export function Widget({ title, children, className, onRemove }: WidgetProps) {
       className
     )}>
       {title && (
-        <div className="px-4 pt-4 pb-2">
+        <div className="px-6 pt-4 pb-2">
           <h3 className="text-sm font-medium text-muted-foreground">
             {title}
           </h3>
@@ -43,7 +43,7 @@ export function Widget({ title, children, className, onRemove }: WidgetProps) {
         </Button>
       )}
       
-      <div className="flex-1 px-4 pb-4">
+      <div className="flex-1 px-6 pb-4">
         {children}
       </div>
     </div>
