@@ -29,37 +29,37 @@ const defaultWidgets: WidgetConfig[] = [
 // Default layouts for different breakpoints - optimized for content fit
 const defaultLayouts = {
   lg: [
-    { i: "widget-1", x: 0, y: 0, w: 3, h: 2, minW: 3, minH: 2 },
-    { i: "widget-2", x: 3, y: 0, w: 3, h: 2, minW: 3, minH: 2 },
-    { i: "widget-3", x: 6, y: 0, w: 3, h: 2, minW: 3, minH: 2 },
-    { i: "widget-4", x: 9, y: 0, w: 3, h: 2, minW: 3, minH: 2 },
-    { i: "widget-5", x: 0, y: 2, w: 6, h: 3, minW: 4, minH: 3 },
-    { i: "widget-6", x: 6, y: 2, w: 6, h: 3, minW: 4, minH: 3 },
-    { i: "widget-7", x: 0, y: 5, w: 3, h: 2, minW: 3, minH: 2 },
-    { i: "widget-8", x: 3, y: 5, w: 3, h: 2, minW: 3, minH: 2 },
-    { i: "widget-9", x: 6, y: 5, w: 3, h: 2, minW: 3, minH: 2 },
+    { i: "widget-1", x: 0, y: 0, w: 2, h: 2, minW: 2, minH: 2 },
+    { i: "widget-2", x: 2, y: 0, w: 2, h: 2, minW: 2, minH: 2 },
+    { i: "widget-3", x: 4, y: 0, w: 2, h: 2, minW: 2, minH: 2 },
+    { i: "widget-4", x: 0, y: 2, w: 2, h: 2, minW: 2, minH: 2 },
+    { i: "widget-5", x: 2, y: 2, w: 4, h: 3, minW: 3, minH: 3 },
+    { i: "widget-6", x: 0, y: 5, w: 3, h: 3, minW: 3, minH: 3 },
+    { i: "widget-7", x: 3, y: 5, w: 3, h: 3, minW: 3, minH: 3 },
+    { i: "widget-8", x: 0, y: 8, w: 2, h: 2, minW: 2, minH: 2 },
+    { i: "widget-9", x: 2, y: 8, w: 2, h: 2, minW: 2, minH: 2 },
   ],
   md: [
-    { i: "widget-1", x: 0, y: 0, w: 4, h: 2, minW: 3, minH: 2 },
-    { i: "widget-2", x: 4, y: 0, w: 4, h: 2, minW: 3, minH: 2 },
-    { i: "widget-3", x: 8, y: 0, w: 4, h: 2, minW: 3, minH: 2 },
-    { i: "widget-4", x: 0, y: 2, w: 4, h: 2, minW: 3, minH: 2 },
-    { i: "widget-5", x: 4, y: 2, w: 8, h: 3, minW: 6, minH: 3 },
-    { i: "widget-6", x: 0, y: 5, w: 12, h: 3, minW: 8, minH: 3 },
-    { i: "widget-7", x: 0, y: 8, w: 4, h: 2, minW: 3, minH: 2 },
-    { i: "widget-8", x: 4, y: 8, w: 4, h: 2, minW: 3, minH: 2 },
-    { i: "widget-9", x: 8, y: 8, w: 4, h: 2, minW: 3, minH: 2 },
+    { i: "widget-1", x: 0, y: 0, w: 2, h: 2, minW: 2, minH: 2 },
+    { i: "widget-2", x: 2, y: 0, w: 2, h: 2, minW: 2, minH: 2 },
+    { i: "widget-3", x: 4, y: 0, w: 2, h: 2, minW: 2, minH: 2 },
+    { i: "widget-4", x: 0, y: 2, w: 2, h: 2, minW: 2, minH: 2 },
+    { i: "widget-5", x: 2, y: 2, w: 4, h: 3, minW: 3, minH: 3 },
+    { i: "widget-6", x: 0, y: 5, w: 6, h: 3, minW: 4, minH: 3 },
+    { i: "widget-7", x: 0, y: 8, w: 2, h: 2, minW: 2, minH: 2 },
+    { i: "widget-8", x: 2, y: 8, w: 2, h: 2, minW: 2, minH: 2 },
+    { i: "widget-9", x: 4, y: 8, w: 2, h: 2, minW: 2, minH: 2 },
   ],
   sm: [
-    { i: "widget-1", x: 0, y: 0, w: 12, h: 2, minW: 12, minH: 2 },
-    { i: "widget-2", x: 0, y: 2, w: 12, h: 2, minW: 12, minH: 2 },
-    { i: "widget-3", x: 0, y: 4, w: 12, h: 2, minW: 12, minH: 2 },
-    { i: "widget-4", x: 0, y: 6, w: 12, h: 2, minW: 12, minH: 2 },
-    { i: "widget-5", x: 0, y: 8, w: 12, h: 3, minW: 12, minH: 3 },
-    { i: "widget-6", x: 0, y: 11, w: 12, h: 3, minW: 12, minH: 3 },
-    { i: "widget-7", x: 0, y: 14, w: 12, h: 2, minW: 12, minH: 2 },
-    { i: "widget-8", x: 0, y: 16, w: 12, h: 2, minW: 12, minH: 2 },
-    { i: "widget-9", x: 0, y: 18, w: 12, h: 2, minW: 12, minH: 2 },
+    { i: "widget-1", x: 0, y: 0, w: 6, h: 2, minW: 6, minH: 2 },
+    { i: "widget-2", x: 0, y: 2, w: 6, h: 2, minW: 6, minH: 2 },
+    { i: "widget-3", x: 0, y: 4, w: 6, h: 2, minW: 6, minH: 2 },
+    { i: "widget-4", x: 0, y: 6, w: 6, h: 2, minW: 6, minH: 2 },
+    { i: "widget-5", x: 0, y: 8, w: 6, h: 3, minW: 6, minH: 3 },
+    { i: "widget-6", x: 0, y: 11, w: 6, h: 3, minW: 6, minH: 3 },
+    { i: "widget-7", x: 0, y: 14, w: 6, h: 2, minW: 6, minH: 2 },
+    { i: "widget-8", x: 0, y: 16, w: 6, h: 2, minW: 6, minH: 2 },
+    { i: "widget-9", x: 0, y: 18, w: 6, h: 2, minW: 6, minH: 2 },
   ],
 }
 
@@ -177,13 +177,13 @@ export default function DashboardPage() {
     const getDefaultSize = (type: string) => {
       switch (type) {
         case "kpi":
-          return { w: 3, h: 2, minW: 3, minH: 2 }
+          return { w: 2, h: 2, minW: 2, minH: 2 }
         case "bar":
         case "line":
         case "area":
-          return { w: 6, h: 3, minW: 4, minH: 3 }
+          return { w: 3, h: 3, minW: 3, minH: 3 }
         default:
-          return { w: 3, h: 2, minW: 3, minH: 2 }
+          return { w: 2, h: 2, minW: 2, minH: 2 }
       }
     }
     
@@ -191,8 +191,8 @@ export default function DashboardPage() {
     
     // Add to all breakpoint layouts
     newLayouts.lg.push({ i: widget.id, x: position.x, y: position.y, ...size })
-    newLayouts.md.push({ i: widget.id, x: 0, y: position.y, w: widget.type === "kpi" ? 6 : 12, h: size.h, minW: size.minW, minH: size.minH })
-    newLayouts.sm.push({ i: widget.id, x: 0, y: position.y, w: 12, h: size.h, minW: 12, minH: size.minH })
+    newLayouts.md.push({ i: widget.id, x: 0, y: position.y, w: widget.type === "kpi" ? 2 : 4, h: size.h, minW: size.minW, minH: size.minH })
+    newLayouts.sm.push({ i: widget.id, x: 0, y: position.y, w: 6, h: size.h, minW: 6, minH: size.minH })
     
     setLayouts(newLayouts)
     saveViewData(newWidgets, newLayouts)
@@ -270,7 +270,7 @@ export default function DashboardPage() {
               layouts={layouts}
               onLayoutChange={handleLayoutChange}
               breakpoints={{ lg: 1280, md: 768, sm: 480 }}
-              cols={{ lg: 12, md: 12, sm: 12 }}
+              cols={{ lg: 6, md: 6, sm: 6 }}
               rowHeight={100}
               isDraggable={true}
               isResizable={true}
