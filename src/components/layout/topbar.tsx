@@ -349,11 +349,11 @@ export function TopBar({ onAddWidget }: TopBarProps) {
             {/* Show ViewsManager and Add Widget button on dashboard page */}
             {pathname === "/dashboard" && (
               <>
-                <ViewsManager
-                  accountId={selectedAccountId}
-                  currentUserId={currentUserId}
-                  onViewChange={handleViewChange}
-                />
+              <ViewsManager
+                accountId={selectedAccountId}
+                currentUserId={currentUserId}
+                onViewChange={handleViewChange}
+              />
                 <Button
                   variant="outline"
                   size="sm"

@@ -23,8 +23,8 @@ export function Widget({ title, children, className, onRemove }: WidgetProps) {
       className
     )}>
       {title && (
-        <div className="px-6 pt-4 pb-2 flex-shrink-0">
-          <h3 className="text-sm font-medium text-muted-foreground truncate">
+        <div className="px-3 sm:px-4 md:px-6 pt-3 pb-2 flex-shrink-0">
+          <h3 className="text-xs sm:text-sm font-medium text-muted-foreground truncate">
             {title}
           </h3>
         </div>
@@ -44,7 +44,7 @@ export function Widget({ title, children, className, onRemove }: WidgetProps) {
         </Button>
       )}
       
-      <div className="flex-1 px-6 pb-4 min-h-0">
+      <div className="flex-1 px-3 sm:px-4 md:px-6 pb-3 min-h-0">
         {children}
       </div>
     </div>

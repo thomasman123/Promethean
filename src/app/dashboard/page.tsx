@@ -29,26 +29,26 @@ const defaultWidgets: WidgetConfig[] = [
 // Default layouts for different breakpoints - optimized for content fit
 const defaultLayouts = {
   lg: [
-    { i: "widget-1", x: 0, y: 0, w: 2, h: 2, minW: 2, minH: 2 },
-    { i: "widget-2", x: 2, y: 0, w: 2, h: 2, minW: 2, minH: 2 },
-    { i: "widget-3", x: 4, y: 0, w: 2, h: 2, minW: 2, minH: 2 },
-    { i: "widget-4", x: 0, y: 2, w: 2, h: 2, minW: 2, minH: 2 },
+    { i: "widget-1", x: 0, y: 0, w: 2, h: 2, minW: 1, minH: 2 },
+    { i: "widget-2", x: 2, y: 0, w: 2, h: 2, minW: 1, minH: 2 },
+    { i: "widget-3", x: 4, y: 0, w: 2, h: 2, minW: 1, minH: 2 },
+    { i: "widget-4", x: 0, y: 2, w: 2, h: 2, minW: 1, minH: 2 },
     { i: "widget-5", x: 2, y: 2, w: 4, h: 3, minW: 3, minH: 3 },
     { i: "widget-6", x: 0, y: 5, w: 3, h: 3, minW: 3, minH: 3 },
     { i: "widget-7", x: 3, y: 5, w: 3, h: 3, minW: 3, minH: 3 },
-    { i: "widget-8", x: 0, y: 8, w: 2, h: 2, minW: 2, minH: 2 },
-    { i: "widget-9", x: 2, y: 8, w: 2, h: 2, minW: 2, minH: 2 },
+    { i: "widget-8", x: 0, y: 8, w: 2, h: 2, minW: 1, minH: 2 },
+    { i: "widget-9", x: 2, y: 8, w: 2, h: 2, minW: 1, minH: 2 },
   ],
   md: [
-    { i: "widget-1", x: 0, y: 0, w: 2, h: 2, minW: 2, minH: 2 },
-    { i: "widget-2", x: 2, y: 0, w: 2, h: 2, minW: 2, minH: 2 },
-    { i: "widget-3", x: 4, y: 0, w: 2, h: 2, minW: 2, minH: 2 },
-    { i: "widget-4", x: 0, y: 2, w: 2, h: 2, minW: 2, minH: 2 },
+    { i: "widget-1", x: 0, y: 0, w: 2, h: 2, minW: 1, minH: 2 },
+    { i: "widget-2", x: 2, y: 0, w: 2, h: 2, minW: 1, minH: 2 },
+    { i: "widget-3", x: 4, y: 0, w: 2, h: 2, minW: 1, minH: 2 },
+    { i: "widget-4", x: 0, y: 2, w: 2, h: 2, minW: 1, minH: 2 },
     { i: "widget-5", x: 2, y: 2, w: 4, h: 3, minW: 3, minH: 3 },
     { i: "widget-6", x: 0, y: 5, w: 6, h: 3, minW: 4, minH: 3 },
-    { i: "widget-7", x: 0, y: 8, w: 2, h: 2, minW: 2, minH: 2 },
-    { i: "widget-8", x: 2, y: 8, w: 2, h: 2, minW: 2, minH: 2 },
-    { i: "widget-9", x: 4, y: 8, w: 2, h: 2, minW: 2, minH: 2 },
+    { i: "widget-7", x: 0, y: 8, w: 2, h: 2, minW: 1, minH: 2 },
+    { i: "widget-8", x: 2, y: 8, w: 2, h: 2, minW: 1, minH: 2 },
+    { i: "widget-9", x: 4, y: 8, w: 2, h: 2, minW: 1, minH: 2 },
   ],
   sm: [
     { i: "widget-1", x: 0, y: 0, w: 6, h: 2, minW: 6, minH: 2 },
@@ -177,13 +177,13 @@ export default function DashboardPage() {
     const getDefaultSize = (type: string) => {
       switch (type) {
         case "kpi":
-          return { w: 2, h: 2, minW: 2, minH: 2 }
+          return { w: 2, h: 2, minW: 1, minH: 2 }
         case "bar":
         case "line":
         case "area":
           return { w: 3, h: 3, minW: 3, minH: 3 }
         default:
-          return { w: 2, h: 2, minW: 2, minH: 2 }
+          return { w: 2, h: 2, minW: 1, minH: 2 }
       }
     }
     
@@ -225,7 +225,7 @@ export default function DashboardPage() {
       case "kpi":
         return (
           <div className="flex items-center justify-center h-full w-full">
-            <span className="text-3xl md:text-4xl font-bold">--</span>
+            <span className="text-2xl sm:text-3xl md:text-4xl font-bold px-2">--</span>
           </div>
         )
       case "bar":

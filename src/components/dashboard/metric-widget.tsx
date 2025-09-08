@@ -81,7 +81,7 @@ export function MetricWidget({ metric, type }: MetricWidgetProps) {
   if (type === "kpi") {
     return (
       <div className="flex items-center justify-center h-full w-full">
-        <span className="text-3xl md:text-4xl font-bold truncate">
+        <span className="text-2xl sm:text-3xl md:text-4xl font-bold truncate px-2">
           {loading ? (
             <span className="text-muted-foreground">...</span>
           ) : value !== null ? (
