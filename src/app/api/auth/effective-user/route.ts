@@ -18,15 +18,15 @@ export async function GET(request: NextRequest) {
       }
     )
 
-    const { data: { session } } = await supabase.auth.getSession()
+    const { data: { user } } = await supabase.auth.getUser()
     
-    if (!session) {
+    if (!user) {
       return NextResponse.json({ user: null })
     }
 
     // Check for impersonation
     const impersonatedUserId = request.cookies.get('impersonate_user_id')?.value
-    let effectiveUserId = session.user.id
+    let effectiveUserId = user.id
     let isImpersonating = false
 
     if (impersonatedUserId) {
@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
       const { data: adminProfile } = await supabase
         .from('profiles')
         .select('role')
-        .eq('id', session.user.id)
+        .eq('id', user.id)
         .single()
 
       if (adminProfile?.role === 'admin') {
@@ -53,11 +53,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       user: {
         id: effectiveUserId,
-        email: profile?.email || session.user.email,
+        email: profile?.email || user.email,
         ...profile
       },
       isImpersonating,
-      realUserId: isImpersonating ? session.user.id : null
+      realUserId: isImpersonating ? user.id : null
     })
   } catch (error) {
     console.error('Effective user API error:', error)

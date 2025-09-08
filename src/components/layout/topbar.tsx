@@ -104,56 +104,17 @@ export function TopBar({ onAddWidget }: TopBarProps) {
     if (!effectiveUser) return
     
     try {
-      // Use effective user for account access check
-      const isEffectiveAdmin = effectiveUser.role === 'admin'
-      let accountsData: Account[] = []
-
-      if (isEffectiveAdmin) {
-        // Effective user is admin - show all accounts
-        const { data, error } = await supabase
-          .from('accounts')
-          .select('id, name, description')
-          .eq('is_active', true)
-          .order('name')
-
-        if (error) {
-          console.error('Admin accounts query error:', error)
-          setAccounts([])
-          return
-        }
-        
-        accountsData = data || []
-      } else {
-        // Non-admin effective user - show only their accounts
-        const { data, error } = await supabase
-          .from('account_access')
-          .select(`
-            role,
-            accounts (
-              id,
-              name,
-              description,
-              is_active
-            )
-          `)
-          .eq('user_id', effectiveUser.id)
-          .eq('is_active', true)
-
-        if (error) {
-          console.error('User accounts query error:', error)
-          setAccounts([])
-          return
-        }
-
-        accountsData = (data || []).flatMap((row: any) => {
-          const acc = row.accounts as any | null
-          if (acc && acc.is_active) {
-            return [{ id: acc.id, name: acc.name, description: acc.description }]
-          }
-          return []
-        })
+      // Use the API endpoint which properly handles impersonation
+      const response = await fetch('/api/accounts-simple')
+      const data = await response.json()
+      
+      if (!response.ok) {
+        console.error('Failed to load accounts:', data.error)
+        setAccounts([])
+        return
       }
 
+      const accountsData = data.accounts || []
       setAccounts(accountsData)
       
       // Set first account as selected if none selected or current selection is not available
