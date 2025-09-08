@@ -1,7 +1,7 @@
 "use client"
 
 import { cn } from "@/lib/utils"
-import { Sword, Home, RefreshCw, Settings, Sun, Moon, LogOut, ChevronDown, LayoutDashboard, Database, Calendar, Users, CreditCard, Building2, Palette, Plus, FileText } from "lucide-react"
+import { Sword, Home, RefreshCw, Settings, Sun, Moon, LogOut, ChevronDown, LayoutDashboard, Database, Calendar, Users, CreditCard, Building2, Palette, Plus, FileText, Shield } from "lucide-react"
 import { useState, useEffect, useRef } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
@@ -19,6 +19,7 @@ import { ViewsManager } from "@/components/dashboard/views-manager"
 import { TablesManager } from "@/components/data-view/tables-manager"
 import { RoleFilterDropdown, type RoleFilter } from "@/components/data-view/role-filter"
 import { AddWidgetModal, WidgetConfig } from "@/components/dashboard/add-widget-modal"
+import { AdminSettingsModal } from "./admin-settings-modal"
 import { useDashboard } from "@/lib/dashboard-context"
 
 interface Account {
@@ -38,9 +39,12 @@ export function TopBar({ onAddWidget }: TopBarProps) {
   const [hoverTimeout, setHoverTimeout] = useState<NodeJS.Timeout | null>(null)
   const [accounts, setAccounts] = useState<Account[]>([])
   const [currentUserId, setCurrentUserId] = useState<string>("")
+  const [currentUserRole, setCurrentUserRole] = useState<string | null>(null)
   const [currentTableId, setCurrentTableId] = useState<string | null>(null)
   const [roleFilter, setRoleFilter] = useState<RoleFilter>('both')
   const [showAddWidgetModal, setShowAddWidgetModal] = useState(false)
+  const [showAdminSettingsModal, setShowAdminSettingsModal] = useState(false)
+  const [isImpersonating, setIsImpersonating] = useState(false)
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createBrowserClient(
@@ -65,6 +69,7 @@ export function TopBar({ onAddWidget }: TopBarProps) {
     // Load user accounts and get current user
     loadUserAccounts()
     getCurrentUser()
+    checkImpersonation()
   }, [])
 
   useEffect(() => {
@@ -82,6 +87,7 @@ export function TopBar({ onAddWidget }: TopBarProps) {
       if (response.ok) {
         const data = await response.json()
         setCurrentUserId(data.user?.id || "")
+        setCurrentUserRole(data.user?.role || null)
       }
     } catch (error) {
       console.error('Failed to get current user:', error)
@@ -215,10 +221,21 @@ export function TopBar({ onAddWidget }: TopBarProps) {
     setHoverTimeout(timeout)
   }
 
+  const checkImpersonation = async () => {
+    try {
+      const response = await fetch('/api/auth/impersonation')
+      const data = await response.json()
+      setIsImpersonating(!!data.impersonatedUserId)
+    } catch (error) {
+      console.error('Failed to check impersonation:', error)
+    }
+  }
+
   return (
     <div className={cn(
-      "fixed top-0 left-0 right-0 z-50 flex h-16 items-center justify-between px-6 transition-all duration-200",
-      isScrolled ? "bg-background/80 backdrop-blur-md border-b" : "bg-transparent"
+      "fixed left-0 right-0 z-50 flex h-16 items-center justify-between px-6 transition-all duration-200",
+      isScrolled ? "bg-background/80 backdrop-blur-md border-b" : "bg-transparent",
+      isImpersonating ? "top-10" : "top-0"
     )}>
       {/* Left section - Logo and Account Selector */}
       <div className="flex items-center gap-3">
@@ -433,6 +450,18 @@ export function TopBar({ onAddWidget }: TopBarProps) {
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48 rounded-2xl border bg-popover/95 backdrop-blur-sm">
+            {currentUserRole === 'admin' && (
+              <>
+                <DropdownMenuItem 
+                  onClick={() => setShowAdminSettingsModal(true)}
+                  className="cursor-pointer rounded-xl focus:bg-accent"
+                >
+                  <Shield className="mr-2 h-4 w-4" />
+                  <span>Admin Settings</span>
+                </DropdownMenuItem>
+                <div className="h-px bg-border my-1" />
+              </>
+            )}
             <DropdownMenuItem 
               onClick={handleSignOut}
               className="cursor-pointer rounded-xl focus:bg-accent"
@@ -452,6 +481,12 @@ export function TopBar({ onAddWidget }: TopBarProps) {
           onAddWidget={onAddWidget}
         />
       )}
+      
+      {/* Admin Settings Modal */}
+      <AdminSettingsModal
+        open={showAdminSettingsModal}
+        onOpenChange={setShowAdminSettingsModal}
+      />
     </div>
   )
 } 

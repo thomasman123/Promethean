@@ -12,6 +12,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { useToast } from "@/hooks/use-toast"
+import { useImpersonation } from "@/hooks/use-impersonation"
+import { cn } from "@/lib/utils"
 
 interface TaskAppointment {
   id: string
@@ -33,6 +35,7 @@ export default function UpdateDataPage() {
   const [quickFlowStep, setQuickFlowStep] = useState(0)
   const [quickFlowData, setQuickFlowData] = useState<any>({})
   const { toast } = useToast()
+  const { isImpersonating } = useImpersonation()
   
   const supabase = createBrowserClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -350,7 +353,7 @@ export default function UpdateDataPage() {
     <div className="min-h-screen bg-background">
       <TopBar />
       
-      <main className="pt-16 h-screen">
+      <main className={cn("h-screen", isImpersonating ? "pt-[104px]" : "pt-16")}>
         <div className="h-full p-6">
           {/* Stats Overview */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">

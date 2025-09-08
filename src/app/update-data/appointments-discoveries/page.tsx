@@ -29,6 +29,8 @@ import { Database } from "@/lib/database.types"
 import { useToast } from "@/hooks/use-toast"
 import { Search, Filter, Edit, Calendar } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useImpersonation } from "@/hooks/use-impersonation"
+import { cn } from "@/lib/utils"
 
 interface AppointmentData {
   id: string
@@ -71,6 +73,7 @@ export default function AppointmentsDiscoveriesPage() {
   const [editForm, setEditForm] = useState<any>({})
   const [activeTab, setActiveTab] = useState<"appointments" | "discoveries">("appointments")
   const { toast } = useToast()
+  const { isImpersonating } = useImpersonation()
 
   const supabase = createBrowserClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -267,7 +270,7 @@ export default function AppointmentsDiscoveriesPage() {
     <div className="min-h-screen bg-background">
       <TopBar />
       
-      <main className="pt-16 h-screen">
+      <main className={cn("h-screen", isImpersonating ? "pt-[104px]" : "pt-16")}>
         <div className="h-full p-6">
           {/* Search Bar */}
           <div className="mb-6">
