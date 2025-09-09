@@ -32,6 +32,7 @@ import { useImpersonation } from "@/hooks/use-impersonation"
 import { useEffectiveUser } from "@/hooks/use-effective-user"
 import { useDashboard } from "@/lib/dashboard-context"
 import { cn } from "@/lib/utils"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface AppointmentData {
   id: string
@@ -469,153 +470,271 @@ export default function AppointmentsDiscoveriesPage() {
 
         {/* Edit Modal */}
         <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-4xl">
             <DialogHeader>
-              <DialogTitle>Edit Appointment Data</DialogTitle>
+              <DialogTitle className="text-2xl font-semibold">Edit Appointment Data</DialogTitle>
             </DialogHeader>
             
-            <div className="space-y-4 py-4">
+            <div className="space-y-6 py-6">
               {selectedAppointment && (
-                <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-                  <p className="font-medium">{selectedAppointment.contact_name}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {new Date(selectedAppointment.date_booked_for).toLocaleString()}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Account: {selectedAppointment.account_name}
-                  </p>
+                <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <p className="font-semibold text-lg">{selectedAppointment.contact_name}</p>
+                      <Badge variant="secondary">{selectedAppointment.account_name}</Badge>
+                    </div>
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        <Calendar className="h-4 w-4" />
+                        {new Date(selectedAppointment.date_booked_for).toLocaleString()}
+                      </div>
+                      <span>•</span>
+                      <span>Setter: {selectedAppointment.setter}</span>
+                    </div>
+                  </div>
                 </div>
               )}
 
-              <div>
-                <Label>Call Outcome</Label>
-                <RadioGroup
-                  value={editForm.callOutcome}
-                  onValueChange={(value: string) => setEditForm({...editForm, callOutcome: value})}
-                >
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="show" id="edit-show" />
-                    <Label htmlFor="edit-show">Show</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="no_show" id="edit-no_show" />
-                    <Label htmlFor="edit-no_show">No Show</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="reschedule" id="edit-reschedule" />
-                    <Label htmlFor="edit-reschedule">Rescheduled</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="cancel" id="edit-cancel" />
-                    <Label htmlFor="edit-cancel">Cancelled</Label>
-                  </div>
-                </RadioGroup>
-              </div>
+              <div className="grid gap-6">
+                {/* Call Outcome */}
+                <div className="space-y-2">
+                  <Label htmlFor="call-outcome" className="text-base font-medium">Call Outcome</Label>
+                  <Select 
+                    value={editForm.callOutcome} 
+                    onValueChange={(value) => setEditForm({...editForm, callOutcome: value})}
+                  >
+                    <SelectTrigger id="call-outcome" className="w-full">
+                      <SelectValue placeholder="Select call outcome" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="show">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full bg-green-500" />
+                          Show
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="no_show">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full bg-red-500" />
+                          No Show
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="reschedule">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full bg-yellow-500" />
+                          Rescheduled
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="cancel">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full bg-gray-500" />
+                          Cancelled
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              {editForm.callOutcome === 'show' && (
-                <>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="watched-assets"
-                        checked={editForm.watchedAssets}
-                        onCheckedChange={(checked: boolean) => 
-                          setEditForm({...editForm, watchedAssets: checked})
-                        }
-                      />
-                      <Label htmlFor="watched-assets">Watched Assets</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="pitched"
-                        checked={editForm.pitched}
-                        onCheckedChange={(checked: boolean) => 
-                          setEditForm({...editForm, pitched: checked})
-                        }
-                      />
-                      <Label htmlFor="pitched">Pitched</Label>
-                    </div>
-                  </div>
+                {/* Lead Quality */}
+                <div className="space-y-2">
+                  <Label htmlFor="lead-quality" className="text-base font-medium">Lead Quality</Label>
+                  <Select 
+                    value={editForm.leadQuality?.toString()} 
+                    onValueChange={(value) => setEditForm({...editForm, leadQuality: parseInt(value)})}
+                  >
+                    <SelectTrigger id="lead-quality" className="w-full">
+                      <SelectValue placeholder="Select lead quality" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[5, 4, 3, 2, 1].map(rating => (
+                        <SelectItem key={rating} value={rating.toString()}>
+                          <div className="flex items-center gap-2">
+                            <div className="flex">
+                              {[...Array(5)].map((_, i) => (
+                                <span
+                                  key={i}
+                                  className={i < rating ? "text-yellow-500" : "text-gray-300"}
+                                >
+                                  ★
+                                </span>
+                              ))}
+                            </div>
+                            <span className="text-sm text-muted-foreground">
+                              {rating === 5 && "Excellent"}
+                              {rating === 4 && "Good"}
+                              {rating === 3 && "Average"}
+                              {rating === 2 && "Below Average"}
+                              {rating === 1 && "Poor"}
+                            </span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-                  <div>
-                    <Label>Show Outcome</Label>
-                    <RadioGroup
-                      value={editForm.showOutcome}
-                      onValueChange={(value: string) => setEditForm({...editForm, showOutcome: value})}
-                    >
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="won" id="edit-won" />
-                        <Label htmlFor="edit-won">Won 🎉</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="lost" id="edit-lost" />
-                        <Label htmlFor="edit-lost">Lost</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="follow_up" id="edit-follow_up" />
-                        <Label htmlFor="edit-follow_up">Follow Up Needed</Label>
-                      </div>
-                    </RadioGroup>
-                  </div>
-
-                  {editForm.showOutcome === 'won' && (
+                {editForm.callOutcome === 'show' && (
+                  <>
                     <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label>Cash Collected</Label>
-                        <Input
-                          type="number"
-                          placeholder="0.00"
-                          value={editForm.cashCollected}
-                          onChange={(e) => setEditForm({...editForm, cashCollected: e.target.value})}
-                        />
+                      {/* Watched Assets */}
+                      <div className="space-y-2">
+                        <Label htmlFor="watched-assets" className="text-base font-medium">Watched Assets</Label>
+                        <Select 
+                          value={editForm.watchedAssets ? "yes" : "no"} 
+                          onValueChange={(value) => setEditForm({...editForm, watchedAssets: value === "yes"})}
+                        >
+                          <SelectTrigger id="watched-assets">
+                            <SelectValue placeholder="Did they watch assets?" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="yes">
+                              <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full bg-green-500" />
+                                Yes
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="no">
+                              <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full bg-red-500" />
+                                No
+                              </div>
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
-                      <div>
-                        <Label>Total Sales Value</Label>
-                        <Input
-                          type="number"
-                          placeholder="0.00"
-                          value={editForm.totalSalesValue}
-                          onChange={(e) => setEditForm({...editForm, totalSalesValue: e.target.value})}
-                        />
+
+                      {/* Pitched */}
+                      <div className="space-y-2">
+                        <Label htmlFor="pitched" className="text-base font-medium">Pitched</Label>
+                        <Select 
+                          value={editForm.pitched ? "yes" : "no"} 
+                          onValueChange={(value) => setEditForm({...editForm, pitched: value === "yes"})}
+                        >
+                          <SelectTrigger id="pitched">
+                            <SelectValue placeholder="Was pitch delivered?" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="yes">
+                              <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full bg-green-500" />
+                                Yes
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="no">
+                              <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full bg-red-500" />
+                                No
+                              </div>
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
-                  )}
 
-                  {(editForm.showOutcome === 'lost' || editForm.showOutcome === 'follow_up') && (
-                    <div>
-                      <Label>Objections (comma separated)</Label>
-                      <Input
-                        placeholder="Price, Timing, Need to think..."
-                        value={editForm.objections}
-                        onChange={(e) => setEditForm({...editForm, objections: e.target.value})}
-                      />
+                    {/* Show Outcome */}
+                    <div className="space-y-2">
+                      <Label htmlFor="show-outcome" className="text-base font-medium">Show Outcome</Label>
+                      <Select 
+                        value={editForm.showOutcome} 
+                        onValueChange={(value) => setEditForm({...editForm, showOutcome: value})}
+                      >
+                        <SelectTrigger id="show-outcome" className="w-full">
+                          <SelectValue placeholder="Select show outcome" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="won">
+                            <div className="flex items-center gap-2">
+                              <div className="w-2 h-2 rounded-full bg-green-500" />
+                              Won 🎉
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="lost">
+                            <div className="flex items-center gap-2">
+                              <div className="w-2 h-2 rounded-full bg-red-500" />
+                              Lost
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="follow_up">
+                            <div className="flex items-center gap-2">
+                              <div className="w-2 h-2 rounded-full bg-yellow-500" />
+                              Follow Up Needed
+                            </div>
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
-                  )}
-                </>
-              )}
 
-              <div>
-                <Label>Lead Quality</Label>
-                <div className="flex gap-2 mt-2">
-                  {[1, 2, 3, 4, 5].map(rating => (
-                    <Button
-                      key={rating}
-                      variant={editForm.leadQuality === rating ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setEditForm({...editForm, leadQuality: rating})}
-                    >
-                      {rating}
-                    </Button>
-                  ))}
-                </div>
+                    {editForm.showOutcome === 'won' && (
+                      <div className="grid grid-cols-2 gap-4 p-4 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-800">
+                        <div className="space-y-2">
+                          <Label htmlFor="cash-collected" className="text-base font-medium text-green-900 dark:text-green-100">
+                            Cash Collected
+                          </Label>
+                          <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-green-600 dark:text-green-400">$</span>
+                            <Input
+                              id="cash-collected"
+                              type="number"
+                              placeholder="0.00"
+                              value={editForm.cashCollected}
+                              onChange={(e) => setEditForm({...editForm, cashCollected: e.target.value})}
+                              className="pl-8"
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="total-sales" className="text-base font-medium text-green-900 dark:text-green-100">
+                            Total Sales Value
+                          </Label>
+                          <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-green-600 dark:text-green-400">$</span>
+                            <Input
+                              id="total-sales"
+                              type="number"
+                              placeholder="0.00"
+                              value={editForm.totalSalesValue}
+                              onChange={(e) => setEditForm({...editForm, totalSalesValue: e.target.value})}
+                              className="pl-8"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {(editForm.showOutcome === 'lost' || editForm.showOutcome === 'follow_up') && (
+                      <div className="space-y-2 p-4 bg-amber-50 dark:bg-amber-950/20 rounded-lg border border-amber-200 dark:border-amber-800">
+                        <Label htmlFor="objections" className="text-base font-medium text-amber-900 dark:text-amber-100">
+                          Objections
+                        </Label>
+                        <Input
+                          id="objections"
+                          placeholder="Price, Timing, Need to think, etc. (comma separated)"
+                          value={editForm.objections}
+                          onChange={(e) => setEditForm({...editForm, objections: e.target.value})}
+                          className="border-amber-300 dark:border-amber-700"
+                        />
+                        <p className="text-sm text-amber-700 dark:text-amber-300">
+                          Enter each objection separated by commas
+                        </p>
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
             </div>
 
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setEditModalOpen(false)}>
+            <DialogFooter className="gap-2">
+              <Button 
+                variant="outline" 
+                onClick={() => setEditModalOpen(false)}
+                className="min-w-[100px]"
+              >
                 Cancel
               </Button>
-              <Button onClick={saveAppointmentData}>
+              <Button 
+                onClick={saveAppointmentData}
+                className="min-w-[120px] bg-primary hover:bg-primary/90"
+              >
                 Save Changes
               </Button>
             </DialogFooter>
