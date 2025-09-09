@@ -161,8 +161,8 @@ export function AddWidgetModal({ open, onOpenChange, onAddWidget }: AddWidgetMod
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
+      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle>
             {currentStep === "visualization" && "Select Visualization Type"}
             {currentStep === "metric" && "Select Metric"}
@@ -170,7 +170,7 @@ export function AddWidgetModal({ open, onOpenChange, onAddWidget }: AddWidgetMod
           </DialogTitle>
         </DialogHeader>
 
-        <div className="py-6">
+        <div className="flex-1 overflow-y-auto py-6 px-1">
           {/* Step 1: Visualization Type */}
           {currentStep === "visualization" && (
             <div className="grid grid-cols-2 gap-4">
@@ -245,7 +245,7 @@ export function AddWidgetModal({ open, onOpenChange, onAddWidget }: AddWidgetMod
 
           {/* Step 3: Widget Options */}
           {currentStep === "options" && (
-            <div className="space-y-4">
+            <div className="space-y-4 pr-2">
               <div>
                 <Label htmlFor="widget-title">Widget Title</Label>
                 <Input
@@ -355,7 +355,7 @@ export function AddWidgetModal({ open, onOpenChange, onAddWidget }: AddWidgetMod
           )}
         </div>
 
-        <DialogFooter className="flex justify-between">
+        <DialogFooter className="flex-shrink-0 flex justify-between border-t pt-4">
           <div className="flex gap-2">
             {currentStep !== "visualization" && (
               <Button variant="outline" onClick={handleBack}>
