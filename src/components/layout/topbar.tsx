@@ -22,6 +22,7 @@ import { AddWidgetModal, WidgetConfig } from "@/components/dashboard/add-widget-
 import { AdminSettingsModal } from "./admin-settings-modal"
 import { useDashboard } from "@/lib/dashboard-context"
 import { useEffectiveUser } from "@/hooks/use-effective-user"
+import { FollowUpNotifications } from "./follow-up-notifications"
 
 interface Account {
   id: string
@@ -216,9 +217,13 @@ export function TopBar({ onAddWidget }: TopBarProps) {
       dropdownItems: [
         { href: "/update-data", label: "Overview", icon: FileText },
         { href: "/update-data/appointments-discoveries", label: "Appointments/Discoveries", icon: Calendar },
-        { href: "/update-data/follow-ups", label: "Follow Ups", icon: Users },
         { href: "/update-data/payment-plans", label: "Payment Plans", icon: CreditCard }
       ]
+    },
+    {
+      href: "/follow-ups",
+      label: "Follow-ups",
+      icon: Users
     },
     { 
       href: "/account", 
@@ -495,6 +500,9 @@ export function TopBar({ onAddWidget }: TopBarProps) {
             )}
           </>
         )}
+
+        {/* Follow-up Notifications */}
+        <FollowUpNotifications />
 
         {/* Dark mode toggle - Updated to match new design */}
         <Button
