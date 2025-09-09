@@ -41,6 +41,11 @@ import { useEffectiveUser } from "@/hooks/use-effective-user"
 import { useDashboard } from "@/lib/dashboard-context"
 import { cn } from "@/lib/utils"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { DatePicker } from "@/components/ui/date-picker"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Calendar as CalendarComponent } from "@/components/ui/calendar"
+import { CalendarIcon } from "lucide-react"
+import { format } from "date-fns"
 
 interface AppointmentData {
   id: string
@@ -62,6 +67,7 @@ interface AppointmentData {
   lead_quality: number | null
   objections: any | null
   data_filled: boolean
+  follow_up_at: string | null
 }
 
 interface DiscoveryData {
@@ -192,7 +198,8 @@ export default function AppointmentsDiscoveriesPage() {
       leadQuality: appointment.lead_quality || 3,
       objections: Array.isArray(appointment.objections) 
         ? appointment.objections.join(', ') 
-        : ''
+        : '',
+      followUpDate: appointment.follow_up_at || ''
     })
     setEditModalOpen(true)
   }
@@ -216,6 +223,9 @@ export default function AppointmentsDiscoveriesPage() {
         }
         if (editForm.objections) {
           payload.objections = editForm.objections.split(',').map((o: string) => o.trim()).filter(Boolean)
+        }
+        if (editForm.showOutcome === 'follow_up' && editForm.followUpDate) {
+          payload.followUpAt = editForm.followUpDate
         }
       }
 
@@ -935,6 +945,63 @@ export default function AppointmentsDiscoveriesPage() {
                         />
                         <p className="text-sm text-amber-700 dark:text-amber-300">
                           Enter each objection separated by commas
+                        </p>
+                      </div>
+                    )}
+
+                    {editForm.showOutcome === 'follow_up' && (
+                      <div className="space-y-2 p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                        <Label htmlFor="follow-up-date" className="text-base font-medium text-blue-900 dark:text-blue-100">
+                          Follow-up Date & Time *
+                        </Label>
+                        <div className="grid grid-cols-2 gap-4">
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="outline"
+                                className={cn(
+                                  "justify-start text-left font-normal",
+                                  !editForm.followUpDate && "text-muted-foreground"
+                                )}
+                              >
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {editForm.followUpDate ? format(new Date(editForm.followUpDate), 'PPP') : 'Select date'}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0">
+                              <CalendarComponent
+                                mode="single"
+                                selected={editForm.followUpDate ? new Date(editForm.followUpDate) : undefined}
+                                onSelect={(date) => {
+                                  if (date) {
+                                    // Preserve time if it exists, otherwise set to current time
+                                    const currentDateTime = editForm.followUpDate ? new Date(editForm.followUpDate) : new Date();
+                                    date.setHours(currentDateTime.getHours());
+                                    date.setMinutes(currentDateTime.getMinutes());
+                                    setEditForm({...editForm, followUpDate: date.toISOString()});
+                                  }
+                                }}
+                                initialFocus
+                                disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))}
+                              />
+                            </PopoverContent>
+                          </Popover>
+                          <Input
+                            type="time"
+                            value={editForm.followUpDate ? format(new Date(editForm.followUpDate), 'HH:mm') : ''}
+                            onChange={(e) => {
+                              if (e.target.value) {
+                                const [hours, minutes] = e.target.value.split(':');
+                                const date = editForm.followUpDate ? new Date(editForm.followUpDate) : new Date();
+                                date.setHours(parseInt(hours), parseInt(minutes));
+                                setEditForm({...editForm, followUpDate: date.toISOString()});
+                              }
+                            }}
+                            className="border-blue-300 dark:border-blue-700"
+                          />
+                        </div>
+                        <p className="text-sm text-blue-700 dark:text-blue-300">
+                          Schedule when the follow-up should occur
                         </p>
                       </div>
                     )}

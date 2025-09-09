@@ -17,6 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useImpersonation } from '@/hooks/use-impersonation';
 import { useEffectiveUser } from '@/hooks/use-effective-user';
 import { supabase } from '@/lib/supabase';
+import { useDashboard } from '@/lib/dashboard-context';
 import { CalendarIcon, CheckCircle2, XCircle, Clock, AlertCircle, Phone, Mail, User, RefreshCw } from 'lucide-react';
 import { format, formatDistanceToNow, isPast, isToday, isTomorrow } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -49,8 +50,9 @@ interface FollowUp {
 }
 
 export default function FollowUpsPage() {
-  const { user, selectedAccount } = useEffectiveUser();
+  const { user } = useEffectiveUser();
   const { isImpersonating } = useImpersonation();
+  const { selectedAccountId } = useDashboard();
   const { toast } = useToast();
   const [followUps, setFollowUps] = useState<FollowUp[]>([]);
   const [loading, setLoading] = useState(true);
@@ -76,12 +78,12 @@ export default function FollowUpsPage() {
   });
 
   useEffect(() => {
-    if (selectedAccount) {
+    if (selectedAccountId) {
       loadFollowUps();
       // Check for overdue follow-ups
       checkOverdueFollowUps();
     }
-  }, [selectedAccount, statusFilter]);
+  }, [selectedAccountId, statusFilter]);
 
   const loadFollowUps = async () => {
     try {
@@ -90,7 +92,6 @@ export default function FollowUpsPage() {
       let query = supabase
         .from('follow_up_dashboard')
         .select('*')
-        .eq('account_id', selectedAccount.id)
         .order('scheduled_for', { ascending: true });
 
       if (statusFilter !== 'all') {
@@ -145,7 +146,7 @@ export default function FollowUpsPage() {
           .insert({
             appointment_id: selectedFollowUp.appointment_id,
             parent_follow_up_id: selectedFollowUp.id,
-            account_id: selectedAccount.id,
+            account_id: selectedAccountId,
             scheduled_for: completeForm.next_follow_up_date.toISOString(),
             assigned_to_user_id: selectedFollowUp.assigned_to_user_id,
             assigned_to_name: selectedFollowUp.assigned_to_name,
@@ -160,7 +161,7 @@ export default function FollowUpsPage() {
           .insert({
             follow_up_id: selectedFollowUp.id,
             user_id: selectedFollowUp.assigned_to_user_id,
-            account_id: selectedAccount.id,
+            account_id: selectedAccountId,
             notification_type: 'reminder',
             scheduled_for: completeForm.next_follow_up_date.toISOString(),
             title: 'Follow-up Reminder',
