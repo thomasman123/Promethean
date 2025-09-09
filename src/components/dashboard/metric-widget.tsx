@@ -9,9 +9,10 @@ interface MetricWidgetProps {
   metric?: string // For KPI widgets
   metrics?: string[] // For chart widgets
   type: "kpi" | "bar" | "line" | "area"
+  options?: Record<string, any> // Widget options/settings
 }
 
-export function MetricWidget({ metric, metrics, type }: MetricWidgetProps) {
+export function MetricWidget({ metric, metrics, type, options }: MetricWidgetProps) {
   const [value, setValue] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const { selectedAccountId, dateRange } = useDashboard()
@@ -38,6 +39,10 @@ export function MetricWidget({ metric, metrics, type }: MetricWidgetProps) {
               start: format(dateRange.from, 'yyyy-MM-dd'),
               end: format(dateRange.to, 'yyyy-MM-dd')
             }
+          },
+          options: {
+            vizType: type,
+            widgetSettings: options
           }
         })
       })
@@ -57,6 +62,21 @@ export function MetricWidget({ metric, metrics, type }: MetricWidgetProps) {
 
   const formatValue = (val: number): string => {
     if (!metricInfo) return val.toString()
+
+    // Special handling for Speed to Lead with time format option
+    if (metric === 'speed_to_lead' && options?.speedToLeadTimeFormat) {
+      const hours = Math.floor(val / 3600)
+      const minutes = Math.floor((val % 3600) / 60)
+      const seconds = Math.floor(val % 60)
+      
+      if (hours > 0) {
+        return `${hours}h ${minutes}m`
+      } else if (minutes > 0) {
+        return `${minutes}m ${seconds}s`
+      } else {
+        return `${seconds}s`
+      }
+    }
 
     switch (metricInfo.unit) {
       case 'currency':
@@ -100,17 +120,17 @@ export function MetricWidget({ metric, metrics, type }: MetricWidgetProps) {
   // Chart types - dynamically import the appropriate chart component
   if (type === "bar" && metrics) {
     const BarChartWidget = require('./bar-chart-widget').BarChartWidget
-    return <BarChartWidget metrics={metrics} />
+    return <BarChartWidget metrics={metrics} options={options} />
   }
   
   if (type === "line" && metrics) {
     const LineChartWidget = require('./line-chart-widget').LineChartWidget
-    return <LineChartWidget metrics={metrics} />
+    return <LineChartWidget metrics={metrics} options={options} />
   }
   
   if (type === "area" && metrics) {
     const AreaChartWidget = require('./area-chart-widget').AreaChartWidget
-    return <AreaChartWidget metrics={metrics} />
+    return <AreaChartWidget metrics={metrics} options={options} />
   }
   
   // Other chart types placeholder
