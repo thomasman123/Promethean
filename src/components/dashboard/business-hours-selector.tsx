@@ -55,7 +55,7 @@ export function BusinessHoursSelector({ value, onChange }: BusinessHoursSelector
   useEffect(() => {
     const fetchCountries = async () => {
       try {
-        const { data, error } = await supabase.rpc('get_available_phone_countries')
+        const { data, error } = await supabase.rpc('get_available_phone_countries_simple')
         if (error) throw error
         const countries = data || []
         setAvailableCountries(countries)
