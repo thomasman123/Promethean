@@ -13,54 +13,14 @@ import "react-resizable/css/styles.css"
 
 const ResponsiveGridLayout = WidthProvider(Responsive)
 
-// Default widgets for new views
-const defaultWidgets: WidgetConfig[] = [
-  { id: "widget-1", type: "kpi", title: "Total Appointments", metric: "total_appointments" },
-  { id: "widget-2", type: "kpi", title: "Show Rate", metric: "show_up_rate" },
-  { id: "widget-3", type: "kpi", title: "Answer Rate", metric: "answers_dials" },
-  { id: "widget-4", type: "kpi", title: "Speed to Lead", metric: "speed_to_lead" },
-  { id: "widget-5", type: "line", title: "Performance Overview" },
-  { id: "widget-6", type: "area", title: "Recent Activity" },
-  { id: "widget-7", type: "kpi", title: "Revenue", metric: "cash_collected" },
-  { id: "widget-8", type: "kpi", title: "Active Users" },
-  { id: "widget-9", type: "kpi", title: "Conversion Rate", metric: "appointment_to_sale_rate" },
-]
+// Default widgets for new views - now empty so new views start clean
+const defaultWidgets: WidgetConfig[] = []
 
-// Simplified layouts - focus on consistency
+// Default layouts - empty since new views start with no widgets
 const defaultLayouts = {
-  lg: [
-    { i: "widget-1", x: 0, y: 0, w: 1, h: 1 },
-    { i: "widget-2", x: 1, y: 0, w: 1, h: 1 },
-    { i: "widget-3", x: 2, y: 0, w: 1, h: 1 },
-    { i: "widget-4", x: 3, y: 0, w: 1, h: 1 },
-    { i: "widget-5", x: 0, y: 1, w: 2, h: 2, minW: 2, minH: 2 }, // Chart widget with min size
-    { i: "widget-6", x: 2, y: 1, w: 2, h: 2, minW: 2, minH: 2 }, // Chart widget with min size
-    { i: "widget-7", x: 4, y: 0, w: 1, h: 1 },
-    { i: "widget-8", x: 5, y: 0, w: 1, h: 1 },
-    { i: "widget-9", x: 4, y: 1, w: 2, h: 1 }
-  ],
-  md: [
-    { i: "widget-1", x: 0, y: 0, w: 1, h: 1 },
-    { i: "widget-2", x: 1, y: 0, w: 1, h: 1 },
-    { i: "widget-3", x: 2, y: 0, w: 1, h: 1 },
-    { i: "widget-4", x: 3, y: 0, w: 1, h: 1 },
-    { i: "widget-5", x: 0, y: 1, w: 2, h: 2, minW: 2, minH: 2 },
-    { i: "widget-6", x: 2, y: 1, w: 2, h: 2, minW: 2, minH: 2 },
-    { i: "widget-7", x: 0, y: 3, w: 1, h: 1 },
-    { i: "widget-8", x: 1, y: 3, w: 1, h: 1 },
-    { i: "widget-9", x: 2, y: 3, w: 2, h: 1 },
-  ],
-  sm: [
-    { i: "widget-1", x: 0, y: 0, w: 2, h: 1 },
-    { i: "widget-2", x: 0, y: 1, w: 2, h: 1 },
-    { i: "widget-3", x: 0, y: 2, w: 2, h: 1 },
-    { i: "widget-4", x: 0, y: 3, w: 2, h: 1 },
-    { i: "widget-5", x: 0, y: 4, w: 2, h: 2, minW: 2, minH: 2 },
-    { i: "widget-6", x: 0, y: 6, w: 2, h: 2, minW: 2, minH: 2 },
-    { i: "widget-7", x: 0, y: 8, w: 2, h: 1 },
-    { i: "widget-8", x: 0, y: 9, w: 2, h: 1 },
-    { i: "widget-9", x: 0, y: 10, w: 2, h: 1 },
-  ],
+  lg: [] as any[],
+  md: [] as any[],
+  sm: [] as any[],
 }
 
 interface ViewData {
