@@ -197,8 +197,8 @@ export default function AppointmentsDiscoveriesPage() {
       watchedAssets: appointment.watched_assets || false,
       leadQuality: appointment.lead_quality || 3,
       objections: Array.isArray(appointment.objections) 
-        ? appointment.objections.join(', ') 
-        : '',
+        ? appointment.objections 
+        : [],
       followUpDate: appointment.follow_up_at || ''
     })
     setEditModalOpen(true)
@@ -221,8 +221,8 @@ export default function AppointmentsDiscoveriesPage() {
           payload.cashCollected = parseFloat(editForm.cashCollected || '0')
           payload.totalSalesValue = parseFloat(editForm.totalSalesValue || '0')
         }
-        if (editForm.objections) {
-          payload.objections = editForm.objections.split(',').map((o: string) => o.trim()).filter(Boolean)
+        if (editForm.objections && editForm.objections.length > 0) {
+          payload.objections = editForm.objections
         }
         if (editForm.showOutcome === 'follow_up' && editForm.followUpDate) {
           payload.followUpAt = editForm.followUpDate
@@ -878,17 +878,99 @@ export default function AppointmentsDiscoveriesPage() {
 
                     {(editForm.showOutcome === 'lost' || editForm.showOutcome === 'follow_up') && (
                       <div className="space-y-2 p-4 bg-muted/50 rounded-lg border">
-                        <Label htmlFor="objections" className="text-base font-medium">
+                        <Label className="text-base font-medium">
                           Objections
                         </Label>
-                        <Input
-                          id="objections"
-                          placeholder="Price, Timing, Need to think, etc. (comma separated)"
-                          value={editForm.objections}
-                          onChange={(e) => setEditForm({...editForm, objections: e.target.value})}
-                        />
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="outline" className="w-full justify-between">
+                              {editForm.objections && editForm.objections.length > 0 
+                                ? `${editForm.objections.length} objection${editForm.objections.length > 1 ? 's' : ''} selected`
+                                : "Select objections"
+                              }
+                              <ChevronDown className="h-4 w-4 opacity-50" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent className="w-80">
+                            <DropdownMenuLabel>Select objections in order of priority</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            {[
+                              'Think about it',
+                              'Partner Fear',
+                              'Partner Logistical',
+                              'Money Fear',
+                              'Money Logistical',
+                              'Fear',
+                              'Time',
+                              'Logistics',
+                              'Competitors',
+                              'Value'
+                            ].map((objection) => {
+                              const isSelected = editForm.objections?.includes(objection);
+                              const selectedIndex = editForm.objections?.indexOf(objection);
+                              return (
+                                <DropdownMenuCheckboxItem
+                                  key={objection}
+                                  checked={isSelected}
+                                  onCheckedChange={(checked) => {
+                                    const currentObjections = editForm.objections || [];
+                                    if (checked) {
+                                      // Add to the end of the array
+                                      setEditForm({
+                                        ...editForm, 
+                                        objections: [...currentObjections, objection]
+                                      });
+                                    } else {
+                                      // Remove from array
+                                      setEditForm({
+                                        ...editForm, 
+                                        objections: currentObjections.filter((obj: string) => obj !== objection)
+                                      });
+                                    }
+                                  }}
+                                >
+                                  <div className="flex items-center justify-between w-full">
+                                    <span>{objection}</span>
+                                    {isSelected && (
+                                      <Badge variant="secondary" className="ml-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">
+                                        {selectedIndex !== undefined ? selectedIndex + 1 : ''}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </DropdownMenuCheckboxItem>
+                              );
+                            })}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                        {editForm.objections && editForm.objections.length > 0 && (
+                          <div className="space-y-2">
+                            <p className="text-sm text-muted-foreground">Selected objections (in order):</p>
+                            <div className="flex flex-wrap gap-2">
+                                                             {editForm.objections.map((objection: string, index: number) => (
+                                <Badge key={`${objection}-${index}`} variant="secondary" className="flex items-center gap-1">
+                                  <span className="bg-primary text-primary-foreground rounded-full w-4 h-4 flex items-center justify-center text-xs">
+                                    {index + 1}
+                                  </span>
+                                  {objection}
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setEditForm({
+                                        ...editForm,
+                                        objections: editForm.objections?.filter((obj: string) => obj !== objection) || []
+                                      });
+                                    }}
+                                    className="ml-1 hover:bg-muted rounded-full p-0.5"
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </button>
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                         <p className="text-sm text-muted-foreground">
-                          Enter each objection separated by commas
+                          Click objections in order of priority. Numbers show selection order.
                         </p>
                       </div>
                     )}
