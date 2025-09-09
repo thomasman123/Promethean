@@ -700,17 +700,17 @@ export default function AppointmentsDiscoveriesPage() {
 
         {/* Edit Modal */}
         <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
-          <DialogContent className="max-w-4xl">
-            <DialogHeader>
-              <DialogTitle className="text-2xl font-semibold">Edit Appointment Data</DialogTitle>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+            <DialogHeader className="pb-4">
+              <DialogTitle className="text-xl font-semibold">Edit Appointment Data</DialogTitle>
             </DialogHeader>
             
-            <div className="space-y-6 py-6">
+            <div className="flex-1 overflow-y-auto px-6 pb-6 -mx-6 space-y-6">
               {selectedAppointment && (
-                <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                <div className="p-4 bg-muted/50 rounded-lg border">
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
-                      <p className="font-semibold text-lg">{selectedAppointment.contact_name}</p>
+                      <p className="font-semibold">{selectedAppointment.contact_name}</p>
                       <Badge variant="secondary">{selectedAppointment.account_name}</Badge>
                     </div>
                     <div className="flex items-center gap-4 text-sm text-muted-foreground">
@@ -737,30 +737,10 @@ export default function AppointmentsDiscoveriesPage() {
                       <SelectValue placeholder="Select call outcome" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="show">
-                        <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 rounded-full bg-green-500" />
-                          Show
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="no_show">
-                        <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 rounded-full bg-red-500" />
-                          No Show
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="reschedule">
-                        <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 rounded-full bg-yellow-500" />
-                          Rescheduled
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="cancel">
-                        <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 rounded-full bg-gray-500" />
-                          Cancelled
-                        </div>
-                      </SelectItem>
+                      <SelectItem value="show">Show</SelectItem>
+                      <SelectItem value="no_show">No Show</SelectItem>
+                      <SelectItem value="reschedule">Rescheduled</SelectItem>
+                      <SelectItem value="cancel">Cancelled</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -817,18 +797,8 @@ export default function AppointmentsDiscoveriesPage() {
                             <SelectValue placeholder="Did they watch assets?" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="yes">
-                              <div className="flex items-center gap-2">
-                                <div className="w-2 h-2 rounded-full bg-green-500" />
-                                Yes
-                              </div>
-                            </SelectItem>
-                            <SelectItem value="no">
-                              <div className="flex items-center gap-2">
-                                <div className="w-2 h-2 rounded-full bg-red-500" />
-                                No
-                              </div>
-                            </SelectItem>
+                            <SelectItem value="yes">Yes</SelectItem>
+                            <SelectItem value="no">No</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -844,18 +814,8 @@ export default function AppointmentsDiscoveriesPage() {
                             <SelectValue placeholder="Was pitch delivered?" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="yes">
-                              <div className="flex items-center gap-2">
-                                <div className="w-2 h-2 rounded-full bg-green-500" />
-                                Yes
-                              </div>
-                            </SelectItem>
-                            <SelectItem value="no">
-                              <div className="flex items-center gap-2">
-                                <div className="w-2 h-2 rounded-full bg-red-500" />
-                                No
-                              </div>
-                            </SelectItem>
+                            <SelectItem value="yes">Yes</SelectItem>
+                            <SelectItem value="no">No</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -872,36 +832,21 @@ export default function AppointmentsDiscoveriesPage() {
                           <SelectValue placeholder="Select show outcome" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="won">
-                            <div className="flex items-center gap-2">
-                              <div className="w-2 h-2 rounded-full bg-green-500" />
-                              Won 🎉
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="lost">
-                            <div className="flex items-center gap-2">
-                              <div className="w-2 h-2 rounded-full bg-red-500" />
-                              Lost
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="follow_up">
-                            <div className="flex items-center gap-2">
-                              <div className="w-2 h-2 rounded-full bg-yellow-500" />
-                              Follow Up Needed
-                            </div>
-                          </SelectItem>
+                          <SelectItem value="won">Won 🎉</SelectItem>
+                          <SelectItem value="lost">Lost</SelectItem>
+                          <SelectItem value="follow_up">Follow Up Needed</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
 
                     {editForm.showOutcome === 'won' && (
-                      <div className="grid grid-cols-2 gap-4 p-4 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-800">
+                      <div className="grid grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg border">
                         <div className="space-y-2">
-                          <Label htmlFor="cash-collected" className="text-base font-medium text-green-900 dark:text-green-100">
+                          <Label htmlFor="cash-collected" className="text-base font-medium">
                             Cash Collected
                           </Label>
                           <div className="relative">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-green-600 dark:text-green-400">$</span>
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
                             <Input
                               id="cash-collected"
                               type="number"
@@ -912,12 +857,12 @@ export default function AppointmentsDiscoveriesPage() {
                             />
                           </div>
                         </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="total-sales" className="text-base font-medium text-green-900 dark:text-green-100">
+                                                  <div className="space-y-2">
+                          <Label htmlFor="total-sales" className="text-base font-medium">
                             Total Sales Value
                           </Label>
                           <div className="relative">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-green-600 dark:text-green-400">$</span>
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
                             <Input
                               id="total-sales"
                               type="number"
@@ -932,8 +877,8 @@ export default function AppointmentsDiscoveriesPage() {
                     )}
 
                     {(editForm.showOutcome === 'lost' || editForm.showOutcome === 'follow_up') && (
-                      <div className="space-y-2 p-4 bg-amber-50 dark:bg-amber-950/20 rounded-lg border border-amber-200 dark:border-amber-800">
-                        <Label htmlFor="objections" className="text-base font-medium text-amber-900 dark:text-amber-100">
+                      <div className="space-y-2 p-4 bg-muted/50 rounded-lg border">
+                        <Label htmlFor="objections" className="text-base font-medium">
                           Objections
                         </Label>
                         <Input
@@ -941,17 +886,16 @@ export default function AppointmentsDiscoveriesPage() {
                           placeholder="Price, Timing, Need to think, etc. (comma separated)"
                           value={editForm.objections}
                           onChange={(e) => setEditForm({...editForm, objections: e.target.value})}
-                          className="border-amber-300 dark:border-amber-700"
                         />
-                        <p className="text-sm text-amber-700 dark:text-amber-300">
+                        <p className="text-sm text-muted-foreground">
                           Enter each objection separated by commas
                         </p>
                       </div>
                     )}
 
                     {editForm.showOutcome === 'follow_up' && (
-                      <div className="space-y-2 p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                        <Label htmlFor="follow-up-date" className="text-base font-medium text-blue-900 dark:text-blue-100">
+                      <div className="space-y-2 p-4 bg-muted/50 rounded-lg border">
+                        <Label htmlFor="follow-up-date" className="text-base font-medium">
                           Follow-up Date & Time *
                         </Label>
                         <div className="grid grid-cols-2 gap-4">
@@ -997,10 +941,9 @@ export default function AppointmentsDiscoveriesPage() {
                                 setEditForm({...editForm, followUpDate: date.toISOString()});
                               }
                             }}
-                            className="border-blue-300 dark:border-blue-700"
                           />
                         </div>
-                        <p className="text-sm text-blue-700 dark:text-blue-300">
+                        <p className="text-sm text-muted-foreground">
                           Schedule when the follow-up should occur
                         </p>
                       </div>
