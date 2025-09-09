@@ -217,13 +217,9 @@ export function TopBar({ onAddWidget }: TopBarProps) {
       dropdownItems: [
         { href: "/update-data", label: "Overview", icon: FileText },
         { href: "/update-data/appointments-discoveries", label: "Appointments/Discoveries", icon: Calendar },
+        { href: "/update-data/follow-ups", label: "Follow Ups", icon: Users },
         { href: "/update-data/payment-plans", label: "Payment Plans", icon: CreditCard }
       ]
-    },
-    {
-      href: "/follow-ups",
-      label: "Follow-ups",
-      icon: Users
     },
     { 
       href: "/account", 
