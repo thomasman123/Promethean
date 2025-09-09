@@ -24,10 +24,18 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog"
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { createBrowserClient } from "@supabase/ssr"
 import { Database } from "@/lib/database.types"
 import { useToast } from "@/hooks/use-toast"
-import { Search, Edit, Calendar } from "lucide-react"
+import { Search, Edit, Calendar, ArrowUpDown, ChevronDown, Filter, X } from "lucide-react"
 import { useImpersonation } from "@/hooks/use-impersonation"
 import { useEffectiveUser } from "@/hooks/use-effective-user"
 import { useDashboard } from "@/lib/dashboard-context"
@@ -73,6 +81,16 @@ interface DiscoveryData {
   data_filled: boolean
 }
 
+type SortDirection = 'asc' | 'desc' | null
+type SortField = string
+
+interface FilterState {
+  callOutcome: string[]
+  showOutcome: string[]
+  dataFilled: string[]
+  dateRange: { start: Date | null; end: Date | null }
+}
+
 export default function AppointmentsDiscoveriesPage() {
   const [appointments, setAppointments] = useState<AppointmentData[]>([])
   const [discoveries, setDiscoveries] = useState<DiscoveryData[]>([])
@@ -82,6 +100,15 @@ export default function AppointmentsDiscoveriesPage() {
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [editForm, setEditForm] = useState<any>({})
   const [activeTab, setActiveTab] = useState<"appointments" | "discoveries">("appointments")
+  const [sortField, setSortField] = useState<SortField>('')
+  const [sortDirection, setSortDirection] = useState<SortDirection>(null)
+  const [filters, setFilters] = useState<FilterState>({
+    callOutcome: [],
+    showOutcome: [],
+    dataFilled: [],
+    dateRange: { start: null, end: null }
+  })
+  
   const { toast } = useToast()
   const { isImpersonating } = useImpersonation()
   const { user: effectiveUser, loading: userLoading } = useEffectiveUser()
@@ -220,25 +247,97 @@ export default function AppointmentsDiscoveriesPage() {
     }
   }
 
-  const filteredAppointments = appointments.filter(apt => {
-    const searchLower = searchTerm.toLowerCase()
-    return (
-      apt.contact_name.toLowerCase().includes(searchLower) ||
-      apt.contact_email.toLowerCase().includes(searchLower) ||
-      apt.setter.toLowerCase().includes(searchLower) ||
-      apt.account_name.toLowerCase().includes(searchLower)
-    )
-  })
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : sortDirection === 'desc' ? null : 'asc')
+      if (sortDirection === 'desc') {
+        setSortField('')
+      }
+    } else {
+      setSortField(field)
+      setSortDirection('asc')
+    }
+  }
 
-  const filteredDiscoveries = discoveries.filter(disc => {
-    const searchLower = searchTerm.toLowerCase()
-    return (
-      disc.contact_name.toLowerCase().includes(searchLower) ||
-      disc.contact_email.toLowerCase().includes(searchLower) ||
-      disc.setter.toLowerCase().includes(searchLower) ||
-      disc.account_name.toLowerCase().includes(searchLower)
-    )
-  })
+  const sortData = <T extends AppointmentData | DiscoveryData>(data: T[]): T[] => {
+    if (!sortField || !sortDirection) return data
+
+    return [...data].sort((a, b) => {
+      const aValue = a[sortField as keyof T]
+      const bValue = b[sortField as keyof T]
+
+      if (aValue === null || aValue === undefined) return 1
+      if (bValue === null || bValue === undefined) return -1
+
+      let comparison = 0
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        comparison = aValue.localeCompare(bValue)
+      } else if (typeof aValue === 'number' && typeof bValue === 'number') {
+        comparison = aValue - bValue
+      } else if (aValue instanceof Date && bValue instanceof Date) {
+        comparison = aValue.getTime() - bValue.getTime()
+      } else {
+        comparison = String(aValue).localeCompare(String(bValue))
+      }
+
+      return sortDirection === 'asc' ? comparison : -comparison
+    })
+  }
+
+  const filterData = <T extends AppointmentData | DiscoveryData>(data: T[]): T[] => {
+    return data.filter(item => {
+      // Search filter
+      const searchLower = searchTerm.toLowerCase()
+      const matchesSearch = !searchTerm || 
+        item.contact_name.toLowerCase().includes(searchLower) ||
+        item.contact_email.toLowerCase().includes(searchLower) ||
+        item.setter.toLowerCase().includes(searchLower) ||
+        item.account_name.toLowerCase().includes(searchLower)
+
+      // Call outcome filter
+      const matchesCallOutcome = filters.callOutcome.length === 0 || 
+        (item.call_outcome && filters.callOutcome.includes(item.call_outcome))
+
+      // Show outcome filter (appointments only)
+      const matchesShowOutcome = filters.showOutcome.length === 0 || 
+        !('show_outcome' in item) ||
+        (item.show_outcome && filters.showOutcome.includes(item.show_outcome))
+
+      // Data filled filter
+      const matchesDataFilled = filters.dataFilled.length === 0 ||
+        (filters.dataFilled.includes('complete') && item.data_filled) ||
+        (filters.dataFilled.includes('pending') && !item.data_filled)
+
+      // Date range filter
+      const itemDate = new Date(item.date_booked_for)
+      const matchesDateRange = 
+        (!filters.dateRange.start || itemDate >= filters.dateRange.start) &&
+        (!filters.dateRange.end || itemDate <= filters.dateRange.end)
+
+      return matchesSearch && matchesCallOutcome && matchesShowOutcome && matchesDataFilled && matchesDateRange
+    })
+  }
+
+  const clearFilters = () => {
+    setFilters({
+      callOutcome: [],
+      showOutcome: [],
+      dataFilled: [],
+      dateRange: { start: null, end: null }
+    })
+    setSearchTerm('')
+  }
+
+  const hasActiveFilters = 
+    filters.callOutcome.length > 0 || 
+    filters.showOutcome.length > 0 || 
+    filters.dataFilled.length > 0 ||
+    filters.dateRange.start !== null ||
+    filters.dateRange.end !== null ||
+    searchTerm !== ''
+
+  const processedAppointments = sortData(filterData(appointments))
+  const processedDiscoveries = sortData(filterData(discoveries))
 
   const getCallOutcomeBadge = (outcome: string | null) => {
     if (!outcome) return <Badge variant="outline">Not Set</Badge>
@@ -271,6 +370,21 @@ export default function AppointmentsDiscoveriesPage() {
     }
   }
 
+  const SortableHeader = ({ field, children }: { field: string; children: React.ReactNode }) => (
+    <TableHead 
+      className="cursor-pointer hover:bg-muted/50"
+      onClick={() => handleSort(field)}
+    >
+      <div className="flex items-center gap-1">
+        {children}
+        <ArrowUpDown className={cn(
+          "h-4 w-4",
+          sortField === field ? "text-primary" : "text-muted-foreground"
+        )} />
+      </div>
+    </TableHead>
+  )
+
   return (
     <div className="min-h-screen bg-background">
       <TopBar />
@@ -285,62 +399,168 @@ export default function AppointmentsDiscoveriesPage() {
             </div>
           ) : (
             <>
-              {/* Search Bar */}
-              <div className="mb-6">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                  <Input
-                    placeholder="Search by contact name, email, setter, or account..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-              </div>
+              {/* Filters and Search */}
+              <div className="mb-6 space-y-4">
+                <div className="flex flex-wrap gap-4 items-center">
+                  {/* Search Bar */}
+                  <div className="relative flex-1 max-w-sm">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                    <Input
+                      placeholder="Search by contact, email, setter, or account..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
 
-              {/* Info Message */}
-              <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                <p className="text-sm text-blue-800">
-                  {activeTab === 'appointments' 
-                    ? 'Showing appointments where you are the sales representative'
-                    : 'Showing discoveries where you are the setter'
-                  }
-                  {selectedAccountId && ' • Filtered by selected account'}
-                </p>
+                  {/* Filter Dropdowns */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm">
+                        <Filter className="h-4 w-4 mr-2" />
+                        Call Outcome
+                        {filters.callOutcome.length > 0 && (
+                          <Badge variant="secondary" className="ml-2">{filters.callOutcome.length}</Badge>
+                        )}
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-48">
+                      <DropdownMenuLabel>Call Outcome</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      {['show', 'no_show', 'reschedule', 'cancel'].map(outcome => (
+                        <DropdownMenuCheckboxItem
+                          key={outcome}
+                          checked={filters.callOutcome.includes(outcome)}
+                          onCheckedChange={(checked) => {
+                            setFilters(prev => ({
+                              ...prev,
+                              callOutcome: checked
+                                ? [...prev.callOutcome, outcome]
+                                : prev.callOutcome.filter(o => o !== outcome)
+                            }))
+                          }}
+                        >
+                          {outcome.split('_').map(word => 
+                            word.charAt(0).toUpperCase() + word.slice(1)
+                          ).join(' ')}
+                        </DropdownMenuCheckboxItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+
+                  {activeTab === 'appointments' && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm">
+                          <Filter className="h-4 w-4 mr-2" />
+                          Show Outcome
+                          {filters.showOutcome.length > 0 && (
+                            <Badge variant="secondary" className="ml-2">{filters.showOutcome.length}</Badge>
+                          )}
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-48">
+                        <DropdownMenuLabel>Show Outcome</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        {['won', 'lost', 'follow_up'].map(outcome => (
+                          <DropdownMenuCheckboxItem
+                            key={outcome}
+                            checked={filters.showOutcome.includes(outcome)}
+                            onCheckedChange={(checked) => {
+                              setFilters(prev => ({
+                                ...prev,
+                                showOutcome: checked
+                                  ? [...prev.showOutcome, outcome]
+                                  : prev.showOutcome.filter(o => o !== outcome)
+                              }))
+                            }}
+                          >
+                            {outcome === 'follow_up' ? 'Follow Up' : 
+                             outcome.charAt(0).toUpperCase() + outcome.slice(1)}
+                          </DropdownMenuCheckboxItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm">
+                        <Filter className="h-4 w-4 mr-2" />
+                        Status
+                        {filters.dataFilled.length > 0 && (
+                          <Badge variant="secondary" className="ml-2">{filters.dataFilled.length}</Badge>
+                        )}
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-48">
+                      <DropdownMenuLabel>Data Status</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      {['complete', 'pending'].map(status => (
+                        <DropdownMenuCheckboxItem
+                          key={status}
+                          checked={filters.dataFilled.includes(status)}
+                          onCheckedChange={(checked) => {
+                            setFilters(prev => ({
+                              ...prev,
+                              dataFilled: checked
+                                ? [...prev.dataFilled, status]
+                                : prev.dataFilled.filter(s => s !== status)
+                            }))
+                          }}
+                        >
+                          {status.charAt(0).toUpperCase() + status.slice(1)}
+                        </DropdownMenuCheckboxItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+
+                  {hasActiveFilters && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={clearFilters}
+                      className="text-muted-foreground"
+                    >
+                      <X className="h-4 w-4 mr-1" />
+                      Clear filters
+                    </Button>
+                  )}
+                </div>
               </div>
 
               {/* Content based on active tab */}
               {activeTab === "appointments" ? (
                 <Card>
                   <CardHeader>
-                    <CardTitle>My Appointments ({filteredAppointments.length})</CardTitle>
+                    <CardTitle>My Appointments ({processedAppointments.length})</CardTitle>
                   </CardHeader>
                   <CardContent className="p-0">
                     {loading ? (
                       <div className="p-8 text-center text-muted-foreground">
                         Loading appointments...
                       </div>
-                    ) : filteredAppointments.length === 0 ? (
+                    ) : processedAppointments.length === 0 ? (
                       <div className="p-8 text-center text-muted-foreground">
-                        No appointments found where you are the sales representative.
+                        No appointments found matching your filters.
                       </div>
                     ) : (
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead>Contact</TableHead>
-                            <TableHead>Account</TableHead>
-                            <TableHead>Date</TableHead>
-                            <TableHead>Setter</TableHead>
-                            <TableHead>Call Outcome</TableHead>
-                            <TableHead>Show Outcome</TableHead>
-                            <TableHead>Cash</TableHead>
-                            <TableHead>Status</TableHead>
+                            <SortableHeader field="contact_name">Contact</SortableHeader>
+                            <SortableHeader field="account_name">Account</SortableHeader>
+                            <SortableHeader field="date_booked_for">Date</SortableHeader>
+                            <SortableHeader field="setter">Setter</SortableHeader>
+                            <SortableHeader field="call_outcome">Call Outcome</SortableHeader>
+                            <SortableHeader field="show_outcome">Show Outcome</SortableHeader>
+                            <SortableHeader field="cash_collected">Cash</SortableHeader>
+                            <SortableHeader field="data_filled">Status</SortableHeader>
                             <TableHead>Actions</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {filteredAppointments.map((apt) => (
+                          {processedAppointments.map((apt) => (
                             <TableRow key={apt.id}>
                               <TableCell>
                                 <div>
@@ -389,33 +609,33 @@ export default function AppointmentsDiscoveriesPage() {
               ) : (
                 <Card>
                   <CardHeader>
-                    <CardTitle>My Discoveries ({filteredDiscoveries.length})</CardTitle>
+                    <CardTitle>My Discoveries ({processedDiscoveries.length})</CardTitle>
                   </CardHeader>
                   <CardContent className="p-0">
                     {loading ? (
                       <div className="p-8 text-center text-muted-foreground">
                         Loading discoveries...
                       </div>
-                    ) : filteredDiscoveries.length === 0 ? (
+                    ) : processedDiscoveries.length === 0 ? (
                       <div className="p-8 text-center text-muted-foreground">
-                        No discoveries found where you are the setter.
+                        No discoveries found matching your filters.
                       </div>
                     ) : (
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead>Contact</TableHead>
-                            <TableHead>Account</TableHead>
-                            <TableHead>Date</TableHead>
-                            <TableHead>Sales Rep</TableHead>
-                            <TableHead>Call Outcome</TableHead>
-                            <TableHead>Show Outcome</TableHead>
-                            <TableHead>Lead Quality</TableHead>
-                            <TableHead>Status</TableHead>
+                            <SortableHeader field="contact_name">Contact</SortableHeader>
+                            <SortableHeader field="account_name">Account</SortableHeader>
+                            <SortableHeader field="date_booked_for">Date</SortableHeader>
+                            <SortableHeader field="sales_rep">Sales Rep</SortableHeader>
+                            <SortableHeader field="call_outcome">Call Outcome</SortableHeader>
+                            <SortableHeader field="show_outcome">Show Outcome</SortableHeader>
+                            <SortableHeader field="lead_quality">Lead Quality</SortableHeader>
+                            <SortableHeader field="data_filled">Status</SortableHeader>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {filteredDiscoveries.map((disc) => (
+                          {processedDiscoveries.map((disc) => (
                             <TableRow key={disc.id}>
                               <TableCell>
                                 <div>
