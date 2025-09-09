@@ -5,9 +5,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
-import { Loader2, Trash2 } from "lucide-react"
+import { Loader2, Trash2, Plus, AlertTriangle, CheckCircle, HelpCircle } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 
 interface BusinessHourMapping {
@@ -29,6 +30,7 @@ interface CountryOption {
   country_code: string
   country_name: string
   flag: string
+  confidence: string
   timezone_options: string[]
   contact_count: number
 }
@@ -55,23 +57,29 @@ export function BusinessHoursSelector({ value, onChange }: BusinessHoursSelector
   useEffect(() => {
     const fetchCountries = async () => {
       try {
-        const { data, error } = await supabase.rpc('get_available_phone_countries_simple')
+        const { data, error } = await supabase.rpc('get_detected_phone_countries')
         if (error) throw error
         const countries = data || []
         setAvailableCountries(countries)
         
-        // Initialize with all countries if none are configured yet
+        // Initialize with high confidence countries if none are configured yet
         if (value.length === 0 && countries.length > 0) {
-          const initialMappings: BusinessHourMapping[] = countries.map((country: CountryOption) => ({
-            countryCode: country.country_code,
-            countryName: country.country_name,
-            flag: country.flag,
-            timezone: country.timezone_options[0],
-            startTime: "09:00",
-            endTime: "17:00",
-            workingDays: [1, 2, 3, 4, 5] // Mon-Fri default
-          }))
-          onChange(initialMappings)
+          const highConfidenceCountries = countries.filter((country: CountryOption) => 
+            country.confidence === 'high'
+          )
+          
+          if (highConfidenceCountries.length > 0) {
+            const initialMappings: BusinessHourMapping[] = highConfidenceCountries.map((country: CountryOption) => ({
+              countryCode: country.country_code,
+              countryName: country.country_name,
+              flag: country.flag,
+              timezone: country.timezone_options[0],
+              startTime: "09:00",
+              endTime: "17:00",
+              workingDays: [1, 2, 3, 4, 5] // Mon-Fri default
+            }))
+            onChange(initialMappings)
+          }
         }
       } catch (error) {
         console.error('Error fetching countries:', error)
@@ -80,9 +88,26 @@ export function BusinessHoursSelector({ value, onChange }: BusinessHoursSelector
       }
     }
     fetchCountries()
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+  const addCountry = (countryOption: CountryOption) => {
+    // Check if country is already added
+    if (value.some(v => v.countryCode === countryOption.country_code)) {
+      return
+    }
 
+    const newMapping: BusinessHourMapping = {
+      countryCode: countryOption.country_code,
+      countryName: countryOption.country_name,
+      flag: countryOption.flag,
+      timezone: countryOption.timezone_options[0],
+      startTime: "09:00",
+      endTime: "17:00",
+      workingDays: [1, 2, 3, 4, 5] // Mon-Fri default
+    }
+
+    onChange([...value, newMapping])
+  }
 
   const removeCountry = (index: number) => {
     onChange(value.filter((_, i) => i !== index))
@@ -110,13 +135,91 @@ export function BusinessHoursSelector({ value, onChange }: BusinessHoursSelector
     )
   }
 
+  const getConfidenceIcon = (confidence: string) => {
+    switch (confidence) {
+      case 'high':
+        return <CheckCircle className="h-3 w-3 text-green-500" />
+      case 'medium':
+        return <AlertTriangle className="h-3 w-3 text-yellow-500" />
+      case 'low':
+        return <HelpCircle className="h-3 w-3 text-red-500" />
+      default:
+        return null
+    }
+  }
+
+  const getConfidenceBadgeVariant = (confidence: string) => {
+    switch (confidence) {
+      case 'high':
+        return 'default'
+      case 'medium':
+        return 'secondary'
+      case 'low':
+        return 'destructive'
+      default:
+        return 'outline'
+    }
+  }
+
+  const availableToAdd = availableCountries.filter(country => 
+    !value.some(v => v.countryCode === country.country_code)
+  )
+
   return (
     <div className="space-y-4">
-      <div>
-        <h4 className="text-sm font-medium">Business Hours Configuration</h4>
-        <p className="text-xs text-muted-foreground mt-1">
-          Configure working hours for each country. Speed to Lead will only count time during these hours.
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h4 className="text-sm font-medium">Business Hours Configuration</h4>
+          <p className="text-xs text-muted-foreground mt-1">
+            Configure working hours for each country. Speed to Lead will only count time during these hours.
+          </p>
+        </div>
+        {availableToAdd.length > 0 && (
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Plus className="h-4 w-4 mr-1" />
+                Add Country
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80 p-0" align="end">
+              <div className="p-3 border-b">
+                <h4 className="text-sm font-medium">Detected Countries</h4>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Countries found in your contact data
+                </p>
+              </div>
+              <div className="max-h-60 overflow-y-auto">
+                {availableToAdd.map((country) => (
+                  <div
+                    key={country.country_code}
+                    className="flex items-center justify-between p-3 hover:bg-accent cursor-pointer border-b last:border-b-0"
+                    onClick={() => addCountry(country)}
+                  >
+                    <div className="flex items-center gap-3 flex-1">
+                      <span className="text-lg">{country.flag}</span>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium">{country.country_name}</span>
+                          {getConfidenceIcon(country.confidence)}
+                        </div>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Badge variant={getConfidenceBadgeVariant(country.confidence)} className="text-xs">
+                            {country.confidence} confidence
+                          </Badge>
+                          <span className="text-xs text-muted-foreground">
+                            {country.contact_count} contacts
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <Plus className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
+        )}
       </div>
 
       {value.length === 0 ? (
