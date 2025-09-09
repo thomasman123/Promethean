@@ -69,6 +69,14 @@ export async function POST(request: NextRequest) {
     const requestedBreakdown = body.breakdown;
     const widgetSettings = body.widgetSettings || body.options?.widgetSettings;
 
+    // Debug logging for speed to lead
+    if (body.metricName === 'speed_to_lead') {
+      console.log('Speed to Lead API request:');
+      console.log('- metricName:', body.metricName);
+      console.log('- widgetSettings:', widgetSettings);
+      console.log('- speedToLeadBusinessHours:', widgetSettings?.speedToLeadBusinessHours);
+    }
+
     const result = await metricsEngine.execute(metricRequest, {
       vizType: requestedVizType,
       dynamicBreakdown: requestedBreakdown,

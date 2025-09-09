@@ -299,8 +299,10 @@ export class MetricsEngine {
     const businessHours = options?.widgetSettings?.speedToLeadBusinessHours;
     const hasBusinessHours = businessHours && businessHours.length > 0;
 
-    // Clean logging for Speed to Lead
+    // Detailed logging for Speed to Lead
     console.log('Speed to Lead calculation:', calculationType, hasBusinessHours ? 'with business hours' : 'standard');
+    console.log('Widget settings:', options?.widgetSettings);
+    console.log('Business hours config:', businessHours);
 
     let contactDateExpression = 'contacts.date_added';
     if (hasBusinessHours) {
