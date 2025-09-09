@@ -193,7 +193,7 @@ export function FollowUpNotifications() {
         {notifications.length > 0 && (
           <div className="p-4 border-t">
             <Button variant="outline" className="w-full" asChild>
-              <a href="/follow-ups">View all follow-ups</a>
+              <a href="/update-data/follow-ups">View all follow-ups</a>
             </Button>
           </div>
         )}
