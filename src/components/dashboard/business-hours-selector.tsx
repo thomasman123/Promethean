@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
-import { Loader2, Plus, Trash2, Globe } from "lucide-react"
+import { Loader2, Trash2 } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 
 interface BusinessHourMapping {
@@ -57,7 +57,22 @@ export function BusinessHoursSelector({ value, onChange }: BusinessHoursSelector
       try {
         const { data, error } = await supabase.rpc('get_available_phone_countries')
         if (error) throw error
-        setAvailableCountries(data || [])
+        const countries = data || []
+        setAvailableCountries(countries)
+        
+        // Initialize with all countries if none are configured yet
+        if (value.length === 0 && countries.length > 0) {
+          const initialMappings: BusinessHourMapping[] = countries.map((country: CountryOption) => ({
+            countryCode: country.country_code,
+            countryName: country.country_name,
+            flag: country.flag,
+            timezone: country.timezone_options[0],
+            startTime: "09:00",
+            endTime: "17:00",
+            workingDays: [1, 2, 3, 4, 5] // Mon-Fri default
+          }))
+          onChange(initialMappings)
+        }
       } catch (error) {
         console.error('Error fetching countries:', error)
       } finally {
@@ -65,30 +80,9 @@ export function BusinessHoursSelector({ value, onChange }: BusinessHoursSelector
       }
     }
     fetchCountries()
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const addCountry = () => {
-    if (availableCountries.length === 0) return
-    
-    // Find the first country not already added
-    const unusedCountry = availableCountries.find(
-      country => !value.some(v => v.countryCode === country.country_code)
-    )
-    
-    if (!unusedCountry) return
 
-    const newMapping: BusinessHourMapping = {
-      countryCode: unusedCountry.country_code,
-      countryName: unusedCountry.country_name,
-      flag: unusedCountry.flag,
-      timezone: unusedCountry.timezone_options[0],
-      startTime: "09:00",
-      endTime: "17:00",
-      workingDays: [1, 2, 3, 4, 5] // Mon-Fri default
-    }
-
-    onChange([...value, newMapping])
-  }
 
   const removeCountry = (index: number) => {
     onChange(value.filter((_, i) => i !== index))
@@ -118,31 +112,19 @@ export function BusinessHoursSelector({ value, onChange }: BusinessHoursSelector
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h4 className="text-sm font-medium">Business Hours Configuration</h4>
-          <p className="text-xs text-muted-foreground mt-1">
-            Configure working hours for each country. Speed to Lead will only count time during these hours.
-          </p>
-        </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={addCountry}
-          disabled={value.length >= availableCountries.length}
-        >
-          <Plus className="h-4 w-4 mr-1" />
-          Add Country
-        </Button>
+      <div>
+        <h4 className="text-sm font-medium">Business Hours Configuration</h4>
+        <p className="text-xs text-muted-foreground mt-1">
+          Configure working hours for each country. Speed to Lead will only count time during these hours.
+        </p>
       </div>
 
       {value.length === 0 ? (
         <Card className="border-dashed">
           <CardContent className="pt-6">
             <div className="text-center text-muted-foreground">
-              <Globe className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              <p className="text-sm">No countries configured</p>
-              <p className="text-xs mt-1">Click "Add Country" to get started</p>
+              <Loader2 className="h-6 w-6 mx-auto animate-spin" />
+              <p className="text-sm mt-2">Loading countries...</p>
             </div>
           </CardContent>
         </Card>
