@@ -78,20 +78,23 @@ export default function FollowUpsPage() {
   });
 
   useEffect(() => {
-    if (selectedAccountId) {
+    if (selectedAccountId && user) {
       loadFollowUps();
       // Check for overdue follow-ups
       checkOverdueFollowUps();
     }
-  }, [selectedAccountId, statusFilter]);
+  }, [selectedAccountId, statusFilter, user]);
 
   const loadFollowUps = async () => {
+    if (!user) return;
+    
     try {
       setLoading(true);
       
       let query = supabase
         .from('follow_up_dashboard')
         .select('*')
+        .eq('assigned_to_user_id', user.id)
         .order('scheduled_for', { ascending: true });
 
       if (statusFilter !== 'all') {
