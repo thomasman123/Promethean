@@ -306,17 +306,17 @@ export default function DashboardPage() {
   const renderWidgetContent = (widget: WidgetConfig) => {
     // For KPI widgets with single metric
     if (widget.type === "kpi" && widget.metric) {
-      return <MetricWidget metric={widget.metric} type={widget.type} />
+      return <MetricWidget metric={widget.metric} type={widget.type} options={widget.options} />
     }
     
     // For chart widgets with multiple metrics
     if ((widget.type === "bar" || widget.type === "line" || widget.type === "area") && widget.metrics) {
-      return <MetricWidget metrics={widget.metrics} type={widget.type} />
+      return <MetricWidget metrics={widget.metrics} type={widget.type} options={widget.options} />
     }
     
     // For backward compatibility - chart with single metric
     if ((widget.type === "bar" || widget.type === "line" || widget.type === "area") && widget.metric) {
-      return <MetricWidget metrics={[widget.metric]} type={widget.type} />
+      return <MetricWidget metrics={[widget.metric]} type={widget.type} options={widget.options} />
     }
     
     // Otherwise render placeholder content

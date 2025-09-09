@@ -65,9 +65,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const requestedVizType = body.vizType;
+    const requestedVizType = body.vizType || body.options?.vizType;
     const requestedBreakdown = body.breakdown;
-    const widgetSettings = body.widgetSettings;
+    const widgetSettings = body.widgetSettings || body.options?.widgetSettings;
 
     const result = await metricsEngine.execute(metricRequest, {
       vizType: requestedVizType,

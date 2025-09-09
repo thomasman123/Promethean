@@ -304,8 +304,8 @@ export class MetricsEngine {
 
     let contactDateExpression = 'contacts.date_added';
     if (hasBusinessHours) {
-      // Use business hours adjustment function
-      contactDateExpression = `apply_business_hours(contacts.date_added, contacts.phone, $business_hours)`;
+      // Use enhanced business hours adjustment function with weekday support
+      contactDateExpression = `apply_business_hours_enhanced(contacts.date_added, contacts.phone, $business_hours)`;
     }
 
     const sql = `
@@ -392,7 +392,7 @@ WHERE speed_to_lead_seconds IS NOT NULL
           EXTRACT(EPOCH FROM (
             (SELECT MIN(date_called) FROM dials WHERE dials.contact_id = contacts.id AND dials.contact_id IS NOT NULL) 
             - ${options?.widgetSettings?.speedToLeadBusinessHours?.length > 0 ? 
-                'apply_business_hours(contacts.date_added, contacts.phone, $business_hours)' : 
+                'apply_business_hours_enhanced(contacts.date_added, contacts.phone, $business_hours)' : 
                 'contacts.date_added'}
           )) as speed_to_lead_seconds
         FROM contacts

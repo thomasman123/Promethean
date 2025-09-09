@@ -9,20 +9,25 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { 
   BarChart3, 
   LineChart, 
   AreaChart, 
   Square,
   ArrowLeft,
-  ArrowRight 
+  ArrowRight,
+  Clock,
+  Calculator 
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { MetricSelector } from "@/components/dashboard/metric-selector"
 import { METRICS_REGISTRY } from "@/lib/metrics/registry"
+import { BusinessHoursSelector } from "@/components/dashboard/business-hours-selector"
 
 interface AddWidgetModalProps {
   open: boolean
@@ -75,7 +80,13 @@ export function AddWidgetModal({ open, onOpenChange, onAddWidget }: AddWidgetMod
   const [selectedMetrics, setSelectedMetrics] = useState<string[]>([])
   const [widgetTitle, setWidgetTitle] = useState("")
   
+  // Speed to Lead specific options
+  const [speedToLeadCalculation, setSpeedToLeadCalculation] = useState<'average' | 'median'>('average')
+  const [speedToLeadTimeFormat, setSpeedToLeadTimeFormat] = useState(false)
+  const [speedToLeadBusinessHours, setSpeedToLeadBusinessHours] = useState<any[]>([])
+  
   const isChartType = selectedVisualization && ["bar", "line", "area"].includes(selectedVisualization)
+  const isSpeedToLead = selectedMetric === 'speed_to_lead' || selectedMetrics.includes('speed_to_lead')
   
   const handleReset = () => {
     setCurrentStep("visualization")
@@ -83,6 +94,9 @@ export function AddWidgetModal({ open, onOpenChange, onAddWidget }: AddWidgetMod
     setSelectedMetric(null)
     setSelectedMetrics([])
     setWidgetTitle("")
+    setSpeedToLeadCalculation('average')
+    setSpeedToLeadTimeFormat(false)
+    setSpeedToLeadBusinessHours([])
   }
 
   const handleClose = () => {
@@ -121,7 +135,13 @@ export function AddWidgetModal({ open, onOpenChange, onAddWidget }: AddWidgetMod
       title: widgetTitle || defaultTitle,
       metric: isChartType ? undefined : (selectedMetric || undefined),
       metrics: isChartType ? selectedMetrics : undefined,
-      options: {} // Additional options can be added here
+      options: {
+        ...(isSpeedToLead && {
+          speedToLeadCalculation,
+          speedToLeadTimeFormat,
+          speedToLeadBusinessHours
+        })
+      }
     }
 
     onAddWidget(widget)
@@ -241,15 +261,96 @@ export function AddWidgetModal({ open, onOpenChange, onAddWidget }: AddWidgetMod
                 />
               </div>
               
-              <div className="text-sm text-muted-foreground mt-6">
-                <p>More options will be available in future updates:</p>
-                <ul className="list-disc list-inside mt-2 space-y-1">
-                  <li>Date range preferences</li>
-                  <li>Color themes</li>
-                  <li>Data aggregation options</li>
-                  <li>Comparison settings</li>
-                </ul>
-              </div>
+              {/* Speed to Lead specific options */}
+              {isSpeedToLead && (
+                <>
+                  {/* Calculation Type */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-sm flex items-center gap-2">
+                        <Calculator className="h-4 w-4" />
+                        Calculation Method
+                      </CardTitle>
+                      <CardDescription className="text-xs">
+                        Choose how to calculate speed to lead
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <RadioGroup
+                        value={speedToLeadCalculation}
+                        onValueChange={(value) => setSpeedToLeadCalculation(value as 'average' | 'median')}
+                      >
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="average" id="average" />
+                          <Label htmlFor="average" className="text-sm cursor-pointer">
+                            Average (Mean)
+                          </Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="median" id="median" />
+                          <Label htmlFor="median" className="text-sm cursor-pointer">
+                            Median
+                          </Label>
+                        </div>
+                      </RadioGroup>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        {speedToLeadCalculation === 'average' 
+                          ? 'Calculate the mean of all speed to lead times'
+                          : 'Calculate the middle value, reducing impact of outliers'}
+                      </p>
+                    </CardContent>
+                  </Card>
+
+                  {/* Time Format */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-sm flex items-center gap-2">
+                        <Clock className="h-4 w-4" />
+                        Display Format
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="time-format" className="text-sm">
+                          Show time in human-readable format
+                        </Label>
+                        <Switch
+                          id="time-format"
+                          checked={speedToLeadTimeFormat}
+                          onCheckedChange={setSpeedToLeadTimeFormat}
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        {speedToLeadTimeFormat 
+                          ? 'Display as "2h 30m" instead of seconds'
+                          : 'Display raw seconds value'}
+                      </p>
+                    </CardContent>
+                  </Card>
+
+                  {/* Business Hours */}
+                  <Card>
+                    <CardContent className="pt-6">
+                      <BusinessHoursSelector
+                        value={speedToLeadBusinessHours}
+                        onChange={setSpeedToLeadBusinessHours}
+                      />
+                    </CardContent>
+                  </Card>
+                </>
+              )}
+              
+              {!isSpeedToLead && (
+                <div className="text-sm text-muted-foreground mt-6">
+                  <p>More options will be available in future updates:</p>
+                  <ul className="list-disc list-inside mt-2 space-y-1">
+                    <li>Date range preferences</li>
+                    <li>Color themes</li>
+                    <li>Data aggregation options</li>
+                    <li>Comparison settings</li>
+                  </ul>
+                </div>
+              )}
             </div>
           )}
         </div>
