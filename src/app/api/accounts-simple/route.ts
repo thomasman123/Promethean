@@ -85,37 +85,64 @@ export async function GET() {
 
     if (isEffectiveAdmin) {
       console.log('🔍 [accounts-simple] Loading all accounts (admin access)...')
-      // Even admins should only see accounts they have explicit access to
-      // This prevents admins from accidentally accessing accounts they shouldn't
-      const { data, error } = await supabase
-        .from('account_access')
-        .select(`
-          role,
-          account_id,
-          accounts!inner (
-            id,
-            name,
-            description,
-            is_active
-          )
-        `)
-        .eq('user_id', effectiveUserId)
-        .eq('is_active', true)
-
-      if (error) {
-        console.error('❌ [accounts-simple] Admin accounts query error:', error)
-        return NextResponse.json({ accounts: [] })
-      }
       
-      accounts = (data || []).flatMap((row: any) => {
-        const acc = row.accounts as any | null
-        if (acc && acc.is_active) {
-          return [{ id: acc.id, name: acc.name, description: acc.description }]
+      // Check if user has profile role 'admin' (global admin) vs just account-level admin/moderator
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', effectiveUserId)
+        .single()
+      
+      const isGlobalAdmin = profileData?.role === 'admin'
+      console.log('🔍 [accounts-simple] Is global admin?', isGlobalAdmin)
+      
+      if (isGlobalAdmin) {
+        // Global admins see ALL accounts
+        const { data, error } = await supabase
+          .from('accounts')
+          .select('id, name, description')
+          .eq('is_active', true)
+          .order('name')
+
+        if (error) {
+          console.error('❌ [accounts-simple] Global admin accounts query error:', error)
+          return NextResponse.json({ accounts: [] })
         }
-        return []
-      })
-      console.log('✅ [accounts-simple] Admin accounts loaded:', accounts.length, 'accounts')
-      console.log('🔍 [accounts-simple] Admin accounts:', accounts.map(a => ({ id: a.id, name: a.name })))
+        
+        accounts = data || []
+        console.log('✅ [accounts-simple] Global admin accounts loaded:', accounts.length, 'accounts')
+      } else {
+        // Account-level admins/moderators only see accounts they have explicit access to
+        const { data, error } = await supabase
+          .from('account_access')
+          .select(`
+            role,
+            account_id,
+            accounts!inner (
+              id,
+              name,
+              description,
+              is_active
+            )
+          `)
+          .eq('user_id', effectiveUserId)
+          .eq('is_active', true)
+
+        if (error) {
+          console.error('❌ [accounts-simple] Account-level admin query error:', error)
+          return NextResponse.json({ accounts: [] })
+        }
+        
+        accounts = (data || []).flatMap((row: any) => {
+          const acc = row.accounts as any | null
+          if (acc && acc.is_active) {
+            return [{ id: acc.id, name: acc.name, description: acc.description }]
+          }
+          return []
+        })
+        console.log('✅ [accounts-simple] Account-level admin accounts loaded:', accounts.length, 'accounts')
+      }
+      console.log('🔍 [accounts-simple] Final admin accounts:', accounts.map(a => ({ id: a.id, name: a.name })))
     } else {
       console.log('🔍 [accounts-simple] Loading user-specific accounts...')
       
