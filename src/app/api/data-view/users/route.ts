@@ -75,91 +75,39 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Get all users for this account using appropriate client
-    const { data: accountUsers, error } = await queryClient
-      .from('account_access')
-      .select(`
-        user_id,
-        role,
-        is_active,
-        profiles!account_access_user_id_fkey (
-          id,
-          full_name,
-          email,
-          role
-        )
-      `)
+    // Use the existing team_members view which is the single source of truth
+    const { data: teamMembers, error } = await queryClient
+      .from('team_members')
+      .select('*')
       .eq('account_id', accountId)
-      .eq('is_active', true)
 
     if (error) {
-      console.error('Error loading account users:', error)
+      console.error('Error loading team members:', error)
       return NextResponse.json(
         { error: `Failed to load users: ${error.message}` },
         { status: 500 }
       )
     }
 
-    console.log('Raw account users data:', accountUsers)
+    console.log('Raw team members data:', teamMembers)
 
-    // Get functional roles based on actual data activity
-    const userIds = (accountUsers || []).map((row: any) => row.profiles.id)
-    
-    let functionalRoles: any = {}
-    if (userIds.length > 0) {
-      // Query appointments and dials to determine functional roles
-      const { data: activityData } = await queryClient.rpc('execute_metrics_query_array', {
-        query_sql: `
-          SELECT 
-            p.id,
-            COUNT(CASE WHEN a.setter_user_id = p.id THEN 1 END) as appointments_as_setter,
-            COUNT(CASE WHEN a.sales_rep_user_id = p.id THEN 1 END) as appointments_as_sales_rep,
-            COUNT(CASE WHEN d.setter_user_id = p.id THEN 1 END) as dials_as_setter,
-            CASE 
-              WHEN COUNT(CASE WHEN a.sales_rep_user_id = p.id THEN 1 END) > 0 THEN 'rep'
-              WHEN COUNT(CASE WHEN a.setter_user_id = p.id THEN 1 END) > 0 OR COUNT(CASE WHEN d.setter_user_id = p.id THEN 1 END) > 0 THEN 'setter'
-              ELSE 'inactive'
-            END as functional_role
-          FROM profiles p
-          LEFT JOIN appointments a ON (a.setter_user_id = p.id OR a.sales_rep_user_id = p.id) AND a.account_id = $1
-          LEFT JOIN dials d ON d.setter_user_id = p.id AND d.account_id = $1
-          WHERE p.id = ANY($2)
-          GROUP BY p.id
-        `,
-        query_params: { 1: accountId, 2: userIds }
-      })
-
-      // Convert to lookup object
-      if (Array.isArray(activityData)) {
-        activityData.forEach((row: any) => {
-          functionalRoles[row.id] = row.functional_role
-        })
-      } else if (activityData) {
-        // Handle single result
-        const parsed = JSON.parse(String(activityData))
-        if (Array.isArray(parsed)) {
-          parsed.forEach((row: any) => {
-            functionalRoles[row.id] = row.functional_role
-          })
-        }
+    // Transform the data to the expected format with proper role mapping
+    const users = (teamMembers || []).map((member: any) => {
+      // Map account roles to display roles
+      let displayRole = 'setter' // default
+      
+      if (member.role === 'sales_rep' || member.role === 'moderator' || member.role === 'admin') {
+        displayRole = 'rep'
       }
-    }
-
-    console.log('Functional roles:', functionalRoles)
-
-    // Transform the data to the expected format
-    const users = (accountUsers || []).map((row: any) => {
-      const profile = row.profiles
-      const functionalRole = functionalRoles[profile.id] || 'inactive'
       
       return {
-        id: profile.id,
-        name: profile.full_name || 'Unknown',
-        email: profile.email || '',
-        role: functionalRole, // Use functional role based on data activity
-        profileRole: profile.role, // Original role from profiles
-        accountRole: row.role, // Role within this account
-        isActive: row.is_active
+        id: member.user_id,
+        name: member.full_name || 'Unknown',
+        email: member.email || '',
+        role: displayRole, // Simplified role for UI (setter/rep)
+        accountRole: member.role, // Original account access role
+        isActive: member.is_active,
+        createdForData: member.created_for_data
       }
     })
 
