@@ -2,18 +2,25 @@
 
 import { useState, useEffect, useMemo } from "react"
 import { TopBar } from "@/components/layout/topbar"
-import { UserMetricsTable, type UserMetric } from "@/components/data-view/user-metrics-table"
+import { UserMetricsTable, type UserMetric, type MetricColumn } from "@/components/data-view/user-metrics-table"
+import { MetricSelectionModal } from "@/components/data-view/metric-selection-modal"
 import { useDashboard } from "@/lib/dashboard-context"
 import { createBrowserClient } from "@supabase/ssr"
 import { ColumnDef } from "@tanstack/react-table"
-import { ArrowUpDown } from "lucide-react"
+import { ArrowUpDown, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { MetricDefinition } from "@/lib/metrics/types"
+import { useToast } from "@/hooks/use-toast"
 
 export default function DataViewPage() {
   const { selectedAccountId } = useDashboard()
   const [users, setUsers] = useState<UserMetric[]>([])
   const [tableConfig, setTableConfig] = useState<any>(null)
   const [loading, setLoading] = useState(false)
+  const [metricsLoading, setMetricsLoading] = useState(false)
+  const [isMetricModalOpen, setIsMetricModalOpen] = useState(false)
+  const [metricColumns, setMetricColumns] = useState<MetricColumn[]>([])
+  const { toast } = useToast()
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -192,7 +199,30 @@ export default function DataViewPage() {
       .filter((col: any) => col.id !== 'name') // Don't duplicate name column
       .map((col: any) => ({
         accessorKey: col.field,
-        header: col.header,
+        header: ({ column }: any) => {
+          return (
+            <div className="flex items-center justify-between">
+              <Button
+                variant="ghost"
+                onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+                className="h-auto p-0 font-medium"
+              >
+                {col.header}
+                <ArrowUpDown className="ml-2 h-4 w-4" />
+              </Button>
+              {col.metricName && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleRemoveColumn(col.id)}
+                  className="h-auto w-auto p-1 text-destructive hover:text-destructive"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              )}
+            </div>
+          )
+        },
         cell: ({ row }: any) => {
           const value = row.getValue(col.field)
           // Format based on column type
@@ -200,10 +230,10 @@ export default function DataViewPage() {
             return <div className="text-right font-medium">{value || 0}</div>
           }
           if (col.type === 'percentage') {
-            return <div className="text-right font-medium">{value || 0}%</div>
+            return <div className="text-right font-medium">{(value || 0).toFixed(1)}%</div>
           }
           if (col.type === 'currency') {
-            return <div className="text-right font-medium">${value || 0}</div>
+            return <div className="text-right font-medium">${(value || 0).toFixed(2)}</div>
           }
           return <div>{value || '-'}</div>
         },
@@ -213,8 +243,176 @@ export default function DataViewPage() {
   }, [tableConfig])
 
   const handleAddColumn = () => {
-    // TODO: Implement column selection dialog
-    console.log('Add column clicked')
+    setIsMetricModalOpen(true)
+  }
+
+  const handleMetricSelect = async (metricName: string, metricDefinition: MetricDefinition) => {
+    if (!selectedAccountId || !currentTableId) return
+
+    // Check if metric is already added
+    if (metricColumns.some(col => col.metricName === metricName)) {
+      toast({
+        title: "Metric already added",
+        description: `${metricDefinition.name} is already in this table`,
+        variant: "destructive",
+      })
+      return
+    }
+
+    const newColumn: MetricColumn = {
+      id: `metric_${metricName}_${Date.now()}`,
+      metricName,
+      displayName: metricDefinition.name,
+      unit: metricDefinition.unit
+    }
+
+    // Add to local state
+    setMetricColumns(prev => [...prev, newColumn])
+
+    // Update table configuration in database
+    try {
+      const updatedColumns = [...(tableConfig?.columns || []), {
+        id: newColumn.id,
+        field: newColumn.id,
+        header: newColumn.displayName,
+        type: getColumnType(newColumn.unit),
+        metricName: newColumn.metricName,
+        unit: newColumn.unit
+      }]
+
+      const { error } = await supabase
+        .from('data_tables')
+        .update({ 
+          columns: updatedColumns,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', currentTableId)
+
+      if (error) throw error
+
+      setTableConfig((prev: any) => ({ ...prev, columns: updatedColumns }))
+      
+      // Load metric data for users
+      await loadMetricData(newColumn)
+
+      toast({
+        title: "Column added",
+        description: `${metricDefinition.name} has been added to the table`,
+      })
+
+    } catch (error) {
+      console.error('Error adding metric column:', error)
+      setMetricColumns(prev => prev.filter(col => col.id !== newColumn.id))
+      toast({
+        title: "Error",
+        description: "Failed to add metric column",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleRemoveColumn = async (columnId: string) => {
+    if (!currentTableId) return
+
+    try {
+      const updatedColumns = (tableConfig?.columns || []).filter((col: any) => col.id !== columnId)
+      
+      const { error } = await supabase
+        .from('data_tables')
+        .update({ 
+          columns: updatedColumns,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', currentTableId)
+
+      if (error) throw error
+
+      setTableConfig((prev: any) => ({ ...prev, columns: updatedColumns }))
+      setMetricColumns(prev => prev.filter(col => col.id !== columnId))
+      
+      // Remove metric data from users
+      setUsers(prev => prev.map(user => {
+        const { [columnId]: removed, ...rest } = user
+        return rest as UserMetric
+      }))
+
+      toast({
+        title: "Column removed",
+        description: "Metric column has been removed from the table",
+      })
+
+    } catch (error) {
+      console.error('Error removing metric column:', error)
+      toast({
+        title: "Error",
+        description: "Failed to remove metric column",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const getColumnType = (unit?: string) => {
+    switch (unit) {
+      case 'currency':
+        return 'currency'
+      case 'percent':
+        return 'percentage'
+      case 'count':
+        return 'number'
+      default:
+        return 'text'
+    }
+  }
+
+  const loadMetricData = async (metricColumn: MetricColumn) => {
+    if (!selectedAccountId || users.length === 0) return
+
+    setMetricsLoading(true)
+    try {
+      const userIds = users.map(user => user.id)
+      
+      const response = await fetch('/api/data-view/user-metrics', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          accountId: selectedAccountId,
+          userIds,
+          metricName: metricColumn.metricName,
+          dateRange: {
+            start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // Last 30 days
+            end: new Date().toISOString().split('T')[0]
+          },
+          roleFilter
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to load metric data')
+      }
+
+      const result = await response.json()
+      
+      // Update users with metric data
+      setUsers(prev => prev.map(user => {
+        const userMetric = result.userMetrics.find((um: any) => um.userId === user.id)
+        return {
+          ...user,
+          [metricColumn.id]: userMetric?.value || 0
+        }
+      }))
+
+    } catch (error) {
+      console.error('Error loading metric data:', error)
+      toast({
+        title: "Error",
+        description: "Failed to load metric data",
+        variant: "destructive",
+      })
+    } finally {
+      setMetricsLoading(false)
+    }
   }
 
   return (
@@ -229,6 +427,8 @@ export default function DataViewPage() {
               data={users}
               columns={columns}
               onAddColumn={handleAddColumn}
+              onRemoveColumn={handleRemoveColumn}
+              loading={metricsLoading}
             />
           ) : (
             <div className="flex items-center justify-center h-64 text-muted-foreground">
@@ -237,6 +437,12 @@ export default function DataViewPage() {
           )}
         </div>
       </main>
+
+      <MetricSelectionModal
+        open={isMetricModalOpen}
+        onOpenChange={setIsMetricModalOpen}
+        onMetricSelect={handleMetricSelect}
+      />
     </div>
   )
 } 

@@ -40,17 +40,26 @@ export type UserMetric = {
   id: string
   name: string
   email: string
-  role: 'setter' | 'rep'
+  role: 'setter' | 'rep' | 'sales_rep' | 'admin'
   [key: string]: any // Dynamic metric columns
+}
+
+export interface MetricColumn {
+  id: string
+  metricName: string
+  displayName: string
+  unit?: 'count' | 'currency' | 'percent' | 'seconds' | 'days'
 }
 
 interface UserMetricsTableProps {
   data: UserMetric[]
   columns: ColumnDef<UserMetric>[]
   onAddColumn: () => void
+  onRemoveColumn?: (columnId: string) => void
+  loading?: boolean
 }
 
-export function UserMetricsTable({ data, columns, onAddColumn }: UserMetricsTableProps) {
+export function UserMetricsTable({ data, columns, onAddColumn, onRemoveColumn, loading }: UserMetricsTableProps) {
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
@@ -124,8 +133,8 @@ export function UserMetricsTable({ data, columns, onAddColumn }: UserMetricsTabl
           </DropdownMenu>
         </div>
       </div>
-      <div className="rounded-md border">
-        <Table>
+      <div className="rounded-md border overflow-x-auto">
+        <Table className="min-w-full">
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
@@ -145,7 +154,19 @@ export function UserMetricsTable({ data, columns, onAddColumn }: UserMetricsTabl
             ))}
           </TableHeader>
           <TableBody>
-            {table.getRowModel().rows?.length ? (
+            {loading ? (
+              <TableRow>
+                <TableCell
+                  colSpan={columns.length}
+                  className="h-24 text-center"
+                >
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                    Loading metrics...
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
