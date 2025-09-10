@@ -40,33 +40,18 @@ UPDATE profiles SET
 FROM ghl_users gu
 WHERE profiles.id = gu.app_user_id;
 
--- Migrate pending invitations to profiles (create profiles for pending users if needed)
-INSERT INTO profiles (
-  id,
-  email,
-  full_name,
-  role,
-  created_for_data,
-  invitation_status,
-  invited_by,
-  invited_at,
-  invitation_token
-)
-SELECT 
-  gen_random_uuid(),
-  i.email,
-  i.full_name,
-  i.role::user_role,
-  false,
-  i.status,
-  i.invited_by,
-  i.created_at,
-  i.token
+-- Update existing profiles with invitation data where applicable
+UPDATE profiles SET
+  invitation_token = i.token,
+  invited_by = i.invited_by,
+  invited_at = i.created_at,
+  invitation_status = CASE 
+    WHEN i.status = 'accepted' THEN 'active'
+    WHEN i.status = 'revoked' THEN 'revoked'
+    ELSE 'pending'
+  END
 FROM invitations i
-WHERE i.status = 'pending'
-  AND NOT EXISTS (
-    SELECT 1 FROM profiles p WHERE p.email = i.email
-  );
+WHERE profiles.email = i.email;
 
 -- ============================================================================
 -- STEP 3: Create enhanced team_members view with activity data
@@ -119,40 +104,24 @@ WHERE aa.is_active = true;
 CREATE OR REPLACE FUNCTION update_user_activity_counts(p_account_id UUID DEFAULT NULL)
 RETURNS void AS $$
 BEGIN
-  -- Update activity counts for all users (or specific account if provided)
+  -- Update setter activity counts
   UPDATE profiles SET
-    setter_activity_count = COALESCE(setter_stats.count, 0),
-    sales_rep_activity_count = COALESCE(rep_stats.count, 0),
-    total_activity_count = COALESCE(setter_stats.count, 0) + COALESCE(rep_stats.count, 0)
-  FROM (
-    SELECT 
-      setter_user_id as user_id,
-      COUNT(*) as count
-    FROM appointments a
-    WHERE (p_account_id IS NULL OR a.account_id = p_account_id)
-      AND setter_user_id IS NOT NULL
-    GROUP BY setter_user_id
-    
-    UNION ALL
-    
-    SELECT 
-      setter_user_id as user_id,
-      COUNT(*) as count
-    FROM dials d
-    WHERE (p_account_id IS NULL OR d.account_id = p_account_id)
-      AND setter_user_id IS NOT NULL
-    GROUP BY setter_user_id
-  ) setter_stats ON profiles.id = setter_stats.user_id
+    setter_activity_count = COALESCE(
+      (SELECT COUNT(*) FROM appointments WHERE setter_user_id = profiles.id AND (p_account_id IS NULL OR account_id = p_account_id)) +
+      (SELECT COUNT(*) FROM dials WHERE setter_user_id = profiles.id AND (p_account_id IS NULL OR account_id = p_account_id)),
+      0
+    );
   
-  LEFT JOIN (
-    SELECT 
-      sales_rep_user_id as user_id,
-      COUNT(*) as count
-    FROM appointments a
-    WHERE (p_account_id IS NULL OR a.account_id = p_account_id)
-      AND sales_rep_user_id IS NOT NULL
-    GROUP BY sales_rep_user_id
-  ) rep_stats ON profiles.id = rep_stats.user_id;
+  -- Update sales rep activity counts  
+  UPDATE profiles SET
+    sales_rep_activity_count = COALESCE(
+      (SELECT COUNT(*) FROM appointments WHERE sales_rep_user_id = profiles.id AND (p_account_id IS NULL OR account_id = p_account_id)),
+      0
+    );
+  
+  -- Update total activity counts
+  UPDATE profiles SET
+    total_activity_count = setter_activity_count + sales_rep_activity_count;
   
   -- Log the update
   RAISE NOTICE 'Updated activity counts for account: %', COALESCE(p_account_id::text, 'ALL');
