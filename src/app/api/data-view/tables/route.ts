@@ -39,39 +39,66 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check user access to account
-    console.log('API: Checking access for user', user.id, 'to account', accountId)
-    
-    const { data: userAccess, error: accessError } = await supabase
-      .from('account_access')
-      .select('role, is_active')
-      .eq('user_id', user.id)
-      .eq('account_id', accountId)
+    // Check if user is global admin first
+    const { data: profileData } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
       .single()
 
-    console.log('API: Access check result:', userAccess, accessError)
+    const isGlobalAdmin = profileData?.role === 'admin'
+    console.log('API: Is global admin?', isGlobalAdmin)
 
-    if (accessError || !userAccess) {
-      console.error('Access check failed:', {
-        userId: user.id,
-        userEmail: user.email,
-        accountId,
-        error: accessError,
-        userAccess
-      })
-      return NextResponse.json({ 
-        error: 'Access denied to this account',
-        debug: {
+    if (!isGlobalAdmin) {
+      // Non-global admins need explicit account access
+      console.log('API: Checking account access for non-global admin')
+      
+      const { data: userAccess, error: accessError } = await supabase
+        .from('account_access')
+        .select('role, is_active')
+        .eq('user_id', user.id)
+        .eq('account_id', accountId)
+        .single()
+
+      console.log('API: Access check result:', userAccess, accessError)
+
+      if (accessError || !userAccess) {
+        console.error('Access check failed:', {
           userId: user.id,
           userEmail: user.email,
           accountId,
-          accessError: accessError?.message
-        }
-      }, { status: 403 })
-    }
+          error: accessError,
+          userAccess
+        })
+        return NextResponse.json({ 
+          error: 'Access denied to this account',
+          debug: {
+            userId: user.id,
+            userEmail: user.email,
+            accountId,
+            accessError: accessError?.message
+          }
+        }, { status: 403 })
+      }
 
-    if (!userAccess.is_active) {
-      return NextResponse.json({ error: 'Account access is not active' }, { status: 403 })
+      if (!userAccess.is_active) {
+        return NextResponse.json({ error: 'Account access is not active' }, { status: 403 })
+      }
+    } else {
+      // Global admins can access any active account
+      console.log('API: Global admin - checking account is active')
+      
+      const { data: accountCheck } = await supabase
+        .from('accounts')
+        .select('is_active')
+        .eq('id', accountId)
+        .single()
+
+      if (!accountCheck?.is_active) {
+        return NextResponse.json({ error: 'Account is not active' }, { status: 403 })
+      }
+      
+      console.log('API: Global admin access granted to account', accountId)
     }
 
     // Create the table
@@ -141,16 +168,27 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Check user access to account
-    const { data: userAccess, error: accessError } = await supabase
-      .from('account_access')
+    // Check if user is global admin first
+    const { data: profileData } = await supabase
+      .from('profiles')
       .select('role')
-      .eq('user_id', user.id)
-      .eq('account_id', accountId)
+      .eq('id', user.id)
       .single()
 
-    if (accessError || !userAccess) {
-      return NextResponse.json({ error: 'Access denied to this account' }, { status: 403 })
+    const isGlobalAdmin = profileData?.role === 'admin'
+
+    if (!isGlobalAdmin) {
+      // Check user access to account for non-global admins
+      const { data: userAccess, error: accessError } = await supabase
+        .from('account_access')
+        .select('role')
+        .eq('user_id', user.id)
+        .eq('account_id', accountId)
+        .single()
+
+      if (accessError || !userAccess) {
+        return NextResponse.json({ error: 'Access denied to this account' }, { status: 403 })
+      }
     }
 
     // Get tables for this account
