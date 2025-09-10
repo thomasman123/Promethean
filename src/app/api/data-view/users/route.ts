@@ -45,7 +45,23 @@ export async function GET(request: NextRequest) {
     const isGlobalAdmin = profileData?.role === 'admin'
     console.log('Is global admin?', isGlobalAdmin)
 
-    if (!isGlobalAdmin) {
+    let queryClient = supabase
+
+    if (isGlobalAdmin) {
+      // For global admins, use service role to bypass RLS
+      queryClient = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!,
+        {
+          cookies: {
+            get() { return undefined },
+            set() {},
+            remove() {},
+          },
+        }
+      )
+      console.log('Using service role for global admin query')
+    } else {
       // Check user access to account for non-global admins
       const { data: userAccess, error: accessError } = await supabase
         .from('account_access')
@@ -59,9 +75,8 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Get all users for this account using a server-side query that bypasses RLS
-    // Use explicit foreign key relationship name to avoid ambiguity
-    const { data: accountUsers, error } = await supabase
+    // Get all users for this account using appropriate client
+    const { data: accountUsers, error } = await queryClient
       .from('account_access')
       .select(`
         user_id,
