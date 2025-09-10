@@ -20,11 +20,16 @@ export async function POST(request: NextRequest) {
     // Check authentication
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
+      console.error('Authentication error:', authError)
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    console.log('API: Authenticated user:', user.id, user.email)
+
     const body = await request.json()
     const { accountId, name, description } = body
+
+    console.log('API: Request data:', { accountId, name, description, userId: user.id })
 
     // Validate required fields
     if (!accountId || !name?.trim()) {
@@ -35,6 +40,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Check user access to account
+    console.log('API: Checking access for user', user.id, 'to account', accountId)
+    
     const { data: userAccess, error: accessError } = await supabase
       .from('account_access')
       .select('role, is_active')
@@ -42,9 +49,25 @@ export async function POST(request: NextRequest) {
       .eq('account_id', accountId)
       .single()
 
+    console.log('API: Access check result:', userAccess, accessError)
+
     if (accessError || !userAccess) {
-      console.error('Access check error:', accessError)
-      return NextResponse.json({ error: 'Access denied to this account' }, { status: 403 })
+      console.error('Access check failed:', {
+        userId: user.id,
+        userEmail: user.email,
+        accountId,
+        error: accessError,
+        userAccess
+      })
+      return NextResponse.json({ 
+        error: 'Access denied to this account',
+        debug: {
+          userId: user.id,
+          userEmail: user.email,
+          accountId,
+          accessError: accessError?.message
+        }
+      }, { status: 403 })
     }
 
     if (!userAccess.is_active) {

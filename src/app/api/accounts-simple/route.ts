@@ -54,12 +54,12 @@ export async function GET() {
 
       console.log('🔍 [accounts-simple] Admin profile check:', adminProfile)
 
-      if (adminProfile?.role === 'admin') {
+      if (adminProfile?.role === 'admin' || adminProfile?.role === 'moderator') {
         effectiveUserId = impersonatedUserId
         isImpersonating = true
         console.log('✅ [accounts-simple] Impersonation authorized, effective user:', effectiveUserId)
       } else {
-        console.log('❌ [accounts-simple] Impersonation denied - user is not admin')
+        console.log('❌ [accounts-simple] Impersonation denied - user is not admin/moderator')
       }
     } else {
       console.log('🔍 [accounts-simple] No impersonation - using real user')
@@ -77,27 +77,43 @@ export async function GET() {
       .single()
     
     console.log('🔍 [accounts-simple] Effective user profile:', effectiveProfile)
-    const isEffectiveAdmin = effectiveProfile?.role === 'admin'
-    console.log('🔍 [accounts-simple] Is effective user admin?', isEffectiveAdmin)
+    const isEffectiveAdmin = effectiveProfile?.role === 'admin' || effectiveProfile?.role === 'moderator'
+    console.log('🔍 [accounts-simple] Is effective user admin/moderator?', isEffectiveAdmin)
 
     // Get accounts based on effective user's permissions
     let accounts: Array<{ id: string; name: string; description: string | null }> = []
 
     if (isEffectiveAdmin) {
       console.log('🔍 [accounts-simple] Loading all accounts (admin access)...')
-      // Effective user is admin - show all accounts
+      // Even admins should only see accounts they have explicit access to
+      // This prevents admins from accidentally accessing accounts they shouldn't
       const { data, error } = await supabase
-        .from('accounts')
-        .select('id, name, description')
+        .from('account_access')
+        .select(`
+          role,
+          account_id,
+          accounts!inner (
+            id,
+            name,
+            description,
+            is_active
+          )
+        `)
+        .eq('user_id', effectiveUserId)
         .eq('is_active', true)
-        .order('name')
 
       if (error) {
         console.error('❌ [accounts-simple] Admin accounts query error:', error)
         return NextResponse.json({ accounts: [] })
       }
       
-      accounts = data || []
+      accounts = (data || []).flatMap((row: any) => {
+        const acc = row.accounts as any | null
+        if (acc && acc.is_active) {
+          return [{ id: acc.id, name: acc.name, description: acc.description }]
+        }
+        return []
+      })
       console.log('✅ [accounts-simple] Admin accounts loaded:', accounts.length, 'accounts')
       console.log('🔍 [accounts-simple] Admin accounts:', accounts.map(a => ({ id: a.id, name: a.name })))
     } else {
