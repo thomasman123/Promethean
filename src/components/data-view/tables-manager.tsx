@@ -59,19 +59,20 @@ export function TablesManager({ accountId, currentTableId, onTableChange }: Tabl
   async function loadTables() {
     console.log('Loading tables for accountId:', accountId)
     
-    const { data, error } = await supabase
-      .from('data_tables')
-      .select('*')
-      .eq('account_id', accountId)
-      .order('created_at', { ascending: false })
+    try {
+      const response = await fetch(`/api/data-view/tables?accountId=${accountId}`)
+      const result = await response.json()
 
-    if (error) {
+      if (!response.ok) {
+        console.error('Error loading tables:', result.error)
+        return
+      }
+
+      console.log('Loaded tables via API:', result.tables)
+      setTables(result.tables || [])
+    } catch (error) {
       console.error('Error loading tables:', error)
-      return
     }
-
-    console.log('Loaded tables:', data)
-    setTables(data || [])
   }
 
   async function createTable() {
@@ -87,46 +88,36 @@ export function TablesManager({ accountId, currentTableId, onTableChange }: Tabl
     setLoading(true)
     
     try {
-      // Get current user
-      const { data: userData, error: userError } = await supabase.auth.getUser()
-      if (userError || !userData.user) {
-        throw new Error('User not authenticated')
-      }
-
-      console.log('Creating table with data:', {
-        account_id: accountId,
+      console.log('Creating table via API:', {
+        accountId,
         name: newTable.name.trim(),
-        description: newTable.description.trim() || null,
-        created_by: userData.user.id
+        description: newTable.description.trim() || null
       })
 
-      const { data, error } = await supabase
-        .from('data_tables')
-        .insert({
-          account_id: accountId,
+      const response = await fetch('/api/data-view/tables', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          accountId,
           name: newTable.name.trim(),
-          description: newTable.description.trim() || null,
-          columns: [
-            { id: 'name', field: 'name', header: 'Name', type: 'text' },
-            { id: 'role', field: 'role', header: 'Role', type: 'text' }
-          ],
-          filters: { roles: [] },
-          created_by: userData.user.id
-        })
-        .select()
-        .single()
+          description: newTable.description.trim() || null
+        }),
+      })
 
-      if (error) {
-        console.error('Database error creating table:', error)
-        throw error
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to create table')
       }
 
-      console.log('Table created successfully:', data)
+      console.log('Table created successfully via API:', result.table)
       
-      setTables([data, ...tables])
+      setTables([result.table, ...tables])
       setNewTable({ name: '', description: '' })
       setIsCreateOpen(false)
-      onTableChange(data.id)
+      onTableChange(result.table.id)
       
       toast({
         title: "Success",
