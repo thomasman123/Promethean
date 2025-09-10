@@ -217,7 +217,10 @@ CREATE INDEX IF NOT EXISTS idx_profiles_activity_counts ON profiles(setter_activ
 -- STEP 8: Update team_members view to be the single interface
 -- ============================================================================
 
-CREATE OR REPLACE VIEW team_members AS
+-- Drop existing view to avoid column conflicts
+DROP VIEW IF EXISTS team_members;
+
+CREATE VIEW team_members AS
 SELECT 
   aa.account_id,
   p.id AS user_id,
