@@ -94,23 +94,15 @@ export default function DataViewPage() {
       const userMetrics: UserMetric[] = (result.users || [])
         .filter((user: any) => {
           if (roleFilter === 'both') return true
-          if (roleFilter === 'setter') {
-            // Show if profile role is setter AND account role is setter
-            return user.role === 'setter' && user.accountRole === 'setter'
-          }
-          if (roleFilter === 'rep') {
-            // Show if profile role is sales_rep/admin/moderator OR account role is moderator/admin
-            return user.role === 'sales_rep' || user.role === 'admin' || user.role === 'moderator' || 
-                   user.accountRole === 'moderator' || user.accountRole === 'admin' || user.accountRole === 'sales_rep'
-          }
+          if (roleFilter === 'setter') return user.role === 'setter'
+          if (roleFilter === 'rep') return user.role === 'rep'
           return false
         })
         .map((user: any) => ({
           id: user.id,
           name: user.name,
           email: user.email,
-          role: (user.accountRole === 'moderator' || user.accountRole === 'admin' || user.accountRole === 'sales_rep' || 
-                 user.role === 'sales_rep' || user.role === 'admin' || user.role === 'moderator') ? 'rep' : 'setter',
+          role: user.role, // Use the functional role from API (setter/rep/inactive)
         }))
 
       console.log('Filtered user metrics:', userMetrics)
