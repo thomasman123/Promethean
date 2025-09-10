@@ -60,13 +60,14 @@ export async function GET(request: NextRequest) {
     }
 
     // Get all users for this account using a server-side query that bypasses RLS
+    // Use explicit foreign key relationship name to avoid ambiguity
     const { data: accountUsers, error } = await supabase
       .from('account_access')
       .select(`
         user_id,
         role as account_role,
         is_active,
-        profiles!inner (
+        profiles!account_access_user_id_fkey (
           id,
           full_name,
           email,
