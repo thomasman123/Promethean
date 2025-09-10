@@ -65,13 +65,13 @@ export async function GET(request: NextRequest) {
       .from('account_access')
       .select(`
         user_id,
-        role as account_role,
+        role,
         is_active,
         profiles!account_access_user_id_fkey (
           id,
           full_name,
           email,
-          role as profile_role
+          role
         )
       `)
       .eq('account_id', accountId)
@@ -95,7 +95,7 @@ export async function GET(request: NextRequest) {
         name: profile.full_name || 'Unknown',
         email: profile.email || '',
         role: profile.role, // Keep original role from profiles
-        accountRole: row.account_role, // Role within this account
+        accountRole: row.role, // Role within this account
         isActive: row.is_active
       }
     })
