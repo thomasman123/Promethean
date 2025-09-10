@@ -83,12 +83,17 @@ export default function DataViewPage() {
       if (!rpcError && rpcData) {
         // Use RPC data
         const userMetrics: UserMetric[] = rpcData
-          .filter((user: any) => roleFilter === 'both' || user.role === roleFilter)
+          .filter((user: any) => {
+            if (roleFilter === 'both') return true
+            if (roleFilter === 'setter') return user.role === 'setter'
+            if (roleFilter === 'rep') return user.role === 'sales_rep' || user.role === 'admin' || user.role === 'moderator'
+            return false
+          })
           .map((user: any) => ({
             id: user.user_id,
             name: user.full_name || 'Unknown',
             email: user.email || '',
-            role: user.role as 'setter' | 'rep',
+            role: user.role === 'setter' ? 'setter' : 'rep',
           }))
         
         setUsers(userMetrics)
@@ -134,12 +139,17 @@ export default function DataViewPage() {
 
       // Transform to UserMetric format
       const userMetrics: UserMetric[] = (profiles || [])
-        .filter(profile => roleFilter === 'both' || profile.role === roleFilter)
+        .filter(profile => {
+          if (roleFilter === 'both') return true
+          if (roleFilter === 'setter') return profile.role === 'setter'
+          if (roleFilter === 'rep') return profile.role === 'sales_rep' || profile.role === 'admin' || profile.role === 'moderator'
+          return false
+        })
         .map(profile => ({
           id: profile.id,
           name: profile.full_name || 'Unknown',
           email: profile.email || '',
-          role: profile.role as 'setter' | 'rep',
+          role: profile.role === 'setter' ? 'setter' : 'rep', // Map all non-setter roles to 'rep'
         }))
 
       setUsers(userMetrics)
