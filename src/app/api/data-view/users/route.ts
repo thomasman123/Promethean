@@ -75,45 +75,66 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Use the existing team_members view which is the single source of truth
-    const { data: teamMembers, error } = await queryClient
-      .from('team_members')
-      .select('*')
-      .eq('account_id', accountId)
+    if (isGlobalAdmin) {
+      // Global admins can use the RPC function that bypasses RLS
+      const { data: teamMembers, error } = await queryClient
+        .rpc('get_account_team_members', { p_account_id: accountId })
 
-    if (error) {
-      console.error('Error loading team members:', error)
-      return NextResponse.json(
-        { error: `Failed to load users: ${error.message}` },
-        { status: 500 }
-      )
-    }
-
-    console.log('Raw team members data:', teamMembers)
-
-    // Transform the data to the expected format with proper role mapping
-    const users = (teamMembers || []).map((member: any) => {
-      // Map account roles to display roles
-      let displayRole = 'setter' // default
-      
-      if (member.role === 'sales_rep' || member.role === 'moderator' || member.role === 'admin') {
-        displayRole = 'rep'
+      if (error) {
+        console.error('Error loading team members via RPC:', error)
+        return NextResponse.json(
+          { error: `Failed to load users: ${error.message}` },
+          { status: 500 }
+        )
       }
+
+      console.log('Team members from RPC:', teamMembers)
       
-      return {
+      const users = (teamMembers || []).map((member: any) => ({
         id: member.user_id,
         name: member.full_name || 'Unknown',
         email: member.email || '',
-        role: displayRole, // Simplified role for UI (setter/rep)
-        accountRole: member.role, // Original account access role
+        role: member.display_role, // Already calculated (setter/rep)
+        accountRole: member.account_role,
+        setterActivityCount: member.setter_activity_count,
+        salesRepActivityCount: member.sales_rep_activity_count,
+        totalActivityCount: member.total_activity_count,
         isActive: member.is_active,
         createdForData: member.created_for_data
+      }))
+
+      console.log('Transformed users from RPC:', users)
+      return NextResponse.json({ users })
+    } else {
+      // Regular users use the view with RLS
+      const { data: teamMembers, error } = await queryClient
+        .from('team_members')
+        .select('*')
+        .eq('account_id', accountId)
+
+      if (error) {
+        console.error('Error loading team members from view:', error)
+        return NextResponse.json(
+          { error: `Failed to load users: ${error.message}` },
+          { status: 500 }
+        )
       }
-    })
 
-    console.log('Transformed users:', users)
+      console.log('Team members from view:', teamMembers)
 
-    return NextResponse.json({ users })
+      const users = (teamMembers || []).map((member: any) => ({
+        id: member.user_id,
+        name: member.full_name || 'Unknown',
+        email: member.email || '',
+        role: member.display_role || (member.role === 'sales_rep' || member.role === 'moderator' || member.role === 'admin' ? 'rep' : 'setter'),
+        accountRole: member.role,
+        isActive: member.is_active,
+        createdForData: member.created_for_data
+      }))
+
+             console.log('Transformed users from view:', users)
+       return NextResponse.json({ users })
+     }
 
   } catch (error) {
     console.error('Error in users API:', error)
