@@ -55,9 +55,20 @@ export default function DataViewPage() {
     loadUsers()
   }, [selectedAccountId, roleFilter])
 
-  // Load table configuration
+  // Load metric data when users change and we have metric columns
   useEffect(() => {
-    if (!currentTableId) return
+    if (metricColumns.length > 0 && users.length > 0) {
+      loadAllMetricData(metricColumns)
+    }
+  }, [users.length, selectedAccountId]) // Only trigger on user count change or account change
+
+  // Load table configuration and metric columns
+  useEffect(() => {
+    if (!currentTableId) {
+      setTableConfig(null)
+      setMetricColumns([])
+      return
+    }
     loadTableConfig()
   }, [currentTableId])
 
@@ -152,6 +163,93 @@ export default function DataViewPage() {
     }
 
     setTableConfig(data)
+    
+    // Extract metric columns from table configuration
+    const columns = data.columns || []
+    const metricCols = columns
+      .filter((col: any) => col.metricName) // Only columns with metric data
+      .map((col: any) => ({
+        id: col.id,
+        metricName: col.metricName,
+        displayName: col.header,
+        unit: col.unit
+      }))
+    
+    setMetricColumns(metricCols)
+    
+    // Load metric data for existing metric columns
+    if (metricCols.length > 0 && users.length > 0) {
+      await loadAllMetricData(metricCols)
+    }
+  }
+
+  const loadAllMetricData = async (metricCols: MetricColumn[]) => {
+    if (!selectedAccountId || users.length === 0) return
+
+    setMetricsLoading(true)
+    try {
+      const userIds = users.map(user => user.id)
+      
+      // Load all metrics in parallel
+      const metricPromises = metricCols.map(async (metricColumn) => {
+        try {
+          const response = await fetch('/api/data-view/user-metrics', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              accountId: selectedAccountId,
+              userIds,
+              metricName: metricColumn.metricName,
+              dateRange: {
+                start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                end: new Date().toISOString().split('T')[0]
+              },
+              roleFilter
+            }),
+          })
+
+          if (!response.ok) {
+            throw new Error(`Failed to load ${metricColumn.displayName}`)
+          }
+
+          const result = await response.json()
+          return { metricColumn, result }
+        } catch (error) {
+          console.error(`Error loading ${metricColumn.displayName}:`, error)
+          return { metricColumn, result: null }
+        }
+      })
+
+      const results = await Promise.all(metricPromises)
+      
+      // Update users with all metric data
+      setUsers(prev => prev.map(user => {
+        const updatedUser = { ...user }
+        
+        results.forEach(({ metricColumn, result }) => {
+          if (result?.userMetrics) {
+            const userMetric = result.userMetrics.find((um: any) => um.userId === user.id)
+            updatedUser[metricColumn.id] = userMetric?.value || 0
+          } else {
+            updatedUser[metricColumn.id] = 0
+          }
+        })
+        
+        return updatedUser
+      }))
+
+    } catch (error) {
+      console.error('Error loading metric data:', error)
+      toast({
+        title: "Error",
+        description: "Failed to load some metric data",
+        variant: "destructive",
+      })
+    } finally {
+      setMetricsLoading(false)
+    }
   }
 
   // Define base columns
@@ -415,6 +513,50 @@ export default function DataViewPage() {
     }
   }
 
+  const createDefaultTable = async () => {
+    if (!selectedAccountId) return
+
+    try {
+      const { data: userData } = await supabase.auth.getUser()
+      if (!userData.user) return
+
+      const { data, error } = await supabase
+        .from('data_tables')
+        .insert({
+          account_id: selectedAccountId,
+          name: 'User Metrics',
+          description: 'Default table for viewing user performance metrics',
+          columns: [
+            { id: 'name', field: 'name', header: 'Name', type: 'text' },
+            { id: 'role', field: 'role', header: 'Role', type: 'text' }
+          ],
+          filters: { roles: [] },
+          is_default: true,
+          created_by: userData.user.id
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+
+      // Trigger the table change event to select the new table
+      window.dispatchEvent(new CustomEvent('tableChanged', { detail: { tableId: data.id } }))
+      
+      toast({
+        title: "Table created",
+        description: "Default table created successfully",
+      })
+
+    } catch (error) {
+      console.error('Error creating default table:', error)
+      toast({
+        title: "Error",
+        description: "Failed to create default table",
+        variant: "destructive",
+      })
+    }
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <TopBar />
@@ -423,16 +565,49 @@ export default function DataViewPage() {
         {/* Data table */}
         <div className="p-6">
           {currentTableId ? (
-            <UserMetricsTable
-              data={users}
-              columns={columns}
-              onAddColumn={handleAddColumn}
-              onRemoveColumn={handleRemoveColumn}
-              loading={metricsLoading}
-            />
+            <div className="space-y-4">
+              {/* Table Header */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <h1 className="text-2xl font-semibold">{tableConfig?.name || 'Data Table'}</h1>
+                  {tableConfig?.description && (
+                    <p className="text-muted-foreground mt-1">{tableConfig.description}</p>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <span>{users.length} users</span>
+                  {metricColumns.length > 0 && (
+                    <span>• {metricColumns.length} metrics</span>
+                  )}
+                </div>
+              </div>
+              
+              <UserMetricsTable
+                data={users}
+                columns={columns}
+                onAddColumn={handleAddColumn}
+                onRemoveColumn={handleRemoveColumn}
+                loading={metricsLoading}
+              />
+            </div>
           ) : (
-            <div className="flex items-center justify-center h-64 text-muted-foreground">
-              {selectedAccountId ? 'Select a table to view data' : 'Select an account first'}
+            <div className="flex flex-col items-center justify-center h-64 text-muted-foreground space-y-4">
+              {selectedAccountId ? (
+                <>
+                  <div className="text-center">
+                    <h3 className="text-lg font-medium mb-2">No table selected</h3>
+                    <p>Create or select a table to view user metrics data</p>
+                  </div>
+                  <Button onClick={createDefaultTable} variant="outline">
+                    Create Default Table
+                  </Button>
+                </>
+              ) : (
+                <div className="text-center">
+                  <h3 className="text-lg font-medium mb-2">Select an account first</h3>
+                  <p>Choose an account from the dropdown to get started</p>
+                </div>
+              )}
             </div>
           )}
         </div>
