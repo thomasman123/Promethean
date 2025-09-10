@@ -50,11 +50,15 @@ export function TablesManager({ accountId, currentTableId, onTableChange }: Tabl
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
 
+  console.log('TablesManager: accountId =', accountId, 'currentTableId =', currentTableId)
+
   useEffect(() => {
     loadTables()
   }, [accountId])
 
   async function loadTables() {
+    console.log('Loading tables for accountId:', accountId)
+    
     const { data, error } = await supabase
       .from('data_tables')
       .select('*')
@@ -66,6 +70,7 @@ export function TablesManager({ accountId, currentTableId, onTableChange }: Tabl
       return
     }
 
+    console.log('Loaded tables:', data)
     setTables(data || [])
   }
 
@@ -80,40 +85,64 @@ export function TablesManager({ accountId, currentTableId, onTableChange }: Tabl
     }
 
     setLoading(true)
-    const { data, error } = await supabase
-      .from('data_tables')
-      .insert({
+    
+    try {
+      // Get current user
+      const { data: userData, error: userError } = await supabase.auth.getUser()
+      if (userError || !userData.user) {
+        throw new Error('User not authenticated')
+      }
+
+      console.log('Creating table with data:', {
         account_id: accountId,
         name: newTable.name.trim(),
         description: newTable.description.trim() || null,
-        columns: [
-          { id: 'name', field: 'name', header: 'Name', type: 'text' }
-        ], // Default column
-        filters: { roles: [] }
+        created_by: userData.user.id
       })
-      .select()
-      .single()
 
-    setLoading(false)
+      const { data, error } = await supabase
+        .from('data_tables')
+        .insert({
+          account_id: accountId,
+          name: newTable.name.trim(),
+          description: newTable.description.trim() || null,
+          columns: [
+            { id: 'name', field: 'name', header: 'Name', type: 'text' },
+            { id: 'role', field: 'role', header: 'Role', type: 'text' }
+          ],
+          filters: { roles: [] },
+          created_by: userData.user.id
+        })
+        .select()
+        .single()
 
-    if (error) {
+      if (error) {
+        console.error('Database error creating table:', error)
+        throw error
+      }
+
+      console.log('Table created successfully:', data)
+      
+      setTables([data, ...tables])
+      setNewTable({ name: '', description: '' })
+      setIsCreateOpen(false)
+      onTableChange(data.id)
+      
+      toast({
+        title: "Success",
+        description: "Table created successfully",
+      })
+
+    } catch (error: any) {
+      console.error('Error creating table:', error)
       toast({
         title: "Error",
-        description: error.message,
+        description: error.message || "Failed to create table",
         variant: "destructive",
       })
-      return
+    } finally {
+      setLoading(false)
     }
-
-    setTables([data, ...tables])
-    setNewTable({ name: '', description: '' })
-    setIsCreateOpen(false)
-    onTableChange(data.id)
-    
-    toast({
-      title: "Success",
-      description: "Table created successfully",
-    })
   }
 
   async function updateTable() {
@@ -194,54 +223,15 @@ export function TablesManager({ accountId, currentTableId, onTableChange }: Tabl
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">
-          <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-            <DialogTrigger asChild>
-              <DropdownMenuItem onSelect={(e: Event) => e.preventDefault()}>
-                <Plus className="h-4 w-4 mr-2" />
-                New Table
-              </DropdownMenuItem>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Create New Table</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4 pt-4">
-                <div>
-                  <Label htmlFor="table-name">Table Name</Label>
-                  <Input
-                    id="table-name"
-                    value={newTable.name}
-                    onChange={(e) => setNewTable({ ...newTable, name: e.target.value })}
-                    placeholder="e.g., Q1 Performance"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="table-description">Description (optional)</Label>
-                  <Textarea
-                    id="table-description"
-                    value={newTable.description}
-                    onChange={(e) => setNewTable({ ...newTable, description: e.target.value })}
-                    placeholder="Describe what this table shows..."
-                    rows={3}
-                  />
-                </div>
-                <div className="flex justify-end gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setIsCreateOpen(false)
-                      setNewTable({ name: '', description: '' })
-                    }}
-                  >
-                    Cancel
-                  </Button>
-                  <Button onClick={createTable} disabled={loading}>
-                    {loading ? 'Creating...' : 'Create Table'}
-                  </Button>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
+          <DropdownMenuItem 
+            onSelect={() => {
+              setIsCreateOpen(true)
+              setNewTable({ name: '', description: '' })
+            }}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            New Table
+          </DropdownMenuItem>
           
           {tables.length > 0 && <DropdownMenuSeparator />}
           
@@ -287,6 +277,51 @@ export function TablesManager({ accountId, currentTableId, onTableChange }: Tabl
         </DropdownMenuContent>
       </DropdownMenu>
 
+      {/* Create Table Dialog */}
+      <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create New Table</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            <div>
+              <Label htmlFor="table-name">Table Name</Label>
+              <Input
+                id="table-name"
+                value={newTable.name}
+                onChange={(e) => setNewTable({ ...newTable, name: e.target.value })}
+                placeholder="e.g., Q1 Performance"
+              />
+            </div>
+            <div>
+              <Label htmlFor="table-description">Description (optional)</Label>
+              <Textarea
+                id="table-description"
+                value={newTable.description}
+                onChange={(e) => setNewTable({ ...newTable, description: e.target.value })}
+                placeholder="Describe what this table shows..."
+                rows={3}
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsCreateOpen(false)
+                  setNewTable({ name: '', description: '' })
+                }}
+              >
+                Cancel
+              </Button>
+              <Button onClick={createTable} disabled={loading}>
+                {loading ? 'Creating...' : 'Create Table'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Table Dialog */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
         <DialogContent>
           <DialogHeader>
