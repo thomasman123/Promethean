@@ -76,83 +76,38 @@ export default function DataViewPage() {
     setLoading(true)
     
     try {
-      // First, try using an RPC function if it exists
-      const { data: rpcData, error: rpcError } = await supabase
-        .rpc('get_account_users', { p_account_id: selectedAccountId })
+      console.log('Loading users for account:', selectedAccountId)
+      
+      // Use the server-side API that handles global admin permissions properly
+      const response = await fetch(`/api/data-view/users?accountId=${selectedAccountId}`)
+      const result = await response.json()
 
-      if (!rpcError && rpcData) {
-        // Use RPC data
-        const userMetrics: UserMetric[] = rpcData
-          .filter((user: any) => {
-            if (roleFilter === 'both') return true
-            if (roleFilter === 'setter') return user.role === 'setter'
-            if (roleFilter === 'rep') return user.role === 'sales_rep' || user.role === 'admin' || user.role === 'moderator'
-            return false
-          })
-          .map((user: any) => ({
-            id: user.user_id,
-            name: user.full_name || 'Unknown',
-            email: user.email || '',
-            role: user.role === 'setter' ? 'setter' : 'rep',
-          }))
-        
-        setUsers(userMetrics)
-        setLoading(false)
-        return
-      }
-    } catch (e) {
-      console.log('RPC function not available, falling back to direct query')
-    }
-
-    // Fallback: Try direct query with simpler approach
-    try {
-      // Get current user's account IDs first
-      const { data: userAccess } = await supabase
-        .from('account_access')
-        .select('account_id')
-        .eq('user_id', (await supabase.auth.getUser()).data.user?.id)
-        .eq('account_id', selectedAccountId)
-        .single()
-
-      if (!userAccess) {
-        console.error('User does not have access to this account')
+      if (!response.ok) {
+        console.error('Error loading users:', result.error)
         setLoading(false)
         return
       }
 
-      // Now get all users for this account
-      const { data: accountUsers, error } = await supabase
-        .from('account_access')
-        .select('user_id')
-        .eq('account_id', selectedAccountId)
+      console.log('Loaded users from API:', result.users)
 
-      if (error) throw error
-
-      // Get profile data for each user
-      const userIds = accountUsers?.map(au => au.user_id) || []
-      const { data: profiles, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .in('id', userIds)
-
-      if (profileError) throw profileError
-
-      // Transform to UserMetric format
-      const userMetrics: UserMetric[] = (profiles || [])
-        .filter(profile => {
+      // Filter and transform users based on role filter
+      const userMetrics: UserMetric[] = (result.users || [])
+        .filter((user: any) => {
           if (roleFilter === 'both') return true
-          if (roleFilter === 'setter') return profile.role === 'setter'
-          if (roleFilter === 'rep') return profile.role === 'sales_rep' || profile.role === 'admin' || profile.role === 'moderator'
+          if (roleFilter === 'setter') return user.role === 'setter'
+          if (roleFilter === 'rep') return user.role === 'sales_rep' || user.role === 'admin' || user.role === 'moderator'
           return false
         })
-        .map(profile => ({
-          id: profile.id,
-          name: profile.full_name || 'Unknown',
-          email: profile.email || '',
-          role: profile.role === 'setter' ? 'setter' : 'rep', // Map all non-setter roles to 'rep'
+        .map((user: any) => ({
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role === 'setter' ? 'setter' : 'rep', // Map all non-setter roles to 'rep'
         }))
 
+      console.log('Filtered user metrics:', userMetrics)
       setUsers(userMetrics)
+      
     } catch (error) {
       console.error('Error loading users:', error)
     } finally {
