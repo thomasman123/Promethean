@@ -247,9 +247,10 @@ export default function DataViewPage() {
           <Button
             variant="ghost"
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+            className="h-auto p-0 text-xs font-medium"
           >
             Name
-            <ArrowUpDown className="ml-2 h-4 w-4" />
+            <ArrowUpDown className="ml-1 h-3 w-3" />
           </Button>
         )
       },
@@ -257,12 +258,12 @@ export default function DataViewPage() {
     },
     {
       accessorKey: "email",
-      header: "Email",
+      header: () => <div className="text-xs font-medium">Email</div>,
       cell: ({ row }) => <div className="text-muted-foreground">{row.getValue("email")}</div>,
     },
     {
       accessorKey: "role",
-      header: "Role",
+      header: () => <div className="text-xs font-medium">Role</div>,
       cell: ({ row }) => {
         const role = row.getValue("role") as string
         return (
@@ -285,21 +286,21 @@ export default function DataViewPage() {
         accessorKey: col.field,
         header: ({ column }: any) => {
           return (
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between group">
               <Button
                 variant="ghost"
                 onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-                className="h-auto p-0 font-medium"
+                className="h-auto p-0 text-xs font-medium"
               >
                 {col.header}
-                <ArrowUpDown className="ml-2 h-4 w-4" />
+                <ArrowUpDown className="ml-1 h-3 w-3" />
               </Button>
               {col.metricName && (
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => handleRemoveColumn(col.id)}
-                  className="h-auto w-auto p-1 text-destructive hover:text-destructive"
+                  className="h-auto w-auto p-1 text-destructive hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
                 >
                   <Trash2 className="h-3 w-3" />
                 </Button>
