@@ -7,8 +7,14 @@ import { MetricSelectionModal } from "@/components/data-view/metric-selection-mo
 import { useDashboard } from "@/lib/dashboard-context"
 import { createBrowserClient } from "@supabase/ssr"
 import { ColumnDef } from "@tanstack/react-table"
-import { ArrowUpDown, Trash2 } from "lucide-react"
+import { ArrowUpDown, Trash2, MoreHorizontal } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { MetricDefinition } from "@/lib/metrics/types"
 import { useToast } from "@/hooks/use-toast"
 
@@ -296,14 +302,26 @@ export default function DataViewPage() {
                 <ArrowUpDown className="ml-1 h-3 w-3" />
               </Button>
               {col.metricName && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleRemoveColumn(col.id)}
-                  className="h-auto w-auto p-1 text-destructive hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                  <Trash2 className="h-3 w-3" />
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-auto w-auto p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <MoreHorizontal className="h-3 w-3" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-32">
+                    <DropdownMenuItem
+                      onClick={() => handleRemoveColumn(col.id)}
+                      className="text-destructive focus:text-destructive"
+                    >
+                      <Trash2 className="h-3 w-3 mr-2" />
+                      Remove
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               )}
             </div>
           )
