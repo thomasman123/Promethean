@@ -252,7 +252,10 @@ export async function POST(request: NextRequest) {
 
           // For non-admin/moderator users, calculate single metric
           if (!['admin', 'moderator'].includes(accountRole)) {
-            const request = createMetricRequest(metricName, accountId, dateRange.start, dateRange.end, filters)
+            const request = createMetricRequest(metricName, accountId, dateRange.start, dateRange.end, {
+              repIds: filters.repIds,
+              setterIds: filters.setterIds
+            })
             console.log(`Executing metric request for ${profile.full_name} (${accountRole}):`, request)
             const result = await metricsEngine.execute(request)
             
