@@ -161,6 +161,19 @@ const BASE_METRICS = {
 			select: ['0 as value'] // This will be calculated via cross-table join
 		},
 		unit: 'currency' as const
+	},
+
+	// === SPEED TO LEAD METRIC ===
+	'speed_to_lead': {
+		name: 'Speed to Lead',
+		description: 'Average time from contact creation to first dial (in seconds)',
+		breakdownType: 'total' as const,
+		query: {
+			table: 'contacts',
+			select: ['0 as value'] // This will be calculated via special SQL in engine
+		},
+		unit: 'seconds' as const,
+		isSpecialMetric: true // Flag to indicate this uses custom SQL in the engine
 	}
 }
 
