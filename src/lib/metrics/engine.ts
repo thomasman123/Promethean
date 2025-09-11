@@ -1,4 +1,4 @@
-import { supabaseService } from '@/lib/supabase'
+import { supabaseService } from '@/lib/supabase-server'
 import { 
   MetricRequest, 
   MetricResponse, 
