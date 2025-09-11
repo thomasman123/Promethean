@@ -337,13 +337,25 @@ export default function DataViewPage() {
           
           // Format based on column type
           if (col.type === 'number') {
-            return <div className="text-center text-sm font-medium">{value || 0}</div>
+            const numValue = Number(value || 0)
+            const formattedValue = numValue.toLocaleString('en-US')
+            return <div className="text-center text-sm font-medium">{formattedValue}</div>
           }
           if (col.type === 'percentage') {
-            return <div className="text-center text-sm font-medium">{(value || 0).toFixed(1)}%</div>
+            const numValue = Number(value || 0)
+            // Convert decimal to percentage (e.g., 0.25 -> 25.0%)
+            const percentValue = (numValue * 100).toFixed(1)
+            return <div className="text-center text-sm font-medium">{percentValue}%</div>
           }
           if (col.type === 'currency') {
-            return <div className="text-center text-sm font-medium">${(value || 0).toFixed(2)}</div>
+            const numValue = Number(value || 0)
+            const formattedValue = numValue.toLocaleString('en-US', { 
+              style: 'currency', 
+              currency: 'USD', 
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2 
+            })
+            return <div className="text-center text-sm font-medium">{formattedValue}</div>
           }
           return <div className="text-center text-sm">{value || '-'}</div>
         },
