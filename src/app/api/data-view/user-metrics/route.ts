@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
-import { metricsEngine } from '@/lib/metrics/engine'
-import { createMetricRequest } from '@/lib/metrics'
+import { userMetricsEngine } from '@/lib/metrics/user-metrics-engine'
 import { getMetric } from '@/lib/metrics/registry'
 
 export async function POST(request: NextRequest) {
@@ -75,7 +74,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Get user profiles for context with their account access
+    // Get user profiles for display information
     const { data: profiles, error: profilesError } = await supabase
       .from('profiles')
       .select('id, full_name, email, role')
@@ -87,237 +86,80 @@ export async function POST(request: NextRequest) {
     }
 
     if (!profiles || profiles.length === 0) {
-      return NextResponse.json({ error: 'No users found' }, { status: 404 })
+      return NextResponse.json({ userMetrics: [] })
     }
 
-    // Get account access for these users
-    const { data: accountAccess, error: accessError } = await supabase
+    // Get account roles for users
+    const { data: accountRoles } = await supabase
       .from('account_access')
       .select('user_id, role')
       .eq('account_id', accountId)
       .in('user_id', userIds)
 
-    if (accessError) {
-      console.error('Error fetching account access:', accessError)
-      return NextResponse.json({ error: 'Failed to fetch account access' }, { status: 500 })
-    }
+    const accountRoleMap = new Map(accountRoles?.map(ar => [ar.user_id, ar.role]) || [])
 
-    // Create a map of user_id to account role
-    const accountRoleMap = new Map()
-    accountAccess?.forEach(access => {
-      accountRoleMap.set(access.user_id, access.role)
+    console.log(`Calculating ${metricName} for ${profiles.length} users using new UserMetricsEngine`)
+
+    // Use the new user metrics engine
+    const metricsResponse = await userMetricsEngine.calculateForUsers({
+      metricName,
+      accountId,
+      startDate: dateRange.start,
+      endDate: dateRange.end,
+      userIds
     })
 
-    console.log('Found profiles:', profiles)
-    console.log('Account access data:', accountAccess)
-    console.log('Account access map:', Object.fromEntries(accountRoleMap))
-
-    // Calculate metrics for each user
-    const userMetrics = await Promise.all(
-      profiles.map(async (profile) => {
-        try {
-          const accountRole = accountRoleMap.get(profile.id) || profile.role
-          const foundInMap = accountRoleMap.has(profile.id)
-          console.log(`Calculating metrics for user: ${profile.full_name} (${profile.email}) - Profile Role: ${profile.role}, Account Role: ${accountRole}, Found in map: ${foundInMap}`)
-          
-          // Determine the appropriate filter based on user role and metric
-          let filters: any = {
-            dateRange,
-            accountId,
-          }
-
-          // Add role-specific filters based on the user's ACCOUNT role and the metric table
-          if (metricDefinition.query.table === 'appointments') {
-            // For appointment metrics, filter based on user's actual role
-            if (accountRole === 'sales_rep') {
-              filters.repIds = [profile.id]
-              console.log(`Appointments: filtering by repIds for ${profile.full_name} (sales_rep)`)
-            } else if (accountRole === 'setter') {
-              filters.setterIds = [profile.id]
-              console.log(`Appointments: filtering by setterIds for ${profile.full_name} (setter)`)
-            } else if (accountRole === 'admin' || accountRole === 'moderator') {
-              // For admin/moderator users, check if they have any data first
-              const hasDataRequest = createMetricRequest(metricName, accountId, dateRange.start, dateRange.end, {
-                setterIds: [profile.id]
-              })
-              const hasDataRepRequest = createMetricRequest(metricName, accountId, dateRange.start, dateRange.end, {
-                repIds: [profile.id]
-              })
-
-              const [setterResult, repResult] = await Promise.all([
-                metricsEngine.execute(hasDataRequest),
-                metricsEngine.execute(hasDataRepRequest)
-              ])
-
-              // Get individual values
-              const setterValue = (setterResult.result.data as any).value || 0
-              const repValue = (repResult.result.data as any).value || 0
-
-              // Only include admin/moderator if they have data
-              if (setterValue === 0 && repValue === 0) {
-                return null // Will be filtered out
-              }
-
-              // Combine results based on metric type
-              let combinedValue = 0
-              if (metricDefinition.unit === 'count' || metricDefinition.unit === 'currency') {
-                // For counts and currency, add them together
-                combinedValue = setterValue + repValue
-              } else if (metricDefinition.unit === 'percent') {
-                // For percentages, we need to recalculate based on combined data
-                combinedValue = Math.max(setterValue, repValue)
-              } else {
-                // For other units, take the maximum or average
-                combinedValue = (setterValue + repValue) / 2
-              }
-
-              console.log(`Admin/Moderator user ${profile.full_name} - Setter: ${setterValue}, Rep: ${repValue}, Combined: ${combinedValue}`)
-
-              return {
-                userId: profile.id,
-                name: profile.full_name,
-                email: profile.email,
-                role: profile.role,
-                accountRole: accountRole,
-                value: combinedValue,
-                rawSetterValue: setterValue,
-                rawRepValue: repValue,
-                displayValue: `${combinedValue} (${setterValue} setter + ${repValue} rep)`
-              }
-            }
-          } else if (metricDefinition.query.table === 'dials') {
-            // For dials, filter by setter_user_id
-            if (accountRole === 'setter') {
-              filters.setterIds = [profile.id]
-            } else if (accountRole === 'admin' || accountRole === 'moderator') {
-              // Check if admin/moderator has dial data
-              filters.setterIds = [profile.id]
-              const request = createMetricRequest(metricName, accountId, dateRange.start, dateRange.end, filters)
-              const result = await metricsEngine.execute(request)
-              const value = (result.result.data as any).value || 0
-              
-              if (value === 0) {
-                return null // Will be filtered out
-              }
-              
-              return {
-                userId: profile.id,
-                name: profile.full_name,
-                email: profile.email,
-                role: profile.role,
-                accountRole: accountRole,
-                value: value,
-                displayValue: `${value} (setter)`
-              }
-            }
-          } else if (metricDefinition.query.table === 'discoveries') {
-            // For discoveries, filter by setter_user_id for setters and sales_rep_user_id for reps
-            if (accountRole === 'sales_rep') {
-              filters.repIds = [profile.id]
-            } else if (accountRole === 'setter') {
-              filters.setterIds = [profile.id]
-            } else if (accountRole === 'admin' || accountRole === 'moderator') {
-              // Check if admin/moderator has discovery data
-              const setterRequest = createMetricRequest(metricName, accountId, dateRange.start, dateRange.end, {
-                setterIds: [profile.id]
-              })
-              const repRequest = createMetricRequest(metricName, accountId, dateRange.start, dateRange.end, {
-                repIds: [profile.id]
-              })
-
-              const [setterResult, repResult] = await Promise.all([
-                metricsEngine.execute(setterRequest),
-                metricsEngine.execute(repRequest)
-              ])
-
-              const setterValue = (setterResult.result.data as any).value || 0
-              const repValue = (repResult.result.data as any).value || 0
-
-              if (setterValue === 0 && repValue === 0) {
-                return null // Will be filtered out
-              }
-
-              const combinedValue = setterValue + repValue
-              return {
-                userId: profile.id,
-                name: profile.full_name,
-                email: profile.email,
-                role: profile.role,
-                accountRole: accountRole,
-                value: combinedValue,
-                rawSetterValue: setterValue,
-                rawRepValue: repValue,
-                displayValue: `${combinedValue} (${setterValue} setter + ${repValue} rep)`
-              }
-            }
-          }
-
-          // For non-admin/moderator users, calculate single metric
-          if (!['admin', 'moderator'].includes(accountRole)) {
-            const request = createMetricRequest(metricName, accountId, dateRange.start, dateRange.end, {
-              repIds: filters.repIds,
-              setterIds: filters.setterIds
-            })
-            console.log(`Executing metric request for ${profile.full_name} (${accountRole}):`, request)
-            console.error(`DEBUG: About to execute metrics for ${profile.full_name} with filters:`, JSON.stringify(filters))
-            const result = await metricsEngine.execute(request)
-            
-            const value = (result.result.data as any).value || 0
-            console.log(`Result for ${profile.full_name}: ${value}`)
-            console.error(`DEBUG: Result for ${profile.full_name}: ${value}, result object:`, JSON.stringify(result))
-
-            // Create display value with role label for appointments
-            let displayValue = value.toString()
-            if (metricDefinition.query.table === 'appointments') {
-              if (accountRole === 'sales_rep') {
-                displayValue = `${value} (rep)`
-              } else if (accountRole === 'setter') {
-                displayValue = `${value} (setter)`
-              }
-            }
-
-            return {
-              userId: profile.id,
-              name: profile.full_name,
-              email: profile.email,
-              role: profile.role,
-              accountRole: accountRole,
-              value: value,
-              displayValue: displayValue
-            }
-          }
-        } catch (error) {
-          console.error(`Error calculating metric for user ${profile.id}:`, error)
-          return {
-            userId: profile.id,
-            name: profile.full_name,
-            email: profile.email,
-            role: profile.role,
-            accountRole: 'unknown',
-            value: 0,
-            error: 'Calculation failed'
-          }
+    // Transform results to match the expected format
+    const userMetrics = profiles.map(profile => {
+      const accountRole = accountRoleMap.get(profile.id) || profile.role
+      const metricResult = metricsResponse.results.find(r => r.userId === profile.id)
+      
+      if (!metricResult) {
+        return {
+          userId: profile.id,
+          name: profile.full_name,
+          email: profile.email,
+          role: profile.role,
+          accountRole: accountRole,
+          value: 0,
+          displayValue: '0'
         }
-      })
-    )
+      }
 
-    // Filter out null results (admin/moderator users with no data)
-    const filteredUserMetrics = userMetrics.filter(metric => metric !== null)
+      // Create display value based on role detection
+      let displayValue = metricResult.value.toString()
+      
+      if (metricResult.role === 'both' && metricResult.breakdown) {
+        displayValue = `${metricResult.value} (${metricResult.breakdown.asSetter} setter + ${metricResult.breakdown.asRep} rep)`
+      } else if (metricResult.role === 'rep') {
+        displayValue = `${metricResult.value} (rep)`
+      } else if (metricResult.role === 'setter') {
+        displayValue = `${metricResult.value} (setter)`
+      }
+
+      return {
+        userId: profile.id,
+        name: profile.full_name,
+        email: profile.email,
+        role: profile.role,
+        accountRole: accountRole,
+        actualRole: metricResult.role, // Include the detected role
+        value: metricResult.value,
+        displayValue: displayValue,
+        breakdown: metricResult.breakdown
+      }
+    })
+
+    console.log(`UserMetricsEngine completed in ${metricsResponse.executionTimeMs}ms`)
 
     return NextResponse.json({
-      metricName,
-      metricDefinition: {
-        name: metricDefinition.name,
-        description: metricDefinition.description,
-        unit: metricDefinition.unit
-      },
-      dateRange,
-      accountId,
-      userMetrics: filteredUserMetrics
+      userMetrics,
+      executionTimeMs: metricsResponse.executionTimeMs,
+      executedAt: metricsResponse.executedAt
     })
 
   } catch (error) {
-    console.error('Error in user-metrics API:', error)
+    console.error('Error in user-metrics route:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
