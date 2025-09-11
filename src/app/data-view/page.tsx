@@ -194,6 +194,10 @@ export default function DataViewPage() {
           if (result?.userMetrics) {
             const userMetric = result.userMetrics.find((um: any) => um.userId === user.id)
             updatedUser[metricColumn.id] = userMetric?.value || 0
+            // Also store display value if available
+            if (userMetric?.displayValue) {
+              updatedUser[`${metricColumn.id}_display`] = userMetric.displayValue
+            }
           } else {
             updatedUser[metricColumn.id] = 0
           }
@@ -285,6 +289,13 @@ export default function DataViewPage() {
         },
         cell: ({ row }: any) => {
           const value = row.getValue(col.field)
+          const displayValue = row.original[`${col.field}_display`]
+          
+          // Use display value if available, otherwise format based on column type
+          if (displayValue) {
+            return <div className="text-right font-medium">{displayValue}</div>
+          }
+          
           // Format based on column type
           if (col.type === 'number') {
             return <div className="text-right font-medium">{value || 0}</div>

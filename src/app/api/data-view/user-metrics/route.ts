@@ -130,6 +130,9 @@ export async function POST(request: NextRequest) {
             if (accountRole === 'sales_rep') {
               filters.repIds = [profile.id]
               console.log(`Appointments: filtering by repIds for ${profile.full_name} (sales_rep)`)
+            } else if (accountRole === 'setter') {
+              filters.setterIds = [profile.id]
+              console.log(`Appointments: filtering by setterIds for ${profile.full_name} (setter)`)
             } else if (accountRole === 'admin' || accountRole === 'moderator') {
               // For admin/moderator users, show metrics for both setter and rep activities
               const setterRequest = createMetricRequest(metricName, accountId, dateRange.start, dateRange.end, {
@@ -144,20 +147,24 @@ export async function POST(request: NextRequest) {
                 metricsEngine.execute(repRequest)
               ])
 
+              // Get individual values
+              const setterValue = (setterResult.result.data as any).value || 0
+              const repValue = (repResult.result.data as any).value || 0
+
               // Combine results based on metric type
               let combinedValue = 0
               if (metricDefinition.unit === 'count' || metricDefinition.unit === 'currency') {
                 // For counts and currency, add them together
-                combinedValue = (setterResult.result.data as any).value + (repResult.result.data as any).value
+                combinedValue = setterValue + repValue
               } else if (metricDefinition.unit === 'percent') {
                 // For percentages, we need to recalculate based on combined data
-                combinedValue = Math.max((setterResult.result.data as any).value, (repResult.result.data as any).value)
+                combinedValue = Math.max(setterValue, repValue)
               } else {
                 // For other units, take the maximum or average
-                combinedValue = ((setterResult.result.data as any).value + (repResult.result.data as any).value) / 2
+                combinedValue = (setterValue + repValue) / 2
               }
 
-              console.log(`Admin/Moderator user ${profile.full_name} - Setter: ${(setterResult.result.data as any).value}, Rep: ${(repResult.result.data as any).value}, Combined: ${combinedValue}`)
+              console.log(`Admin/Moderator user ${profile.full_name} - Setter: ${setterValue}, Rep: ${repValue}, Combined: ${combinedValue}`)
 
               return {
                 userId: profile.id,
@@ -166,13 +173,10 @@ export async function POST(request: NextRequest) {
                 role: profile.role,
                 accountRole: accountRole,
                 value: combinedValue,
-                rawSetterValue: (setterResult.result.data as any).value,
-                rawRepValue: (repResult.result.data as any).value
+                rawSetterValue: setterValue,
+                rawRepValue: repValue,
+                displayValue: `${combinedValue} (${setterValue} setter + ${repValue} rep)`
               }
-            } else {
-              // For setters and others, filter by setter role
-              filters.setterIds = [profile.id]
-              console.log(`Appointments: filtering by setterIds for ${profile.full_name} (${accountRole})`)
             }
           } else if (metricDefinition.query.table === 'dials') {
             // For dials, filter by setter_user_id
@@ -200,13 +204,24 @@ export async function POST(request: NextRequest) {
             const value = (result.result.data as any).value || 0
             console.log(`Result for ${profile.full_name}: ${value}`)
 
+            // Create display value with role label for appointments
+            let displayValue = value.toString()
+            if (metricDefinition.query.table === 'appointments') {
+              if (accountRole === 'sales_rep') {
+                displayValue = `${value} (rep)`
+              } else if (accountRole === 'setter') {
+                displayValue = `${value} (setter)`
+              }
+            }
+
             return {
               userId: profile.id,
               name: profile.full_name,
               email: profile.email,
               role: profile.role,
               accountRole: accountRole,
-              value: value
+              value: value,
+              displayValue: displayValue
             }
           }
         } catch (error) {
