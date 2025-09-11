@@ -385,11 +385,7 @@ export class UserMetricsEngine {
       const setterId = record.setter_user_id
 
       // Calculate the value for this record based on metric type
-      let recordValue = 1 // Default for COUNT
-      
-      if (metric.query.select[0].includes('SUM(cash_collected)')) {
-        recordValue = Number(record.cash_collected || 0)
-      }
+      let recordValue = this.calculateRecordValue(record, metric, 'unknown')
 
       // Attribute based on context
       let targetUserId: string | null = null
@@ -435,6 +431,38 @@ export class UserMetricsEngine {
         role: this.determineUserRole(userId, value, metric.attributionContext!)
       }
     })
+  }
+
+  /**
+   * Calculate the value for a single record based on metric type
+   */
+  private calculateRecordValue(record: any, metric: MetricDefinition, metricName?: string): number {
+    const selectClause = metric.query.select[0]
+    
+    // Handle different aggregation types
+    if (selectClause.includes('SUM(cash_collected)')) {
+      return Number(record.cash_collected || 0)
+    }
+    
+    if (selectClause.includes('AVG(cash_collected)')) {
+      return Number(record.cash_collected || 0)
+    }
+    
+    // Handle rate calculations that need special processing
+    if (selectClause.includes('CASE WHEN') && selectClause.includes('show_outcome')) {
+      // For rate calculations, we need to track both numerator and denominator
+      // This is handled differently in the aggregation logic
+      return 1 // Count the record, rate calculation happens in aggregation
+    }
+    
+    // Handle cross-table metrics
+    if (metricName === 'cash_per_dial') {
+      // For cash per dial, this is a complex calculation that needs special handling
+      return 1 // Count the dial
+    }
+    
+    // Default: COUNT aggregation
+    return 1
   }
 
   /**
@@ -496,12 +524,7 @@ export class UserMetricsEngine {
       const setterId = record.setter_user_id
 
       // Calculate the value for this record based on metric type
-      let recordValue = 1 // Default for COUNT
-      
-      if (metric.query.select[0].includes('SUM(cash_collected)')) {
-        recordValue = Number(record.cash_collected || 0)
-      }
-      // Add more value calculations as needed
+      let recordValue = this.calculateRecordValue(record, metric)
 
       // Add to rep stats
       if (repId && userIds.includes(repId)) {
