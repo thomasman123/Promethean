@@ -7,14 +7,14 @@ import { MetricSelectionModal } from "@/components/data-view/metric-selection-mo
 import { useDashboard } from "@/lib/dashboard-context"
 import { createBrowserClient } from "@supabase/ssr"
 import { ColumnDef } from "@tanstack/react-table"
-import { ArrowUpDown, Trash2, MoreHorizontal } from "lucide-react"
+import { ArrowUpDown, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { MetricDefinition } from "@/lib/metrics/types"
 import { useToast } from "@/hooks/use-toast"
 
@@ -246,7 +246,7 @@ export default function DataViewPage() {
 
   // Define base columns
   const baseColumns: ColumnDef<UserMetric>[] = [
-    {
+        {
       accessorKey: "name",
       header: ({ column }) => {
         return (
@@ -260,23 +260,23 @@ export default function DataViewPage() {
           </Button>
         )
       },
-      cell: ({ row }) => <div className="font-medium text-sm">{row.getValue("name")}</div>,
+      cell: ({ row }) => <div className="font-medium text-sm truncate">{row.getValue("name")}</div>,
     },
     {
       accessorKey: "email",
       header: () => <div className="text-xs font-medium">Email</div>,
-      cell: ({ row }) => <div className="text-muted-foreground text-sm">{row.getValue("email")}</div>,
+      cell: ({ row }) => <div className="text-muted-foreground text-sm truncate">{row.getValue("email")}</div>,
     },
     {
       accessorKey: "role",
       header: () => <div className="text-xs font-medium">Role</div>,
       cell: ({ row }) => {
         const role = row.getValue("role") as string
-                  return (
-            <div className="capitalize text-sm">
-              {role === 'setter' ? 'Setter' : 'Rep'}
-            </div>
-          )
+        return (
+          <div className="capitalize text-sm">
+            {role === 'setter' ? 'Setter' : 'Rep'}
+          </div>
+        )
       },
     },
   ]
@@ -292,38 +292,38 @@ export default function DataViewPage() {
         accessorKey: col.field,
         header: ({ column }: any) => {
           return (
-            <div className="flex items-center justify-center group relative min-w-0 px-1">
-              <Button
-                variant="ghost"
-                onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-                className="h-auto p-1 text-xs font-medium leading-tight whitespace-nowrap"
-              >
-                <span className="truncate max-w-[120px]">{col.header}</span>
-                <ArrowUpDown className="ml-0.5 h-3 w-3 flex-shrink-0" />
-              </Button>
-              {col.metricName && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex items-center justify-center group relative min-w-0">
                     <Button
                       variant="ghost"
-                      size="sm"
-                      className="absolute -right-1 top-0 h-auto w-auto p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+                      className="h-auto p-1 text-xs font-medium leading-tight whitespace-nowrap"
                     >
-                      <MoreHorizontal className="h-3 w-3" />
+                      <span className="truncate max-w-[60px]">{col.header}</span>
+                      <ArrowUpDown className="ml-0.5 h-3 w-3 flex-shrink-0" />
                     </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-32">
-                    <DropdownMenuItem
-                      onClick={() => handleRemoveColumn(col.id)}
-                      className="text-destructive focus:text-destructive"
-                    >
-                      <Trash2 className="h-3 w-3 mr-2" />
-                      Remove
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
-            </div>
+                  </div>
+                </TooltipTrigger>
+                {col.metricName && (
+                  <TooltipContent className="max-w-xs">
+                    <div className="space-y-2">
+                      <div className="font-medium">{col.header}</div>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => handleRemoveColumn(col.id)}
+                        className="w-full h-6 text-xs"
+                      >
+                        <Trash2 className="h-3 w-3 mr-1" />
+                        Remove Column
+                      </Button>
+                    </div>
+                  </TooltipContent>
+                )}
+              </Tooltip>
+            </TooltipProvider>
           )
         },
         cell: ({ row }: any) => {
