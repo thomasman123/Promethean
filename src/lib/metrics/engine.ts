@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase'
+import { supabaseService } from '@/lib/supabase'
 import { 
   MetricRequest, 
   MetricResponse, 
@@ -100,7 +100,7 @@ export class MetricsEngine {
     console.log('Parameters:', params)
     
     // Execute query via Supabase
-    const { data, error } = await supabase.rpc('execute_metrics_query_array', {
+    const { data, error } = await supabaseService.rpc('execute_metrics_query_array', {
       query_sql: sql,
       query_params: params
     })
