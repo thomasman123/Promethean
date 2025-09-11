@@ -29,7 +29,7 @@ export interface UserMetricsResponse {
 
 /**
  * User-centric metrics engine that calculates metrics based on actual data presence
- * rather than role assumptions
+ * using simple Supabase queries instead of complex SQL
  */
 export class UserMetricsEngine {
   
@@ -102,7 +102,7 @@ export class UserMetricsEngine {
   }
 
   /**
-   * Calculate appointment-based metrics for users
+   * Calculate appointment-based metrics for users using Supabase queries
    */
   private async calculateAppointmentMetrics(
     metric: MetricDefinition,
@@ -112,116 +112,46 @@ export class UserMetricsEngine {
     userIds: string[]
   ): Promise<UserMetricResult[]> {
     
-    // Build the base query conditions from the metric definition
-    const whereConditions = [
-      "account_id = $account_id",
-      "created_at >= $start_date::timestamp",
-      "created_at <= $end_date::timestamp"
-    ]
+    console.log(`Calculating appointment metrics for users: ${userIds.join(', ')}`)
 
-    // Create individual user parameter conditions instead of array
-    const userConditions: string[] = []
-    const params: Record<string, any> = {
-      account_id: accountId,
-      start_date: startDate,
-      end_date: endDate
-    }
+    // Build base query
+    let query = supabaseService
+      .from('appointments')
+      .select('*')
+      .eq('account_id', accountId)
+      .gte('created_at', startDate)
+      .lte('created_at', endDate)
 
-    // Add individual user parameters
-    userIds.forEach((userId, index) => {
-      const paramName = `user_id_${index}`
-      params[paramName] = userId
-      userConditions.push(`sales_rep_user_id = $${paramName} OR setter_user_id = $${paramName}`)
-    })
-
-    if (userConditions.length > 0) {
-      whereConditions.push(`(${userConditions.join(' OR ')})`)
-    }
-
-    // Add metric-specific WHERE conditions
+    // Add metric-specific filters
     if (metric.query.where) {
-      whereConditions.push(...metric.query.where)
+      for (const condition of metric.query.where) {
+        if (condition.includes("LOWER(call_outcome) = 'show'")) {
+          query = query.ilike('call_outcome', 'show')
+        } else if (condition.includes("show_outcome = 'won'")) {
+          query = query.eq('show_outcome', 'won')
+        }
+        // Add more conditions as needed
+      }
     }
 
-    // Determine what we're calculating (COUNT, SUM, etc.)
-    const selectField = metric.query.select[0]
-    let aggregateFunction = 'COUNT(*)'
-    
-    if (selectField.includes('SUM(')) {
-      const match = selectField.match(/SUM\(([^)]+)\)/)
-      if (match) {
-        aggregateFunction = `SUM(${match[1]})`
-      }
-    } else if (selectField.includes('AVG(')) {
-      const match = selectField.match(/AVG\(([^)]+)\)/)
-      if (match) {
-        aggregateFunction = `AVG(${match[1]})`
-      }
-    } else if (selectField.includes('COALESCE')) {
-      // Handle COALESCE expressions like "COALESCE(SUM(cash_collected), 0) as value"
-      aggregateFunction = selectField.replace(' as value', '')
-    }
+    // Filter for users who appear as either rep or setter
+    query = query.or(`sales_rep_user_id.in.(${userIds.join(',')}),setter_user_id.in.(${userIds.join(',')})`)
 
-    // Build user case conditions for the CTE
-    const userCaseConditions = userIds.map((userId, index) => {
-      const paramName = `user_id_${index}`
-      return `WHEN sales_rep_user_id = $${paramName} THEN $${paramName}
-              WHEN setter_user_id = $${paramName} THEN $${paramName}`
-    }).join('\n        ')
-
-    const roleCaseConditions = userIds.map((userId, index) => {
-      const paramName = `user_id_${index}`
-      return `WHEN sales_rep_user_id = $${paramName} THEN 'rep'
-              WHEN setter_user_id = $${paramName} THEN 'setter'`
-    }).join('\n        ')
-
-    // Build SQL that groups by user and role
-    const sql = `
-      WITH user_metrics AS (
-        SELECT 
-          CASE 
-            ${userCaseConditions}
-            ELSE NULL
-          END as user_id,
-          CASE 
-            ${roleCaseConditions}
-            ELSE 'unknown'
-          END as user_role,
-          *
-        FROM appointments
-        WHERE ${whereConditions.join(' AND ')}
-      )
-      SELECT 
-        user_id,
-        user_role,
-        ${aggregateFunction} as value
-      FROM user_metrics
-      WHERE user_id IS NOT NULL
-      GROUP BY user_id, user_role
-      ORDER BY user_id, user_role
-    `
-
-    console.log('Executing appointment metrics SQL:', sql)
-    console.log('Parameters:', params)
-
-    const { data, error } = await supabaseService
-      .rpc('execute_metrics_query_array', {
-        query_sql: sql,
-        query_params: params
-      })
+    const { data: appointments, error } = await query
 
     if (error) {
-      console.error('Database error:', error)
+      console.error('Supabase query error:', error)
       throw new Error(`Database query failed: ${error.message}`)
     }
 
-    // Process results to combine rep and setter values per user
-    const results = Array.isArray(data) ? data : (data ? JSON.parse(String(data)) : [])
-    return this.combineUserRoleResults(results, userIds)
+    console.log(`Found ${appointments?.length || 0} appointments`)
+
+    // Process results by user and role
+    return this.processResults(appointments || [], userIds, metric, 'appointments')
   }
 
   /**
-   * Calculate discovery-based metrics for users
+   * Calculate discovery-based metrics for users using Supabase queries
    */
   private async calculateDiscoveryMetrics(
     metric: MetricDefinition,
@@ -231,104 +161,40 @@ export class UserMetricsEngine {
     userIds: string[]
   ): Promise<UserMetricResult[]> {
     
-    const whereConditions = [
-      "account_id = $account_id",
-      "created_at >= $start_date::timestamp", 
-      "created_at <= $end_date::timestamp"
-    ]
+    console.log(`Calculating discovery metrics for users: ${userIds.join(', ')}`)
 
-    // Create individual user parameter conditions
-    const userConditions: string[] = []
-    const params: Record<string, any> = {
-      account_id: accountId,
-      start_date: startDate,
-      end_date: endDate
-    }
+    let query = supabaseService
+      .from('discoveries')
+      .select('*')
+      .eq('account_id', accountId)
+      .gte('created_at', startDate)
+      .lte('created_at', endDate)
 
-    userIds.forEach((userId, index) => {
-      const paramName = `user_id_${index}`
-      params[paramName] = userId
-      userConditions.push(`sales_rep_user_id = $${paramName} OR setter_user_id = $${paramName}`)
-    })
-
-    if (userConditions.length > 0) {
-      whereConditions.push(`(${userConditions.join(' OR ')})`)
-    }
-
+    // Add metric-specific filters
     if (metric.query.where) {
-      whereConditions.push(...metric.query.where)
+      for (const condition of metric.query.where) {
+        if (condition.includes("call_outcome = 'show'")) {
+          query = query.eq('call_outcome', 'show')
+        }
+        // Add more conditions as needed
+      }
     }
 
-    const selectField = metric.query.select[0]
-    let aggregateFunction = 'COUNT(*)'
-    
-    if (selectField.includes('SUM(')) {
-      const match = selectField.match(/SUM\(([^)]+)\)/)
-      if (match) {
-        aggregateFunction = `SUM(${match[1]})`
-      }
-    } else if (selectField.includes('AVG(')) {
-      const match = selectField.match(/AVG\(([^)]+)\)/)
-      if (match) {
-        aggregateFunction = `AVG(${match[1]})`
-      }
-    } else if (selectField.includes('COALESCE')) {
-      aggregateFunction = selectField.replace(' as value', '')
-    }
+    query = query.or(`sales_rep_user_id.in.(${userIds.join(',')}),setter_user_id.in.(${userIds.join(',')})`)
 
-    const userCaseConditions = userIds.map((userId, index) => {
-      const paramName = `user_id_${index}`
-      return `WHEN sales_rep_user_id = $${paramName} THEN $${paramName}
-              WHEN setter_user_id = $${paramName} THEN $${paramName}`
-    }).join('\n        ')
-
-    const roleCaseConditions = userIds.map((userId, index) => {
-      const paramName = `user_id_${index}`
-      return `WHEN sales_rep_user_id = $${paramName} THEN 'rep'
-              WHEN setter_user_id = $${paramName} THEN 'setter'`
-    }).join('\n        ')
-
-    const sql = `
-      WITH user_metrics AS (
-        SELECT 
-          CASE 
-            ${userCaseConditions}
-            ELSE NULL
-          END as user_id,
-          CASE 
-            ${roleCaseConditions}
-            ELSE 'unknown'
-          END as user_role,
-          *
-        FROM discoveries
-        WHERE ${whereConditions.join(' AND ')}
-      )
-      SELECT 
-        user_id,
-        user_role,
-        ${aggregateFunction} as value
-      FROM user_metrics
-      WHERE user_id IS NOT NULL
-      GROUP BY user_id, user_role
-      ORDER BY user_id, user_role
-    `
-
-    const { data, error } = await supabaseService
-      .rpc('execute_metrics_query_array', {
-        query_sql: sql,
-        query_params: params
-      })
+    const { data: discoveries, error } = await query
 
     if (error) {
       throw new Error(`Database query failed: ${error.message}`)
     }
 
-    const results = Array.isArray(data) ? data : (data ? JSON.parse(String(data)) : [])
-    return this.combineUserRoleResults(results, userIds)
+    console.log(`Found ${discoveries?.length || 0} discoveries`)
+
+    return this.processResults(discoveries || [], userIds, metric, 'discoveries')
   }
 
   /**
-   * Calculate dial-based metrics for users  
+   * Calculate dial-based metrics for users using Supabase queries
    */
   private async calculateDialMetrics(
     metric: MetricDefinition,
@@ -338,114 +204,89 @@ export class UserMetricsEngine {
     userIds: string[]
   ): Promise<UserMetricResult[]> {
     
-    const whereConditions = [
-      "account_id = $account_id",
-      "created_at >= $start_date::timestamp",
-      "created_at <= $end_date::timestamp"
-    ]
+    console.log(`Calculating dial metrics for users: ${userIds.join(', ')}`)
 
-    // Create individual user parameter conditions
-    const userConditions: string[] = []
-    const params: Record<string, any> = {
-      account_id: accountId,
-      start_date: startDate,
-      end_date: endDate
-    }
+    let query = supabaseService
+      .from('dials')
+      .select('*')
+      .eq('account_id', accountId)
+      .gte('created_at', startDate)
+      .lte('created_at', endDate)
 
-    userIds.forEach((userId, index) => {
-      const paramName = `user_id_${index}`
-      params[paramName] = userId
-      userConditions.push(`setter_user_id = $${paramName}`)
-    })
-
-    if (userConditions.length > 0) {
-      whereConditions.push(`(${userConditions.join(' OR ')})`)
-    }
-
+    // Add metric-specific filters
     if (metric.query.where) {
-      whereConditions.push(...metric.query.where)
+      for (const condition of metric.query.where) {
+        // Add dial-specific conditions as needed
+      }
     }
 
-    const selectField = metric.query.select[0]
-    let aggregateFunction = 'COUNT(*)'
-    
-    if (selectField.includes('SUM(')) {
-      const match = selectField.match(/SUM\(([^)]+)\)/)
-      if (match) {
-        aggregateFunction = `SUM(${match[1]})`
-      }
-    } else if (selectField.includes('AVG(')) {
-      const match = selectField.match(/AVG\(([^)]+)\)/)
-      if (match) {
-        aggregateFunction = `AVG(${match[1]})`
-      }
-    } else if (selectField.includes('COALESCE')) {
-      aggregateFunction = selectField.replace(' as value', '')
-    }
+    // For dials, only setters are relevant
+    query = query.in('setter_user_id', userIds)
 
-    const sql = `
-      SELECT 
-        setter_user_id as user_id,
-        'setter' as user_role,
-        ${aggregateFunction} as value
-      FROM dials
-      WHERE ${whereConditions.join(' AND ')}
-      GROUP BY setter_user_id
-      ORDER BY setter_user_id
-    `
-
-    const { data, error } = await supabaseService
-      .rpc('execute_metrics_query_array', {
-        query_sql: sql,
-        query_params: params
-      })
+    const { data: dials, error } = await query
 
     if (error) {
       throw new Error(`Database query failed: ${error.message}`)
     }
 
-    const results = Array.isArray(data) ? data : (data ? JSON.parse(String(data)) : [])
-    return this.combineUserRoleResults(results, userIds)
+    console.log(`Found ${dials?.length || 0} dials`)
+
+    return this.processResults(dials || [], userIds, metric, 'dials')
   }
 
   /**
-   * Combine results where users might have both rep and setter data
+   * Process raw data results into user metrics
    */
-  private combineUserRoleResults(rawResults: any[], allUserIds: string[]): UserMetricResult[] {
-    // Group results by user_id
-    const userResultsMap = new Map<string, { rep?: number, setter?: number }>()
+  private processResults(
+    data: any[], 
+    userIds: string[], 
+    metric: MetricDefinition, 
+    tableType: 'appointments' | 'discoveries' | 'dials'
+  ): UserMetricResult[] {
     
-    for (const row of rawResults) {
-      const userId = row.user_id
-      const role = row.user_role
-      const value = Number(row.value || 0)
+    // Group data by user and role
+    const userStats = new Map<string, { rep: number, setter: number }>()
+    
+    // Initialize all users
+    userIds.forEach(userId => {
+      userStats.set(userId, { rep: 0, setter: 0 })
+    })
+
+    // Process each record
+    for (const record of data) {
+      const repId = record.sales_rep_user_id
+      const setterId = record.setter_user_id
+
+      // Calculate the value for this record based on metric type
+      let recordValue = 1 // Default for COUNT
       
-      if (!userResultsMap.has(userId)) {
-        userResultsMap.set(userId, {})
+      if (metric.query.select[0].includes('SUM(cash_collected)')) {
+        recordValue = Number(record.cash_collected || 0)
       }
-      
-      const userResults = userResultsMap.get(userId)!
-      if (role === 'rep') {
-        userResults.rep = value
-      } else if (role === 'setter') {
-        userResults.setter = value
+      // Add more value calculations as needed
+
+      // Add to rep stats
+      if (repId && userIds.includes(repId)) {
+        const stats = userStats.get(repId)!
+        stats.rep += recordValue
+      }
+
+      // Add to setter stats (only for appointments/discoveries, not dials)
+      if (setterId && userIds.includes(setterId)) {
+        const stats = userStats.get(setterId)!
+        if (tableType === 'dials') {
+          stats.setter += recordValue
+        } else {
+          stats.setter += recordValue
+        }
       }
     }
 
-    // Create results for all requested users
-    return allUserIds.map(userId => {
-      const userResults = userResultsMap.get(userId)
-      
-      if (!userResults) {
-        return {
-          userId,
-          value: 0,
-          role: 'none' as const
-        }
-      }
-
-      const repValue = userResults.rep || 0
-      const setterValue = userResults.setter || 0
+    // Convert to results format
+    return userIds.map(userId => {
+      const stats = userStats.get(userId)!
+      const repValue = stats.rep
+      const setterValue = stats.setter
       
       // Determine role and combined value
       let role: 'setter' | 'rep' | 'both' | 'none'
