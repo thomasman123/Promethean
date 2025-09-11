@@ -460,7 +460,14 @@ export default function DataViewPage() {
       if (!response.ok) {
         const errorText = await response.text()
         console.error('loadMetricData: API error', response.status, errorText)
-        throw new Error('Failed to load metric data')
+        console.error('loadMetricData: Request was:', { 
+          accountId: selectedAccountId, 
+          userIds, 
+          metricName: metricColumn.metricName, 
+          dateRange, 
+          roleFilter 
+        })
+        throw new Error(`Failed to load ${metricColumn.displayName}: ${response.status} ${errorText}`)
       }
 
       const result = await response.json()
