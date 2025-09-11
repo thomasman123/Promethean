@@ -134,22 +134,27 @@ export async function POST(request: NextRequest) {
               filters.setterIds = [profile.id]
               console.log(`Appointments: filtering by setterIds for ${profile.full_name} (setter)`)
             } else if (accountRole === 'admin' || accountRole === 'moderator') {
-              // For admin/moderator users, show metrics for both setter and rep activities
-              const setterRequest = createMetricRequest(metricName, accountId, dateRange.start, dateRange.end, {
+              // For admin/moderator users, check if they have any data first
+              const hasDataRequest = createMetricRequest(metricName, accountId, dateRange.start, dateRange.end, {
                 setterIds: [profile.id]
               })
-              const repRequest = createMetricRequest(metricName, accountId, dateRange.start, dateRange.end, {
+              const hasDataRepRequest = createMetricRequest(metricName, accountId, dateRange.start, dateRange.end, {
                 repIds: [profile.id]
               })
 
               const [setterResult, repResult] = await Promise.all([
-                metricsEngine.execute(setterRequest),
-                metricsEngine.execute(repRequest)
+                metricsEngine.execute(hasDataRequest),
+                metricsEngine.execute(hasDataRepRequest)
               ])
 
               // Get individual values
               const setterValue = (setterResult.result.data as any).value || 0
               const repValue = (repResult.result.data as any).value || 0
+
+              // Only include admin/moderator if they have data
+              if (setterValue === 0 && repValue === 0) {
+                return null // Will be filtered out
+              }
 
               // Combine results based on metric type
               let combinedValue = 0
@@ -180,8 +185,28 @@ export async function POST(request: NextRequest) {
             }
           } else if (metricDefinition.query.table === 'dials') {
             // For dials, filter by setter_user_id
-            if (accountRole === 'setter' || accountRole === 'admin' || accountRole === 'moderator') {
+            if (accountRole === 'setter') {
               filters.setterIds = [profile.id]
+            } else if (accountRole === 'admin' || accountRole === 'moderator') {
+              // Check if admin/moderator has dial data
+              filters.setterIds = [profile.id]
+              const request = createMetricRequest(metricName, accountId, dateRange.start, dateRange.end, filters)
+              const result = await metricsEngine.execute(request)
+              const value = (result.result.data as any).value || 0
+              
+              if (value === 0) {
+                return null // Will be filtered out
+              }
+              
+              return {
+                userId: profile.id,
+                name: profile.full_name,
+                email: profile.email,
+                role: profile.role,
+                accountRole: accountRole,
+                value: value,
+                displayValue: `${value} (setter)`
+              }
             }
           } else if (metricDefinition.query.table === 'discoveries') {
             // For discoveries, filter by setter_user_id for setters and sales_rep_user_id for reps
@@ -190,13 +215,43 @@ export async function POST(request: NextRequest) {
             } else if (accountRole === 'setter') {
               filters.setterIds = [profile.id]
             } else if (accountRole === 'admin' || accountRole === 'moderator') {
-              filters.setterIds = [profile.id]
-              filters.repIds = [profile.id]
+              // Check if admin/moderator has discovery data
+              const setterRequest = createMetricRequest(metricName, accountId, dateRange.start, dateRange.end, {
+                setterIds: [profile.id]
+              })
+              const repRequest = createMetricRequest(metricName, accountId, dateRange.start, dateRange.end, {
+                repIds: [profile.id]
+              })
+
+              const [setterResult, repResult] = await Promise.all([
+                metricsEngine.execute(setterRequest),
+                metricsEngine.execute(repRequest)
+              ])
+
+              const setterValue = (setterResult.result.data as any).value || 0
+              const repValue = (repResult.result.data as any).value || 0
+
+              if (setterValue === 0 && repValue === 0) {
+                return null // Will be filtered out
+              }
+
+              const combinedValue = setterValue + repValue
+              return {
+                userId: profile.id,
+                name: profile.full_name,
+                email: profile.email,
+                role: profile.role,
+                accountRole: accountRole,
+                value: combinedValue,
+                rawSetterValue: setterValue,
+                rawRepValue: repValue,
+                displayValue: `${combinedValue} (${setterValue} setter + ${repValue} rep)`
+              }
             }
           }
 
-          // For non-admin/moderator users or non-appointments metrics, calculate single metric
-          if (!['admin', 'moderator'].includes(accountRole) || metricDefinition.query.table !== 'appointments') {
+          // For non-admin/moderator users, calculate single metric
+          if (!['admin', 'moderator'].includes(accountRole)) {
             const request = createMetricRequest(metricName, accountId, dateRange.start, dateRange.end, filters)
             console.log(`Executing metric request for ${profile.full_name} (${accountRole}):`, request)
             const result = await metricsEngine.execute(request)
@@ -239,6 +294,9 @@ export async function POST(request: NextRequest) {
       })
     )
 
+    // Filter out null results (admin/moderator users with no data)
+    const filteredUserMetrics = userMetrics.filter(metric => metric !== null)
+
     return NextResponse.json({
       metricName,
       metricDefinition: {
@@ -248,7 +306,7 @@ export async function POST(request: NextRequest) {
       },
       dateRange,
       accountId,
-      userMetrics
+      userMetrics: filteredUserMetrics
     })
 
   } catch (error) {
