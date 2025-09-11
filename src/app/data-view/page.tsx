@@ -253,28 +253,28 @@ export default function DataViewPage() {
           <Button
             variant="ghost"
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            className="h-auto p-0 text-xs font-medium"
+            className="h-auto p-1 text-[10px] font-medium leading-tight"
           >
             Name
-            <ArrowUpDown className="ml-1 h-3 w-3" />
+            <ArrowUpDown className="ml-0.5 h-2 w-2" />
           </Button>
         )
       },
-      cell: ({ row }) => <div className="font-medium">{row.getValue("name")}</div>,
+      cell: ({ row }) => <div className="font-medium text-xs px-1">{row.getValue("name")}</div>,
     },
     {
       accessorKey: "email",
-      header: () => <div className="text-xs font-medium">Email</div>,
-      cell: ({ row }) => <div className="text-muted-foreground">{row.getValue("email")}</div>,
+      header: () => <div className="text-[10px] font-medium px-1">Email</div>,
+      cell: ({ row }) => <div className="text-muted-foreground text-xs px-1">{row.getValue("email")}</div>,
     },
     {
       accessorKey: "role",
-      header: () => <div className="text-xs font-medium">Role</div>,
+      header: () => <div className="text-[10px] font-medium px-1">Role</div>,
       cell: ({ row }) => {
         const role = row.getValue("role") as string
         return (
-          <div className="capitalize">
-            {role === 'setter' ? 'Appointment Setter' : 'Sales Rep'}
+          <div className="capitalize text-xs px-1">
+            {role === 'setter' ? 'Setter' : 'Rep'}
           </div>
         )
       },
@@ -292,14 +292,14 @@ export default function DataViewPage() {
         accessorKey: col.field,
         header: ({ column }: any) => {
           return (
-            <div className="flex items-center justify-between group">
+            <div className="flex items-center justify-center group relative min-w-0 px-1">
               <Button
                 variant="ghost"
                 onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-                className="h-auto p-0 text-xs font-medium"
+                className="h-auto p-1 text-[10px] font-medium leading-tight whitespace-nowrap"
               >
-                {col.header}
-                <ArrowUpDown className="ml-1 h-3 w-3" />
+                <span className="truncate max-w-[120px]">{col.header}</span>
+                <ArrowUpDown className="ml-0.5 h-2 w-2 flex-shrink-0" />
               </Button>
               {col.metricName && (
                 <DropdownMenu>
@@ -307,9 +307,9 @@ export default function DataViewPage() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-auto w-auto p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="absolute -right-1 top-0 h-auto w-auto p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
                     >
-                      <MoreHorizontal className="h-3 w-3" />
+                      <MoreHorizontal className="h-2 w-2" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-32">
@@ -332,20 +332,20 @@ export default function DataViewPage() {
           
           // Use display value if available, otherwise format based on column type
           if (displayValue) {
-            return <div className="text-right font-medium">{displayValue}</div>
+            return <div className="text-center text-xs font-medium px-1">{displayValue}</div>
           }
           
           // Format based on column type
           if (col.type === 'number') {
-            return <div className="text-right font-medium">{value || 0}</div>
+            return <div className="text-center text-xs font-medium px-1">{value || 0}</div>
           }
           if (col.type === 'percentage') {
-            return <div className="text-right font-medium">{(value || 0).toFixed(1)}%</div>
+            return <div className="text-center text-xs font-medium px-1">{(value || 0).toFixed(1)}%</div>
           }
           if (col.type === 'currency') {
-            return <div className="text-right font-medium">${(value || 0).toFixed(2)}</div>
+            return <div className="text-center text-xs font-medium px-1">${(value || 0).toFixed(2)}</div>
           }
-          return <div>{value || '-'}</div>
+          return <div className="text-center text-xs px-1">{value || '-'}</div>
         },
       }))
 
