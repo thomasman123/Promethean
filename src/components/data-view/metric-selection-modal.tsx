@@ -41,41 +41,54 @@ export function MetricSelectionModal({
     metric.metricName.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
-  // Group metrics by category based on their names/types
+  // Group metrics by category with clear attribution context
   const categorizedMetrics = {
-    appointments: filteredMetrics.filter(m => 
-      m.metricName.includes('appointment') || 
-      m.metricName.includes('show_up') ||
-      m.metricName.includes('booking')
+    'appointments_assigned': filteredMetrics.filter(m => 
+      m.attributionContext === 'assigned' && 
+      (m.metricName.includes('appointment') || m.metricName.includes('show_up'))
     ),
-    sales: filteredMetrics.filter(m => 
-      m.metricName.includes('sale') || 
-      m.metricName.includes('cash') || 
-      m.metricName.includes('won')
+    'appointments_booked': filteredMetrics.filter(m => 
+      m.attributionContext === 'booked' && 
+      (m.metricName.includes('appointment') || m.metricName.includes('show_up'))
     ),
-    dials: filteredMetrics.filter(m => 
-      m.metricName.includes('dial') || 
-      m.metricName.includes('answer') || 
-      m.metricName.includes('conversation')
+    'discoveries_assigned': filteredMetrics.filter(m => 
+      m.attributionContext === 'assigned' && m.metricName.includes('discover')
     ),
-    performance: filteredMetrics.filter(m => 
-      m.metricName.includes('rate') || 
-      m.metricName.includes('speed') || 
-      m.metricName.includes('lead_time')
+    'discoveries_booked': filteredMetrics.filter(m => 
+      m.attributionContext === 'booked' && m.metricName.includes('discover')
     ),
-    other: filteredMetrics.filter(m => 
+    'sales_assigned': filteredMetrics.filter(m => 
+      m.attributionContext === 'assigned' && 
+      (m.metricName.includes('sale') || m.metricName.includes('cash'))
+    ),
+    'sales_booked': filteredMetrics.filter(m => 
+      m.attributionContext === 'booked' && 
+      (m.metricName.includes('sale') || m.metricName.includes('cash'))
+    ),
+    'dials': filteredMetrics.filter(m => 
+      m.metricName.includes('dial') || m.attributionContext === 'dialer'
+    ),
+    'rates': filteredMetrics.filter(m => 
+      m.metricName.includes('rate') && m.unit === 'percent'
+    ),
+    'legacy': filteredMetrics.filter(m => 
+      !m.attributionContext && (
+        m.metricName.includes('appointment') || 
+        m.metricName.includes('show_up') ||
+        m.metricName.includes('sale') || 
+        m.metricName.includes('cash') ||
+        m.metricName.includes('rate')
+      )
+    ),
+    'other': filteredMetrics.filter(m => 
+      !m.attributionContext && 
       !m.metricName.includes('appointment') && 
       !m.metricName.includes('show_up') &&
-      !m.metricName.includes('booking') &&
       !m.metricName.includes('sale') && 
       !m.metricName.includes('cash') && 
-      !m.metricName.includes('won') &&
-      !m.metricName.includes('dial') && 
-      !m.metricName.includes('answer') && 
-      !m.metricName.includes('conversation') &&
-      !m.metricName.includes('rate') && 
-      !m.metricName.includes('speed') && 
-      !m.metricName.includes('lead_time')
+      !m.metricName.includes('rate') &&
+      !m.metricName.includes('dial') &&
+      !m.metricName.includes('discover')
     )
   }
 
@@ -156,6 +169,13 @@ export function MetricSelectionModal({
                   <div className="flex items-center gap-2 mb-1">
                     {getUnitIcon(metric.unit)}
                     <h4 className="font-medium text-sm">{metric.name}</h4>
+                    {metric.attributionContext && (
+                      <Badge variant="outline" className="text-xs">
+                        {metric.attributionContext === 'assigned' ? '👤 Assigned' : 
+                         metric.attributionContext === 'booked' ? '📅 Booked' : 
+                         '📞 Dialer'}
+                      </Badge>
+                    )}
                   </div>
                   <p className="text-xs text-muted-foreground line-clamp-2">
                     {metric.description}
@@ -193,11 +213,16 @@ export function MetricSelectionModal({
 
           {/* Metrics List */}
           <div className="flex-1 overflow-y-auto space-y-6">
-            {renderMetricCategory('Appointments', categorizedMetrics.appointments, 'appointments')}
-            {renderMetricCategory('Sales & Revenue', categorizedMetrics.sales, 'sales')}
-            {renderMetricCategory('Dials & Calls', categorizedMetrics.dials, 'dials')}
-            {renderMetricCategory('Performance Rates', categorizedMetrics.performance, 'performance')}
-            {renderMetricCategory('Other Metrics', categorizedMetrics.other, 'other')}
+            {renderMetricCategory('📅 Appointments (Assigned)', categorizedMetrics.appointments_assigned, 'appointments_assigned')}
+            {renderMetricCategory('📋 Appointments (Booked)', categorizedMetrics.appointments_booked, 'appointments_booked')}
+            {renderMetricCategory('🔍 Discoveries (Assigned)', categorizedMetrics.discoveries_assigned, 'discoveries_assigned')}
+            {renderMetricCategory('📝 Discoveries (Booked For)', categorizedMetrics.discoveries_booked, 'discoveries_booked')}
+            {renderMetricCategory('💰 Sales (Assigned)', categorizedMetrics.sales_assigned, 'sales_assigned')}
+            {renderMetricCategory('💵 Sales (Booked)', categorizedMetrics.sales_booked, 'sales_booked')}
+            {renderMetricCategory('📞 Dials & Calls', categorizedMetrics.dials, 'dials')}
+            {renderMetricCategory('📊 Conversion Rates', categorizedMetrics.rates, 'rates')}
+            {renderMetricCategory('⚠️ Legacy Metrics', categorizedMetrics.legacy, 'legacy')}
+            {renderMetricCategory('📋 Other Metrics', categorizedMetrics.other, 'other')}
             
             {filteredMetrics.length === 0 && (
               <div className="text-center py-8 text-muted-foreground">
