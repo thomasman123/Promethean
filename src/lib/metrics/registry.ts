@@ -316,6 +316,34 @@ export const METRICS_REGISTRY: Record<string, MetricDefinition> = {
 	},
 
 	// Pitch to Sale - won / pitched (as fraction)
+	'pitch_to_sale_rate_assigned': {
+		name: 'Pitch to Sale (Assigned)',
+		description: 'Ratio of sales (won) to pitched appointments by assigned sales reps',
+		breakdownType: 'total',
+		query: {
+			table: 'appointments',
+			select: [
+				"COALESCE(AVG(CASE WHEN pitched = true THEN CASE WHEN show_outcome = 'won' THEN 1.0 ELSE 0.0 END END), 0) as value"
+			]
+		},
+		unit: 'percent',
+		attributionContext: 'assigned'
+	},
+	'pitch_to_sale_rate_booked': {
+		name: 'Pitch to Sale (Booked)',
+		description: 'Ratio of sales (won) to pitched appointments from booked appointments',
+		breakdownType: 'total',
+		query: {
+			table: 'appointments',
+			select: [
+				"COALESCE(AVG(CASE WHEN pitched = true THEN CASE WHEN show_outcome = 'won' THEN 1.0 ELSE 0.0 END END), 0) as value"
+			]
+		},
+		unit: 'percent',
+		attributionContext: 'booked'
+	},
+
+	// Legacy pitch to sale (deprecated)
 	'pitch_to_sale_rate': {
 		name: 'Pitch to Sale',
 		description: 'Ratio of sales (won) to pitched appointments',
@@ -330,6 +358,34 @@ export const METRICS_REGISTRY: Record<string, MetricDefinition> = {
 	},
 
 	// Answer to Sale - won / shows (as fraction)
+	'answer_to_sale_rate_assigned': {
+		name: 'Answer to Sale (Assigned)',
+		description: 'Ratio of sales (won) to shown appointments by assigned sales reps',
+		breakdownType: 'total',
+		query: {
+			table: 'appointments',
+			select: [
+				"COALESCE(AVG(CASE WHEN call_outcome = 'Show' THEN CASE WHEN show_outcome = 'won' THEN 1.0 ELSE 0.0 END END), 0) as value"
+			]
+		},
+		unit: 'percent',
+		attributionContext: 'assigned'
+	},
+	'answer_to_sale_rate_booked': {
+		name: 'Answer to Sale (Booked)',
+		description: 'Ratio of sales (won) to shown appointments from booked appointments',
+		breakdownType: 'total',
+		query: {
+			table: 'appointments',
+			select: [
+				"COALESCE(AVG(CASE WHEN call_outcome = 'Show' THEN CASE WHEN show_outcome = 'won' THEN 1.0 ELSE 0.0 END END), 0) as value"
+			]
+		},
+		unit: 'percent',
+		attributionContext: 'booked'
+	},
+
+	// Legacy answer to sale (deprecated)
 	'answer_to_sale_rate': {
 		name: 'Answer to Sale',
 		description: 'Ratio of sales (won) to shown appointments',
@@ -344,6 +400,34 @@ export const METRICS_REGISTRY: Record<string, MetricDefinition> = {
 	},
 
 	// Cash Collected Per Sale - sum(cash_collected) / count(won)
+	'cash_per_sale_assigned': {
+		name: 'Cash Per Sale (Assigned)',
+		description: 'Average cash collected per sale by assigned sales reps',
+		breakdownType: 'total',
+		query: {
+			table: 'appointments',
+			select: [
+				"COALESCE(SUM(cash_collected), 0) / NULLIF(SUM(CASE WHEN show_outcome = 'won' THEN 1 ELSE 0 END), 0) as value"
+			]
+		},
+		unit: 'currency',
+		attributionContext: 'assigned'
+	},
+	'cash_per_sale_booked': {
+		name: 'Cash Per Sale (Booked)',
+		description: 'Average cash collected per sale from booked appointments',
+		breakdownType: 'total',
+		query: {
+			table: 'appointments',
+			select: [
+				"COALESCE(SUM(cash_collected), 0) / NULLIF(SUM(CASE WHEN show_outcome = 'won' THEN 1 ELSE 0 END), 0) as value"
+			]
+		},
+		unit: 'currency',
+		attributionContext: 'booked'
+	},
+
+	// Legacy cash per sale (deprecated)
 	'cash_per_sale': {
 		name: 'Cash Collected Per Sale',
 		description: 'Average cash collected per sale (won appointments)',
@@ -358,9 +442,10 @@ export const METRICS_REGISTRY: Record<string, MetricDefinition> = {
 	},
 
 	// Cash Per Dial - sum(appointments.cash_collected) / count(dials)
+	// Note: This is a complex cross-table metric that needs special handling
 	'cash_per_dial': {
 		name: 'Cash Collected Per Dial',
-		description: 'Average cash collected per dial made',
+		description: 'Average cash collected per dial made (cross-table calculation)',
 		breakdownType: 'total',
 		query: {
 			table: 'dials',
@@ -368,7 +453,8 @@ export const METRICS_REGISTRY: Record<string, MetricDefinition> = {
 				'0 as value' // This will be calculated via cross-table join
 			]
 		},
-		unit: 'currency'
+		unit: 'currency',
+		attributionContext: 'dialer' // Dials are attributed to the dialer
 	}
 }
 
