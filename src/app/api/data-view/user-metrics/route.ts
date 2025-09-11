@@ -3,6 +3,7 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { userMetricsEngine } from '@/lib/metrics/user-metrics-engine'
 import { getMetric } from '@/lib/metrics/registry'
+import { format } from 'date-fns'
 
 export async function POST(request: NextRequest) {
   try {
@@ -41,6 +42,33 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
+
+    // Convert dateRange from { from: Date, to: Date } to string format
+    let startDate: string
+    let endDate: string
+
+    if (dateRange.from && dateRange.to) {
+      // Handle Date objects from frontend
+      startDate = format(new Date(dateRange.from), 'yyyy-MM-dd')
+      endDate = format(new Date(dateRange.to), 'yyyy-MM-dd')
+    } else if (dateRange.start && dateRange.end) {
+      // Handle string format (fallback)
+      startDate = dateRange.start
+      endDate = dateRange.end
+    } else {
+      return NextResponse.json(
+        { error: 'Invalid dateRange format. Expected { from: Date, to: Date } or { start: string, end: string }' },
+        { status: 400 }
+      )
+    }
+
+    console.log(`Processing user metrics request:`, {
+      metricName,
+      accountId,
+      startDate,
+      endDate,
+      userCount: userIds.length
+    })
 
     // Get metric definition
     const metricDefinition = getMetric(metricName)
@@ -98,15 +126,21 @@ export async function POST(request: NextRequest) {
 
     const accountRoleMap = new Map(accountRoles?.map(ar => [ar.user_id, ar.role]) || [])
 
-    console.log(`Calculating ${metricName} for ${profiles.length} users using new UserMetricsEngine`)
+    console.log(`Calculating ${metricName} for ${profiles.length} users using UserMetricsEngine`)
 
-    // Use the new user metrics engine
+    // Use the new user metrics engine with properly formatted dates
     const metricsResponse = await userMetricsEngine.calculateForUsers({
       metricName,
       accountId,
-      startDate: dateRange.start,
-      endDate: dateRange.end,
+      startDate,
+      endDate,
       userIds
+    })
+
+    console.log(`UserMetricsEngine response:`, {
+      resultsCount: metricsResponse.results.length,
+      executionTimeMs: metricsResponse.executionTimeMs,
+      sampleResults: metricsResponse.results.slice(0, 3)
     })
 
     // Transform results to match the expected format
