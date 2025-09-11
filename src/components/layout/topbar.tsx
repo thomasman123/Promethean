@@ -189,6 +189,10 @@ export function TopBar({ onAddWidget }: TopBarProps) {
 
   const handleTableChange = (tableId: string | null) => {
     setCurrentTableId(tableId)
+    // Save the last opened table to localStorage
+    if (tableId && selectedAccountId) {
+      localStorage.setItem(`lastTableId_${selectedAccountId}`, tableId)
+    }
     // Dispatch custom event for data view page to listen to
     window.dispatchEvent(new CustomEvent('tableChanged', { detail: { tableId } }))
   }

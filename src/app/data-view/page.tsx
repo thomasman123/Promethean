@@ -13,7 +13,7 @@ import { MetricDefinition } from "@/lib/metrics/types"
 import { useToast } from "@/hooks/use-toast"
 
 export default function DataViewPage() {
-  const { selectedAccountId } = useDashboard()
+  const { selectedAccountId, dateRange } = useDashboard()
   const [users, setUsers] = useState<UserMetric[]>([])
   const [tableConfig, setTableConfig] = useState<any>(null)
   const [loading, setLoading] = useState(false)
@@ -60,7 +60,7 @@ export default function DataViewPage() {
     if (metricColumns.length > 0 && users.length > 0) {
       loadAllMetricData(metricColumns)
     }
-  }, [users.length, selectedAccountId]) // Only trigger on user count change or account change
+  }, [users.length, selectedAccountId, dateRange]) // Add dateRange dependency
 
   // Load table configuration and metric columns
   useEffect(() => {
@@ -167,10 +167,7 @@ export default function DataViewPage() {
               accountId: selectedAccountId,
               userIds,
               metricName: metricColumn.metricName,
-              dateRange: {
-                start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-                end: new Date().toISOString().split('T')[0]
-              },
+              dateRange: dateRange,
               roleFilter
             }),
           })
@@ -443,10 +440,7 @@ export default function DataViewPage() {
           accountId: selectedAccountId,
           userIds,
           metricName: metricColumn.metricName,
-          dateRange: {
-            start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // Last 30 days
-            end: new Date().toISOString().split('T')[0]
-          },
+          dateRange: dateRange,
           roleFilter
         }),
       })
