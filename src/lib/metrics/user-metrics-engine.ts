@@ -240,7 +240,8 @@ export class UserMetricsEngine {
   private processAverageCashResults(
     data: any[], 
     userIds: string[], 
-    tableType: 'appointments' | 'discoveries' | 'dials'
+    tableType: 'appointments' | 'discoveries' | 'dials',
+    attributionContext?: 'assigned' | 'booked' | 'dialer'
   ): UserMetricResult[] {
     
     // Track sum and count for each user and role
@@ -257,70 +258,205 @@ export class UserMetricsEngine {
       })
     })
 
-    // Process each record
+    // Process each record based on attribution context
     for (const record of data) {
       const repId = record.sales_rep_user_id
       const setterId = record.setter_user_id
       const cashValue = Number(record.cash_collected || 0)
 
-      // Add to rep stats
-      if (repId && userIds.includes(repId)) {
-        const stats = userStats.get(repId)!
-        stats.rep.sum += cashValue
-        stats.rep.count += 1
-      }
+      // Handle single attribution context
+      if (attributionContext) {
+        let targetUserId: string | null = null
+        
+        switch (attributionContext) {
+          case 'assigned':
+            targetUserId = repId
+            break
+          case 'booked':
+            targetUserId = setterId
+            break
+          case 'dialer':
+            if (tableType === 'dials') {
+              targetUserId = setterId
+            }
+            break
+        }
 
-      // Add to setter stats
-      if (setterId && userIds.includes(setterId)) {
-        const stats = userStats.get(setterId)!
-        stats.setter.sum += cashValue
-        stats.setter.count += 1
+        if (targetUserId && userIds.includes(targetUserId)) {
+          const stats = userStats.get(targetUserId)!
+          // For single attribution, use the 'setter' bucket for simplicity
+          stats.setter.sum += cashValue
+          stats.setter.count += 1
+        }
+      } else {
+        // Legacy behavior: add to both rep and setter stats
+        if (repId && userIds.includes(repId)) {
+          const stats = userStats.get(repId)!
+          stats.rep.sum += cashValue
+          stats.rep.count += 1
+        }
+
+        if (setterId && userIds.includes(setterId)) {
+          const stats = userStats.get(setterId)!
+          stats.setter.sum += cashValue
+          stats.setter.count += 1
+        }
       }
     }
 
     // Convert to results format with proper averaging
     return userIds.map(userId => {
       const stats = userStats.get(userId)!
-      const repAvg = stats.rep.count > 0 ? stats.rep.sum / stats.rep.count : 0
-      const setterAvg = stats.setter.count > 0 ? stats.setter.sum / stats.setter.count : 0
       
-      // Determine role and combined value
-      let role: 'setter' | 'rep' | 'both' | 'none'
-      let value: number
-      
-      if (repAvg > 0 && setterAvg > 0) {
-        role = 'both'
-        // For averages, we need to calculate the overall average across all appointments
-        const totalSum = stats.rep.sum + stats.setter.sum
-        const totalCount = stats.rep.count + stats.setter.count
-        value = totalCount > 0 ? totalSum / totalCount : 0
-      } else if (repAvg > 0) {
-        role = 'rep'
-        value = repAvg
-      } else if (setterAvg > 0) {
-        role = 'setter'
-        value = setterAvg
+      if (attributionContext) {
+        // Single attribution context
+        const avg = stats.setter.count > 0 ? stats.setter.sum / stats.setter.count : 0
+        return {
+          userId,
+          value: avg,
+          role: this.determineUserRole(userId, avg, attributionContext)
+        }
       } else {
-        role = 'none'
-        value = 0
+        // Legacy behavior: handle both rep and setter stats
+        const repAvg = stats.rep.count > 0 ? stats.rep.sum / stats.rep.count : 0
+        const setterAvg = stats.setter.count > 0 ? stats.setter.sum / stats.setter.count : 0
+        
+        // Determine role and combined value
+        let role: 'setter' | 'rep' | 'both' | 'none'
+        let value: number
+        
+        if (repAvg > 0 && setterAvg > 0) {
+          role = 'both'
+          // For averages, we need to calculate the overall average across all appointments
+          const totalSum = stats.rep.sum + stats.setter.sum
+          const totalCount = stats.rep.count + stats.setter.count
+          value = totalCount > 0 ? totalSum / totalCount : 0
+        } else if (repAvg > 0) {
+          role = 'rep'
+          value = repAvg
+        } else if (setterAvg > 0) {
+          role = 'setter'
+          value = setterAvg
+        } else {
+          role = 'none'
+          value = 0
+        }
+
+        const result: UserMetricResult = {
+          userId,
+          value,
+          role
+        }
+
+        // Add breakdown for users with both roles
+        if (role === 'both') {
+          result.breakdown = {
+            asRep: repAvg,
+            asSetter: setterAvg
+          }
+        }
+
+        return result
+      }
+    })
+  }
+
+  /**
+   * Process results for single attribution metrics (assigned, booked, or dialer)
+   */
+  private processSingleAttributionResults(
+    data: any[], 
+    userIds: string[], 
+    metric: MetricDefinition,
+    tableType: 'appointments' | 'discoveries' | 'dials'
+  ): UserMetricResult[] {
+    
+    // Map to track values for each user
+    const userValues = new Map<string, number>()
+    
+    // Initialize all users
+    userIds.forEach(userId => {
+      userValues.set(userId, 0)
+    })
+
+    // Process each record based on attribution context
+    for (const record of data) {
+      const repId = record.sales_rep_user_id
+      const setterId = record.setter_user_id
+
+      // Calculate the value for this record based on metric type
+      let recordValue = 1 // Default for COUNT
+      
+      if (metric.query.select[0].includes('SUM(cash_collected)')) {
+        recordValue = Number(record.cash_collected || 0)
       }
 
-      const result: UserMetricResult = {
+      // Attribute based on context
+      let targetUserId: string | null = null
+      
+      switch (metric.attributionContext) {
+        case 'assigned':
+          // For appointments/discoveries: sales_rep_user_id
+          // For dials: not applicable (dials don't have sales_rep_user_id)
+          if (tableType !== 'dials') {
+            targetUserId = repId
+          }
+          break
+          
+        case 'booked':
+          // For appointments: setter_user_id (who booked it)
+          // For discoveries: setter_user_id (who was assigned)
+          // For dials: setter_user_id (who made the dial)
+          targetUserId = setterId
+          break
+          
+        case 'dialer':
+          // Only for dials: setter_user_id (who made the dial)
+          if (tableType === 'dials') {
+            targetUserId = setterId
+          }
+          break
+      }
+
+      // Add to the target user's value
+      if (targetUserId && userIds.includes(targetUserId)) {
+        const currentValue = userValues.get(targetUserId)!
+        userValues.set(targetUserId, currentValue + recordValue)
+      }
+    }
+
+    // Convert to results format
+    return userIds.map(userId => {
+      const value = userValues.get(userId)!
+      
+      return {
         userId,
         value,
-        role
+        role: this.determineUserRole(userId, value, metric.attributionContext!)
       }
-
-      // Add breakdown for users with both roles
-      if (role === 'both') {
-        result.breakdown = {
-          asRep: repAvg,
-          asSetter: setterAvg
-        }
-      }
-
-      return result
     })
+  }
+
+  /**
+   * Determine user role based on attribution context
+   */
+  private determineUserRole(
+    userId: string, 
+    value: number, 
+    context: 'assigned' | 'booked' | 'dialer'
+  ): 'setter' | 'rep' | 'both' | 'none' {
+    if (value === 0) return 'none'
+    
+    switch (context) {
+      case 'assigned':
+        return 'rep'
+      case 'booked':
+        return 'setter'
+      case 'dialer':
+        return 'setter'
+      default:
+        return 'none'
+    }
   }
 
   /**
@@ -338,7 +474,12 @@ export class UserMetricsEngine {
     
     // For average metrics, we need to track both sum and count
     if (isAverageMetric && isCashCollectedMetric) {
-      return this.processAverageCashResults(data, userIds, tableType)
+      return this.processAverageCashResults(data, userIds, tableType, metric.attributionContext)
+    }
+    
+    // Handle attribution context for single attribution metrics
+    if (metric.attributionContext) {
+      return this.processSingleAttributionResults(data, userIds, metric, tableType)
     }
     
     // Group data by user and role

@@ -47,6 +47,7 @@ export interface MetricDefinition {
   breakdownType: BreakdownType
   query: MetricQuery
   unit?: 'count' | 'currency' | 'percent' | 'seconds' | 'days'
+  attributionContext?: 'assigned' | 'booked' | 'dialer' // Context for user attribution
 }
 
 export interface MetricRequest {
