@@ -258,11 +258,18 @@ export class UserMetricsEngine {
       })
     })
 
-    // Process each record based on attribution context
+          // Process each record based on attribution context
     for (const record of data) {
       const repId = record.sales_rep_user_id
       const setterId = record.setter_user_id
       const cashValue = Number(record.cash_collected || 0)
+      
+      // Debug logging for cash values
+      if (cashValue > 1000000) {
+        console.warn(`🚨 Large cash value detected: ${cashValue} for record:`, {
+          repId, setterId, originalValue: record.cash_collected
+        })
+      }
 
       // Handle single attribution context
       if (attributionContext) {
