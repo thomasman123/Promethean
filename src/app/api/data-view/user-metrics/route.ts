@@ -109,6 +109,7 @@ export async function POST(request: NextRequest) {
     })
 
     console.log('Found profiles:', profiles)
+    console.log('Account access data:', accountAccess)
     console.log('Account access map:', Object.fromEntries(accountRoleMap))
 
     // Calculate metrics for each user
@@ -116,7 +117,8 @@ export async function POST(request: NextRequest) {
       profiles.map(async (profile) => {
         try {
           const accountRole = accountRoleMap.get(profile.id) || profile.role
-          console.log(`Calculating metrics for user: ${profile.full_name} (${profile.email}) - Profile Role: ${profile.role}, Account Role: ${accountRole}`)
+          const foundInMap = accountRoleMap.has(profile.id)
+          console.log(`Calculating metrics for user: ${profile.full_name} (${profile.email}) - Profile Role: ${profile.role}, Account Role: ${accountRole}, Found in map: ${foundInMap}`)
           
           // Determine the appropriate filter based on user role and metric
           let filters: any = {
