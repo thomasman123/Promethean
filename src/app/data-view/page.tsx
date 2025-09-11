@@ -58,9 +58,29 @@ export default function DataViewPage() {
   // Load metric data when users change and we have metric columns
   useEffect(() => {
     if (metricColumns.length > 0 && users.length > 0) {
+      console.log('🔄 Reloading metrics due to users/dateRange change:', { 
+        metricColumns: metricColumns.length, 
+        users: users.length, 
+        dateRange: { 
+          from: dateRange.from?.toISOString(), 
+          to: dateRange.to?.toISOString() 
+        } 
+      })
       loadAllMetricData(metricColumns)
     }
   }, [users.length, selectedAccountId, dateRange]) // Add dateRange dependency
+
+  // Reload metrics when dateRange changes (specifically for topbar date picker)
+  useEffect(() => {
+    if (metricColumns.length > 0 && users.length > 0 && dateRange.from && dateRange.to) {
+      console.log('📅 Date range changed, reloading metrics:', {
+        from: dateRange.from.toISOString(),
+        to: dateRange.to.toISOString(),
+        metricsCount: metricColumns.length
+      })
+      loadAllMetricData(metricColumns)
+    }
+  }, [dateRange.from, dateRange.to])
 
   // Load table configuration and metric columns
   useEffect(() => {
