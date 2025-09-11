@@ -98,18 +98,18 @@ export async function GET() {
       
       if (isGlobalAdmin) {
         // Global admins see ALL accounts
-        const { data, error } = await supabase
-          .from('accounts')
-          .select('id, name, description')
-          .eq('is_active', true)
-          .order('name')
+      const { data, error } = await supabase
+        .from('accounts')
+        .select('id, name, description')
+        .eq('is_active', true)
+        .order('name')
 
-        if (error) {
+      if (error) {
           console.error('❌ [accounts-simple] Global admin accounts query error:', error)
-          return NextResponse.json({ accounts: [] })
-        }
-        
-        accounts = data || []
+        return NextResponse.json({ accounts: [] })
+      }
+      
+      accounts = data || []
         console.log('✅ [accounts-simple] Global admin accounts loaded:', accounts.length, 'accounts')
       } else {
         // Account-level admins/moderators only see accounts they have explicit access to

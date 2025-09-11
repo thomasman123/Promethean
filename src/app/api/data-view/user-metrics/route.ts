@@ -126,11 +126,15 @@ export async function POST(request: NextRequest) {
 
           // Add role-specific filters based on the user's ACCOUNT role and the metric table
           if (metricDefinition.query.table === 'appointments') {
-            // Special handling for Total Appointments - always filter by sales_rep_user_id
-            if (metricName === 'total_appointments') {
+            // For appointment metrics, filter based on user's actual role
+            if (accountRole === 'sales_rep') {
               filters.repIds = [profile.id]
-              console.log(`Total Appointments: filtering by repIds for ${profile.full_name}`)
+              console.log(`Appointments: filtering by repIds for ${profile.full_name} (sales_rep)`)
             } else {
+              // For setters and others, filter by setter role
+              filters.setterIds = [profile.id]
+              console.log(`Appointments: filtering by setterIds for ${profile.full_name} (${accountRole})`)
+            }
               // For other appointment metrics, use role-based filtering
               if (accountRole === 'sales_rep') {
                 filters.repIds = [profile.id]
