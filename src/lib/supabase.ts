@@ -1,10 +1,19 @@
 import { createBrowserClient } from '@supabase/ssr'
+import { createClient } from '@supabase/supabase-js'
 import { Database } from './database.types'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
 export const supabase = createBrowserClient<Database>(supabaseUrl, supabaseAnonKey)
+
+// Service role client for server-side operations that need to bypass RLS
+export const supabaseService = createClient<Database>(supabaseUrl, supabaseServiceKey, {
+  auth: {
+    persistSession: false,
+  }
+})
 
 // Export types for use in components
 export type Tables = Database['public']['Tables']
