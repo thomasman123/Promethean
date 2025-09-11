@@ -116,9 +116,27 @@ export class UserMetricsEngine {
     const whereConditions = [
       "account_id = $account_id",
       "created_at >= $start_date::timestamp",
-      "created_at <= $end_date::timestamp",
-      "(sales_rep_user_id = ANY($user_ids::uuid[]) OR setter_user_id = ANY($user_ids::uuid[]))"
+      "created_at <= $end_date::timestamp"
     ]
+
+    // Create individual user parameter conditions instead of array
+    const userConditions: string[] = []
+    const params: Record<string, any> = {
+      account_id: accountId,
+      start_date: startDate,
+      end_date: endDate
+    }
+
+    // Add individual user parameters
+    userIds.forEach((userId, index) => {
+      const paramName = `user_id_${index}`
+      params[paramName] = userId
+      userConditions.push(`sales_rep_user_id = $${paramName} OR setter_user_id = $${paramName}`)
+    })
+
+    if (userConditions.length > 0) {
+      whereConditions.push(`(${userConditions.join(' OR ')})`)
+    }
 
     // Add metric-specific WHERE conditions
     if (metric.query.where) {
@@ -144,18 +162,29 @@ export class UserMetricsEngine {
       aggregateFunction = selectField.replace(' as value', '')
     }
 
+    // Build user case conditions for the CTE
+    const userCaseConditions = userIds.map((userId, index) => {
+      const paramName = `user_id_${index}`
+      return `WHEN sales_rep_user_id = $${paramName} THEN $${paramName}
+              WHEN setter_user_id = $${paramName} THEN $${paramName}`
+    }).join('\n        ')
+
+    const roleCaseConditions = userIds.map((userId, index) => {
+      const paramName = `user_id_${index}`
+      return `WHEN sales_rep_user_id = $${paramName} THEN 'rep'
+              WHEN setter_user_id = $${paramName} THEN 'setter'`
+    }).join('\n        ')
+
     // Build SQL that groups by user and role
     const sql = `
       WITH user_metrics AS (
         SELECT 
           CASE 
-            WHEN sales_rep_user_id = ANY($user_ids::uuid[]) THEN sales_rep_user_id
-            WHEN setter_user_id = ANY($user_ids::uuid[]) THEN setter_user_id
+            ${userCaseConditions}
             ELSE NULL
           END as user_id,
           CASE 
-            WHEN sales_rep_user_id = ANY($user_ids::uuid[]) THEN 'rep'
-            WHEN setter_user_id = ANY($user_ids::uuid[]) THEN 'setter'
+            ${roleCaseConditions}
             ELSE 'unknown'
           END as user_role,
           *
@@ -173,13 +202,7 @@ export class UserMetricsEngine {
     `
 
     console.log('Executing appointment metrics SQL:', sql)
-
-    const params = {
-      account_id: accountId,
-      start_date: startDate,
-      end_date: endDate,
-      user_ids: userIds
-    }
+    console.log('Parameters:', params)
 
     const { data, error } = await supabaseService
       .rpc('execute_metrics_query_array', {
@@ -211,9 +234,26 @@ export class UserMetricsEngine {
     const whereConditions = [
       "account_id = $account_id",
       "created_at >= $start_date::timestamp", 
-      "created_at <= $end_date::timestamp",
-      "(sales_rep_user_id = ANY($user_ids::uuid[]) OR setter_user_id = ANY($user_ids::uuid[]))"
+      "created_at <= $end_date::timestamp"
     ]
+
+    // Create individual user parameter conditions
+    const userConditions: string[] = []
+    const params: Record<string, any> = {
+      account_id: accountId,
+      start_date: startDate,
+      end_date: endDate
+    }
+
+    userIds.forEach((userId, index) => {
+      const paramName = `user_id_${index}`
+      params[paramName] = userId
+      userConditions.push(`sales_rep_user_id = $${paramName} OR setter_user_id = $${paramName}`)
+    })
+
+    if (userConditions.length > 0) {
+      whereConditions.push(`(${userConditions.join(' OR ')})`)
+    }
 
     if (metric.query.where) {
       whereConditions.push(...metric.query.where)
@@ -236,17 +276,27 @@ export class UserMetricsEngine {
       aggregateFunction = selectField.replace(' as value', '')
     }
 
+    const userCaseConditions = userIds.map((userId, index) => {
+      const paramName = `user_id_${index}`
+      return `WHEN sales_rep_user_id = $${paramName} THEN $${paramName}
+              WHEN setter_user_id = $${paramName} THEN $${paramName}`
+    }).join('\n        ')
+
+    const roleCaseConditions = userIds.map((userId, index) => {
+      const paramName = `user_id_${index}`
+      return `WHEN sales_rep_user_id = $${paramName} THEN 'rep'
+              WHEN setter_user_id = $${paramName} THEN 'setter'`
+    }).join('\n        ')
+
     const sql = `
       WITH user_metrics AS (
         SELECT 
           CASE 
-            WHEN sales_rep_user_id = ANY($user_ids::uuid[]) THEN sales_rep_user_id
-            WHEN setter_user_id = ANY($user_ids::uuid[]) THEN setter_user_id
+            ${userCaseConditions}
             ELSE NULL
           END as user_id,
           CASE 
-            WHEN sales_rep_user_id = ANY($user_ids::uuid[]) THEN 'rep'
-            WHEN setter_user_id = ANY($user_ids::uuid[]) THEN 'setter'
+            ${roleCaseConditions}
             ELSE 'unknown'
           END as user_role,
           *
@@ -262,13 +312,6 @@ export class UserMetricsEngine {
       GROUP BY user_id, user_role
       ORDER BY user_id, user_role
     `
-
-    const params = {
-      account_id: accountId,
-      start_date: startDate,
-      end_date: endDate,
-      user_ids: userIds
-    }
 
     const { data, error } = await supabaseService
       .rpc('execute_metrics_query_array', {
@@ -298,9 +341,26 @@ export class UserMetricsEngine {
     const whereConditions = [
       "account_id = $account_id",
       "created_at >= $start_date::timestamp",
-      "created_at <= $end_date::timestamp", 
-      "setter_user_id = ANY($user_ids::uuid[])"
+      "created_at <= $end_date::timestamp"
     ]
+
+    // Create individual user parameter conditions
+    const userConditions: string[] = []
+    const params: Record<string, any> = {
+      account_id: accountId,
+      start_date: startDate,
+      end_date: endDate
+    }
+
+    userIds.forEach((userId, index) => {
+      const paramName = `user_id_${index}`
+      params[paramName] = userId
+      userConditions.push(`setter_user_id = $${paramName}`)
+    })
+
+    if (userConditions.length > 0) {
+      whereConditions.push(`(${userConditions.join(' OR ')})`)
+    }
 
     if (metric.query.where) {
       whereConditions.push(...metric.query.where)
@@ -333,13 +393,6 @@ export class UserMetricsEngine {
       GROUP BY setter_user_id
       ORDER BY setter_user_id
     `
-
-    const params = {
-      account_id: accountId,
-      start_date: startDate,
-      end_date: endDate,
-      user_ids: userIds
-    }
 
     const { data, error } = await supabaseService
       .rpc('execute_metrics_query_array', {
