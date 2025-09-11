@@ -160,16 +160,8 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // Create display value based on role detection
+      // Create clean display value without role suffixes
       let displayValue = metricResult.value.toString()
-      
-      if (metricResult.role === 'both' && metricResult.breakdown) {
-        displayValue = `${metricResult.value} (${metricResult.breakdown.asSetter} setter + ${metricResult.breakdown.asRep} rep)`
-      } else if (metricResult.role === 'rep') {
-        displayValue = `${metricResult.value} (rep)`
-      } else if (metricResult.role === 'setter') {
-        displayValue = `${metricResult.value} (setter)`
-      }
 
       return {
         userId: profile.id,
