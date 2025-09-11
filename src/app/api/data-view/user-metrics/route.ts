@@ -75,30 +75,47 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Get user profiles for context
-    const { data: profiles } = await supabase
+    // Get user profiles for context with their account access
+    const { data: profiles, error: profilesError } = await supabase
       .from('profiles')
-      .select(`
-        id, 
-        full_name, 
-        email, 
-        role,
-        account_access!inner(role)
-      `)
+      .select('id, full_name, email, role')
       .in('id', userIds)
-      .eq('account_access.account_id', accountId)
+
+    if (profilesError) {
+      console.error('Error fetching profiles:', profilesError)
+      return NextResponse.json({ error: 'Failed to fetch user profiles' }, { status: 500 })
+    }
 
     if (!profiles || profiles.length === 0) {
       return NextResponse.json({ error: 'No users found' }, { status: 404 })
     }
 
-    console.log('Found profiles with account access:', profiles)
+    // Get account access for these users
+    const { data: accountAccess, error: accessError } = await supabase
+      .from('account_access')
+      .select('user_id, role')
+      .eq('account_id', accountId)
+      .in('user_id', userIds)
+
+    if (accessError) {
+      console.error('Error fetching account access:', accessError)
+      return NextResponse.json({ error: 'Failed to fetch account access' }, { status: 500 })
+    }
+
+    // Create a map of user_id to account role
+    const accountRoleMap = new Map()
+    accountAccess?.forEach(access => {
+      accountRoleMap.set(access.user_id, access.role)
+    })
+
+    console.log('Found profiles:', profiles)
+    console.log('Account access map:', Object.fromEntries(accountRoleMap))
 
     // Calculate metrics for each user
     const userMetrics = await Promise.all(
       profiles.map(async (profile) => {
         try {
-          const accountRole = (profile.account_access as any)[0]?.role || profile.role
+          const accountRole = accountRoleMap.get(profile.id) || profile.role
           console.log(`Calculating metrics for user: ${profile.full_name} (${profile.email}) - Profile Role: ${profile.role}, Account Role: ${accountRole}`)
           
           // Determine the appropriate filter based on user role and metric
@@ -112,6 +129,7 @@ export async function POST(request: NextRequest) {
             // Special handling for Total Appointments - always filter by sales_rep_user_id
             if (metricName === 'total_appointments') {
               filters.repIds = [profile.id]
+              console.log(`Total Appointments: filtering by repIds for ${profile.full_name}`)
             } else {
               // For other appointment metrics, use role-based filtering
               if (accountRole === 'sales_rep') {
