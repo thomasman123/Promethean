@@ -235,6 +235,95 @@ export class UserMetricsEngine {
   }
 
   /**
+   * Process results for average cash collected metrics
+   */
+  private processAverageCashResults(
+    data: any[], 
+    userIds: string[], 
+    tableType: 'appointments' | 'discoveries' | 'dials'
+  ): UserMetricResult[] {
+    
+    // Track sum and count for each user and role
+    const userStats = new Map<string, { 
+      rep: { sum: number, count: number }, 
+      setter: { sum: number, count: number } 
+    }>()
+    
+    // Initialize all users
+    userIds.forEach(userId => {
+      userStats.set(userId, { 
+        rep: { sum: 0, count: 0 }, 
+        setter: { sum: 0, count: 0 } 
+      })
+    })
+
+    // Process each record
+    for (const record of data) {
+      const repId = record.sales_rep_user_id
+      const setterId = record.setter_user_id
+      const cashValue = Number(record.cash_collected || 0)
+
+      // Add to rep stats
+      if (repId && userIds.includes(repId)) {
+        const stats = userStats.get(repId)!
+        stats.rep.sum += cashValue
+        stats.rep.count += 1
+      }
+
+      // Add to setter stats
+      if (setterId && userIds.includes(setterId)) {
+        const stats = userStats.get(setterId)!
+        stats.setter.sum += cashValue
+        stats.setter.count += 1
+      }
+    }
+
+    // Convert to results format with proper averaging
+    return userIds.map(userId => {
+      const stats = userStats.get(userId)!
+      const repAvg = stats.rep.count > 0 ? stats.rep.sum / stats.rep.count : 0
+      const setterAvg = stats.setter.count > 0 ? stats.setter.sum / stats.setter.count : 0
+      
+      // Determine role and combined value
+      let role: 'setter' | 'rep' | 'both' | 'none'
+      let value: number
+      
+      if (repAvg > 0 && setterAvg > 0) {
+        role = 'both'
+        // For averages, we need to calculate the overall average across all appointments
+        const totalSum = stats.rep.sum + stats.setter.sum
+        const totalCount = stats.rep.count + stats.setter.count
+        value = totalCount > 0 ? totalSum / totalCount : 0
+      } else if (repAvg > 0) {
+        role = 'rep'
+        value = repAvg
+      } else if (setterAvg > 0) {
+        role = 'setter'
+        value = setterAvg
+      } else {
+        role = 'none'
+        value = 0
+      }
+
+      const result: UserMetricResult = {
+        userId,
+        value,
+        role
+      }
+
+      // Add breakdown for users with both roles
+      if (role === 'both') {
+        result.breakdown = {
+          asRep: repAvg,
+          asSetter: setterAvg
+        }
+      }
+
+      return result
+    })
+  }
+
+  /**
    * Process raw data results into user metrics
    */
   private processResults(
@@ -243,6 +332,14 @@ export class UserMetricsEngine {
     metric: MetricDefinition, 
     tableType: 'appointments' | 'discoveries' | 'dials'
   ): UserMetricResult[] {
+    
+    const isAverageMetric = metric.query.select[0].includes('AVG(')
+    const isCashCollectedMetric = metric.query.select[0].includes('cash_collected')
+    
+    // For average metrics, we need to track both sum and count
+    if (isAverageMetric && isCashCollectedMetric) {
+      return this.processAverageCashResults(data, userIds, tableType)
+    }
     
     // Group data by user and role
     const userStats = new Map<string, { rep: number, setter: number }>()
