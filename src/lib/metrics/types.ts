@@ -48,6 +48,7 @@ export interface MetricDefinition {
   query: MetricQuery
   unit?: 'count' | 'currency' | 'percent' | 'seconds' | 'days'
   attributionContext?: 'assigned' | 'booked' | 'dialer' // Context for user attribution
+  isSpecialMetric?: boolean // Flag to indicate this metric uses custom SQL handling in the engine
 }
 
 export interface MetricRequest {
