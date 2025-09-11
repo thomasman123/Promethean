@@ -53,15 +53,26 @@ export async function POST(request: NextRequest) {
     }
 
     // Check user access to account
-    const { data: userAccess } = await supabase
-      .from('account_access')
+    const { data: profileData } = await supabase
+      .from('profiles')
       .select('role')
-      .eq('user_id', user.id)
-      .eq('account_id', accountId)
+      .eq('id', user.id)
       .single()
 
-    if (!userAccess) {
-      return NextResponse.json({ error: 'Access denied to this account' }, { status: 403 })
+    const isGlobalAdmin = profileData?.role === 'admin'
+
+    if (!isGlobalAdmin) {
+      // Non-global admins need explicit account access
+      const { data: userAccess } = await supabase
+        .from('account_access')
+        .select('role')
+        .eq('user_id', user.id)
+        .eq('account_id', accountId)
+        .single()
+
+      if (!userAccess) {
+        return NextResponse.json({ error: 'Access denied to this account' }, { status: 403 })
+      }
     }
 
     // Get user profiles for context
@@ -78,69 +89,93 @@ export async function POST(request: NextRequest) {
     const userMetrics = await Promise.all(
       profiles.map(async (profile) => {
         try {
+          console.log(`Calculating metrics for user: ${profile.full_name} (${profile.email}) - Role: ${profile.role}`)
+          
           // Determine the appropriate filter based on user role and metric
           let filters: any = {
             dateRange,
             accountId,
           }
 
-          // Add role-specific filters based on the user's role
-          if (profile.role === 'setter' || profile.role === 'admin') {
-            filters.setterIds = [profile.id]
-          } else if (profile.role === 'sales_rep' || profile.role === 'admin') {
-            filters.repIds = [profile.id]
+          // Add role-specific filters based on the user's role and the metric table
+          if (metricDefinition.query.table === 'appointments') {
+            // For appointments, filter by sales_rep_user_id for sales reps and setter_user_id for setters
+            if (profile.role === 'sales_rep') {
+              filters.repIds = [profile.id]
+            } else if (profile.role === 'setter') {
+              filters.setterIds = [profile.id]
+            } else if (profile.role === 'admin') {
+              // For admin users, show metrics for both setter and rep activities
+              const setterRequest = createMetricRequest(metricName, accountId, dateRange.start, dateRange.end, {
+                setterIds: [profile.id]
+              })
+              const repRequest = createMetricRequest(metricName, accountId, dateRange.start, dateRange.end, {
+                repIds: [profile.id]
+              })
+
+              const [setterResult, repResult] = await Promise.all([
+                metricsEngine.execute(setterRequest),
+                metricsEngine.execute(repRequest)
+              ])
+
+              // Combine results based on metric type
+              let combinedValue = 0
+              if (metricDefinition.unit === 'count' || metricDefinition.unit === 'currency') {
+                // For counts and currency, add them together
+                combinedValue = (setterResult.result.data as any).value + (repResult.result.data as any).value
+              } else if (metricDefinition.unit === 'percent') {
+                // For percentages, we need to recalculate based on combined data
+                // This is complex and might require custom logic per metric
+                combinedValue = Math.max((setterResult.result.data as any).value, (repResult.result.data as any).value)
+              } else {
+                // For other units, take the maximum or average
+                combinedValue = ((setterResult.result.data as any).value + (repResult.result.data as any).value) / 2
+              }
+
+              console.log(`Admin user ${profile.full_name} - Setter: ${(setterResult.result.data as any).value}, Rep: ${(repResult.result.data as any).value}, Combined: ${combinedValue}`)
+
+              return {
+                userId: profile.id,
+                name: profile.full_name,
+                email: profile.email,
+                role: profile.role,
+                value: combinedValue,
+                rawSetterValue: (setterResult.result.data as any).value,
+                rawRepValue: (repResult.result.data as any).value
+              }
+            }
+          } else if (metricDefinition.query.table === 'dials') {
+            // For dials, filter by setter_user_id
+            if (profile.role === 'setter' || profile.role === 'admin') {
+              filters.setterIds = [profile.id]
+            }
+          } else if (metricDefinition.query.table === 'discoveries') {
+            // For discoveries, filter by setter_user_id for setters and sales_rep_user_id for reps
+            if (profile.role === 'sales_rep') {
+              filters.repIds = [profile.id]
+            } else if (profile.role === 'setter') {
+              filters.setterIds = [profile.id]
+            } else if (profile.role === 'admin') {
+              filters.setterIds = [profile.id]
+              filters.repIds = [profile.id]
+            }
           }
 
-          // For admin users, we might want to show combined metrics
-          if (profile.role === 'admin') {
-            // For admin, show metrics for both setter and rep activities
-            // We'll need to make two requests and combine them
-            const setterRequest = createMetricRequest(metricName, accountId, dateRange.start, dateRange.end, {
-              setterIds: [profile.id]
-            })
-            const repRequest = createMetricRequest(metricName, accountId, dateRange.start, dateRange.end, {
-              repIds: [profile.id]
-            })
-
-            const [setterResult, repResult] = await Promise.all([
-              metricsEngine.execute(setterRequest),
-              metricsEngine.execute(repRequest)
-            ])
-
-            // Combine results based on metric type
-            let combinedValue = 0
-            if (metricDefinition.unit === 'count' || metricDefinition.unit === 'currency') {
-              // For counts and currency, add them together
-              combinedValue = (setterResult.result.data as any).value + (repResult.result.data as any).value
-            } else if (metricDefinition.unit === 'percent') {
-              // For percentages, we need to recalculate based on combined data
-              // This is complex and might require custom logic per metric
-              combinedValue = Math.max((setterResult.result.data as any).value, (repResult.result.data as any).value)
-            } else {
-              // For other units, take the maximum or average
-              combinedValue = ((setterResult.result.data as any).value + (repResult.result.data as any).value) / 2
-            }
-
-            return {
-              userId: profile.id,
-              name: profile.full_name,
-              email: profile.email,
-              role: profile.role,
-              value: combinedValue,
-              rawSetterValue: (setterResult.result.data as any).value,
-              rawRepValue: (repResult.result.data as any).value
-            }
-          } else {
-            // For regular users, calculate single metric
+          // For non-admin users or non-appointments metrics, calculate single metric
+          if (profile.role !== 'admin' || metricDefinition.query.table !== 'appointments') {
             const request = createMetricRequest(metricName, accountId, dateRange.start, dateRange.end, filters)
+            console.log(`Executing metric request for ${profile.full_name}:`, request)
             const result = await metricsEngine.execute(request)
+            
+            const value = (result.result.data as any).value || 0
+            console.log(`Result for ${profile.full_name}: ${value}`)
 
             return {
               userId: profile.id,
               name: profile.full_name,
               email: profile.email,
               role: profile.role,
-              value: (result.result.data as any).value || 0
+              value: value
             }
           }
         } catch (error) {

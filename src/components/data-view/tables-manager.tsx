@@ -56,6 +56,20 @@ export function TablesManager({ accountId, currentTableId, onTableChange }: Tabl
     loadTables()
   }, [accountId])
 
+  // Load last opened table from localStorage when tables change
+  useEffect(() => {
+    if (tables.length > 0 && !currentTableId) {
+      const lastTableId = localStorage.getItem(`lastTableId_${accountId}`)
+      if (lastTableId && tables.find(t => t.id === lastTableId)) {
+        // Use the last opened table if it exists
+        onTableChange(lastTableId)
+      } else if (tables.length > 0) {
+        // Fall back to the first table if no last table is stored
+        onTableChange(tables[0].id)
+      }
+    }
+  }, [tables, accountId, currentTableId, onTableChange])
+
   async function loadTables() {
     console.log('Loading tables for accountId:', accountId)
     
