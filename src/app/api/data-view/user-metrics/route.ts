@@ -161,6 +161,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Create clean display value without role suffixes
+      // Note: Formatting is now handled in the frontend based on column type
       let displayValue = metricResult.value.toString()
 
       return {
