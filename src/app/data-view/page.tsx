@@ -253,30 +253,30 @@ export default function DataViewPage() {
           <Button
             variant="ghost"
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            className="h-auto p-1 text-[10px] font-medium leading-tight"
+            className="h-auto p-1 text-xs font-medium leading-tight"
           >
             Name
-            <ArrowUpDown className="ml-0.5 h-2 w-2" />
+            <ArrowUpDown className="ml-0.5 h-3 w-3" />
           </Button>
         )
       },
-      cell: ({ row }) => <div className="font-medium text-xs px-1">{row.getValue("name")}</div>,
+      cell: ({ row }) => <div className="font-medium text-sm">{row.getValue("name")}</div>,
     },
     {
       accessorKey: "email",
-      header: () => <div className="text-[10px] font-medium px-1">Email</div>,
-      cell: ({ row }) => <div className="text-muted-foreground text-xs px-1">{row.getValue("email")}</div>,
+      header: () => <div className="text-xs font-medium">Email</div>,
+      cell: ({ row }) => <div className="text-muted-foreground text-sm">{row.getValue("email")}</div>,
     },
     {
       accessorKey: "role",
-      header: () => <div className="text-[10px] font-medium px-1">Role</div>,
+      header: () => <div className="text-xs font-medium">Role</div>,
       cell: ({ row }) => {
         const role = row.getValue("role") as string
-        return (
-          <div className="capitalize text-xs px-1">
-            {role === 'setter' ? 'Setter' : 'Rep'}
-          </div>
-        )
+                  return (
+            <div className="capitalize text-sm">
+              {role === 'setter' ? 'Setter' : 'Rep'}
+            </div>
+          )
       },
     },
   ]
@@ -296,10 +296,10 @@ export default function DataViewPage() {
               <Button
                 variant="ghost"
                 onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-                className="h-auto p-1 text-[10px] font-medium leading-tight whitespace-nowrap"
+                className="h-auto p-1 text-xs font-medium leading-tight whitespace-nowrap"
               >
                 <span className="truncate max-w-[120px]">{col.header}</span>
-                <ArrowUpDown className="ml-0.5 h-2 w-2 flex-shrink-0" />
+                <ArrowUpDown className="ml-0.5 h-3 w-3 flex-shrink-0" />
               </Button>
               {col.metricName && (
                 <DropdownMenu>
@@ -309,7 +309,7 @@ export default function DataViewPage() {
                       size="sm"
                       className="absolute -right-1 top-0 h-auto w-auto p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
                     >
-                      <MoreHorizontal className="h-2 w-2" />
+                      <MoreHorizontal className="h-3 w-3" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-32">
@@ -332,20 +332,20 @@ export default function DataViewPage() {
           
           // Use display value if available, otherwise format based on column type
           if (displayValue) {
-            return <div className="text-center text-xs font-medium px-1">{displayValue}</div>
+            return <div className="text-center text-sm font-medium">{displayValue}</div>
           }
           
           // Format based on column type
           if (col.type === 'number') {
-            return <div className="text-center text-xs font-medium px-1">{value || 0}</div>
+            return <div className="text-center text-sm font-medium">{value || 0}</div>
           }
           if (col.type === 'percentage') {
-            return <div className="text-center text-xs font-medium px-1">{(value || 0).toFixed(1)}%</div>
+            return <div className="text-center text-sm font-medium">{(value || 0).toFixed(1)}%</div>
           }
           if (col.type === 'currency') {
-            return <div className="text-center text-xs font-medium px-1">${(value || 0).toFixed(2)}</div>
+            return <div className="text-center text-sm font-medium">${(value || 0).toFixed(2)}</div>
           }
-          return <div className="text-center text-xs px-1">{value || '-'}</div>
+          return <div className="text-center text-sm">{value || '-'}</div>
         },
       }))
 
