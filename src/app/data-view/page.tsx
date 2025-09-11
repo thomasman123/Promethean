@@ -425,11 +425,23 @@ export default function DataViewPage() {
   }
 
   const loadMetricData = async (metricColumn: MetricColumn) => {
-    if (!selectedAccountId || users.length === 0) return
+    if (!selectedAccountId || users.length === 0) {
+      console.log('loadMetricData: Missing data', { selectedAccountId, usersLength: users.length })
+      return
+    }
 
+    console.log('loadMetricData: Starting for metric', metricColumn.metricName, 'with users:', users.length)
     setMetricsLoading(true)
     try {
       const userIds = users.map(user => user.id)
+      
+      console.log('loadMetricData: Making API call with', { 
+        accountId: selectedAccountId, 
+        userIds, 
+        metricName: metricColumn.metricName, 
+        dateRange, 
+        roleFilter 
+      })
       
       const response = await fetch('/api/data-view/user-metrics', {
         method: 'POST',
@@ -446,17 +458,22 @@ export default function DataViewPage() {
       })
 
       if (!response.ok) {
+        const errorText = await response.text()
+        console.error('loadMetricData: API error', response.status, errorText)
         throw new Error('Failed to load metric data')
       }
 
       const result = await response.json()
+      console.log('loadMetricData: API result', result)
       
       // Update users with metric data
       setUsers(prev => prev.map(user => {
         const userMetric = result.userMetrics.find((um: any) => um.userId === user.id)
+        const value = userMetric?.value || 0
+        console.log(`loadMetricData: Setting ${metricColumn.id} = ${value} for user ${user.name}`)
         return {
           ...user,
-          [metricColumn.id]: userMetric?.value || 0
+          [metricColumn.id]: value
         }
       }))
 
