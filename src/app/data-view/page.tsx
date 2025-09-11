@@ -299,7 +299,7 @@ export default function DataViewPage() {
                     <Button
                       variant="ghost"
                       onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-                      className="h-auto p-1 text-xs font-medium leading-tight whitespace-nowrap"
+                      className="h-auto p-2 text-xs font-medium leading-tight whitespace-nowrap rounded-full transition-all duration-200 hover:bg-accent/50 focus:outline-none focus:ring-2 focus:ring-primary/20"
                     >
                       <span className="truncate max-w-[60px]">{col.header}</span>
                       <ArrowUpDown className="ml-0.5 h-3 w-3 flex-shrink-0" />
