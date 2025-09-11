@@ -259,10 +259,12 @@ export async function POST(request: NextRequest) {
               setterIds: filters.setterIds
             })
             console.log(`Executing metric request for ${profile.full_name} (${accountRole}):`, request)
+            console.error(`DEBUG: About to execute metrics for ${profile.full_name} with filters:`, JSON.stringify(filters))
             const result = await metricsEngine.execute(request)
             
             const value = (result.result.data as any).value || 0
             console.log(`Result for ${profile.full_name}: ${value}`)
+            console.error(`DEBUG: Result for ${profile.full_name}: ${value}, result object:`, JSON.stringify(result))
 
             // Create display value with role label for appointments
             let displayValue = value.toString()
