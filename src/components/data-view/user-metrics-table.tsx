@@ -62,7 +62,9 @@ interface UserMetricsTableProps {
 export function UserMetricsTable({ data, columns, onAddColumn, onRemoveColumn, loading }: UserMetricsTableProps) {
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
-  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
+  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({
+    // Ensure all columns are visible by default
+  })
   const [rowSelection, setRowSelection] = React.useState({})
 
   const table = useReactTable({
