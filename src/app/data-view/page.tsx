@@ -286,8 +286,10 @@ export default function DataViewPage() {
     if (!tableConfig?.columns) return baseColumns
     
     // Add dynamic columns based on table configuration
+    // Skip columns that are already in baseColumns (name, email, role)
+    const baseColumnIds = baseColumns.map(col => (col as any).accessorKey).filter(Boolean)
     const dynamicColumns = tableConfig.columns
-      .filter((col: any) => col.id !== 'name') // Don't duplicate name column
+      .filter((col: any) => !baseColumnIds.includes(col.field))
       .map((col: any) => ({
         accessorKey: col.field,
         header: ({ column }: any) => {
@@ -572,8 +574,8 @@ export default function DataViewPage() {
           name: 'User Metrics',
           description: 'Default table for viewing user performance metrics',
           columns: [
-            { id: 'name', field: 'name', header: 'Name', type: 'text' },
-            { id: 'role', field: 'role', header: 'Role', type: 'text' }
+            // Base columns (name, email, role) are now handled by baseColumns
+            // Only store metric/custom columns in the table configuration
           ],
           filters: { roles: [] },
           is_default: true,

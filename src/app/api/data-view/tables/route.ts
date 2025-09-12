@@ -109,8 +109,8 @@ export async function POST(request: NextRequest) {
         name: name.trim(),
         description: description?.trim() || null,
         columns: [
-          { id: 'name', field: 'name', header: 'Name', type: 'text' },
-          { id: 'role', field: 'role', header: 'Role', type: 'text' }
+          // Base columns (name, email, role) are now handled by baseColumns in the frontend
+          // Only store metric/custom columns in the table configuration
         ],
         filters: { roles: [] },
         created_by: user.id
