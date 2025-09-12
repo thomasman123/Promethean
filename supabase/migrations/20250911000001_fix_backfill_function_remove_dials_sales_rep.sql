@@ -1,7 +1,10 @@
 -- Fix the backfill_user_data_on_invitation function to remove sales_rep_user_id references for dials table
 -- since dials table doesn't have a sales_rep_user_id column
 
-CREATE OR REPLACE FUNCTION public.backfill_user_data_on_invitation(
+-- Drop the existing function first to avoid signature conflicts
+DROP FUNCTION IF EXISTS public.backfill_user_data_on_invitation(TEXT, UUID, UUID);
+
+CREATE FUNCTION public.backfill_user_data_on_invitation(
     p_ghl_user_id TEXT,
     p_account_id UUID,
     p_app_user_id UUID
