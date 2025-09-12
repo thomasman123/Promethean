@@ -1,7 +1,10 @@
 -- Fix the update_activity_counts_trigger function to avoid accessing sales_rep_user_id on dials table
 -- The issue is that PostgreSQL tries to validate field access even in conditional branches
 
-CREATE OR REPLACE FUNCTION update_activity_counts_trigger()
+-- Drop the existing function first to avoid conflicts
+DROP FUNCTION IF EXISTS update_activity_counts_trigger();
+
+CREATE FUNCTION update_activity_counts_trigger()
 RETURNS TRIGGER AS $$
 BEGIN
   -- Update setter activity count for both INSERT and UPDATE
@@ -37,7 +40,10 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Create separate trigger function for appointments that handles sales_rep_user_id
-CREATE OR REPLACE FUNCTION update_appointments_activity_counts_trigger()
+-- Drop existing function first
+DROP FUNCTION IF EXISTS update_appointments_activity_counts_trigger();
+
+CREATE FUNCTION update_appointments_activity_counts_trigger()
 RETURNS TRIGGER AS $$
 BEGIN
   -- Update sales rep activity count for appointments only
