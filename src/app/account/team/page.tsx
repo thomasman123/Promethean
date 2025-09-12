@@ -148,33 +148,47 @@ export default function TeamPage() {
   // Load team members
   useEffect(() => {
     const loadTeamMembers = async () => {
-      if (!selectedAccountId || !hasAccess) {
-        console.log('🔍 [Team] Skipping load - selectedAccountId:', selectedAccountId, 'hasAccess:', hasAccess)
-        return
-      }
+      if (!selectedAccountId || !hasAccess) return
 
-      console.log('🔍 [Team] Loading team members for account:', selectedAccountId)
       setLoading(true)
       try {
-        const url = `/api/team?accountId=${selectedAccountId}`
-        console.log('🔍 [Team] Fetching:', url)
-        const response = await fetch(url)
-        console.log('🔍 [Team] Response status:', response.status, response.statusText)
+        const response = await fetch(`/api/team?accountId=${selectedAccountId}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include'
+        })
         
         if (!response.ok) {
-          const errorData = await response.text()
-          console.error('🔍 [Team] Response error:', errorData)
-          throw new Error(`Failed to load team members: ${response.status} ${response.statusText}`)
+          const errorText = await response.text()
+          let errorMessage = 'Failed to load team members'
+          
+          try {
+            const errorData = JSON.parse(errorText)
+            errorMessage = errorData.error || errorMessage
+          } catch {
+            errorMessage = `Server error: ${response.status} ${response.statusText}`
+          }
+          
+          throw new Error(errorMessage)
         }
         
         const data = await response.json()
-        console.log('🔍 [Team] Response data:', data)
         setTeamMembers(data.members || [])
       } catch (error) {
         console.error('Error loading team members:', error)
+        
+        let errorMessage = 'Failed to load team members'
+        if (error instanceof TypeError && error.message.includes('fetch')) {
+          errorMessage = 'Unable to connect to server. Please ensure the development server is running.'
+        } else if (error instanceof Error) {
+          errorMessage = error.message
+        }
+        
         toast({
           title: "Error",
-          description: `Failed to load team members: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          description: errorMessage,
           variant: "destructive"
         })
       } finally {
