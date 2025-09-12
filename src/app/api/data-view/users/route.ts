@@ -95,6 +95,7 @@ export async function GET(request: NextRequest) {
         name: member.full_name || 'Unknown',
         email: member.email || '',
         role: member.display_role, // Already calculated (setter/rep) - always synced with account_role
+        accountRole: member.account_role, // Actual account role for filtering (sales_rep, moderator, admin, setter)
         setterActivityCount: member.setter_activity_count,
         salesRepActivityCount: member.sales_rep_activity_count,
         totalActivityCount: member.total_activity_count,
@@ -126,6 +127,7 @@ export async function GET(request: NextRequest) {
         name: member.full_name || 'Unknown',
         email: member.email || '',
         role: member.display_role || (member.role === 'sales_rep' || member.role === 'moderator' || member.role === 'admin' ? 'rep' : 'setter'),
+        accountRole: member.role, // Actual account role for filtering (sales_rep, moderator, admin, setter)
         isActive: member.is_active,
         createdForData: member.created_for_data
       }))

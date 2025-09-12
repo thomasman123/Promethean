@@ -120,8 +120,8 @@ export default function DataViewPage() {
       const userMetrics: UserMetric[] = (result.users || [])
         .filter((user: any) => {
           if (roleFilter === 'both') return true
-          if (roleFilter === 'setter') return user.role === 'setter'
-          if (roleFilter === 'rep') return user.role === 'rep'
+          if (roleFilter === 'setter') return user.accountRole === 'setter'
+          if (roleFilter === 'rep') return ['sales_rep', 'moderator', 'admin'].includes(user.accountRole)
           return false
         })
         .map((user: any) => ({
@@ -129,6 +129,7 @@ export default function DataViewPage() {
           name: user.name,
           email: user.email,
           role: user.role, // Use the functional role from API (setter/rep/inactive)
+          accountRole: user.accountRole, // Store account role for reference
         }))
 
       console.log('Filtered user metrics:', userMetrics)
