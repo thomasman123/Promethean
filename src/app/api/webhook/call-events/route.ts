@@ -1055,9 +1055,17 @@ async function processPhoneCallWebhook(payload: any) {
     });
     
     // Save to dials table
+    // Temporary workaround: Explicitly exclude any sales_rep_user_id field that might be added
+    const sanitizedData = sanitizeRecord(dialData);
+    
+    // Ensure sales_rep_user_id is never included in the insert data
+    delete sanitizedData.sales_rep_user_id;
+    
+    console.log('🛠️ Dial insert data (sales_rep_user_id explicitly removed):', Object.keys(sanitizedData));
+    
     const { data: savedDial, error: dialError } = await supabase
       .from('dials')
-      .insert(sanitizeRecord(dialData))
+      .insert(sanitizedData)
       .select()
       .single();
     
