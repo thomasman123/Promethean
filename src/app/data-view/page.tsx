@@ -313,9 +313,9 @@ export default function DataViewPage() {
                 <TooltipTrigger asChild>
                   <div className="flex items-center justify-center group relative min-w-0">
                     <Button
-                      variant="ghost"
+                      variant="outline"
                       onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-                      className="h-auto p-2 text-xs font-medium leading-tight whitespace-nowrap rounded-full transition-all duration-200 hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary/20"
+                      className="h-auto p-2 text-xs font-medium leading-tight whitespace-nowrap rounded-full transition-all duration-200 border-0 bg-transparent hover:bg-muted hover:text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
                     >
                       <span className="truncate max-w-[60px]">{col.header}</span>
                       <ArrowUpDown className="ml-0.5 h-3 w-3 flex-shrink-0" />
