@@ -41,6 +41,7 @@ export type UserMetric = {
   name: string
   email: string
   role: 'setter' | 'rep' | 'sales_rep' | 'admin'
+  accountRole?: 'setter' | 'sales_rep' | 'moderator' | 'admin'
   [key: string]: any // Dynamic metric columns
 }
 
