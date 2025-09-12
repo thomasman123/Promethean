@@ -148,20 +148,33 @@ export default function TeamPage() {
   // Load team members
   useEffect(() => {
     const loadTeamMembers = async () => {
-      if (!selectedAccountId || !hasAccess) return
+      if (!selectedAccountId || !hasAccess) {
+        console.log('🔍 [Team] Skipping load - selectedAccountId:', selectedAccountId, 'hasAccess:', hasAccess)
+        return
+      }
 
+      console.log('🔍 [Team] Loading team members for account:', selectedAccountId)
       setLoading(true)
       try {
-        const response = await fetch(`/api/team?accountId=${selectedAccountId}`)
-        if (!response.ok) throw new Error('Failed to load team members')
+        const url = `/api/team?accountId=${selectedAccountId}`
+        console.log('🔍 [Team] Fetching:', url)
+        const response = await fetch(url)
+        console.log('🔍 [Team] Response status:', response.status, response.statusText)
+        
+        if (!response.ok) {
+          const errorData = await response.text()
+          console.error('🔍 [Team] Response error:', errorData)
+          throw new Error(`Failed to load team members: ${response.status} ${response.statusText}`)
+        }
         
         const data = await response.json()
+        console.log('🔍 [Team] Response data:', data)
         setTeamMembers(data.members || [])
       } catch (error) {
         console.error('Error loading team members:', error)
         toast({
           title: "Error",
-          description: "Failed to load team members",
+          description: `Failed to load team members: ${error instanceof Error ? error.message : 'Unknown error'}`,
           variant: "destructive"
         })
       } finally {
