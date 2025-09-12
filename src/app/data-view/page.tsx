@@ -385,7 +385,11 @@ export default function DataViewPage() {
       dynamicColumns: dynamicColumns.length,
       totalColumns: finalColumns.length,
       columnIds: finalColumns.map(col => (col as any).accessorKey || 'unknown'),
-      tableConfigColumns: tableConfig?.columns?.length || 0
+      tableConfigColumns: tableConfig?.columns?.length || 0,
+      detailedColumns: finalColumns.map(col => ({
+        accessorKey: (col as any).accessorKey,
+        header: typeof (col as any).header === 'function' ? 'function' : (col as any).header
+      }))
     })
     
     return finalColumns
