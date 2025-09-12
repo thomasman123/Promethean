@@ -31,7 +31,6 @@ import {
 } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import { createBrowserClient } from "@supabase/ssr"
 import { Database } from "@/lib/database.types"
 import { useToast } from "@/hooks/use-toast"
