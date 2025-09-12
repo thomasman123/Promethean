@@ -289,7 +289,21 @@ export default function DataViewPage() {
     // Skip columns that are already in baseColumns (name, email, role)
     const baseColumnIds = baseColumns.map(col => (col as any).accessorKey).filter(Boolean)
     const dynamicColumns = tableConfig.columns
-      .filter((col: any) => !baseColumnIds.includes(col.field))
+      .filter((col: any) => {
+        // More thorough filtering
+        const isValid = col && 
+                       col.field && 
+                       col.header && 
+                       col.field.trim() !== '' && 
+                       col.header.trim() !== '' &&
+                       !baseColumnIds.includes(col.field)
+        
+        if (!isValid) {
+          console.log('🚫 Filtered out invalid column:', col)
+        }
+        
+        return isValid
+      })
       .map((col: any) => ({
         accessorKey: col.field,
         header: ({ column }: any) => {
@@ -363,7 +377,18 @@ export default function DataViewPage() {
         },
       }))
 
-    return [...baseColumns, ...dynamicColumns]
+    const finalColumns = [...baseColumns, ...dynamicColumns]
+    
+    // Debug: Log column information
+    console.log('🔍 Column Debug:', {
+      baseColumns: baseColumns.length,
+      dynamicColumns: dynamicColumns.length,
+      totalColumns: finalColumns.length,
+      columnIds: finalColumns.map(col => (col as any).accessorKey || 'unknown'),
+      tableConfigColumns: tableConfig?.columns?.length || 0
+    })
+    
+    return finalColumns
   }, [tableConfig])
 
   const handleAddColumn = () => {
