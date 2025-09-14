@@ -152,13 +152,7 @@ export default function TeamPage() {
 
       setLoading(true)
       try {
-        const response = await fetch(`/api/team?accountId=${selectedAccountId}`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          credentials: 'include'
-        })
+        const response = await fetch(`/api/team?accountId=${selectedAccountId}`)
         
         if (!response.ok) {
           const errorText = await response.text()
