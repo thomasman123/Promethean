@@ -184,6 +184,14 @@ function GHLConnectionContent() {
       return
     }
 
+    // Log configuration for debugging
+    console.log('🔍 OAuth Configuration:', {
+      clientId,
+      redirectUri,
+      origin: window.location.origin,
+      state: JSON.parse(state)
+    })
+
     // Construct OAuth URL
     const oauthUrl = new URL('https://marketplace.leadconnectorhq.com/oauth/authorize')
     oauthUrl.searchParams.append('response_type', 'code')
@@ -192,8 +200,18 @@ function GHLConnectionContent() {
     oauthUrl.searchParams.append('scope', 'contacts.readonly contacts.write opportunities.readonly opportunities.write calendars.readonly calendars.write conversations.readonly conversations.write locations.readonly businesses.readonly users.readonly')
     oauthUrl.searchParams.append('state', state)
 
+    console.log('🚀 Redirecting to OAuth URL:', oauthUrl.toString())
+
+    // Show info toast
+    toast({
+      title: "Redirecting to GoHighLevel",
+      description: "You will be redirected to authenticate with GoHighLevel",
+    })
+
     // Redirect to OAuth flow
-    window.location.href = oauthUrl.toString()
+    setTimeout(() => {
+      window.location.href = oauthUrl.toString()
+    }, 1000)
   }
 
   const disconnectGHL = async () => {
