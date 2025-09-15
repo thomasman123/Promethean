@@ -160,7 +160,7 @@ function GHLConnectionContent() {
     }
   }
 
-  const initiateOAuthFlow = () => {
+  const initiateOAuthFlow = async () => {
     console.log('🔍 OAuth Flow Initiation - Current State:', {
       selectedAccountId,
       effectiveUser: !!effectiveUser,
@@ -237,17 +237,31 @@ function GHLConnectionContent() {
 
     // Store account ID in multiple places for redundancy
     try {
+      const timestamp = Date.now().toString()
+      
       // Store in localStorage (survives page refresh)
       localStorage.setItem('oauth_selectedAccountId', selectedAccountId)
       localStorage.setItem('oauth_userId', effectiveUser.id)
-      localStorage.setItem('oauth_timestamp', Date.now().toString())
+      localStorage.setItem('oauth_timestamp', timestamp)
+      
+      console.log('💾 Setting localStorage items:', {
+        oauth_selectedAccountId: selectedAccountId,
+        oauth_userId: effectiveUser.id,
+        oauth_timestamp: timestamp
+      })
       
       // Store in cookies (accessible to server) with more robust settings
       // Set cookies for both current domain and callback domain
       const cookieOptions = `path=/; max-age=7200; samesite=lax${window.location.protocol === 'https:' ? '; secure' : ''}`
       document.cookie = `selectedAccountId=${selectedAccountId}; ${cookieOptions}`
       document.cookie = `oauth_userId=${effectiveUser.id}; ${cookieOptions}`
-      document.cookie = `oauth_timestamp=${Date.now()}; ${cookieOptions}`
+      document.cookie = `oauth_timestamp=${timestamp}; ${cookieOptions}`
+      
+      console.log('🍪 Setting client-side cookies:', {
+        selectedAccountId: `selectedAccountId=${selectedAccountId}; ${cookieOptions}`,
+        oauth_userId: `oauth_userId=${effectiveUser.id}; ${cookieOptions}`,
+        oauth_timestamp: `oauth_timestamp=${timestamp}; ${cookieOptions}`
+      })
       
       // Additional backup - store in sessionStorage as well
       sessionStorage.setItem('oauth_selectedAccountId', selectedAccountId)
@@ -288,42 +302,46 @@ function GHLConnectionContent() {
         oauth_timestamp: !!cookies.oauth_timestamp
       })
       
+      // Always try server-side cookie setting as additional backup
+      console.log('🔄 Also setting cookies via server-side API for extra reliability...')
+      
+      // Use async/await to ensure server-side cookies are set before proceeding
+      try {
+        const serverResponse = await fetch('/api/auth/set-oauth-cookies', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            selectedAccountId,
+            userId: effectiveUser.id
+          })
+        })
+        
+        const serverData = await serverResponse.json()
+        console.log('✅ Server-side cookie setting result:', serverData)
+      } catch (serverError) {
+        console.error('❌ Server-side cookie setting failed:', serverError)
+      }
+      
       if (!cookieCheck) {
-        console.error('❌ CRITICAL: Cookie was not set properly!')
-        console.error('🔍 This will cause OAuth callback to fail')
+        console.error('❌ CRITICAL: Client-side cookie was not set properly!')
+        console.error('🔍 But server-side cookies should still work for OAuth callback')
         
         // Try alternative cookie setting method
         try {
-          console.log('🔄 Trying alternative cookie setting method...')
+          console.log('🔄 Trying alternative client-side cookie setting method...')
           const expires = new Date(Date.now() + 7200000).toUTCString() // 2 hours
           document.cookie = `selectedAccountId=${selectedAccountId}; expires=${expires}; path=/`
           document.cookie = `oauth_userId=${effectiveUser.id}; expires=${expires}; path=/`
-          document.cookie = `oauth_timestamp=${Date.now()}; expires=${expires}; path=/`
+          document.cookie = `oauth_timestamp=${timestamp}; expires=${expires}; path=/`
           
           // Verify again
           const recheck = document.cookie.includes(`selectedAccountId=${selectedAccountId}`)
           console.log('🔍 Alternative method result:', { recheck, newCookies: document.cookie })
-          
-          // If still failing, try server-side cookie setting
-          if (!recheck) {
-            console.log('🔄 Trying server-side cookie setting as last resort...')
-            
-            fetch('/api/auth/set-oauth-cookies', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                selectedAccountId,
-                userId: effectiveUser.id
-              })
-            }).then(response => response.json()).then(data => {
-              console.log('🔍 Server-side cookie setting result:', data)
-            }).catch(serverError => {
-              console.error('❌ Server-side cookie setting also failed:', serverError)
-            })
-          }
         } catch (altError) {
           console.error('❌ Alternative cookie method also failed:', altError)
         }
+      } else {
+        console.log('✅ Client-side cookies verified successfully')
       }
     } catch (error) {
       console.error('❌ Failed to store account info:', error)
