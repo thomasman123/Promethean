@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { TopBar } from '@/components/layout/topbar'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -9,11 +10,12 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { useToast } from '@/hooks/use-toast'
 import { useDashboard } from '@/lib/dashboard-context'
 import { useAccountTimezone } from '@/hooks/use-account-timezone'
 import { clearTimezoneCache, getCurrentTimeFormatted } from '@/lib/timezone-utils'
-import { Clock, Globe, Building2, Settings, Save, RefreshCw } from 'lucide-react'
+import { Clock, Globe, Building2, Settings, Save, RefreshCw, AlertCircle } from 'lucide-react'
 import { useAccountsCache } from '@/hooks/use-accounts-cache'
 
 // Common timezones for business use
@@ -162,41 +164,71 @@ export default function AccountSettingsPage() {
 
   if (loading) {
     return (
-      <div className="container mx-auto p-6 max-w-4xl">
-        <div className="flex items-center gap-2 mb-6">
-          <Settings className="h-6 w-6" />
-          <h1 className="text-2xl font-bold">Account Settings</h1>
-        </div>
-        <div className="flex items-center justify-center py-12">
-          <RefreshCw className="h-6 w-6 animate-spin mr-2" />
-          Loading account settings...
-        </div>
+      <div className="min-h-screen bg-background">
+        <TopBar />
+        <main className="pt-16 p-6">
+          <div className="max-w-4xl mx-auto">
+            <div className="flex items-center gap-2 mb-6">
+              <Settings className="h-6 w-6" />
+              <h1 className="text-2xl font-bold">Account Settings</h1>
+            </div>
+            <div className="flex items-center justify-center py-12">
+              <RefreshCw className="h-6 w-6 animate-spin mr-2" />
+              Loading account settings...
+            </div>
+          </div>
+        </main>
+      </div>
+    )
+  }
+
+  if (!selectedAccountId) {
+    return (
+      <div className="min-h-screen bg-background">
+        <TopBar />
+        <main className="pt-16 p-6">
+          <div className="max-w-4xl mx-auto">
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>No Account Selected</AlertTitle>
+              <AlertDescription>
+                Please select an account from the dropdown to view settings.
+              </AlertDescription>
+            </Alert>
+          </div>
+        </main>
       </div>
     )
   }
 
   if (!account) {
     return (
-      <div className="container mx-auto p-6 max-w-4xl">
-        <div className="flex items-center gap-2 mb-6">
-          <Settings className="h-6 w-6" />
-          <h1 className="text-2xl font-bold">Account Settings</h1>
-        </div>
-        <Card>
-          <CardContent className="p-6">
-            <p className="text-muted-foreground">Please select an account to view settings.</p>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen bg-background">
+        <TopBar />
+        <main className="pt-16 p-6">
+          <div className="max-w-4xl mx-auto">
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Account Not Found</AlertTitle>
+              <AlertDescription>
+                The selected account could not be loaded.
+              </AlertDescription>
+            </Alert>
+          </div>
+        </main>
       </div>
     )
   }
 
   return (
-    <div className="container mx-auto p-6 max-w-4xl">
-      <div className="flex items-center gap-2 mb-6">
-        <Settings className="h-6 w-6" />
-        <h1 className="text-2xl font-bold">Account Settings</h1>
-      </div>
+    <div className="min-h-screen bg-background">
+      <TopBar />
+      <main className="pt-16 p-6">
+        <div className="max-w-4xl mx-auto">
+          <div className="flex items-center gap-2 mb-6">
+            <Settings className="h-6 w-6" />
+            <h1 className="text-2xl font-bold">Account Settings</h1>
+          </div>
 
       <div className="grid gap-6">
         {/* Account Information */}
@@ -342,23 +374,25 @@ export default function AccountSettingsPage() {
           </CardContent>
         </Card>
 
-        {/* Save Button */}
-        <div className="flex justify-end">
-          <Button onClick={handleSave} disabled={saving} size="lg">
-            {saving ? (
-              <>
-                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              <>
-                <Save className="h-4 w-4 mr-2" />
-                Save Settings
-              </>
-            )}
-          </Button>
+          {/* Save Button */}
+          <div className="flex justify-end">
+            <Button onClick={handleSave} disabled={saving} size="lg">
+              {saving ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4 mr-2" />
+                  Save Settings
+                </>
+              )}
+            </Button>
+          </div>
         </div>
       </div>
-    </div>
+    </main>
+  </div>
   )
 } 
