@@ -21,6 +21,7 @@ import { useDashboard } from '@/lib/dashboard-context';
 import { CalendarIcon, CheckCircle2, XCircle, Clock, AlertCircle, Phone, Mail, User, RefreshCw } from 'lucide-react';
 import { format, formatDistanceToNow, isPast, isToday, isTomorrow } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { useAccountTimezone } from '@/hooks/use-account-timezone';
 
 interface FollowUp {
   id: string;
@@ -61,6 +62,9 @@ export default function FollowUpsPage() {
   const [rescheduleDialogOpen, setRescheduleDialogOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>('pending');
   const [searchTerm, setSearchTerm] = useState('');
+
+  // Use account timezone for all date formatting
+  const { formatDate: formatDateInTz, getDateLabel: getDateLabelInTz, isToday: isTodayInTz, isTomorrow: isTomorrowInTz, isPast: isPastInTz } = useAccountTimezone(selectedAccountId);
 
   // Form state for completing follow-up
   const [completeForm, setCompleteForm] = useState({
@@ -266,6 +270,12 @@ export default function FollowUpsPage() {
   };
 
   const getDateLabel = (date: string) => {
+    // Use timezone-aware date formatting if timezone is loaded
+    if (selectedAccountId) {
+      return getDateLabelInTz(date);
+    }
+    
+    // Fallback to browser timezone
     const d = new Date(date);
     if (isToday(d)) return 'Today';
     if (isTomorrow(d)) return 'Tomorrow';
@@ -397,7 +407,7 @@ export default function FollowUpsPage() {
                           <div className="flex items-center gap-2">
                             {getStatusBadge(followUp.status)}
                             <span className="text-sm text-muted-foreground">
-                              {getDateLabel(followUp.scheduled_for)} at {format(new Date(followUp.scheduled_for), 'h:mm a')}
+                              {getDateLabel(followUp.scheduled_for)} at {formatDateInTz(followUp.scheduled_for, 'h:mm a')}
                             </span>
                           </div>
                           <div>
@@ -423,7 +433,7 @@ export default function FollowUpsPage() {
                               Assigned to: {followUp.assigned_to_name || 'Unassigned'}
                             </span>
                             <span className="text-muted-foreground">
-                              Original appointment: {format(new Date(followUp.original_appointment_date || ''), 'MMM d, yyyy')}
+                              Original appointment: {formatDateInTz(followUp.original_appointment_date || '', 'MMM d, yyyy')}
                             </span>
                           </div>
                         </div>
