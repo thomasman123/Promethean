@@ -29,6 +29,7 @@ update_env_var() {
 update_env_var "GHL_CLIENT_ID" "687ac40ba336fa240d35a751-mfkwm6nm"
 update_env_var "GHL_CLIENT_SECRET" "0450f3bf-176a-4482-bdfa-d5d3413f4d8d"
 update_env_var "NEXT_PUBLIC_GHL_CLIENT_ID" "687ac40ba336fa240d35a751-mfkwm6nm"
+update_env_var "GHL_REDIRECT_URI" "https://www.getpromethean.com/api/auth/callback"
 
 # Set app URL if not already set
 if ! grep -q "^NEXT_PUBLIC_APP_URL=" .env.local; then

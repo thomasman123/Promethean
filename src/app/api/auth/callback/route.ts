@@ -68,9 +68,11 @@ export async function GET(request: NextRequest) {
   try {
     console.log('🔄 Exchanging code for tokens...');
     // Exchange authorization code for access token using correct GoHighLevel endpoint
+    // Following the exact format from GHL OAuth 2.0 documentation
     const tokenResponse = await fetch('https://services.leadconnectorhq.com/oauth/token', {
       method: 'POST',
       headers: {
+        'Accept': 'application/json',
         'Content-Type': 'application/x-www-form-urlencoded',
       },
       body: new URLSearchParams({
@@ -78,13 +80,26 @@ export async function GET(request: NextRequest) {
         client_secret: clientSecret,
         grant_type: 'authorization_code',
         code,
+        user_type: 'Location', // Add user_type as shown in GHL docs
         redirect_uri: redirectUri,
       }),
     });
     
+    console.log('🔍 Token request details:', {
+      url: 'https://services.leadconnectorhq.com/oauth/token',
+      clientId: clientId,
+      hasClientSecret: !!clientSecret,
+      hasCode: !!code,
+      redirectUri: redirectUri
+    });
+    
     if (!tokenResponse.ok) {
-      const errorData = await tokenResponse.json();
-      console.error('❌ Token exchange failed:', errorData);
+      const errorText = await tokenResponse.text();
+      console.error('❌ Token exchange failed:', {
+        status: tokenResponse.status,
+        statusText: tokenResponse.statusText,
+        errorText
+      });
       return NextResponse.redirect(`${baseUrl}/account/ghl-connection?error=token_exchange_failed`);
     }
     

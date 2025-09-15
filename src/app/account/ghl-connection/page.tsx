@@ -159,7 +159,15 @@ function GHLConnectionContent() {
   }
 
   const initiateOAuthFlow = () => {
-    if (!selectedAccountId || !effectiveUser) return
+    if (!selectedAccountId || !effectiveUser) {
+      console.error('❌ Missing required data for OAuth:', { selectedAccountId, effectiveUser: !!effectiveUser })
+      toast({
+        title: "Error",
+        description: "Missing account or user information. Please refresh the page.",
+        variant: "destructive"
+      })
+      return
+    }
 
     // Generate a nonce for CSRF protection
     const nonce = Math.random().toString(36).substring(2, 15)
@@ -173,7 +181,17 @@ function GHLConnectionContent() {
 
     // Get OAuth URL
     const clientId = process.env.NEXT_PUBLIC_GHL_CLIENT_ID
-    const redirectUri = 'https://www.getpromethean.com/api/auth/callback'
+    const redirectUri = process.env.GHL_REDIRECT_URI || `${window.location.origin}/api/auth/callback`
+    
+    console.log('🔍 OAuth initiation details:', {
+      selectedAccountId,
+      effectiveUserId: effectiveUser.id,
+      clientId,
+      redirectUri,
+      origin: window.location.origin,
+      stateObject: { accountId: selectedAccountId, nonce, userId: effectiveUser.id },
+      stateString: state
+    })
     
     if (!clientId) {
       toast({
@@ -282,7 +300,7 @@ function GHLConnectionContent() {
 
     // Get OAuth URL
     const clientId = process.env.NEXT_PUBLIC_GHL_CLIENT_ID
-    const redirectUri = 'https://www.getpromethean.com/api/auth/callback'
+    const redirectUri = process.env.GHL_REDIRECT_URI || `${window.location.origin}/api/auth/callback`
     
     if (!clientId) {
       toast({
