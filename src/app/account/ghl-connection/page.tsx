@@ -265,10 +265,65 @@ function GHLConnectionContent() {
       
       // Verify cookies were set
       const cookieCheck = document.cookie.includes(`selectedAccountId=${selectedAccountId}`)
-      console.log('🔍 Cookie verification:', { cookieCheck, allCookies: document.cookie })
+      console.log('🔍 Cookie verification:', { 
+        cookieCheck, 
+        allCookies: document.cookie,
+        cookieLength: document.cookie.length,
+        domain: window.location.hostname,
+        protocol: window.location.protocol,
+        port: window.location.port
+      })
+      
+      // Parse and verify each cookie individually
+      const cookies = document.cookie.split(';').reduce((acc, cookie) => {
+        const [name, value] = cookie.trim().split('=')
+        acc[name] = value
+        return acc
+      }, {} as Record<string, string>)
+      
+      console.log('🔍 Parsed cookies:', cookies)
+      console.log('🔍 Expected cookies present:', {
+        selectedAccountId: !!cookies.selectedAccountId,
+        oauth_userId: !!cookies.oauth_userId,
+        oauth_timestamp: !!cookies.oauth_timestamp
+      })
       
       if (!cookieCheck) {
-        console.warn('⚠️ Cookie may not have been set properly')
+        console.error('❌ CRITICAL: Cookie was not set properly!')
+        console.error('🔍 This will cause OAuth callback to fail')
+        
+        // Try alternative cookie setting method
+        try {
+          console.log('🔄 Trying alternative cookie setting method...')
+          const expires = new Date(Date.now() + 7200000).toUTCString() // 2 hours
+          document.cookie = `selectedAccountId=${selectedAccountId}; expires=${expires}; path=/`
+          document.cookie = `oauth_userId=${effectiveUser.id}; expires=${expires}; path=/`
+          document.cookie = `oauth_timestamp=${Date.now()}; expires=${expires}; path=/`
+          
+          // Verify again
+          const recheck = document.cookie.includes(`selectedAccountId=${selectedAccountId}`)
+          console.log('🔍 Alternative method result:', { recheck, newCookies: document.cookie })
+          
+          // If still failing, try server-side cookie setting
+          if (!recheck) {
+            console.log('🔄 Trying server-side cookie setting as last resort...')
+            
+            fetch('/api/auth/set-oauth-cookies', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                selectedAccountId,
+                userId: effectiveUser.id
+              })
+            }).then(response => response.json()).then(data => {
+              console.log('🔍 Server-side cookie setting result:', data)
+            }).catch(serverError => {
+              console.error('❌ Server-side cookie setting also failed:', serverError)
+            })
+          }
+        } catch (altError) {
+          console.error('❌ Alternative cookie method also failed:', altError)
+        }
       }
     } catch (error) {
       console.error('❌ Failed to store account info:', error)
@@ -316,6 +371,28 @@ function GHLConnectionContent() {
     // Redirect to OAuth flow
     console.log('⏳ Redirecting in 1 second...')
     setTimeout(() => {
+      // Final cookie verification before redirect
+      const finalCheck = document.cookie.includes(`selectedAccountId=${selectedAccountId}`)
+      console.log('🔍 Final cookie check before redirect:', {
+        cookiePresent: finalCheck,
+        allCookies: document.cookie,
+        cookieCount: document.cookie.split(';').length
+      })
+      
+      if (!finalCheck) {
+        console.error('❌ CRITICAL: Cookies still not set after 1 second delay! OAuth will likely fail.')
+        console.error('🔍 This indicates a serious cookie setting issue')
+        
+        // Show warning but still proceed
+        toast({
+          title: "Warning",
+          description: "Cookie setting failed. OAuth may not work properly. Check browser settings.",
+          variant: "destructive"
+        })
+      } else {
+        console.log('✅ Cookies verified before OAuth redirect')
+      }
+      
       console.log('🔄 Redirecting now to:', oauthUrl.toString())
       window.location.href = oauthUrl.toString()
     }, 1000)
@@ -637,6 +714,43 @@ function GHLConnectionContent() {
                       ) : (
                         'Marketplace OAuth'
                       )}
+                    </Button>
+                    
+                    {/* Debug button - remove after fixing */}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        console.log('🔍 Cookie Debug Test:', {
+                          selectedAccountId,
+                          effectiveUserId: effectiveUser?.id,
+                          currentCookies: document.cookie,
+                          localStorage: localStorage.getItem('selectedAccountId'),
+                          canSetCookies: navigator.cookieEnabled,
+                          domain: window.location.hostname,
+                          protocol: window.location.protocol
+                        })
+                        
+                        // Try setting a test cookie
+                        const testValue = `test-${Date.now()}`
+                        document.cookie = `test_cookie=${testValue}; path=/; max-age=3600`
+                        const testCheck = document.cookie.includes(`test_cookie=${testValue}`)
+                        
+                        console.log('🔍 Test cookie result:', {
+                          testValue,
+                          testCheck,
+                          updatedCookies: document.cookie
+                        })
+                        
+                        toast({
+                          title: "Debug Info",
+                          description: `Cookies enabled: ${navigator.cookieEnabled}, Test cookie: ${testCheck}`,
+                          variant: testCheck ? "default" : "destructive"
+                        })
+                      }}
+                      className="text-xs"
+                    >
+                      🔍 Debug Cookie Issue
                     </Button>
                     <Button 
                       variant="outline" 
