@@ -22,6 +22,7 @@ import { AddWidgetModal, WidgetConfig } from "@/components/dashboard/add-widget-
 import { AdminSettingsModal } from "./admin-settings-modal"
 import { useDashboard } from "@/lib/dashboard-context"
 import { useEffectiveUser } from "@/hooks/use-effective-user"
+import { useAccountsCache } from "@/hooks/use-accounts-cache"
 import { FollowUpNotifications } from "./follow-up-notifications"
 
 interface Account {
@@ -39,7 +40,6 @@ export function TopBar({ onAddWidget }: TopBarProps) {
   const [isScrolled, setIsScrolled] = useState(false)
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
   const [hoverTimeout, setHoverTimeout] = useState<NodeJS.Timeout | null>(null)
-  const [accounts, setAccounts] = useState<Account[]>([])
   const [currentUserId, setCurrentUserId] = useState<string>("")
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null)
   const [currentTableId, setCurrentTableId] = useState<string | null>(null)
@@ -56,6 +56,7 @@ export function TopBar({ onAddWidget }: TopBarProps) {
   )
   const { dateRange, setDateRange, selectedAccountId, setSelectedAccountId, setCurrentViewId, currentViewId } = useDashboard()
   const { user: effectiveUser, loading: effectiveUserLoading } = useEffectiveUser()
+  const { accounts, loading: accountsLoading, refreshAccounts } = useAccountsCache(effectiveUser?.id)
 
   // Show date/view controls only on dashboard and data-view pages
   const showDashboardControls = pathname === "/dashboard" || pathname === "/data-view"
@@ -70,13 +71,32 @@ export function TopBar({ onAddWidget }: TopBarProps) {
   }, [])
 
   useEffect(() => {
-    // Load user accounts and get current user
+    // Get current user and check impersonation when effective user changes
     if (effectiveUser && !effectiveUserLoading) {
-      loadUserAccounts()
       getCurrentUser()
       checkImpersonation()
     }
   }, [effectiveUser, effectiveUserLoading])
+
+  // Handle account selection when accounts are loaded
+  useEffect(() => {
+    if (accounts.length > 0 && !accountsLoading) {
+      // Set first account as selected if none selected or current selection is not available
+      const savedAccountId = localStorage.getItem('selectedAccountId')
+      console.log('🔍 [TopBar] Saved account ID from localStorage:', savedAccountId)
+      
+      if (savedAccountId && accounts.find((a: Account) => a.id === savedAccountId)) {
+        console.log('✅ [TopBar] Using saved account:', savedAccountId)
+        if (selectedAccountId !== savedAccountId) {
+          setSelectedAccountId(savedAccountId)
+        }
+      } else if (!selectedAccountId && accounts.length > 0) {
+        console.log('✅ [TopBar] Using first account:', accounts[0].id, accounts[0].name)
+        setSelectedAccountId(accounts[0].id)
+        localStorage.setItem('selectedAccountId', accounts[0].id)
+      }
+    }
+  }, [accounts, accountsLoading, selectedAccountId, setSelectedAccountId])
 
   useEffect(() => {
     const handleScroll = () => {
@@ -101,55 +121,7 @@ export function TopBar({ onAddWidget }: TopBarProps) {
     }
   }
 
-  const loadUserAccounts = async () => {
-    if (!effectiveUser) {
-      console.log('🔍 [TopBar] No effective user, skipping account load')
-      return
-    }
-    
-    console.log('🔍 [TopBar] Loading accounts for effective user:', effectiveUser.id, 'role:', effectiveUser.role)
-    
-    try {
-      // Use the API endpoint which properly handles impersonation
-      console.log('🔍 [TopBar] Calling /api/accounts-simple...')
-      const response = await fetch('/api/accounts-simple')
-      const data = await response.json()
-      
-      console.log('🔍 [TopBar] API response status:', response.status)
-      console.log('🔍 [TopBar] API response data:', data)
-      
-      if (!response.ok) {
-        console.error('❌ [TopBar] Failed to load accounts:', data.error)
-        setAccounts([])
-        return
-      }
 
-      const accountsData = data.accounts || []
-      console.log('✅ [TopBar] Setting accounts:', accountsData.length, 'accounts')
-      console.log('🔍 [TopBar] Account details:', accountsData.map((a: Account) => ({ id: a.id, name: a.name })))
-      setAccounts(accountsData)
-      
-      // Set first account as selected if none selected or current selection is not available
-      if (accountsData.length > 0) {
-        const savedAccountId = localStorage.getItem('selectedAccountId')
-        console.log('🔍 [TopBar] Saved account ID from localStorage:', savedAccountId)
-        
-        if (savedAccountId && accountsData.find((a: Account) => a.id === savedAccountId)) {
-          console.log('✅ [TopBar] Using saved account:', savedAccountId)
-          setSelectedAccountId(savedAccountId)
-        } else {
-          console.log('✅ [TopBar] Using first account:', accountsData[0].id, accountsData[0].name)
-          setSelectedAccountId(accountsData[0].id)
-          localStorage.setItem('selectedAccountId', accountsData[0].id)
-        }
-      } else {
-        console.log('⚠️ [TopBar] No accounts available')
-      }
-    } catch (error) {
-      console.error('❌ [TopBar] Failed to load accounts:', error)
-      setAccounts([])
-    }
-  }
 
   const handleAccountChange = (accountId: string) => {
     setSelectedAccountId(accountId)
@@ -297,8 +269,10 @@ export function TopBar({ onAddWidget }: TopBarProps) {
               disabled={accounts.length === 0}
             >
               <Building2 className="h-4 w-4 mr-2" />
-              {accounts.length === 0 
+              {accountsLoading
                 ? "Loading..." 
+                : accounts.length === 0
+                ? "No accounts"
                 : accounts.find(a => a.id === selectedAccountId)?.name || "Select Account"
               }
               <ChevronDown className="h-4 w-4 ml-2" />
@@ -314,6 +288,19 @@ export function TopBar({ onAddWidget }: TopBarProps) {
                 {account.name}
               </DropdownMenuItem>
             ))}
+            {accounts.length > 0 && (
+              <>
+                <div className="h-px bg-border mx-1 my-1" />
+                <DropdownMenuItem
+                  onSelect={() => refreshAccounts()}
+                  className="text-muted-foreground"
+                  disabled={accountsLoading}
+                >
+                  <RefreshCw className={cn("mr-2 h-4 w-4", accountsLoading && "animate-spin")} />
+                  {accountsLoading ? "Refreshing..." : "Refresh accounts"}
+                </DropdownMenuItem>
+              </>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
