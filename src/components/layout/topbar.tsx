@@ -468,12 +468,12 @@ export function TopBar({ onAddWidget }: TopBarProps) {
             {pathname === "/dashboard" && (
               <>
                 {selectedAccountId ? (
-                  <ViewsManager
-                    accountId={selectedAccountId}
-                    currentUserId={currentUserId}
-                    currentViewId={currentViewId}
-                    onViewChange={handleViewChange}
-                  />
+                <ViewsManager
+                  accountId={selectedAccountId}
+                  currentUserId={currentUserId}
+                  currentViewId={currentViewId}
+                  onViewChange={handleViewChange}
+                />
                 ) : (
                   <div className="h-8 px-3 py-1 text-sm text-muted-foreground bg-muted rounded-md flex items-center">
                     Loading views...
