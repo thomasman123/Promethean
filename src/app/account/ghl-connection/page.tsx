@@ -449,121 +449,7 @@ function GHLConnectionContent() {
     }
   }
 
-  const useInstallationURL = () => {
-    // This opens the official GHL Installation URL
-    // Users should get this URL from their GHL app dashboard: Advanced Settings > Auth > Installation URL
-    toast({
-      title: "Use Official Installation URL",
-      description: "Please use the Installation URL from your GHL app dashboard for the most reliable connection.",
-    })
-    
-    // Official Installation URL from GHL dashboard with correct redirect URI
-    // This is the exact URL from the GHL app dashboard - UPDATED WITH NEW CLIENT ID
-    const installationURL = "https://marketplace.gohighlevel.com/oauth/chooselocation?response_type=code&redirect_uri=https%3A%2F%2Fwww.getpromethean.com%2Fapi%2Fauth%2Fcallback&client_id=687ac40ba336fa240d35a751-mfkwm6nm&scope=calendars.readonly+calendars.write+calendars%2Fevents.readonly+calendars%2Fevents.write+calendars%2Fresources.write+calendars%2Fresources.readonly+calendars%2Fgroups.write+calendars%2Fgroups.readonly+opportunities.readonly+oauth.write+oauth.readonly+opportunities.write+businesses.readonly+businesses.write+campaigns.readonly+conversations.readonly+conversations.write+conversations%2Fmessage.readonly+conversations%2Fmessage.write+conversations%2Freports.readonly+contacts.readonly+conversations%2Flivechat.write+contacts.write+objects%2Fschema.readonly+objects%2Frecord.readonly+objects%2Fschema.write+objects%2Frecord.write+associations.write+associations.readonly+associations%2Frelation.readonly+courses.write+associations%2Frelation.write+courses.readonly+forms.readonly+forms.write+invoices.readonly+invoices.write+invoices%2Fschedule.readonly+invoices%2Fschedule.write+invoices%2Ftemplate.readonly+invoices%2Festimate.readonly+invoices%2Ftemplate.write+invoices%2Festimate.write+links.readonly+lc-email.readonly+links.write+locations.readonly+locations%2FcustomValues.readonly+locations%2FcustomValues.write+locations%2FcustomFields.readonly+locations%2FcustomFields.write+locations%2Ftasks.readonly+locations%2Ftasks.write+locations%2Ftags.readonly+locations%2Ftags.write+locations%2Ftemplates.readonly+medias.readonly+medias.write+funnels%2Fredirect.readonly+funnels%2Fpage.readonly+funnels%2Ffunnel.readonly+funnels%2Fpagecount.readonly+funnels%2Fredirect.write+payments%2Forders.readonly+payments%2Forders.write+payments%2Fintegration.write+payments%2Fintegration.readonly+payments%2Ftransactions.readonly+payments%2Fsubscriptions.readonly+twilioaccount.read+blogs%2Flist.readonly+blogs%2Fposts.readonly+socialplanner%2Ftag.write+users.readonly&version_id=687ac40ba336fa240d35a751"
-    
-    window.open(installationURL, '_blank')
-  }
 
-  const tryAlternativeOAuth = () => {
-    if (!selectedAccountId || !effectiveUser) {
-      console.error('❌ Missing required data for alternative OAuth:', { selectedAccountId, effectiveUser: !!effectiveUser })
-      toast({
-        title: "Error",
-        description: "Please wait for accounts to load, then try again.",
-        variant: "destructive"
-      })
-      return
-    }
-
-    // Additional check - make sure we're not in a loading state
-    if (userLoading || loading) {
-      console.error('❌ Still loading - cannot start alternative OAuth yet')
-      toast({
-        title: "Please Wait",
-        description: "Still loading account information. Please try again in a moment.",
-        variant: "destructive"
-      })
-      return
-    }
-
-    console.log('✅ Pre-OAuth validation passed (alternative):', {
-      selectedAccountId,
-      effectiveUserId: effectiveUser.id,
-      userLoading,
-      loading,
-      hasAccess
-    })
-
-    // Generate a nonce for CSRF protection
-    const nonce = Math.random().toString(36).substring(2, 15)
-    
-    // Create state parameter
-    const state = JSON.stringify({
-      accountId: selectedAccountId,
-      nonce: nonce,
-      userId: effectiveUser.id
-    })
-
-    // Get OAuth URL
-    const clientId = process.env.NEXT_PUBLIC_GHL_CLIENT_ID
-    const redirectUri = process.env.GHL_REDIRECT_URI || `${window.location.origin}/api/auth/callback`
-    
-    if (!clientId) {
-      toast({
-        title: "Configuration Error",
-        description: "GHL Client ID not configured",
-        variant: "destructive"
-      })
-      return
-    }
-
-    // Store account ID in multiple places for redundancy
-    try {
-      localStorage.setItem('oauth_selectedAccountId', selectedAccountId)
-      localStorage.setItem('oauth_userId', effectiveUser.id)
-      localStorage.setItem('oauth_timestamp', Date.now().toString())
-      
-      document.cookie = `selectedAccountId=${selectedAccountId}; path=/; max-age=3600; secure; samesite=lax`
-      document.cookie = `oauth_userId=${effectiveUser.id}; path=/; max-age=3600; secure; samesite=lax`
-      
-      console.log('💾 Stored account info for alternative OAuth:', {
-        selectedAccountId,
-        userId: effectiveUser.id
-      })
-    } catch (error) {
-      console.error('❌ Failed to store account info for alternative OAuth:', error)
-      toast({
-        title: "Storage Error", 
-        description: "Could not store account information. Please try again.",
-        variant: "destructive"
-      })
-      return
-    }
-
-    // Try the standard app.gohighlevel.com OAuth URL
-    const oauthUrl = new URL('https://app.gohighlevel.com/oauth/authorize')
-    oauthUrl.searchParams.append('response_type', 'code')
-    oauthUrl.searchParams.append('client_id', clientId)
-    oauthUrl.searchParams.append('redirect_uri', redirectUri)
-    // Use the same comprehensive scopes as the installation URL
-    oauthUrl.searchParams.append('scope', 'calendars.readonly calendars.write calendars/events.readonly calendars/events.write calendars/resources.write calendars/resources.readonly calendars/groups.write calendars/groups.readonly opportunities.readonly oauth.write oauth.readonly opportunities.write businesses.readonly businesses.write campaigns.readonly conversations.readonly conversations.write conversations/message.readonly conversations/message.write conversations/reports.readonly contacts.readonly conversations/livechat.write contacts.write objects/schema.readonly objects/record.readonly objects/schema.write objects/record.write associations.write associations.readonly associations/relation.readonly courses.write associations/relation.write courses.readonly forms.readonly forms.write invoices.readonly invoices.write invoices/schedule.readonly invoices/schedule.write invoices/template.readonly invoices/estimate.readonly invoices/template.write invoices/estimate.write links.readonly lc-email.readonly links.write locations.readonly locations/customValues.readonly locations/customValues.write locations/customFields.readonly locations/customFields.write locations/tasks.readonly locations/tasks.write locations/tags.readonly locations/tags.write locations/templates.readonly medias.readonly medias.write funnels/redirect.readonly funnels/page.readonly funnels/funnel.readonly funnels/pagecount.readonly funnels/redirect.write payments/orders.readonly payments/orders.write payments/integration.write payments/integration.readonly payments/transactions.readonly payments/subscriptions.readonly twilioaccount.read blogs/list.readonly blogs/posts.readonly socialplanner/tag.write users.readonly')
-    oauthUrl.searchParams.append('state', state)
-
-    console.log('🔄 Trying alternative OAuth URL:', oauthUrl.toString())
-
-    // Store the current URL attempt for potential fallback
-    localStorage.setItem('ghl_oauth_attempt', 'standard')
-    
-    toast({
-      title: "Trying Alternative OAuth",
-      description: "Using standard GHL login flow...",
-    })
-
-    // Redirect to OAuth flow
-    setTimeout(() => {
-      window.location.href = oauthUrl.toString()
-    }, 1000)
-  }
 
   const resubscribeWebhooks = async () => {
     if (!selectedAccountId) return
@@ -710,91 +596,32 @@ function GHLConnectionContent() {
                     Disconnect
                   </Button>
                 ) : (
-                  <div className="flex flex-wrap gap-2">
-                    <Button 
-                      onClick={useInstallationURL}
-                      disabled={userLoading || loading || !selectedAccountId || !effectiveUser}
-                      className="bg-green-600 hover:bg-green-700 disabled:opacity-50"
-                    >
-                      <Link className="h-4 w-4 mr-2" />
-                      {userLoading || loading ? 'Loading...' : 'Use Installation URL (Recommended)'}
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      onClick={initiateOAuthFlow}
-                      disabled={userLoading || loading || !selectedAccountId || !effectiveUser}
-                    >
-                      {userLoading || loading ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Loading...
-                        </>
-                      ) : (
-                        'Marketplace OAuth'
-                      )}
-                    </Button>
-                    
-                    {/* Debug button - remove after fixing */}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        console.log('🔍 Cookie Debug Test:', {
-                          selectedAccountId,
-                          effectiveUserId: effectiveUser?.id,
-                          currentCookies: document.cookie,
-                          localStorage: localStorage.getItem('selectedAccountId'),
-                          canSetCookies: navigator.cookieEnabled,
-                          domain: window.location.hostname,
-                          protocol: window.location.protocol
-                        })
-                        
-                        // Try setting a test cookie
-                        const testValue = `test-${Date.now()}`
-                        document.cookie = `test_cookie=${testValue}; path=/; max-age=3600`
-                        const testCheck = document.cookie.includes(`test_cookie=${testValue}`)
-                        
-                        console.log('🔍 Test cookie result:', {
-                          testValue,
-                          testCheck,
-                          updatedCookies: document.cookie
-                        })
-                        
-                        toast({
-                          title: "Debug Info",
-                          description: `Cookies enabled: ${navigator.cookieEnabled}, Test cookie: ${testCheck}`,
-                          variant: testCheck ? "default" : "destructive"
-                        })
-                      }}
-                      className="text-xs"
-                    >
-                      🔍 Debug Cookie Issue
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      onClick={tryAlternativeOAuth}
-                      disabled={userLoading || loading || !selectedAccountId || !effectiveUser}
-                      title="Try this if other methods show a blank page"
-                    >
-                      {userLoading || loading ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Loading...
-                        </>
-                      ) : (
-                        'Standard OAuth'
-                      )}
-                    </Button>
-                  </div>
+                  <Button 
+                    onClick={initiateOAuthFlow}
+                    disabled={userLoading || loading || !selectedAccountId || !effectiveUser}
+                    className="w-full"
+                  >
+                    {userLoading || loading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Loading...
+                      </>
+                    ) : (
+                      <>
+                        <Link className="h-4 w-4 mr-2" />
+                        Connect GoHighLevel
+                      </>
+                    )}
+                  </Button>
                 )}
               </div>
 
               {!connectionStatus?.isConnected && (
                 <div className="text-sm text-muted-foreground p-4 bg-blue-50 rounded-lg border border-blue-200">
                   <p className="font-medium text-blue-900 mb-1">Connection Help:</p>
-                  <p>• If the main connect button shows a blank page, click "Try Alternative"</p>
                   <p>• Make sure your GHL app is published and active in the marketplace</p>
                   <p>• Verify your redirect URI in GHL app settings matches exactly: <code className="text-xs bg-blue-100 px-1 rounded">https://www.getpromethean.com/api/auth/callback</code></p>
+                  <p>• Ensure you have the necessary permissions in your GHL account</p>
                 </div>
               )}
 
