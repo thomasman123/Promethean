@@ -61,6 +61,7 @@ function GHLConnectionContent() {
       const errorMessages: Record<string, string> = {
         'missing_parameters': 'Missing required OAuth parameters',
         'missing_account_info': 'Could not determine which account to connect (state parameter missing)',
+        'stale_oauth_session': 'OAuth session expired - please try connecting again',
         'invalid_state': 'Invalid OAuth state parameter',
         'configuration_error': 'GHL client configuration error',
         'token_exchange_failed': 'Failed to exchange authorization code',
@@ -160,6 +161,17 @@ function GHLConnectionContent() {
   }
 
   const initiateOAuthFlow = () => {
+    console.log('🔍 OAuth Flow Initiation - Current State:', {
+      selectedAccountId,
+      effectiveUser: !!effectiveUser,
+      effectiveUserId: effectiveUser?.id,
+      userLoading,
+      loading,
+      hasAccess,
+      localStorage_selectedAccountId: localStorage.getItem('selectedAccountId'),
+      localStorage_oauth_selectedAccountId: localStorage.getItem('oauth_selectedAccountId')
+    })
+
     if (!selectedAccountId || !effectiveUser) {
       console.error('❌ Missing required data for OAuth:', { selectedAccountId, effectiveUser: !!effectiveUser })
       toast({
@@ -230,16 +242,34 @@ function GHLConnectionContent() {
       localStorage.setItem('oauth_userId', effectiveUser.id)
       localStorage.setItem('oauth_timestamp', Date.now().toString())
       
-      // Store in cookie (accessible to server)
-      document.cookie = `selectedAccountId=${selectedAccountId}; path=/; max-age=3600; secure; samesite=lax`
-      document.cookie = `oauth_userId=${effectiveUser.id}; path=/; max-age=3600; secure; samesite=lax`
+      // Store in cookies (accessible to server) with more robust settings
+      // Set cookies for both current domain and callback domain
+      const cookieOptions = `path=/; max-age=7200; samesite=lax${window.location.protocol === 'https:' ? '; secure' : ''}`
+      document.cookie = `selectedAccountId=${selectedAccountId}; ${cookieOptions}`
+      document.cookie = `oauth_userId=${effectiveUser.id}; ${cookieOptions}`
+      document.cookie = `oauth_timestamp=${Date.now()}; ${cookieOptions}`
+      
+      // Additional backup - store in sessionStorage as well
+      sessionStorage.setItem('oauth_selectedAccountId', selectedAccountId)
+      sessionStorage.setItem('oauth_userId', effectiveUser.id)
       
       console.log('💾 Stored account info in multiple locations:', {
         localStorage: true,
+        sessionStorage: true,
         cookies: true,
         selectedAccountId,
-        userId: effectiveUser.id
+        userId: effectiveUser.id,
+        cookieOptions,
+        protocol: window.location.protocol
       })
+      
+      // Verify cookies were set
+      const cookieCheck = document.cookie.includes(`selectedAccountId=${selectedAccountId}`)
+      console.log('🔍 Cookie verification:', { cookieCheck, allCookies: document.cookie })
+      
+      if (!cookieCheck) {
+        console.warn('⚠️ Cookie may not have been set properly')
+      }
     } catch (error) {
       console.error('❌ Failed to store account info:', error)
       toast({
