@@ -164,11 +164,30 @@ function GHLConnectionContent() {
       console.error('❌ Missing required data for OAuth:', { selectedAccountId, effectiveUser: !!effectiveUser })
       toast({
         title: "Error",
-        description: "Missing account or user information. Please refresh the page.",
+        description: "Please wait for accounts to load, then try again.",
         variant: "destructive"
       })
       return
     }
+
+    // Additional check - make sure we're not in a loading state
+    if (userLoading || loading) {
+      console.error('❌ Still loading - cannot start OAuth yet')
+      toast({
+        title: "Please Wait",
+        description: "Still loading account information. Please try again in a moment.",
+        variant: "destructive"
+      })
+      return
+    }
+
+    console.log('✅ Pre-OAuth validation passed:', {
+      selectedAccountId,
+      effectiveUserId: effectiveUser.id,
+      userLoading,
+      loading,
+      hasAccess
+    })
 
     // Generate a nonce for CSRF protection
     const nonce = Math.random().toString(36).substring(2, 15)
@@ -199,6 +218,33 @@ function GHLConnectionContent() {
       toast({
         title: "Configuration Error",
         description: "GHL Client ID not configured",
+        variant: "destructive"
+      })
+      return
+    }
+
+    // Store account ID in multiple places for redundancy
+    try {
+      // Store in localStorage (survives page refresh)
+      localStorage.setItem('oauth_selectedAccountId', selectedAccountId)
+      localStorage.setItem('oauth_userId', effectiveUser.id)
+      localStorage.setItem('oauth_timestamp', Date.now().toString())
+      
+      // Store in cookie (accessible to server)
+      document.cookie = `selectedAccountId=${selectedAccountId}; path=/; max-age=3600; secure; samesite=lax`
+      document.cookie = `oauth_userId=${effectiveUser.id}; path=/; max-age=3600; secure; samesite=lax`
+      
+      console.log('💾 Stored account info in multiple locations:', {
+        localStorage: true,
+        cookies: true,
+        selectedAccountId,
+        userId: effectiveUser.id
+      })
+    } catch (error) {
+      console.error('❌ Failed to store account info:', error)
+      toast({
+        title: "Storage Error", 
+        description: "Could not store account information. Please try again.",
         variant: "destructive"
       })
       return
@@ -236,11 +282,6 @@ function GHLConnectionContent() {
 
     // Store the current URL attempt for potential fallback
     localStorage.setItem('ghl_oauth_attempt', 'marketplace')
-    
-    // Store account ID in cookie as backup for state recovery
-    // GoHighLevel sometimes drops the state parameter
-    document.cookie = `selectedAccountId=${selectedAccountId}; path=/; max-age=3600; secure; samesite=strict`
-    console.log('💾 Stored account ID in cookie for state recovery:', selectedAccountId)
     
     // Redirect to OAuth flow
     console.log('⏳ Redirecting in 1 second...')
@@ -299,7 +340,34 @@ function GHLConnectionContent() {
   }
 
   const tryAlternativeOAuth = () => {
-    if (!selectedAccountId || !effectiveUser) return
+    if (!selectedAccountId || !effectiveUser) {
+      console.error('❌ Missing required data for alternative OAuth:', { selectedAccountId, effectiveUser: !!effectiveUser })
+      toast({
+        title: "Error",
+        description: "Please wait for accounts to load, then try again.",
+        variant: "destructive"
+      })
+      return
+    }
+
+    // Additional check - make sure we're not in a loading state
+    if (userLoading || loading) {
+      console.error('❌ Still loading - cannot start alternative OAuth yet')
+      toast({
+        title: "Please Wait",
+        description: "Still loading account information. Please try again in a moment.",
+        variant: "destructive"
+      })
+      return
+    }
+
+    console.log('✅ Pre-OAuth validation passed (alternative):', {
+      selectedAccountId,
+      effectiveUserId: effectiveUser.id,
+      userLoading,
+      loading,
+      hasAccess
+    })
 
     // Generate a nonce for CSRF protection
     const nonce = Math.random().toString(36).substring(2, 15)
@@ -324,6 +392,29 @@ function GHLConnectionContent() {
       return
     }
 
+    // Store account ID in multiple places for redundancy
+    try {
+      localStorage.setItem('oauth_selectedAccountId', selectedAccountId)
+      localStorage.setItem('oauth_userId', effectiveUser.id)
+      localStorage.setItem('oauth_timestamp', Date.now().toString())
+      
+      document.cookie = `selectedAccountId=${selectedAccountId}; path=/; max-age=3600; secure; samesite=lax`
+      document.cookie = `oauth_userId=${effectiveUser.id}; path=/; max-age=3600; secure; samesite=lax`
+      
+      console.log('💾 Stored account info for alternative OAuth:', {
+        selectedAccountId,
+        userId: effectiveUser.id
+      })
+    } catch (error) {
+      console.error('❌ Failed to store account info for alternative OAuth:', error)
+      toast({
+        title: "Storage Error", 
+        description: "Could not store account information. Please try again.",
+        variant: "destructive"
+      })
+      return
+    }
+
     // Try the standard app.gohighlevel.com OAuth URL
     const oauthUrl = new URL('https://app.gohighlevel.com/oauth/authorize')
     oauthUrl.searchParams.append('response_type', 'code')
@@ -338,10 +429,6 @@ function GHLConnectionContent() {
     // Store the current URL attempt for potential fallback
     localStorage.setItem('ghl_oauth_attempt', 'standard')
     
-    // Store account ID in cookie as backup for state recovery
-    document.cookie = `selectedAccountId=${selectedAccountId}; path=/; max-age=3600; secure; samesite=strict`
-    console.log('💾 Stored account ID in cookie for alternative OAuth state recovery:', selectedAccountId)
-
     toast({
       title: "Trying Alternative OAuth",
       description: "Using standard GHL login flow...",
@@ -501,23 +588,40 @@ function GHLConnectionContent() {
                   <div className="flex flex-wrap gap-2">
                     <Button 
                       onClick={useInstallationURL}
-                      className="bg-green-600 hover:bg-green-700"
+                      disabled={userLoading || loading || !selectedAccountId || !effectiveUser}
+                      className="bg-green-600 hover:bg-green-700 disabled:opacity-50"
                     >
                       <Link className="h-4 w-4 mr-2" />
-                      Use Installation URL (Recommended)
+                      {userLoading || loading ? 'Loading...' : 'Use Installation URL (Recommended)'}
                     </Button>
                     <Button 
                       variant="outline" 
                       onClick={initiateOAuthFlow}
+                      disabled={userLoading || loading || !selectedAccountId || !effectiveUser}
                     >
-                      Marketplace OAuth
+                      {userLoading || loading ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Loading...
+                        </>
+                      ) : (
+                        'Marketplace OAuth'
+                      )}
                     </Button>
                     <Button 
                       variant="outline" 
                       onClick={tryAlternativeOAuth}
+                      disabled={userLoading || loading || !selectedAccountId || !effectiveUser}
                       title="Try this if other methods show a blank page"
                     >
-                      Standard OAuth
+                      {userLoading || loading ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Loading...
+                        </>
+                      ) : (
+                        'Standard OAuth'
+                      )}
                     </Button>
                   </div>
                 )}
