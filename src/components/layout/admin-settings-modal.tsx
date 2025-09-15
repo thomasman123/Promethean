@@ -18,9 +18,11 @@ import {
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Search, UserCheck, Users, Settings2, Shield } from "lucide-react"
+import { Search, UserCheck, Users, Settings2, Shield, Building2, Plus } from "lucide-react"
 import { createBrowserClient } from "@supabase/ssr"
 import { Database } from "@/lib/database.types"
 import { useToast } from "@/hooks/use-toast"
@@ -44,6 +46,16 @@ export function AdminSettingsModal({ open, onOpenChange }: AdminSettingsModalPro
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [impersonating, setImpersonating] = useState<string | null>(null)
+  
+  // Account management state
+  const [accounts, setAccounts] = useState<any[]>([])
+  const [accountsLoading, setAccountsLoading] = useState(true)
+  const [accountSearchTerm, setAccountSearchTerm] = useState("")
+  const [showCreateAccount, setShowCreateAccount] = useState(false)
+  const [creatingAccount, setCreatingAccount] = useState(false)
+  const [newAccountName, setNewAccountName] = useState("")
+  const [newAccountDescription, setNewAccountDescription] = useState("")
+  
   const { toast } = useToast()
   const router = useRouter()
   
@@ -55,6 +67,7 @@ export function AdminSettingsModal({ open, onOpenChange }: AdminSettingsModalPro
   useEffect(() => {
     if (open) {
       fetchUsers()
+      fetchAccounts()
     }
   }, [open])
 
@@ -77,6 +90,74 @@ export function AdminSettingsModal({ open, onOpenChange }: AdminSettingsModalPro
       })
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchAccounts = async () => {
+    setAccountsLoading(true)
+    try {
+      const response = await fetch('/api/accounts')
+      if (!response.ok) throw new Error('Failed to fetch accounts')
+      
+      const data = await response.json()
+      setAccounts(data.accounts || [])
+    } catch (error) {
+      console.error('Error fetching accounts:', error)
+      toast({
+        title: "Error",
+        description: "Failed to load accounts",
+        variant: "destructive"
+      })
+    } finally {
+      setAccountsLoading(false)
+    }
+  }
+
+  const handleCreateAccount = async () => {
+    if (!newAccountName.trim()) {
+      toast({
+        title: "Error",
+        description: "Account name is required",
+        variant: "destructive"
+      })
+      return
+    }
+
+    setCreatingAccount(true)
+    try {
+      const response = await fetch('/api/accounts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newAccountName.trim(),
+          description: newAccountDescription.trim() || null
+        })
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.message || 'Failed to create account')
+      }
+
+      toast({
+        title: "Success",
+        description: "Account created successfully"
+      })
+
+      // Reset form and refresh
+      setNewAccountName("")
+      setNewAccountDescription("")
+      setShowCreateAccount(false)
+      fetchAccounts()
+    } catch (error) {
+      console.error('Error creating account:', error)
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to create account",
+        variant: "destructive"
+      })
+    } finally {
+      setCreatingAccount(false)
     }
   }
 
@@ -146,10 +227,14 @@ export function AdminSettingsModal({ open, onOpenChange }: AdminSettingsModalPro
         </DialogHeader>
 
         <Tabs defaultValue="users" className="flex-1 flex flex-col">
-          <TabsList className="mx-6 mt-4 grid w-fit grid-cols-2 rounded-lg bg-muted p-1">
+          <TabsList className="mx-6 mt-4 grid w-fit grid-cols-3 rounded-lg bg-muted p-1">
             <TabsTrigger value="users" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
               Users
+            </TabsTrigger>
+            <TabsTrigger value="accounts" className="flex items-center gap-2">
+              <Building2 className="h-4 w-4" />
+              Accounts
             </TabsTrigger>
             <TabsTrigger value="settings" className="flex items-center gap-2" disabled>
               <Settings2 className="h-4 w-4" />
@@ -170,10 +255,10 @@ export function AdminSettingsModal({ open, onOpenChange }: AdminSettingsModalPro
             </div>
 
             {/* Users Table */}
-            <div className="flex-1 border rounded-lg overflow-hidden">
+            <div className="flex-1 border rounded-lg overflow-hidden min-h-0">
               <ScrollArea className="h-full">
                 <Table>
-                  <TableHeader className="sticky top-0 bg-background border-b">
+                  <TableHeader className="sticky top-0 bg-background z-10">
                     <TableRow>
                       <TableHead className="bg-background">User</TableHead>
                       <TableHead className="bg-background">Email</TableHead>
@@ -234,6 +319,150 @@ export function AdminSettingsModal({ open, onOpenChange }: AdminSettingsModalPro
             {!loading && (
               <div className="text-sm text-muted-foreground">
                 Showing {filteredUsers.length} of {users.length} users
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="accounts" className="flex-1 flex flex-col px-6 pb-6 mt-4 space-y-4">
+            {/* Account Search and Create Button */}
+            <div className="flex gap-3">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Input
+                  placeholder="Search accounts by name..."
+                  value={accountSearchTerm}
+                  onChange={(e) => setAccountSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              <Button onClick={() => setShowCreateAccount(true)} className="flex items-center gap-2">
+                <Plus className="h-4 w-4" />
+                Create Account
+              </Button>
+            </div>
+
+            {/* Create Account Form */}
+            {showCreateAccount && (
+              <div className="border rounded-lg p-4 space-y-4 bg-muted/50">
+                <h3 className="font-semibold">Create New Account</h3>
+                <div className="space-y-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="account-name">Account Name *</Label>
+                    <Input
+                      id="account-name"
+                      placeholder="Enter account name"
+                      value={newAccountName}
+                      onChange={(e) => setNewAccountName(e.target.value)}
+                      disabled={creatingAccount}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="account-description">Description</Label>
+                    <Textarea
+                      id="account-description"
+                      placeholder="Enter account description (optional)"
+                      value={newAccountDescription}
+                      onChange={(e) => setNewAccountDescription(e.target.value)}
+                      disabled={creatingAccount}
+                      rows={3}
+                    />
+                  </div>
+                  <div className="flex gap-2 justify-end">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setShowCreateAccount(false)
+                        setNewAccountName("")
+                        setNewAccountDescription("")
+                      }}
+                      disabled={creatingAccount}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={handleCreateAccount}
+                      disabled={creatingAccount || !newAccountName.trim()}
+                    >
+                      {creatingAccount ? 'Creating...' : 'Create Account'}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Accounts Table */}
+            <div className="flex-1 border rounded-lg overflow-hidden min-h-0">
+              <ScrollArea className="h-full">
+                <Table>
+                  <TableHeader className="sticky top-0 bg-background z-10">
+                    <TableRow>
+                      <TableHead className="bg-background">Account Name</TableHead>
+                      <TableHead className="bg-background">Description</TableHead>
+                      <TableHead className="bg-background">Created</TableHead>
+                      <TableHead className="bg-background">Status</TableHead>
+                      <TableHead className="bg-background text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {accountsLoading ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                          Loading accounts...
+                        </TableCell>
+                      </TableRow>
+                    ) : accounts.filter(account => 
+                        account.name.toLowerCase().includes(accountSearchTerm.toLowerCase())
+                      ).length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                          No accounts found
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      accounts
+                        .filter(account => 
+                          account.name.toLowerCase().includes(accountSearchTerm.toLowerCase())
+                        )
+                        .map((account) => (
+                          <TableRow key={account.id} className="hover:bg-muted/50">
+                            <TableCell className="font-medium">
+                              {account.name}
+                            </TableCell>
+                            <TableCell className="text-muted-foreground max-w-xs truncate">
+                              {account.description || 'No description'}
+                            </TableCell>
+                            <TableCell className="text-muted-foreground">
+                              {new Date(account.created_at || Date.now()).toLocaleDateString()}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant={account.is_active !== false ? "outline" : "destructive"}>
+                                {account.is_active !== false ? 'Active' : 'Inactive'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled
+                                className="ml-auto"
+                              >
+                                Manage
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                    )}
+                  </TableBody>
+                </Table>
+              </ScrollArea>
+            </div>
+
+            {/* Account count */}
+            {!accountsLoading && (
+              <div className="text-sm text-muted-foreground">
+                Showing {accounts.filter(account => 
+                  account.name.toLowerCase().includes(accountSearchTerm.toLowerCase())
+                ).length} of {accounts.length} accounts
               </div>
             )}
           </TabsContent>
