@@ -60,6 +60,7 @@ function GHLConnectionContent() {
     } else if (error) {
       const errorMessages: Record<string, string> = {
         'missing_parameters': 'Missing required OAuth parameters',
+        'missing_account_info': 'Could not determine which account to connect (state parameter missing)',
         'invalid_state': 'Invalid OAuth state parameter',
         'configuration_error': 'GHL client configuration error',
         'token_exchange_failed': 'Failed to exchange authorization code',
@@ -236,6 +237,11 @@ function GHLConnectionContent() {
     // Store the current URL attempt for potential fallback
     localStorage.setItem('ghl_oauth_attempt', 'marketplace')
     
+    // Store account ID in cookie as backup for state recovery
+    // GoHighLevel sometimes drops the state parameter
+    document.cookie = `selectedAccountId=${selectedAccountId}; path=/; max-age=3600; secure; samesite=strict`
+    console.log('💾 Stored account ID in cookie for state recovery:', selectedAccountId)
+    
     // Redirect to OAuth flow
     console.log('⏳ Redirecting in 1 second...')
     setTimeout(() => {
@@ -331,6 +337,10 @@ function GHLConnectionContent() {
 
     // Store the current URL attempt for potential fallback
     localStorage.setItem('ghl_oauth_attempt', 'standard')
+    
+    // Store account ID in cookie as backup for state recovery
+    document.cookie = `selectedAccountId=${selectedAccountId}; path=/; max-age=3600; secure; samesite=strict`
+    console.log('💾 Stored account ID in cookie for alternative OAuth state recovery:', selectedAccountId)
 
     toast({
       title: "Trying Alternative OAuth",
