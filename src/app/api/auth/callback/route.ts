@@ -46,32 +46,45 @@ export async function GET(request: NextRequest) {
   
   if (!state) {
     console.log('⚠️ STATE PARAMETER MISSING - GoHighLevel did not return state parameter');
-    console.log('🔄 Attempting to recover account info from cookies/session...');
+    console.log('🔄 Attempting to recover account info from multiple sources...');
     
-    // Try to get account info from cookies or other sources
+    // Try to get account info from cookies first
     const cookieStore = await cookies()
     const selectedAccountId = cookieStore.get('selectedAccountId')?.value
+    const oauthUserId = cookieStore.get('oauth_userId')?.value
     const impersonateUserId = cookieStore.get('impersonate_user_id')?.value
     
     console.log('🔍 Cookie recovery attempt:', {
       selectedAccountId,
+      oauthUserId,
       impersonateUserId,
       allCookies: Object.fromEntries(
         Array.from(cookieStore.getAll()).map(cookie => [cookie.name, cookie.value.substring(0, 20) + '...'])
       )
     });
     
+    // Try to extract from referrer header as additional fallback
+    const referrer = request.headers.get('referer') || request.headers.get('referrer')
+    console.log('🔍 Referrer header:', referrer)
+    
     if (selectedAccountId) {
       console.log('✅ Recovered account ID from cookies:', selectedAccountId);
       stateData = { 
         accountId: selectedAccountId, 
-        nonce: 'recovered', 
-        userId: impersonateUserId || 'unknown'
+        nonce: 'recovered-cookie', 
+        userId: oauthUserId || impersonateUserId || 'unknown'
       };
     } else {
-      console.log('❌ Could not recover account info - no selectedAccountId cookie');
+      console.log('❌ Could not recover account info from any source');
+      console.log('🔍 Available recovery sources checked:');
+      console.log('  - selectedAccountId cookie:', !!selectedAccountId);
+      console.log('  - oauth_userId cookie:', !!oauthUserId);
+      console.log('  - impersonate_user_id cookie:', !!impersonateUserId);
+      console.log('  - referrer header:', !!referrer);
+      
+      // Return a more helpful error with instructions
       console.log('=== OAUTH CALLBACK END (NO ACCOUNT INFO) ===');
-      return NextResponse.redirect(`${baseUrl}/account/ghl-connection?error=missing_account_info`);
+      return NextResponse.redirect(`${baseUrl}/account/ghl-connection?error=missing_account_info&detail=Please ensure accounts are loaded before starting OAuth`);
     }
   } else {
     // Parse and validate state normally
