@@ -193,8 +193,9 @@ function GHLConnectionContent() {
     })
 
     // Construct OAuth URL
-    // Try using chooselocation endpoint which sometimes works better for marketplace apps
-    const oauthUrl = new URL('https://marketplace.leadconnectorhq.com/oauth/chooselocation')
+    // Using normal GHL login flow - this will redirect to GHL's standard login page
+    // instead of the marketplace app selection page
+    const oauthUrl = new URL('https://app.gohighlevel.com/oauth/authorize')
     oauthUrl.searchParams.append('response_type', 'code')
     oauthUrl.searchParams.append('client_id', clientId)
     oauthUrl.searchParams.append('redirect_uri', redirectUri)
