@@ -191,7 +191,7 @@ export default function TeamPage() {
     }
 
     loadTeamMembers()
-  }, [selectedAccountId, hasAccess, toast])
+  }, [selectedAccountId, hasAccess])
 
   const handleInviteUser = async () => {
     if (!selectedAccountId || !inviteForm.email) return
