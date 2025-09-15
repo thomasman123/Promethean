@@ -193,9 +193,9 @@ function GHLConnectionContent() {
     })
 
     // Construct OAuth URL
-    // Using normal GHL login flow - this will redirect to GHL's standard login page
-    // instead of the marketplace app selection page
-    const oauthUrl = new URL('https://app.gohighlevel.com/oauth/authorize')
+    // Try marketplace chooselocation first (often works better for marketplace apps)
+    // If this doesn't work, we can fall back to app.gohighlevel.com/oauth/authorize
+    const oauthUrl = new URL('https://marketplace.leadconnectorhq.com/oauth/chooselocation')
     oauthUrl.searchParams.append('response_type', 'code')
     oauthUrl.searchParams.append('client_id', clientId)
     oauthUrl.searchParams.append('redirect_uri', redirectUri)
@@ -204,12 +204,15 @@ function GHLConnectionContent() {
 
     console.log('🚀 Redirecting to OAuth URL:', oauthUrl.toString())
 
-    // Show info toast
+    // Show info toast with debugging info
     toast({
       title: "Redirecting to GoHighLevel",
-      description: "You will be redirected to authenticate with GoHighLevel",
+      description: "Trying marketplace OAuth flow. If this shows a blank page, we'll try alternative URLs.",
     })
 
+    // Store the current URL attempt for potential fallback
+    localStorage.setItem('ghl_oauth_attempt', 'marketplace')
+    
     // Redirect to OAuth flow
     setTimeout(() => {
       window.location.href = oauthUrl.toString()
@@ -247,6 +250,56 @@ function GHLConnectionContent() {
     } finally {
       setDisconnecting(false)
     }
+  }
+
+  const tryAlternativeOAuth = () => {
+    if (!selectedAccountId || !effectiveUser) return
+
+    // Generate a nonce for CSRF protection
+    const nonce = Math.random().toString(36).substring(2, 15)
+    
+    // Create state parameter
+    const state = JSON.stringify({
+      accountId: selectedAccountId,
+      nonce: nonce,
+      userId: effectiveUser.id
+    })
+
+    // Get OAuth URL
+    const clientId = process.env.NEXT_PUBLIC_GHL_CLIENT_ID
+    const redirectUri = `${window.location.origin}/api/auth/callback`
+    
+    if (!clientId) {
+      toast({
+        title: "Configuration Error",
+        description: "GHL Client ID not configured",
+        variant: "destructive"
+      })
+      return
+    }
+
+    // Try the standard app.gohighlevel.com OAuth URL
+    const oauthUrl = new URL('https://app.gohighlevel.com/oauth/authorize')
+    oauthUrl.searchParams.append('response_type', 'code')
+    oauthUrl.searchParams.append('client_id', clientId)
+    oauthUrl.searchParams.append('redirect_uri', redirectUri)
+    oauthUrl.searchParams.append('scope', 'contacts.readonly contacts.write opportunities.readonly opportunities.write calendars.readonly calendars.write conversations.readonly conversations.write locations.readonly businesses.readonly users.readonly')
+    oauthUrl.searchParams.append('state', state)
+
+    console.log('🔄 Trying alternative OAuth URL:', oauthUrl.toString())
+
+    // Store the current URL attempt for potential fallback
+    localStorage.setItem('ghl_oauth_attempt', 'standard')
+
+    toast({
+      title: "Trying Alternative OAuth",
+      description: "Using standard GHL login flow...",
+    })
+
+    // Redirect to OAuth flow
+    setTimeout(() => {
+      window.location.href = oauthUrl.toString()
+    }, 1000)
   }
 
   const resubscribeWebhooks = async () => {
@@ -394,12 +447,30 @@ function GHLConnectionContent() {
                     Disconnect
                   </Button>
                 ) : (
-                  <Button onClick={initiateOAuthFlow}>
-                    <Link className="h-4 w-4 mr-2" />
-                    Connect to GoHighLevel
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button onClick={initiateOAuthFlow}>
+                      <Link className="h-4 w-4 mr-2" />
+                      Connect to GoHighLevel
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      onClick={tryAlternativeOAuth}
+                      title="Try this if the main connect button shows a blank page"
+                    >
+                      Try Alternative
+                    </Button>
+                  </div>
                 )}
               </div>
+
+              {!connectionStatus?.isConnected && (
+                <div className="text-sm text-muted-foreground p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  <p className="font-medium text-blue-900 mb-1">Connection Help:</p>
+                  <p>• If the main connect button shows a blank page, click "Try Alternative"</p>
+                  <p>• Make sure your GHL app is published and active in the marketplace</p>
+                  <p>• Verify your redirect URI matches exactly: <code className="text-xs bg-blue-100 px-1 rounded">https://www.getpromethean.com/api/auth/callback</code></p>
+                </div>
+              )}
 
               {connectionStatus?.isConnected && (
                 <div className="space-y-2 pt-4 border-t">
