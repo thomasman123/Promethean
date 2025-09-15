@@ -60,20 +60,31 @@ Run the database migration to create the GHL connections table:
 ## How the Integration Works
 
 1. **Connection Process**
-   - Users navigate to Account > CRM Connection
-   - Click "Connect to GoHighLevel"
-   - Complete OAuth flow with GHL
-   - Connection is saved to the selected account
+   - User clicks "Connect to GoHighLevel"
+   - OAuth flow redirects to GoHighLevel for authorization
+   - User approves the app and selects a location
+   - App receives authorization code and exchanges it for access tokens
+   - Tokens are stored encrypted in the database
 
-2. **Account-Based Connections**
-   - Each connection is tied to a specific account in your system
-   - Users must select an account before connecting
-   - Only moderators and admins can manage connections
+## Troubleshooting
 
-3. **OAuth Flow**
-   - Uses GHL's marketplace app OAuth 2.0 flow
-   - Comprehensive scopes for full API access
-   - Tokens are stored securely with expiration handling
+### OAuth 404 Error
+If you get a 404 error when trying to connect, it means:
+- The app doesn't exist in GoHighLevel marketplace
+- The app exists but isn't published (still in draft)
+- The client ID is incorrect
+
+**Solution:**
+1. Log in to [https://marketplace.gohighlevel.com](https://marketplace.gohighlevel.com)
+2. Check if your app exists and is published
+3. Verify the client ID matches your environment variable
+4. Make sure the redirect URI matches EXACTLY (including https://)
+
+### Common Issues
+- **Redirect URI Mismatch**: Must match exactly, including protocol (http/https)
+- **App Not Published**: Apps in draft mode won't work
+- **Missing Scopes**: Ensure all required scopes are enabled
+- **Wrong Environment**: Using production client ID in development or vice versa
 
 ## Features
 
