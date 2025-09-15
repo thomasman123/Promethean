@@ -53,11 +53,13 @@ export async function GET(request: NextRequest) {
     const selectedAccountId = cookieStore.get('selectedAccountId')?.value
     const oauthUserId = cookieStore.get('oauth_userId')?.value
     const impersonateUserId = cookieStore.get('impersonate_user_id')?.value
+    const oauthTimestamp = cookieStore.get('oauth_timestamp')?.value
     
     console.log('🔍 Cookie recovery attempt:', {
       selectedAccountId,
       oauthUserId,
       impersonateUserId,
+      oauthTimestamp,
       allCookies: Object.fromEntries(
         Array.from(cookieStore.getAll()).map(cookie => [cookie.name, cookie.value.substring(0, 20) + '...'])
       )
@@ -67,20 +69,40 @@ export async function GET(request: NextRequest) {
     const referrer = request.headers.get('referer') || request.headers.get('referrer')
     console.log('🔍 Referrer header:', referrer)
     
-    if (selectedAccountId) {
-      console.log('✅ Recovered account ID from cookies:', selectedAccountId);
+    // Check if we have a recent timestamp (within last 10 minutes) to validate the OAuth flow
+    let isRecentOAuth = false
+    if (oauthTimestamp) {
+      const timestamp = parseInt(oauthTimestamp)
+      const tenMinutesAgo = Date.now() - (10 * 60 * 1000)
+      isRecentOAuth = timestamp > tenMinutesAgo
+      console.log('🔍 OAuth timestamp check:', {
+        timestamp,
+        tenMinutesAgo,
+        isRecent: isRecentOAuth,
+        ageMinutes: Math.round((Date.now() - timestamp) / (60 * 1000))
+      })
+    }
+    
+    if (selectedAccountId && isRecentOAuth) {
+      console.log('✅ Recovered account ID from cookies with valid timestamp:', selectedAccountId);
       stateData = { 
         accountId: selectedAccountId, 
         nonce: 'recovered-cookie', 
         userId: oauthUserId || impersonateUserId || 'unknown'
       };
+    } else if (selectedAccountId && !isRecentOAuth) {
+      console.log('⚠️ Found account ID in cookies but OAuth timestamp is too old or missing');
+      console.log('🔍 This might be a stale cookie from a previous session');
+      return NextResponse.redirect(`${baseUrl}/account/ghl-connection?error=stale_oauth_session&detail=Please try connecting again`);
     } else {
       console.log('❌ Could not recover account info from any source');
       console.log('🔍 Available recovery sources checked:');
       console.log('  - selectedAccountId cookie:', !!selectedAccountId);
       console.log('  - oauth_userId cookie:', !!oauthUserId);
       console.log('  - impersonate_user_id cookie:', !!impersonateUserId);
+      console.log('  - oauth_timestamp cookie:', !!oauthTimestamp);
       console.log('  - referrer header:', !!referrer);
+      console.log('  - timestamp valid:', isRecentOAuth);
       
       // Return a more helpful error with instructions
       console.log('=== OAUTH CALLBACK END (NO ACCOUNT INFO) ===');
