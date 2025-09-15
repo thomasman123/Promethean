@@ -203,12 +203,17 @@ export async function PUT(request: NextRequest) {
     if (updates.description !== undefined) dbUpdates.notes = updates.description
     if (updates.scope !== undefined) dbUpdates.scope = updates.scope
     if (updates.filters !== undefined) dbUpdates.filters = updates.filters
-    if (updates.widgets !== undefined) dbUpdates.widgets = updates.widgets
+    if (updates.widgets !== undefined) {
+      // Handle the ViewData format properly - the widgets field should contain the full ViewData object
+      dbUpdates.widgets = updates.widgets
+    }
     if (updates.compareMode !== undefined) dbUpdates.compare_mode = updates.compareMode
     if (updates.compareEntities !== undefined) dbUpdates.compare_entities = updates.compareEntities
     if (updates.isDefault !== undefined) dbUpdates.is_default = updates.isDefault
     
     dbUpdates.updated_at = new Date().toISOString()
+
+    console.log('🔍 [Views API] Updating view with data:', { id, dbUpdates })
 
     // Update the view in Supabase
     const { data: view, error } = await supabase
@@ -219,9 +224,11 @@ export async function PUT(request: NextRequest) {
       .single()
 
     if (error) {
-      console.error('Error updating view:', error)
-      return NextResponse.json({ error: 'Failed to update view' }, { status: 500 })
+      console.error('❌ [Views API] Error updating view:', error)
+      return NextResponse.json({ error: 'Failed to update view', details: error.message }, { status: 500 })
     }
+
+    console.log('✅ [Views API] Successfully updated view')
 
     // Transform to frontend format
     const transformedView = {
@@ -245,7 +252,7 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ view: transformedView })
 
   } catch (error) {
-    console.error('Update view API error:', error)
+    console.error('❌ [Views API] Update view API error:', error)
     return NextResponse.json({ 
       error: 'Internal server error',
       details: error instanceof Error ? error.message : 'Unknown error'
