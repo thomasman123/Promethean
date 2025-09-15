@@ -467,17 +467,24 @@ export function TopBar({ onAddWidget }: TopBarProps) {
             {/* Show ViewsManager and Add Widget button on dashboard page */}
             {pathname === "/dashboard" && (
               <>
-                <ViewsManager
-                  accountId={selectedAccountId}
-                  currentUserId={currentUserId}
-                  currentViewId={currentViewId}
-                  onViewChange={handleViewChange}
-                />
+                {selectedAccountId ? (
+                  <ViewsManager
+                    accountId={selectedAccountId}
+                    currentUserId={currentUserId}
+                    currentViewId={currentViewId}
+                    onViewChange={handleViewChange}
+                  />
+                ) : (
+                  <div className="h-8 px-3 py-1 text-sm text-muted-foreground bg-muted rounded-md flex items-center">
+                    Loading views...
+                  </div>
+                )}
                 <Button
                   variant="outline"
                   size="sm"
                   className="h-8"
                   onClick={() => setShowAddWidgetModal(true)}
+                  disabled={!selectedAccountId}
                 >
                   <Plus className="h-4 w-4 mr-2" />
                   Add Widget

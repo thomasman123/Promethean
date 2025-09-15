@@ -54,11 +54,17 @@ export function ViewsManager({ accountId, currentUserId, currentViewId, onViewCh
   const [viewName, setViewName] = useState("")
   const [viewScope, setViewScope] = useState<"private" | "team">("private")
   const [loading, setLoading] = useState(false)
+  const [viewsLoaded, setViewsLoaded] = useState(false)
 
-  // Load views
+  // Load views only when accountId is available and valid
   useEffect(() => {
-    if (accountId) {
+    if (accountId && accountId.trim() !== '') {
+      console.log('🔍 [ViewsManager] Loading views for account:', accountId)
       loadViews()
+    } else {
+      console.log('🔍 [ViewsManager] No valid accountId, skipping view load')
+      setViews([])
+      setViewsLoaded(false)
     }
   }, [accountId])
 
@@ -73,19 +79,29 @@ export function ViewsManager({ accountId, currentUserId, currentViewId, onViewCh
   }, [currentViewId, views])
 
   const loadViews = async () => {
-    if (!accountId) return
+    if (!accountId || accountId.trim() === '') {
+      console.log('🔍 [ViewsManager] loadViews called but no valid accountId')
+      return
+    }
+    
+    setLoading(true)
+    setViewsLoaded(false)
     
     try {
+      console.log('🔍 [ViewsManager] Fetching views for accountId:', accountId)
       const response = await fetch(`/api/dashboard/views?accountId=${accountId}`)
       if (response.ok) {
         const data = await response.json()
+        console.log('✅ [ViewsManager] Loaded views:', data.views?.length || 0)
         setViews(data.views || [])
+        setViewsLoaded(true)
         
         // If there's a currentViewId, find and set that view
         if (currentViewId) {
           const view = data.views?.find((v: View) => v.id === currentViewId)
           if (view) {
             setCurrentView(view)
+            console.log('✅ [ViewsManager] Set current view from currentViewId:', view.name)
           }
         } else {
           // Otherwise set default view if exists
@@ -93,11 +109,18 @@ export function ViewsManager({ accountId, currentUserId, currentViewId, onViewCh
           if (defaultView) {
             setCurrentView(defaultView)
             onViewChange?.(defaultView.id)
+            console.log('✅ [ViewsManager] Set default view:', defaultView.name)
           }
         }
+      } else {
+        console.error('❌ [ViewsManager] Failed to load views:', response.status)
+        setViews([])
       }
     } catch (error) {
-      console.error("Failed to load views:", error)
+      console.error("❌ [ViewsManager] Failed to load views:", error)
+      setViews([])
+    } finally {
+      setLoading(false)
     }
   }
 
