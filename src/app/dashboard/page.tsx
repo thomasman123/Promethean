@@ -33,6 +33,7 @@ export default function DashboardPage() {
   const [layouts, setLayouts] = useState(defaultLayouts)
   const [widgets, setWidgets] = useState<WidgetConfig[]>([])
   const [loading, setLoading] = useState(true)
+  const [accountsLoaded, setAccountsLoaded] = useState(false)
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   // Load saved view from localStorage on mount
@@ -50,12 +51,28 @@ export default function DashboardPage() {
     }
   }, [currentViewId])
 
-  // Load view data when view changes
+  // Monitor when accounts are loaded by checking if selectedAccountId is set
   useEffect(() => {
-    if (currentViewId && selectedAccountId) {
-      void loadViewData()
+    if (selectedAccountId) {
+      console.log('🔍 [Dashboard] Accounts loaded, selectedAccountId set:', selectedAccountId)
+      setAccountsLoaded(true)
+    } else {
+      console.log('🔍 [Dashboard] Waiting for selectedAccountId to be set...')
+      setAccountsLoaded(false)
     }
-  }, [currentViewId, selectedAccountId])
+  }, [selectedAccountId])
+
+  // Load view data when BOTH account is loaded AND view changes
+  useEffect(() => {
+    console.log('🔍 [Dashboard] Dependencies check - accountsLoaded:', accountsLoaded, 'currentViewId:', currentViewId, 'selectedAccountId:', selectedAccountId)
+    
+    if (accountsLoaded && currentViewId && selectedAccountId) {
+      console.log('✅ [Dashboard] All dependencies ready, loading view data')
+      void loadViewData()
+    } else {
+      console.log('⏳ [Dashboard] Waiting for dependencies - need accounts loaded AND view selected')
+    }
+  }, [accountsLoaded, currentViewId, selectedAccountId])
 
   const loadViewData = async () => {
     setLoading(true)
