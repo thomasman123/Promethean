@@ -260,8 +260,8 @@ function GHLConnectionContent() {
       description: "Please use the Installation URL from your GHL app dashboard for the most reliable connection.",
     })
     
-    // You can replace this with your actual Installation URL from GHL dashboard
-    const installationURL = "https://marketplace.leadconnectorhq.com/oauth/chooselocation?response_type=code&redirect_uri=https%3A%2F%2Fwww.getpromethean.com%2Fapi%2Fauth%2Fcallback&client_id=687ac40ba336fa240d35a751-md9dlifq&scope=calendars.readonly+calendars.write+opportunities.readonly+opportunities.write+contacts.readonly+contacts.write+locations.readonly+businesses.readonly+users.readonly"
+    // Official Installation URL from GHL dashboard with correct redirect URI
+    const installationURL = "https://marketplace.leadconnectorhq.com/oauth/chooselocation?response_type=code&redirect_uri=https%3A%2F%2Fwww.getpromethean.com%2Fapi%2Fauth%2Fcallback&client_id=687ac40ba336fa240d35a751-md9dlifq&scope=calendars.readonly+calendars.write+calendars%2Fevents.readonly+calendars%2Fevents.write+calendars%2Fresources.write+calendars%2Fresources.readonly+calendars%2Fgroups.write+calendars%2Fgroups.readonly+opportunities.readonly+oauth.write+oauth.readonly+opportunities.write+businesses.readonly+businesses.write+campaigns.readonly+conversations.readonly+conversations.write+conversations%2Fmessage.readonly+conversations%2Fmessage.write+conversations%2Freports.readonly+contacts.readonly+conversations%2Flivechat.write+contacts.write+objects%2Fschema.readonly+objects%2Frecord.readonly+objects%2Fschema.write+objects%2Frecord.write+associations.write+associations.readonly+associations%2Frelation.readonly+courses.write+associations%2Frelation.write+courses.readonly+forms.readonly+forms.write+invoices.readonly+invoices.write+invoices%2Fschedule.readonly+invoices%2Fschedule.write+invoices%2Ftemplate.readonly+invoices%2Festimate.readonly+invoices%2Ftemplate.write+invoices%2Festimate.write+links.readonly+lc-email.readonly+links.write+locations.readonly+locations%2FcustomValues.readonly+locations%2FcustomValues.write+locations%2FcustomFields.readonly+locations%2FcustomFields.write+locations%2Ftasks.readonly+locations%2Ftasks.write+locations%2Ftags.readonly+locations%2Ftags.write+locations%2Ftemplates.readonly+medias.readonly+medias.write+funnels%2Fredirect.readonly+funnels%2Fpage.readonly+funnels%2Ffunnel.readonly+funnels%2Fpagecount.readonly+funnels%2Fredirect.write+payments%2Forders.readonly+payments%2Forders.write+payments%2Fintegration.write+payments%2Fintegration.readonly+payments%2Ftransactions.readonly+payments%2Fsubscriptions.readonly+twilioaccount.read+blogs%2Flist.readonly+blogs%2Fposts.readonly+socialplanner%2Ftag.write+users.readonly&version_id=687ac40ba336fa240d35a751"
     
     window.open(installationURL, '_blank')
   }
@@ -503,9 +503,9 @@ function GHLConnectionContent() {
                     <p><strong>Option 2:</strong> Use the "Connect to GoHighLevel" button below (marketplace OAuth)</p>
                     <p><strong>Option 3:</strong> If you get a blank page, try "Try Alternative" (standard OAuth)</p>
                   </div>
-                  <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded">
-                    <p className="text-amber-800 font-medium">⚠️ Current Issue:</p>
-                    <p className="text-amber-700">Your GHL app redirect URI still points to Vercel. Update it in your GHL app settings to: <code className="text-xs bg-amber-100 px-1 rounded">https://www.getpromethean.com/api/auth/callback</code></p>
+                  <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded">
+                    <p className="text-green-800 font-medium">✅ Configuration Correct:</p>
+                    <p className="text-green-700">Your redirect URI is properly configured to use your production domain.</p>
                   </div>
                 </div>
               )}
