@@ -252,6 +252,20 @@ function GHLConnectionContent() {
     }
   }
 
+  const useInstallationURL = () => {
+    // This opens the official GHL Installation URL
+    // Users should get this URL from their GHL app dashboard: Advanced Settings > Auth > Installation URL
+    toast({
+      title: "Use Official Installation URL",
+      description: "Please use the Installation URL from your GHL app dashboard for the most reliable connection.",
+    })
+    
+    // You can replace this with your actual Installation URL from GHL dashboard
+    const installationURL = "https://marketplace.leadconnectorhq.com/oauth/chooselocation?response_type=code&redirect_uri=https%3A%2F%2Fwww.getpromethean.com%2Fapi%2Fauth%2Fcallback&client_id=687ac40ba336fa240d35a751-md9dlifq&scope=calendars.readonly+calendars.write+opportunities.readonly+opportunities.write+contacts.readonly+contacts.write+locations.readonly+businesses.readonly+users.readonly"
+    
+    window.open(installationURL, '_blank')
+  }
+
   const tryAlternativeOAuth = () => {
     if (!selectedAccountId || !effectiveUser) return
 
@@ -447,17 +461,26 @@ function GHLConnectionContent() {
                     Disconnect
                   </Button>
                 ) : (
-                  <div className="flex gap-2">
-                    <Button onClick={initiateOAuthFlow}>
+                  <div className="flex flex-wrap gap-2">
+                    <Button 
+                      onClick={useInstallationURL}
+                      className="bg-green-600 hover:bg-green-700"
+                    >
                       <Link className="h-4 w-4 mr-2" />
-                      Connect to GoHighLevel
+                      Use Installation URL (Recommended)
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      onClick={initiateOAuthFlow}
+                    >
+                      Marketplace OAuth
                     </Button>
                     <Button 
                       variant="outline" 
                       onClick={tryAlternativeOAuth}
-                      title="Try this if the main connect button shows a blank page"
+                      title="Try this if other methods show a blank page"
                     >
-                      Try Alternative
+                      Standard OAuth
                     </Button>
                   </div>
                 )}
@@ -469,6 +492,21 @@ function GHLConnectionContent() {
                   <p>• If the main connect button shows a blank page, click "Try Alternative"</p>
                   <p>• Make sure your GHL app is published and active in the marketplace</p>
                   <p>• Verify your redirect URI in GHL app settings matches exactly: <code className="text-xs bg-blue-100 px-1 rounded">https://www.getpromethean.com/api/auth/callback</code></p>
+                </div>
+              )}
+
+              {!connectionStatus?.isConnected && (
+                <div className="text-sm text-muted-foreground p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  <p className="font-medium text-blue-900 mb-2">Connection Options:</p>
+                  <div className="space-y-2">
+                    <p><strong>Option 1 (Recommended):</strong> Use your GHL Installation URL from the marketplace dashboard</p>
+                    <p><strong>Option 2:</strong> Use the "Connect to GoHighLevel" button below (marketplace OAuth)</p>
+                    <p><strong>Option 3:</strong> If you get a blank page, try "Try Alternative" (standard OAuth)</p>
+                  </div>
+                  <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded">
+                    <p className="text-amber-800 font-medium">⚠️ Current Issue:</p>
+                    <p className="text-amber-700">Your GHL app redirect URI still points to Vercel. Update it in your GHL app settings to: <code className="text-xs bg-amber-100 px-1 rounded">https://www.getpromethean.com/api/auth/callback</code></p>
+                  </div>
                 </div>
               )}
 
