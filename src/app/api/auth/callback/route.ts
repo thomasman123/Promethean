@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { cookies } from 'next/headers';
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -32,41 +33,71 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${baseUrl}/account/ghl-connection?error=${error}`);
   }
   
-  if (!code || !state) {
-    console.log('❌ MISSING PARAMETERS - DETAILED ANALYSIS:');
+  if (!code) {
+    console.log('❌ MISSING CODE PARAMETER - DETAILED ANALYSIS:');
     console.log('  - Code present:', !!code, code ? 'YES' : 'NO');
-    console.log('  - State present:', !!state, state ? 'YES' : 'NO');
     console.log('  - All search params:', Object.fromEntries(searchParams.entries()));
-    console.log('  - Request method:', request.method);
-    console.log('  - Request headers:', Object.fromEntries(request.headers.entries()));
-    console.log('=== OAUTH CALLBACK END (MISSING PARAMS) ===');
+    console.log('=== OAUTH CALLBACK END (MISSING CODE) ===');
     return NextResponse.redirect(`${baseUrl}/account/ghl-connection?error=missing_parameters`);
   }
 
-  // Parse and validate state
+  // Handle missing state parameter from GoHighLevel
   let stateData: { accountId: string; nonce: string; userId?: string };
-  try {
-    console.log('🔍 Attempting to parse state:', state);
-    stateData = JSON.parse(state);
-    console.log('✅ Parsed state successfully:', { 
-      accountId: stateData.accountId, 
-      hasNonce: !!stateData.nonce,
-      userId: stateData.userId 
+  
+  if (!state) {
+    console.log('⚠️ STATE PARAMETER MISSING - GoHighLevel did not return state parameter');
+    console.log('🔄 Attempting to recover account info from cookies/session...');
+    
+    // Try to get account info from cookies or other sources
+    const cookieStore = await cookies()
+    const selectedAccountId = cookieStore.get('selectedAccountId')?.value
+    const impersonateUserId = cookieStore.get('impersonate_user_id')?.value
+    
+    console.log('🔍 Cookie recovery attempt:', {
+      selectedAccountId,
+      impersonateUserId,
+      allCookies: Object.fromEntries(
+        Array.from(cookieStore.getAll()).map(cookie => [cookie.name, cookie.value.substring(0, 20) + '...'])
+      )
     });
-    if (!stateData.accountId || !stateData.nonce) {
-      throw new Error('Invalid state structure');
-    }
-  } catch (e) {
-    console.log('❌ State parsing failed:', e);
-    console.log('🔄 Trying legacy format...');
-    // Fallback for legacy state format (just accountId)
-    if (typeof state === 'string' && state.length > 10) {
-      stateData = { accountId: state, nonce: '' };
-      console.log('✅ Using legacy state format:', stateData.accountId);
+    
+    if (selectedAccountId) {
+      console.log('✅ Recovered account ID from cookies:', selectedAccountId);
+      stateData = { 
+        accountId: selectedAccountId, 
+        nonce: 'recovered', 
+        userId: impersonateUserId || 'unknown'
+      };
     } else {
-      console.log('❌ Legacy format also failed');
-      console.log('=== OAUTH CALLBACK END (INVALID STATE) ===');
-      return NextResponse.redirect(`${baseUrl}/account/ghl-connection?error=invalid_state`);
+      console.log('❌ Could not recover account info - no selectedAccountId cookie');
+      console.log('=== OAUTH CALLBACK END (NO ACCOUNT INFO) ===');
+      return NextResponse.redirect(`${baseUrl}/account/ghl-connection?error=missing_account_info`);
+    }
+  } else {
+    // Parse and validate state normally
+    try {
+      console.log('🔍 Attempting to parse state:', state);
+      stateData = JSON.parse(state);
+      console.log('✅ Parsed state successfully:', { 
+        accountId: stateData.accountId, 
+        hasNonce: !!stateData.nonce,
+        userId: stateData.userId 
+      });
+      if (!stateData.accountId || !stateData.nonce) {
+        throw new Error('Invalid state structure');
+      }
+    } catch (e) {
+      console.log('❌ State parsing failed:', e);
+      console.log('🔄 Trying legacy format...');
+      // Fallback for legacy state format (just accountId)
+      if (typeof state === 'string' && state.length > 10) {
+        stateData = { accountId: state, nonce: '' };
+        console.log('✅ Using legacy state format:', stateData.accountId);
+      } else {
+        console.log('❌ Legacy format also failed');
+        console.log('=== OAUTH CALLBACK END (INVALID STATE) ===');
+        return NextResponse.redirect(`${baseUrl}/account/ghl-connection?error=invalid_state`);
+      }
     }
   }
 
