@@ -173,7 +173,7 @@ function GHLConnectionContent() {
 
     // Get OAuth URL
     const clientId = process.env.NEXT_PUBLIC_GHL_CLIENT_ID
-    const redirectUri = `${window.location.origin}/api/auth/callback`
+    const redirectUri = 'https://www.getpromethean.com/api/auth/callback'
     
     if (!clientId) {
       toast({
@@ -267,7 +267,7 @@ function GHLConnectionContent() {
 
     // Get OAuth URL
     const clientId = process.env.NEXT_PUBLIC_GHL_CLIENT_ID
-    const redirectUri = `${window.location.origin}/api/auth/callback`
+    const redirectUri = 'https://www.getpromethean.com/api/auth/callback'
     
     if (!clientId) {
       toast({
@@ -468,7 +468,7 @@ function GHLConnectionContent() {
                   <p className="font-medium text-blue-900 mb-1">Connection Help:</p>
                   <p>• If the main connect button shows a blank page, click "Try Alternative"</p>
                   <p>• Make sure your GHL app is published and active in the marketplace</p>
-                  <p>• Verify your redirect URI matches exactly: <code className="text-xs bg-blue-100 px-1 rounded">https://www.getpromethean.com/api/auth/callback</code></p>
+                  <p>• Verify your redirect URI in GHL app settings matches exactly: <code className="text-xs bg-blue-100 px-1 rounded">https://www.getpromethean.com/api/auth/callback</code></p>
                 </div>
               )}
 
