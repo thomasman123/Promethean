@@ -194,6 +194,7 @@ function GHLConnectionContent() {
     })
     
     if (!clientId) {
+      console.error('❌ Missing GHL Client ID')
       toast({
         title: "Configuration Error",
         description: "GHL Client ID not configured",
@@ -220,7 +221,11 @@ function GHLConnectionContent() {
     oauthUrl.searchParams.append('scope', 'calendars.readonly calendars.write calendars/events.readonly calendars/events.write calendars/resources.write calendars/resources.readonly calendars/groups.write calendars/groups.readonly opportunities.readonly oauth.write oauth.readonly opportunities.write businesses.readonly businesses.write campaigns.readonly conversations.readonly conversations.write conversations/message.readonly conversations/message.write conversations/reports.readonly contacts.readonly conversations/livechat.write contacts.write objects/schema.readonly objects/record.readonly objects/schema.write objects/record.write associations.write associations.readonly associations/relation.readonly courses.write associations/relation.write courses.readonly forms.readonly forms.write invoices.readonly invoices.write invoices/schedule.readonly invoices/schedule.write invoices/template.readonly invoices/estimate.readonly invoices/template.write invoices/estimate.write links.readonly lc-email.readonly links.write locations.readonly locations/customValues.readonly locations/customValues.write locations/customFields.readonly locations/customFields.write locations/tasks.readonly locations/tasks.write locations/tags.readonly locations/tags.write locations/templates.readonly medias.readonly medias.write funnels/redirect.readonly funnels/page.readonly funnels/funnel.readonly funnels/pagecount.readonly funnels/redirect.write payments/orders.readonly payments/orders.write payments/integration.write payments/integration.readonly payments/transactions.readonly payments/subscriptions.readonly twilioaccount.read blogs/list.readonly blogs/posts.readonly socialplanner/tag.write users.readonly')
     oauthUrl.searchParams.append('state', state)
 
-    console.log('🚀 Redirecting to OAuth URL:', oauthUrl.toString())
+    console.log('🚀 FINAL OAUTH URL:', oauthUrl.toString())
+    console.log('🔍 URL Components:', {
+      base: oauthUrl.origin + oauthUrl.pathname,
+      params: Object.fromEntries(oauthUrl.searchParams.entries())
+    })
 
     // Show info toast with debugging info
     toast({
@@ -232,7 +237,9 @@ function GHLConnectionContent() {
     localStorage.setItem('ghl_oauth_attempt', 'marketplace')
     
     // Redirect to OAuth flow
+    console.log('⏳ Redirecting in 1 second...')
     setTimeout(() => {
+      console.log('🔄 Redirecting now to:', oauthUrl.toString())
       window.location.href = oauthUrl.toString()
     }, 1000)
   }
