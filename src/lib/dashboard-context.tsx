@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react'
 import { startOfMonth, endOfMonth } from 'date-fns'
+import { usePersistedAccount } from '@/hooks/use-persisted-account'
 
 interface DashboardContextType {
   dateRange: {
@@ -23,24 +24,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     to: endOfMonth(new Date()),
   })
   const [currentViewId, setCurrentViewId] = useState<string>("")
-  const [selectedAccountId, setSelectedAccountId] = useState<string>("")
-
-  useEffect(() => {
-    // Get account ID from localStorage
-    const accountId = localStorage.getItem('selectedAccountId')
-    if (accountId) {
-      setSelectedAccountId(accountId)
-    }
-
-    // Listen for account changes
-    const handleAccountChange = (e: Event) => {
-      const customEvent = e as CustomEvent
-      setSelectedAccountId(customEvent.detail.accountId)
-    }
-
-    window.addEventListener('accountChanged', handleAccountChange)
-    return () => window.removeEventListener('accountChanged', handleAccountChange)
-  }, [])
+  const { selectedAccountId, setSelectedAccountId } = usePersistedAccount()
 
   const setDateRange = (range: { from: Date | undefined; to: Date | undefined }) => {
     setDateRangeState({

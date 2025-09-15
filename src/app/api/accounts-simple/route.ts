@@ -274,7 +274,15 @@ export async function GET() {
     }
 
     console.log('✅ [accounts-simple] Returning response with', accounts.length, 'accounts')
-    return NextResponse.json({ accounts })
+    
+    const response = NextResponse.json({ accounts })
+    
+    // Add cache headers to reduce unnecessary requests
+    // Cache for 2 minutes, but allow stale-while-revalidate for up to 5 minutes
+    response.headers.set('Cache-Control', 'public, max-age=120, stale-while-revalidate=300')
+    response.headers.set('Vary', 'Cookie') // Since we use cookies for auth
+    
+    return response
     
   } catch (error) {
     console.error('❌ [accounts-simple] Unexpected error:', error)
