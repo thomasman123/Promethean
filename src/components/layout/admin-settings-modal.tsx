@@ -21,7 +21,6 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { Search, UserCheck, Users, Settings2, Shield, Building2, Plus } from "lucide-react"
 import { createBrowserClient } from "@supabase/ssr"
 import { Database } from "@/lib/database.types"
@@ -257,9 +256,9 @@ export function AdminSettingsModal({ open, onOpenChange }: AdminSettingsModalPro
 
               {/* Users Table */}
               <div className="flex-1 border rounded-lg overflow-hidden min-h-0">
-                <ScrollArea className="h-full">
+                <div className="h-full overflow-auto">
                   <Table>
-                    <TableHeader className="sticky top-0 bg-background z-10">
+                    <TableHeader className="sticky top-0 bg-background z-10 border-b">
                       <TableRow>
                         <TableHead className="bg-background">User</TableHead>
                         <TableHead className="bg-background">Email</TableHead>
@@ -313,7 +312,7 @@ export function AdminSettingsModal({ open, onOpenChange }: AdminSettingsModalPro
                       )}
                     </TableBody>
                   </Table>
-                </ScrollArea>
+                </div>
               </div>
 
               {/* User count */}
@@ -395,9 +394,9 @@ export function AdminSettingsModal({ open, onOpenChange }: AdminSettingsModalPro
 
               {/* Accounts Table */}
               <div className="flex-1 border rounded-lg overflow-hidden min-h-0">
-                <ScrollArea className="h-full">
+                <div className="h-full overflow-auto">
                   <Table>
-                    <TableHeader className="sticky top-0 bg-background z-10">
+                    <TableHeader className="sticky top-0 bg-background z-10 border-b">
                       <TableRow>
                         <TableHead className="bg-background">Account Name</TableHead>
                         <TableHead className="bg-background">Description</TableHead>
@@ -457,7 +456,7 @@ export function AdminSettingsModal({ open, onOpenChange }: AdminSettingsModalPro
                       )}
                     </TableBody>
                   </Table>
-                </ScrollArea>
+                </div>
               </div>
 
               {/* Account count */}

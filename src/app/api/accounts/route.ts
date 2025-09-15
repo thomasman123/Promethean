@@ -43,13 +43,13 @@ export async function GET() {
     const isAdmin = profile?.role === 'admin'
 
     // 3. Build the accounts response
-    let accounts: Array<{ id: string; name: string; description: string | null; role?: string }> = []
+    let accounts: Array<{ id: string; name: string; description: string | null; role?: string; created_at?: string; is_active?: boolean }> = []
 
     if (isAdmin) {
       // Admins can see all active accounts
       const { data, error } = await supabase
         .from('accounts')
-        .select('id, name, description')
+        .select('id, name, description, created_at, is_active')
         .eq('is_active', true)
         .order('name')
 
@@ -71,6 +71,7 @@ export async function GET() {
              id,
              name,
              description,
+             created_at,
              is_active
            )`
         )
@@ -84,7 +85,7 @@ export async function GET() {
         const acc = row.accounts as any | null
 
         if (acc && acc.is_active) {
-          return [{ id: acc.id, name: acc.name, description: acc.description, role }]
+          return [{ id: acc.id, name: acc.name, description: acc.description, created_at: acc.created_at, is_active: acc.is_active, role }]
         }
         return []
       })
