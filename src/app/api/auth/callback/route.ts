@@ -48,24 +48,26 @@ export async function GET(request: NextRequest) {
 
   // TODO: Validate nonce against stored value for full CSRF protection
   
-  const clientId = process.env.GHL_CLIENT_ID;
+  // Fix environment variable names to match what's actually available
+  const clientId = process.env.GHL_CLIENT_ID || process.env.NEXT_PUBLIC_GHL_CLIENT_ID;
   const clientSecret = process.env.GHL_CLIENT_SECRET;
   const redirectUri = process.env.GHL_REDIRECT_URI || `${baseUrl}/api/auth/callback`;
   
   console.log('🔍 OAuth config:', { 
     hasClientId: !!clientId, 
     hasClientSecret: !!clientSecret, 
-    redirectUri 
+    redirectUri,
+    clientIdSource: process.env.GHL_CLIENT_ID ? 'GHL_CLIENT_ID' : 'NEXT_PUBLIC_GHL_CLIENT_ID'
   });
   
   if (!clientId || !clientSecret) {
-    console.log('❌ Missing OAuth config');
+    console.log('❌ Missing OAuth config - need GHL_CLIENT_ID/NEXT_PUBLIC_GHL_CLIENT_ID and GHL_CLIENT_SECRET');
     return NextResponse.redirect(`${baseUrl}/account/ghl-connection?error=configuration_error`);
   }
   
   try {
     console.log('🔄 Exchanging code for tokens...');
-    // Exchange authorization code for access token
+    // Exchange authorization code for access token using correct GoHighLevel endpoint
     const tokenResponse = await fetch('https://services.leadconnectorhq.com/oauth/token', {
       method: 'POST',
       headers: {

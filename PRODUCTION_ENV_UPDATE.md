@@ -1,14 +1,12 @@
 # Production Environment Variables Update
 
-## GoHighLevel OAuth Credentials (Updated)
+Update these environment variables in your production deployment (Vercel/Netlify/etc):
 
-Add or update these environment variables in your production environment:
-
-```
-GHL_CLIENT_ID=687ac40ba336fa240d35a751-mfkumpxb
+```bash
+# GoHighLevel OAuth Configuration - UPDATED CLIENT ID
+GHL_CLIENT_ID=687ac40ba336fa240d35a751-md9dlifq
 GHL_CLIENT_SECRET=e05056c2-f60f-46ec-8469-f0cb31f802f9
-NEXT_PUBLIC_GHL_CLIENT_ID=687ac40ba336fa240d35a751-mfkumpxb
-NEXT_PUBLIC_APP_URL=https://www.getpromethean.com
+NEXT_PUBLIC_GHL_CLIENT_ID=687ac40ba336fa240d35a751-md9dlifq
 ```
 
 ## Deployment Platforms
