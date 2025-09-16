@@ -129,7 +129,7 @@ CREATE POLICY "Users can view meta ad accounts for their accessible accounts" ON
         account_id IN (
             SELECT account_id FROM account_access 
             WHERE user_id = auth.uid() 
-            AND (role = 'admin' OR role = 'user' OR role = 'data_user')
+            AND (role = 'admin' OR role = 'moderator' OR role = 'sales_rep' OR role = 'setter')
         )
     );
 
@@ -147,7 +147,7 @@ CREATE POLICY "Users can view meta campaigns for their accessible accounts" ON m
         account_id IN (
             SELECT account_id FROM account_access 
             WHERE user_id = auth.uid() 
-            AND (role = 'admin' OR role = 'user' OR role = 'data_user')
+            AND (role = 'admin' OR role = 'moderator' OR role = 'sales_rep' OR role = 'setter')
         )
     );
 
@@ -156,7 +156,7 @@ CREATE POLICY "Users can view meta ad sets for their accessible accounts" ON met
         account_id IN (
             SELECT account_id FROM account_access 
             WHERE user_id = auth.uid() 
-            AND (role = 'admin' OR role = 'user' OR role = 'data_user')
+            AND (role = 'admin' OR role = 'moderator' OR role = 'sales_rep' OR role = 'setter')
         )
     );
 
@@ -165,7 +165,7 @@ CREATE POLICY "Users can view meta ads for their accessible accounts" ON meta_ad
         account_id IN (
             SELECT account_id FROM account_access 
             WHERE user_id = auth.uid() 
-            AND (role = 'admin' OR role = 'user' OR role = 'data_user')
+            AND (role = 'admin' OR role = 'moderator' OR role = 'sales_rep' OR role = 'setter')
         )
     );
 
@@ -174,7 +174,7 @@ CREATE POLICY "Users can view meta ad performance for their accessible accounts"
         account_id IN (
             SELECT account_id FROM account_access 
             WHERE user_id = auth.uid() 
-            AND (role = 'admin' OR role = 'user' OR role = 'data_user')
+            AND (role = 'admin' OR role = 'moderator' OR role = 'sales_rep' OR role = 'setter')
         )
     );
 

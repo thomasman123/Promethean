@@ -170,7 +170,7 @@ CREATE POLICY "Users can view work timeframes for their accessible accounts" ON 
         account_id IN (
             SELECT account_id FROM account_access 
             WHERE user_id = auth.uid() 
-            AND (role = 'admin' OR role = 'user' OR role = 'data_user')
+            AND (role = 'admin' OR role = 'moderator' OR role = 'sales_rep' OR role = 'setter')
         )
     );
 
