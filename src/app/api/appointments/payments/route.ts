@@ -33,13 +33,37 @@ export async function POST(req: NextRequest) {
 	if (!appointmentId) return NextResponse.json({ error: 'Missing appointmentId' }, { status: 400 });
 
 	if (action === 'init') {
+		// Check if payments already exist to prevent duplicates
+		const { data: existingPayments, error: checkError } = await supabase
+			.from('appointment_payments')
+			.select('id')
+			.eq('appointment_id', appointmentId)
+			.limit(1);
+		
+		if (checkError) return NextResponse.json({ error: checkError.message }, { status: 400 });
+		
+		// If payments already exist, don't create another one
+		if (existingPayments && existingPayments.length > 0) {
+			return NextResponse.json({ ok: true, message: 'Payments already exist' });
+		}
+
 		// Insert default row with today's date and amount equal to current cash_collected (if set)
 		const { data: appt, error: aerr } = await supabase.from('appointments').select('id, cash_collected').eq('id', appointmentId).single();
 		if (aerr || !appt) return NextResponse.json({ error: 'Appointment not found' }, { status: 404 });
 		const initialAmount = (appt as any).cash_collected || 0;
-		const todayIso = new Date().toISOString();
-		const { error: ierr } = await supabase.from('appointment_payments').insert({ appointment_id: appointmentId, payment_date: todayIso, amount: initialAmount, paid: true });
-		if (ierr) return NextResponse.json({ error: ierr.message }, { status: 400 });
+		
+		// Only create if there's actually cash collected
+		if (initialAmount > 0) {
+			const todayIso = new Date().toISOString();
+			const { error: ierr } = await supabase.from('appointment_payments').insert({ 
+				appointment_id: appointmentId, 
+				payment_date: todayIso, 
+				amount: initialAmount, 
+				paid: true 
+			});
+			if (ierr) return NextResponse.json({ error: ierr.message }, { status: 400 });
+		}
+		
 		return NextResponse.json({ ok: true });
 	}
 
