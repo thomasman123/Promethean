@@ -153,6 +153,34 @@ const BASE_METRICS = {
 		unit: 'percent' as const
 	},
 
+	'show_up_rate_assigned': {
+		name: 'Show Up Rate (Assigned)',
+		description: 'Percentage of appointments where contacts showed up - attributed to assigned sales rep',
+		breakdownType: 'total' as const,
+		query: {
+			table: 'appointments',
+			select: [
+				"COALESCE(AVG(CASE WHEN LOWER(call_outcome) = 'show' THEN 1.0 ELSE 0.0 END), 0) as value"
+			]
+		},
+		unit: 'percent' as const,
+		attributionContext: 'assigned' as const
+	},
+
+	'show_up_rate_booked': {
+		name: 'Show Up Rate (Booked)',
+		description: 'Percentage of appointments where contacts showed up - attributed to setter who booked it',
+		breakdownType: 'total' as const,
+		query: {
+			table: 'appointments',
+			select: [
+				"COALESCE(AVG(CASE WHEN LOWER(call_outcome) = 'show' THEN 1.0 ELSE 0.0 END), 0) as value"
+			]
+		},
+		unit: 'percent' as const,
+		attributionContext: 'booked' as const
+	},
+
 	// === DIALS METRICS ===
 	'total_dials': {
 		name: 'Total Dials',
