@@ -28,6 +28,9 @@ const METRIC_CATEGORIES = {
     "cash_per_appointment",
     "cash_per_dial"
   ],
+  "Payment": [
+    "pif_rate"
+  ],
   "Marketing & ROI": [
     "ad_spend",
     "cost_per_booked_call",
