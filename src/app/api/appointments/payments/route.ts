@@ -33,37 +33,49 @@ export async function POST(req: NextRequest) {
 	if (!appointmentId) return NextResponse.json({ error: 'Missing appointmentId' }, { status: 400 });
 
 	if (action === 'init') {
-		// Check if payments already exist to prevent duplicates
-		const { data: existingPayments, error: checkError } = await supabase
+		// Get appointment and check for existing payments in one query
+		const { data: appt, error: aerr } = await supabase.from('appointments').select('id, cash_collected').eq('id', appointmentId).single();
+		if (aerr || !appt) return NextResponse.json({ error: 'Appointment not found' }, { status: 404 });
+		
+		const initialAmount = (appt as any).cash_collected || 0;
+		
+		// Only proceed if there's cash collected
+		if (initialAmount <= 0) {
+			return NextResponse.json({ ok: true, message: 'No cash collected to initialize' });
+		}
+
+		// Check if a payment with this exact amount and paid=true already exists (likely the cash collected payment)
+		const { data: existingCashPayment, error: checkError } = await supabase
 			.from('appointment_payments')
 			.select('id')
 			.eq('appointment_id', appointmentId)
+			.eq('amount', initialAmount)
+			.eq('paid', true)
 			.limit(1);
 		
 		if (checkError) return NextResponse.json({ error: checkError.message }, { status: 400 });
 		
-		// If payments already exist, don't create another one
-		if (existingPayments && existingPayments.length > 0) {
-			return NextResponse.json({ ok: true, message: 'Payments already exist' });
+		// If a cash collected payment already exists, don't create another one
+		if (existingCashPayment && existingCashPayment.length > 0) {
+			console.log(`🚫 [API] Cash collected payment already exists for appointment ${appointmentId}`);
+			return NextResponse.json({ ok: true, message: 'Cash collected payment already exists' });
 		}
 
-		// Insert default row with today's date and amount equal to current cash_collected (if set)
-		const { data: appt, error: aerr } = await supabase.from('appointments').select('id, cash_collected').eq('id', appointmentId).single();
-		if (aerr || !appt) return NextResponse.json({ error: 'Appointment not found' }, { status: 404 });
-		const initialAmount = (appt as any).cash_collected || 0;
+		// Create the initial cash collected payment
+		const todayIso = new Date().toISOString();
+		const { error: ierr } = await supabase.from('appointment_payments').insert({ 
+			appointment_id: appointmentId, 
+			payment_date: todayIso, 
+			amount: initialAmount, 
+			paid: true 
+		});
 		
-		// Only create if there's actually cash collected
-		if (initialAmount > 0) {
-			const todayIso = new Date().toISOString();
-			const { error: ierr } = await supabase.from('appointment_payments').insert({ 
-				appointment_id: appointmentId, 
-				payment_date: todayIso, 
-				amount: initialAmount, 
-				paid: true 
-			});
-			if (ierr) return NextResponse.json({ error: ierr.message }, { status: 400 });
+		if (ierr) {
+			console.error(`❌ [API] Failed to create initial payment:`, ierr);
+			return NextResponse.json({ error: ierr.message }, { status: 400 });
 		}
 		
+		console.log(`✅ [API] Created initial payment of $${initialAmount} for appointment ${appointmentId}`);
 		return NextResponse.json({ ok: true });
 	}
 
