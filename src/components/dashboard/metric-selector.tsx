@@ -63,6 +63,12 @@ const METRIC_CATEGORIES = {
   "Conversion": [
     "pitch_to_sale_rate",
     "answer_to_sale_rate",
+    "booking_to_close",
+    "booking_to_close_assigned",
+    "booking_to_close_booked",
+    "booking_to_close_reps",
+    "booking_to_close_setters",
+    "booking_to_close_link",
     "speed_to_lead"
   ]
 }
