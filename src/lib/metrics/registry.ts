@@ -357,6 +357,130 @@ const BASE_METRICS = {
 		unit: 'count' as const
 	},
 
+	// === ANSWER PER DIAL METRICS ===
+	'answer_per_dial': {
+		name: 'Answer per Dial',
+		description: 'Percentage of dials that were answered',
+		breakdownType: 'total' as const,
+		query: {
+			table: 'dials',
+			select: [
+				"COALESCE(AVG(CASE WHEN answered = true THEN 1.0 ELSE 0.0 END), 0) as value"
+			]
+		},
+		unit: 'percent' as const
+	},
+
+	'answer_per_dial_assigned': {
+		name: 'Answer per Dial (Assigned)',
+		description: 'Percentage of dials that were answered - attributed to assigned sales rep',
+		breakdownType: 'total' as const,
+		query: {
+			table: 'dials',
+			select: [
+				"COALESCE(AVG(CASE WHEN answered = true THEN 1.0 ELSE 0.0 END), 0) as value"
+			]
+		},
+		unit: 'percent' as const,
+		attributionContext: 'assigned' as const
+	},
+
+	'answer_per_dial_dialer': {
+		name: 'Answer per Dial (Dialer)',
+		description: 'Percentage of dials that were answered - attributed to the dialer',
+		breakdownType: 'total' as const,
+		query: {
+			table: 'dials',
+			select: [
+				"COALESCE(AVG(CASE WHEN answered = true THEN 1.0 ELSE 0.0 END), 0) as value"
+			]
+		},
+		unit: 'percent' as const,
+		attributionContext: 'dialer' as const
+	},
+
+	'answer_per_dial_reps': {
+		name: 'Answer per Dial (by Rep)',
+		description: 'Percentage of dials that were answered, grouped by sales rep',
+		breakdownType: 'rep' as const,
+		query: {
+			table: 'dials',
+			select: [
+				'sales_rep_user_id as rep_id',
+				'profiles.full_name as rep_name',
+				"COALESCE(AVG(CASE WHEN answered = true THEN 1.0 ELSE 0.0 END), 0) as value"
+			],
+			joins: [
+				{
+					table: 'profiles',
+					on: 'dials.sales_rep_user_id = profiles.id',
+					type: 'LEFT'
+				}
+			],
+			groupBy: ['sales_rep_user_id', 'profiles.full_name'],
+			having: ['COUNT(*) > 0'],
+			orderBy: ['value DESC']
+		},
+		unit: 'percent' as const
+	},
+
+	'answer_per_dial_setters': {
+		name: 'Answer per Dial (by Setter)',
+		description: 'Percentage of dials that were answered, grouped by setter',
+		breakdownType: 'setter' as const,
+		query: {
+			table: 'dials',
+			select: [
+				'setter_user_id as setter_id',
+				'profiles.full_name as setter_name',
+				"COALESCE(AVG(CASE WHEN answered = true THEN 1.0 ELSE 0.0 END), 0) as value"
+			],
+			joins: [
+				{
+					table: 'profiles',
+					on: 'dials.setter_user_id = profiles.id',
+					type: 'LEFT'
+				}
+			],
+			groupBy: ['setter_user_id', 'profiles.full_name'],
+			having: ['COUNT(*) > 0'],
+			orderBy: ['value DESC']
+		},
+		unit: 'percent' as const
+	},
+
+	'answer_per_dial_link': {
+		name: 'Answer per Dial (Setter→Rep Links)',
+		description: 'Percentage of dials that were answered, showing setter to rep relationships',
+		breakdownType: 'link' as const,
+		query: {
+			table: 'dials',
+			select: [
+				'setter_user_id as setter_id',
+				'setter_profiles.full_name as setter_name',
+				'sales_rep_user_id as rep_id',
+				'rep_profiles.full_name as rep_name',
+				"COALESCE(AVG(CASE WHEN answered = true THEN 1.0 ELSE 0.0 END), 0) as value"
+			],
+			joins: [
+				{
+					table: 'profiles setter_profiles',
+					on: 'dials.setter_user_id = setter_profiles.id',
+					type: 'LEFT'
+				},
+				{
+					table: 'profiles rep_profiles',
+					on: 'dials.sales_rep_user_id = rep_profiles.id',
+					type: 'LEFT'
+				}
+			],
+			groupBy: ['setter_user_id', 'setter_profiles.full_name', 'sales_rep_user_id', 'rep_profiles.full_name'],
+			having: ['COUNT(*) > 0'],
+			orderBy: ['value DESC']
+		},
+		unit: 'percent' as const
+	},
+
 	'cash_per_dial': {
 		name: 'Cash Per Dial',
 		description: 'Average cash collected per dial made (cross-table calculation)',
