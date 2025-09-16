@@ -46,6 +46,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar as CalendarComponent } from "@/components/ui/calendar"
 import { CalendarIcon } from "lucide-react"
 import { format } from "date-fns"
+import { PaymentPlan } from "@/components/payment-plan"
 
 interface AppointmentData {
   id: string
@@ -840,40 +841,61 @@ export default function AppointmentsDiscoveriesPage() {
                     </div>
 
                     {editForm.showOutcome === 'won' && (
-                      <div className="grid grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg border">
-                        <div className="space-y-2">
-                          <Label htmlFor="cash-collected" className="text-base font-medium">
-                            Cash Collected
-                          </Label>
-                          <div className="relative">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
-                            <Input
-                              id="cash-collected"
-                              type="number"
-                              placeholder="0.00"
-                              value={editForm.cashCollected}
-                              onChange={(e) => setEditForm({...editForm, cashCollected: e.target.value})}
-                              className="pl-8"
-                            />
+                      <>
+                        <div className="grid grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg border">
+                          <div className="space-y-2">
+                            <Label htmlFor="cash-collected" className="text-base font-medium">
+                              Cash Collected
+                            </Label>
+                            <div className="relative">
+                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                              <Input
+                                id="cash-collected"
+                                type="number"
+                                placeholder="0.00"
+                                value={editForm.cashCollected}
+                                onChange={(e) => setEditForm({...editForm, cashCollected: e.target.value})}
+                                className="pl-8"
+                              />
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="total-sales" className="text-base font-medium">
+                              Total Sales Value
+                            </Label>
+                            <div className="relative">
+                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                              <Input
+                                id="total-sales"
+                                type="number"
+                                placeholder="0.00"
+                                value={editForm.totalSalesValue}
+                                onChange={(e) => setEditForm({...editForm, totalSalesValue: e.target.value})}
+                                className="pl-8"
+                              />
+                            </div>
                           </div>
                         </div>
-                                                  <div className="space-y-2">
-                          <Label htmlFor="total-sales" className="text-base font-medium">
-                            Total Sales Value
-                          </Label>
-                          <div className="relative">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
-                            <Input
-                              id="total-sales"
-                              type="number"
-                              placeholder="0.00"
-                              value={editForm.totalSalesValue}
-                              onChange={(e) => setEditForm({...editForm, totalSalesValue: e.target.value})}
-                              className="pl-8"
+
+                        {/* Payment Plan - Show when cash collected is less than total sales value */}
+                        {Number(editForm.cashCollected || 0) < Number(editForm.totalSalesValue || 0) && 
+                         Number(editForm.totalSalesValue || 0) > 0 && (
+                          <div className="mt-4">
+                            <PaymentPlan
+                              appointmentId={editForm.id}
+                              totalSalesValue={Number(editForm.totalSalesValue || 0)}
+                              cashCollected={Number(editForm.cashCollected || 0)}
+                              onPaymentUpdate={() => {
+                                // Optional: Refresh appointment data or show success message
+                                toast({
+                                  title: "Payment Updated",
+                                  description: "Payment plan has been updated successfully.",
+                                });
+                              }}
                             />
                           </div>
-                        </div>
-                      </div>
+                        )}
+                      </>
                     )}
 
                     {(editForm.showOutcome === 'lost' || editForm.showOutcome === 'follow_up') && (
