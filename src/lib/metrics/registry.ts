@@ -318,6 +318,24 @@ const BASE_METRICS = {
 		}
 	},
 
+	'cash_collection_rate': {
+		name: 'Cash Collection Rate',
+		description: 'Percentage of total sales value that was actually collected (cash_collected / total_sales_value)',
+		breakdownType: 'total' as const,
+		query: {
+			table: 'appointments',
+			select: [
+				'CASE WHEN SUM(total_sales_value) > 0 THEN COALESCE(SUM(cash_collected)::DECIMAL / SUM(total_sales_value), 0) ELSE 0 END as value'
+			],
+			where: ["show_outcome = 'won'", "total_sales_value > 0"]
+		},
+		unit: 'percent' as const,
+		options: {
+			attribution: ['all', 'assigned', 'booked'],
+			breakdown: ['total', 'reps', 'setters', 'link']
+		}
+	},
+
 	// === LEADS METRICS ===
 	'total_leads': {
 		name: 'Total Leads',
