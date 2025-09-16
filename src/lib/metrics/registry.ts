@@ -303,11 +303,12 @@ const BASE_METRICS = {
 	// === LEADS METRICS ===
 	'total_leads': {
 		name: 'Total Leads',
-		description: 'Total count of unique contacts/leads in the system',
+		description: 'Total count of unique contacts/leads created in GoHighLevel for the selected date range',
 		breakdownType: 'total' as const,
 		query: {
 			table: 'contacts',
-			select: ['COUNT(*) as value']
+			select: ['COUNT(*) as value'],
+			where: ['ghl_created_at IS NOT NULL'] // Only count contacts with GHL creation date
 		},
 		unit: 'count' as const,
 		options: {

@@ -43,8 +43,9 @@ export function applyStandardFilters(filters: MetricFilters, baseTable: string):
 	// Handle different table types for date filtering
 	let dateCol: string
 	if (baseTable === 'contacts') {
-		// Contacts table uses date_added field directly (no local date columns)
-		dateCol = 'date_added'
+		// Contacts table now uses GHL local date columns for accurate lead tracking
+		const localCol = pickLocalDateColumn(baseTable, startStr, endStr)
+		dateCol = `ghl_${localCol}` // Use ghl_local_date, ghl_local_week, or ghl_local_month
 	} else {
 		// Other tables use local date columns
 		const localCol = pickLocalDateColumn(baseTable, startStr, endStr)
@@ -56,20 +57,11 @@ export function applyStandardFilters(filters: MetricFilters, baseTable: string):
 		try { const d = new Date(`${endStr}T00:00:00`); d.setDate(d.getDate() + 1); return toDateOnlyString(d) } catch { return endStr }
 	})()
 
-	// Date range filtering
-	if (baseTable === 'contacts') {
-		// For contacts, filter on date_added using timestamp comparison
-		conditions.push({ field: dateCol, operator: '>=', value: `${startStr}T00:00:00Z`, paramName: 'start_date' })
-		conditions.push({ field: dateCol, operator: '<', value: `${endExclusive}T00:00:00Z`, paramName: 'end_plus' })
-		params.start_date = `${startStr}T00:00:00Z`
-		params.end_plus = `${endExclusive}T00:00:00Z`
-	} else {
-		// For other tables, use local date columns
-		conditions.push({ field: dateCol, operator: '>=', value: startStr, paramName: 'start_date' })
-		conditions.push({ field: dateCol, operator: '<', value: endExclusive, paramName: 'end_plus' })
-		params.start_date = startStr
-		params.end_plus = endExclusive
-	}
+	// Date range filtering - use local date columns for all tables now
+	conditions.push({ field: dateCol, operator: '>=', value: startStr, paramName: 'start_date' })
+	conditions.push({ field: dateCol, operator: '<', value: endExclusive, paramName: 'end_plus' })
+	params.start_date = startStr
+	params.end_plus = endExclusive
 	params.range_end = endStr
 
 	// Account filter - always applied
