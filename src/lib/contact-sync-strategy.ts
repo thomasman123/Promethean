@@ -252,7 +252,7 @@ export async function syncAllContactsFromGHL(accountId: string, accessToken: str
       // Use GHL Search Contacts API with proper pagination
       const requestBody: any = {
         locationId: locationId,
-        limit: limit
+        pageLimit: limit // GHL API uses pageLimit, not limit
       }
       
       // Add searchAfter for pagination (skip on first request)
@@ -260,7 +260,7 @@ export async function syncAllContactsFromGHL(accountId: string, accessToken: str
         requestBody.searchAfter = searchAfter
       }
 
-      console.log(`📞 Fetching contacts from GHL API - batch with limit ${limit}`, searchAfter.length > 0 ? `(searchAfter: ${searchAfter})` : '(first batch)')
+      console.log(`📞 Fetching contacts from GHL API - batch with pageLimit ${limit}`, searchAfter.length > 0 ? `(searchAfter: ${searchAfter})` : '(first batch)')
 
       const response = await fetch('https://services.leadconnectorhq.com/contacts/search', {
         method: 'POST',
@@ -353,8 +353,10 @@ export async function syncAllContactsFromGHL(accountId: string, accessToken: str
           // Fallback pagination using timestamp and ID
           searchAfter = [new Date(lastContact.dateAdded || lastContact.dateUpdated || new Date()).getTime(), lastContact.id]
         }
+        console.log(`📞 Next batch will use searchAfter:`, searchAfter)
       } else {
         hasMore = false
+        console.log(`📞 Last batch - received ${contacts.length} contacts (less than pageLimit ${limit})`)
       }
       
       // Rate limiting between batches
