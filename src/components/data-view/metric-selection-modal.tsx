@@ -47,6 +47,7 @@ const METRIC_CATEGORIES = {
     "answers",
     "meaningful_conversations",
     "booked_calls",
+    "meaningful_conversation_avg_call_length",
     "answer_per_dial",
     "dials_per_booking"
   ],

@@ -249,6 +249,23 @@ const BASE_METRICS = {
 		}
 	},
 
+	'meaningful_conversation_avg_call_length': {
+		name: 'Meaningful Conversation Avg Call Length',
+		description: 'Average duration of meaningful conversations (duration >= 120 seconds)',
+		breakdownType: 'total' as const,
+		query: {
+			table: 'dials',
+			select: ['COALESCE(AVG(duration), 0) as value'],
+			where: ['meaningful_conversation = true']
+		},
+		unit: 'seconds' as const,
+		options: {
+			attribution: ['none', 'assigned', 'dialer'],
+			breakdown: ['total', 'reps', 'setters', 'link'],
+			timeFormat: ['seconds', 'minutes', 'hours', 'human_readable']
+		}
+	},
+
 	'answer_per_dial': {
 		name: 'Answer per Dial',
 		description: 'Percentage of dials that were answered',
