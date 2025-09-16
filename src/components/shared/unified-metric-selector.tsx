@@ -24,6 +24,7 @@ interface UnifiedMetricSelectorProps {
   onMetricSelect: (metricName: string, metricDefinition: MetricDefinition, options?: any) => void
   mode: 'dashboard' | 'data-view'
   title?: string
+  tableType?: 'user_metrics' | 'account_metrics' | 'time_series'
 }
 
 // Use the same categorization as both dashboard and data view
@@ -88,26 +89,93 @@ const METRIC_CATEGORIES = {
   ]
 }
 
+// Define which metrics are interchangeable vs account-only
+const INTERCHANGEABLE_METRICS = [
+  // From appointments table
+  'total_appointments', 'show_ups', 'sales_made', 'show_up_rate', 'appointment_to_sale_rate',
+  'cash_collected', 'cash_per_sale', 'cash_per_appointment', 'average_contract_value_per_sale', 'total_revenue_generated',
+  'pif_rate', 'cash_collection_rate', 'lead_quality', 'pitch_to_sale_rate', 'answer_to_sale_rate', 'booking_to_close',
+  
+  // From dials table
+  'total_dials', 'answers', 'meaningful_conversations', 'booked_calls', 'meaningful_conversation_avg_call_length',
+  'answer_per_dial', 'dials_per_booking', 'cash_per_dial', 'answer_to_conversation_ratio', 'meaningful_conversation_to_booking_ratio',
+  
+  // From discoveries table
+  'total_discoveries', 'show_ups_discoveries', 'discovery_lead_quality',
+  
+  // From work_timeframes table (derived from dials)
+  'bookings_per_hour', 'dials_per_hour', 'hours_worked'
+]
+
+const ACCOUNT_ONLY_METRICS = [
+  // From contacts table
+  'total_leads', 'lead_to_appointment',
+  
+  // From meta ads tables
+  'ad_spend', 'cost_per_booked_call', 'roi',
+  
+  // Cross-table/complex
+  'speed_to_lead'
+]
+
 export function UnifiedMetricSelector({ 
   open, 
   onOpenChange, 
   onMetricSelect,
   mode,
-  title
+  title,
+  tableType
 }: UnifiedMetricSelectorProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedMetric, setSelectedMetric] = useState<string | null>(null)
   const [showOptions, setShowOptions] = useState(false)
   const [selectedOptions, setSelectedOptions] = useState<any>({})
 
-  // Filter metrics based on search query
+  // Filter metrics based on search query and table type
   const filteredCategories = useMemo(() => {
     const query = searchQuery.toLowerCase()
-    if (!query) return METRIC_CATEGORIES
+    
+    // Filter metrics based on table type
+    const getAvailableMetrics = (metrics: string[]) => {
+      return metrics.filter(metricId => {
+        // For user metrics tables: show interchangeable metrics only
+        if (tableType === 'user_metrics') {
+          return INTERCHANGEABLE_METRICS.includes(metricId)
+        }
+        
+        // For account metrics tables: show all metrics (interchangeable + account-only)
+        if (tableType === 'account_metrics') {
+          return INTERCHANGEABLE_METRICS.includes(metricId) || ACCOUNT_ONLY_METRICS.includes(metricId)
+        }
+        
+        // For time series tables: show all metrics (for now)
+        if (tableType === 'time_series') {
+          return INTERCHANGEABLE_METRICS.includes(metricId) || ACCOUNT_ONLY_METRICS.includes(metricId)
+        }
+        
+        // For dashboard mode: show all metrics
+        return true
+      })
+    }
+
+    let categories: Record<string, string[]> = METRIC_CATEGORIES
+    
+    // Apply table type filtering if specified
+    if (tableType) {
+      categories = Object.fromEntries(
+        Object.entries(METRIC_CATEGORIES).map(([category, metrics]) => [
+          category,
+          getAvailableMetrics(metrics)
+        ])
+      ) as Record<string, string[]>
+    }
+
+    // Apply search filtering
+    if (!query) return categories
 
     const filtered: Record<string, string[]> = {}
     
-    Object.entries(METRIC_CATEGORIES).forEach(([category, metrics]) => {
+    Object.entries(categories).forEach(([category, metrics]) => {
       const matchingMetrics = metrics.filter(metricId => {
         const metric = METRICS_REGISTRY[metricId]
         if (!metric) return false
@@ -125,7 +193,7 @@ export function UnifiedMetricSelector({
     })
     
     return filtered
-  }, [searchQuery])
+  }, [searchQuery, tableType])
 
   const getUnitBadgeVariant = (unit?: string) => {
     switch (unit) {
