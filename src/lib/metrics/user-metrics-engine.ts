@@ -295,6 +295,53 @@ export class UserMetricsEngine {
   }
 
   /**
+   * Process results for average duration metrics (with options support)
+   */
+  private processAverageDurationResults(
+    data: any[], 
+    userIds: string[], 
+    tableType: 'appointments' | 'discoveries' | 'dials',
+    metric: MetricDefinition,
+    options?: any
+  ): UserMetricResult[] {
+    
+    // Group data by user and calculate average duration
+    const userStats = new Map<string, { totalDuration: number, count: number }>()
+    
+    // Initialize all users
+    userIds.forEach(userId => {
+      userStats.set(userId, { totalDuration: 0, count: 0 })
+    })
+
+    // Process each record
+    for (const record of data) {
+      const setterId = record.setter_user_id
+      const duration = record.duration || 0
+
+      // Add to setter stats (duration metrics are typically setter-based)
+      if (setterId && userIds.includes(setterId) && duration > 0) {
+        const stats = userStats.get(setterId)!
+        stats.totalDuration += duration
+        stats.count += 1
+      }
+    }
+
+    // Convert to results format with average calculation
+    return userIds.map(userId => {
+      const stats = userStats.get(userId)!
+      const avgDuration = stats.count > 0 ? stats.totalDuration / stats.count : 0
+      const role = stats.count > 0 ? 'setter' : 'none'
+      
+      return {
+        userId,
+        value: Math.round(avgDuration * 100) / 100, // Round to 2 decimal places
+        role,
+        displayValue: this.formatValue(avgDuration, metric, options)
+      }
+    })
+  }
+
+  /**
    * Process results for average cash collected metrics
    */
   private processAverageCashResults(
@@ -560,10 +607,16 @@ export class UserMetricsEngine {
     
     const isAverageMetric = metric.query.select[0].includes('AVG(')
     const isCashCollectedMetric = metric.query.select[0].includes('cash_collected')
+    const isDurationMetric = metric.query.select[0].includes('duration')
     
-    // For average metrics, we need to track both sum and count
+    // For average cash metrics, use special processing
     if (isAverageMetric && isCashCollectedMetric) {
       return this.processAverageCashResults(data, userIds, tableType, metric.attributionContext)
+    }
+    
+    // For average duration metrics, use special processing with options support
+    if (isAverageMetric && isDurationMetric) {
+      return this.processAverageDurationResults(data, userIds, tableType, metric, options)
     }
     
     // Handle attribution context for single attribution metrics
