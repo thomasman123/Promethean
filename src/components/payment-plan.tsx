@@ -81,10 +81,18 @@ export function PaymentPlan({ appointmentId, totalSalesValue, cashCollected, onP
 
 	// Initialize with cash collected amount if no payments exist
 	const ensureInitialized = async () => {
-		if (initialized || rows.length > 0) return;
+		console.log('🔍 [PaymentPlan] ensureInitialized called:', {
+			initialized,
+			rowsLength: rows.length,
+			cashCollected,
+			appointmentId
+		});
 		
-		// If there's cash collected, automatically add it as the first payment (marked as paid)
-		if (cashCollected > 0) {
+		if (initialized) return;
+		
+		// If there's cash collected and no payments exist, automatically add it as the first payment (marked as paid)
+		if (cashCollected > 0 && rows.length === 0) {
+			console.log('💰 [PaymentPlan] Auto-initializing with cash collected:', cashCollected);
 			try {
 				const res = await fetch('/api/appointments/payments', { 
 					method: 'POST', 
@@ -92,11 +100,13 @@ export function PaymentPlan({ appointmentId, totalSalesValue, cashCollected, onP
 					body: JSON.stringify({ action: 'init', appointmentId }) 
 				});
 				if (res.ok) {
+					console.log('✅ [PaymentPlan] Init API call successful');
 					setInitialized(true);
 					// Refresh the data
 					const refreshRes = await fetch(`/api/appointments/payments?appointmentId=${appointmentId}`);
 					const refreshData = await refreshRes.json();
 					if (refreshRes.ok) {
+						console.log('✅ [PaymentPlan] Refresh successful, payments:', refreshData.payments);
 						const mapped: PaymentRow[] = (refreshData.payments || []).map((p: any) => ({ 
 							id: p.id, 
 							payment_date: p.payment_date, 
@@ -104,7 +114,13 @@ export function PaymentPlan({ appointmentId, totalSalesValue, cashCollected, onP
 							paid: !!p.paid 
 						}));
 						setRows(mapped);
+						onPaymentUpdate?.();
+					} else {
+						console.error('❌ [PaymentPlan] Refresh failed:', refreshData);
 					}
+				} else {
+					const errorData = await res.json();
+					console.error('❌ [PaymentPlan] Init API call failed:', errorData);
 				}
 			} catch (error) {
 				console.error('Failed to initialize payments:', error);
@@ -115,8 +131,11 @@ export function PaymentPlan({ appointmentId, totalSalesValue, cashCollected, onP
 	};
 
 	useEffect(() => {
-		ensureInitialized();
-	}, [initialized, rows.length]);
+		// Only try to initialize after we've loaded existing payments
+		if (!loading) {
+			ensureInitialized();
+		}
+	}, [initialized, rows.length, loading, cashCollected]);
 
 	const addRow = () => {
 		const newRow: PaymentRow = {
