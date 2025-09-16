@@ -15,7 +15,7 @@ import { useToast } from '@/hooks/use-toast'
 import { useDashboard } from '@/lib/dashboard-context'
 import { useAccountTimezone } from '@/hooks/use-account-timezone'
 import { clearTimezoneCache, getCurrentTimeFormatted } from '@/lib/timezone-utils'
-import { Clock, Globe, Building2, Settings, Save, RefreshCw, AlertCircle } from 'lucide-react'
+import { Clock, Globe, Building2, Settings, Save, RefreshCw, AlertCircle, Bell, CheckCircle } from 'lucide-react'
 import { useAccountsCache } from '@/hooks/use-accounts-cache'
 
 // Common timezones for business use
@@ -60,18 +60,25 @@ export default function AccountSettingsPage() {
   const [account, setAccount] = useState<Account | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [checkingOverdue, setCheckingOverdue] = useState(false)
+  const [overdueStats, setOverdueStats] = useState<{
+    appointments: number
+    discoveries: number
+    total: number
+  } | null>(null)
   const [formData, setFormData] = useState({
     name: '',
     description: '',
     business_timezone: 'UTC'
   })
 
-  // Load account details
+  // Load account details and overdue stats
   useEffect(() => {
     if (selectedAccountId && accounts.length > 0) {
       const accountData = accounts.find(acc => acc.id === selectedAccountId)
       if (accountData) {
         loadAccountDetails(selectedAccountId)
+        loadOverdueStats()
       }
     }
   }, [selectedAccountId, accounts])
@@ -100,6 +107,52 @@ export default function AccountSettingsPage() {
       })
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadOverdueStats = async () => {
+    try {
+      const response = await fetch('/api/notifications/overdue')
+      if (response.ok) {
+        const data = await response.json()
+        setOverdueStats({
+          appointments: data.overdueAppointments,
+          discoveries: data.overdueDiscoveries,
+          total: data.total
+        })
+      }
+    } catch (error) {
+      console.error('Error loading overdue stats:', error)
+    }
+  }
+
+  const checkOverdueItems = async () => {
+    setCheckingOverdue(true)
+    try {
+      const response = await fetch('/api/notifications/overdue', {
+        method: 'POST'
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        toast({
+          title: "Overdue Check Complete",
+          description: data.message,
+        })
+        // Refresh stats
+        await loadOverdueStats()
+      } else {
+        throw new Error('Failed to check overdue items')
+      }
+    } catch (error) {
+      console.error('Error checking overdue items:', error)
+      toast({
+        title: "Error",
+        description: "Failed to check for overdue items",
+        variant: "destructive"
+      })
+    } finally {
+      setCheckingOverdue(false)
     }
   }
 
@@ -338,6 +391,89 @@ export default function AccountSettingsPage() {
                 Changing the timezone will affect how all dates and times are displayed throughout the application, 
                 including dashboards, data views, appointments, and reports. The change takes effect immediately after saving.
               </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Notifications Management */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Bell className="h-5 w-5" />
+              Overdue Notifications
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Automatically notify users when appointments or discoveries are not completed 24 hours after their scheduled time.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="p-4 bg-muted rounded-lg">
+                <div className="text-2xl font-bold text-orange-600">
+                  {overdueStats?.appointments || 0}
+                </div>
+                <div className="text-sm text-muted-foreground">Overdue Appointments</div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  Sales reps need to update call outcomes
+                </div>
+              </div>
+              <div className="p-4 bg-muted rounded-lg">
+                <div className="text-2xl font-bold text-blue-600">
+                  {overdueStats?.discoveries || 0}
+                </div>
+                <div className="text-sm text-muted-foreground">Overdue Discoveries</div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  Setters need to update call outcomes
+                </div>
+              </div>
+              <div className="p-4 bg-muted rounded-lg">
+                <div className="text-2xl font-bold text-red-600">
+                  {overdueStats?.total || 0}
+                </div>
+                <div className="text-sm text-muted-foreground">Total Overdue</div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  Items needing attention
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-2">
+              <Button 
+                onClick={checkOverdueItems} 
+                disabled={checkingOverdue}
+                variant="outline"
+              >
+                {checkingOverdue ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                    Checking...
+                  </>
+                ) : (
+                  <>
+                    <Bell className="h-4 w-4 mr-2" />
+                    Check & Notify Overdue Items
+                  </>
+                )}
+              </Button>
+              
+              <Button 
+                onClick={loadOverdueStats} 
+                variant="ghost"
+                size="sm"
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Refresh Stats
+              </Button>
+            </div>
+
+            <div className="p-4 bg-amber-50 rounded-lg border border-amber-200">
+              <h4 className="font-medium text-amber-900 mb-1">How It Works</h4>
+              <ul className="text-sm text-amber-800 space-y-1">
+                <li>• <strong>Appointments:</strong> Sales reps get notified 24 hours after scheduled time if no call outcome</li>
+                <li>• <strong>Discoveries:</strong> Setters get notified 24 hours after scheduled time if no call outcome</li>
+                <li>• <strong>Automatic:</strong> System checks hourly and creates notifications for overdue items</li>
+                <li>• <strong>No Duplicates:</strong> Only one notification per overdue item</li>
+              </ul>
             </div>
           </CardContent>
         </Card>
