@@ -316,6 +316,22 @@ const BASE_METRICS = {
 		}
 	},
 
+	'lead_to_appointment': {
+		name: 'Lead to Appointment',
+		description: 'Percentage of leads that convert to appointments',
+		breakdownType: 'total' as const,
+		query: {
+			table: 'contacts',
+			select: ['0 as value'] // This will be calculated via cross-table calculation in engine
+		},
+		unit: 'percent' as const,
+		isSpecialMetric: true,
+		options: {
+			attribution: ['all', 'assigned', 'booked'],
+			breakdown: ['total', 'reps', 'setters', 'link']
+		}
+	},
+
 	'answer_per_dial': {
 		name: 'Answer per Dial',
 		description: 'Percentage of dials that were answered',

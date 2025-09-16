@@ -164,6 +164,11 @@ export class MetricsEngine {
     if (metric.name?.startsWith('Cost Per Booked Call')) {
       return this.buildCostPerBookedCallSQL(appliedFilters, metric, options)
     }
+
+    // Handle Lead to Appointment calculation (Appointments / Contacts)
+    if (metric.name === 'Lead to Appointment') {
+      return this.buildLeadToAppointmentSQL(appliedFilters, metric, options)
+    }
     
     // Build SELECT clause
     const selectClause = `SELECT ${selectFields.join(', ')}`
@@ -505,6 +510,43 @@ WHERE speed_to_lead_seconds IS NOT NULL
          END as value
        FROM appointment_data
        FULL OUTER JOIN spend_data ON appointment_data.account_id = spend_data.account_id
+           `.trim()
+   }
+
+   /**
+    * Special SQL builder for Lead to Appointment calculation (Appointments / Contacts)
+    */
+   private buildLeadToAppointmentSQL(appliedFilters: any, metric: MetricDefinition, options?: any): string {
+     // Lead to Appointment = (Total Appointments / Total Contacts) * 100 for percentage
+     // We need to join contacts and appointments tables
+     
+     const whereClause = buildWhereClause(appliedFilters, [])
+     
+     return `
+       WITH contact_data AS (
+         SELECT 
+           account_id,
+           COUNT(*) as total_contacts
+         FROM contacts
+         ${whereClause.replace('appointments.', 'contacts.')}
+         GROUP BY account_id
+       ),
+       appointment_data AS (
+         SELECT 
+           account_id,
+           COUNT(*) as total_appointments
+         FROM appointments
+         ${whereClause}
+         GROUP BY account_id
+       )
+       SELECT 
+         CASE 
+           WHEN contact_data.total_contacts > 0 
+           THEN ROUND((appointment_data.total_appointments::DECIMAL / contact_data.total_contacts), 4)
+           ELSE 0 
+         END as value
+       FROM contact_data
+       FULL OUTER JOIN appointment_data ON contact_data.account_id = appointment_data.account_id
      `.trim()
    }
 
