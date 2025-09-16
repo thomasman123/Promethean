@@ -135,23 +135,23 @@ export class UserMetricsEngine {
   ): Promise<UserMetricResult[]> {
     
     const { table } = metric.query
-    const { accountId, startDate, endDate, userIds } = request
+    const { accountId, startDate, endDate, userIds, options } = request
 
     switch (table) {
       case 'appointments':
-        return this.calculateAppointmentMetrics(metric, accountId, startDate, endDate, userIds)
+        return this.calculateAppointmentMetrics(metric, accountId, startDate, endDate, userIds, options)
       
       case 'discoveries':
-        return this.calculateDiscoveryMetrics(metric, accountId, startDate, endDate, userIds)
+        return this.calculateDiscoveryMetrics(metric, accountId, startDate, endDate, userIds, options)
       
       case 'dials':
-        return this.calculateDialMetrics(metric, accountId, startDate, endDate, userIds)
+        return this.calculateDialMetrics(metric, accountId, startDate, endDate, userIds, options)
       
       case 'work_timeframes':
-        return this.calculateWorkTimeframeMetrics(metric, accountId, startDate, endDate, userIds, request.options)
+        return this.calculateWorkTimeframeMetrics(metric, accountId, startDate, endDate, userIds, options)
       
       case 'meta_ad_performance':
-        return this.calculateMetaAdMetrics(metric, accountId, startDate, endDate, userIds)
+        return this.calculateMetaAdMetrics(metric, accountId, startDate, endDate, userIds, options)
       
       default:
         throw new Error(`Unsupported table type: ${table}`)
@@ -166,7 +166,8 @@ export class UserMetricsEngine {
     accountId: string,
     startDate: string,
     endDate: string,
-    userIds: string[]
+    userIds: string[],
+    options?: any
   ): Promise<UserMetricResult[]> {
     
     console.log(`Calculating appointment metrics for users: ${userIds.join(', ')}`)
@@ -204,7 +205,7 @@ export class UserMetricsEngine {
     console.log(`Found ${appointments?.length || 0} appointments`)
 
     // Process results by user and role
-    return this.processResults(appointments || [], userIds, metric, 'appointments')
+    return this.processResults(appointments || [], userIds, metric, 'appointments', options)
   }
 
   /**
@@ -551,7 +552,8 @@ export class UserMetricsEngine {
     data: any[], 
     userIds: string[], 
     metric: MetricDefinition, 
-    tableType: 'appointments' | 'discoveries' | 'dials'
+    tableType: 'appointments' | 'discoveries' | 'dials',
+    options?: any
   ): UserMetricResult[] {
     
     const isAverageMetric = metric.query.select[0].includes('AVG(')
@@ -627,7 +629,8 @@ export class UserMetricsEngine {
       const result: UserMetricResult = {
         userId,
         value,
-        role
+        role,
+        displayValue: this.formatValue(value, metric, options)
       }
 
       // Add breakdown for users with both roles
