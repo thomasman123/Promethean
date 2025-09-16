@@ -592,7 +592,7 @@ export class UserMetricsEngine {
   }
 
   /**
-   * Calculate work timeframe metrics for users
+   * Calculate work timeframe metrics for users (calculated on-demand from dials data)
    */
   private async calculateWorkTimeframeMetrics(
     metric: MetricDefinition,
@@ -602,48 +602,118 @@ export class UserMetricsEngine {
     userIds: string[]
   ): Promise<UserMetricResult[]> {
     
-    // Query work timeframes data for all users
-    const { data: workTimeframes, error } = await supabaseService
-      .from('work_timeframes')
-      .select('user_id, bookings_per_hour, dials_per_hour, total_work_hours')
-      .eq('account_id', accountId)
-      .gte('work_date', startDate)
-      .lte('work_date', endDate)
-      .in('user_id', userIds)
+    // Get account timezone
+    const { data: account, error: accountError } = await supabaseService
+      .from('accounts')
+      .select('business_timezone')
+      .eq('id', accountId)
+      .single()
 
-    if (error) {
-      console.error('Error fetching work timeframes:', error)
+    if (accountError || !account) {
+      console.error('Error fetching account timezone:', accountError)
       return userIds.map(userId => ({ userId, value: 0, role: 'none' }))
     }
 
-    // Group by user and calculate based on metric type
-    const userMetrics = new Map<string, number>()
+    const timezone = account.business_timezone || 'UTC'
+
+    // Query dials data for all users to calculate work hours on-demand
+    const { data: dials, error } = await supabaseService
+      .from('dials')
+      .select('setter_user_id, created_at, booked')
+      .eq('account_id', accountId)
+      .gte('created_at', startDate)
+      .lte('created_at', endDate)
+      .in('setter_user_id', userIds)
+      .not('setter_user_id', 'is', null)
+
+    if (error) {
+      console.error('Error fetching dials for work timeframes:', error)
+      return userIds.map(userId => ({ userId, value: 0, role: 'none' }))
+    }
+
+    // Calculate work metrics for each user
+    const userMetrics = new Map<string, { totalHours: number, totalBookings: number, totalDials: number }>()
     
-    userIds.forEach(userId => {
-      const userTimeframes = workTimeframes?.filter(wt => wt.user_id === userId) || []
+    // Group dials by user and date (in their timezone)
+    const userDateDials = new Map<string, Map<string, any[]>>()
+    
+    dials?.forEach(dial => {
+      if (!dial.setter_user_id) return
       
-      if (userTimeframes.length === 0) {
-        userMetrics.set(userId, 0)
+      // Convert to user's local date
+      const localDate = new Date(dial.created_at).toLocaleDateString('en-CA', { 
+        timeZone: timezone 
+      })
+      
+      if (!userDateDials.has(dial.setter_user_id)) {
+        userDateDials.set(dial.setter_user_id, new Map())
+      }
+      
+      const userDates = userDateDials.get(dial.setter_user_id)!
+      if (!userDates.has(localDate)) {
+        userDates.set(localDate, [])
+      }
+      
+      userDates.get(localDate)!.push(dial)
+    })
+
+    // Calculate work hours for each user
+    userIds.forEach(userId => {
+      const userDates = userDateDials.get(userId)
+      if (!userDates) {
+        userMetrics.set(userId, { totalHours: 0, totalBookings: 0, totalDials: 0 })
         return
       }
 
-      let value = 0
-      if (metric.name === 'Bookings per Hour') {
-        value = userTimeframes.reduce((sum, wt) => sum + (wt.bookings_per_hour || 0), 0) / userTimeframes.length
-      } else if (metric.name === 'Dials per Hour') {
-        value = userTimeframes.reduce((sum, wt) => sum + (wt.dials_per_hour || 0), 0) / userTimeframes.length
-      } else if (metric.name === 'Hours Worked') {
-        value = userTimeframes.reduce((sum, wt) => sum + (wt.total_work_hours || 0), 0)
-      }
-      
-      userMetrics.set(userId, value)
+      let totalHours = 0
+      let totalBookings = 0
+      let totalDials = 0
+
+      // Calculate for each day
+      userDates.forEach(dayDials => {
+        if (dayDials.length === 0) return
+
+        // Sort by time to get first and last
+        const sortedDials = dayDials.sort((a, b) => 
+          new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        )
+
+        const firstDial = new Date(sortedDials[0].created_at)
+        const lastDial = new Date(sortedDials[sortedDials.length - 1].created_at)
+        
+        // Calculate work hours for this day (minimum 0.1 to avoid division by zero)
+        const dayHours = Math.max(
+          (lastDial.getTime() - firstDial.getTime()) / (1000 * 60 * 60),
+          0.1
+        )
+        
+        totalHours += dayHours
+        totalDials += dayDials.length
+        totalBookings += dayDials.filter(d => d.booked === true).length
+      })
+
+      userMetrics.set(userId, { totalHours, totalBookings, totalDials })
     })
 
-    return userIds.map(userId => ({
-      userId,
-      value: userMetrics.get(userId) || 0,
-      role: 'setter' // Work timeframes are always setter-based
-    }))
+    // Return results based on metric type
+    return userIds.map(userId => {
+      const userMetric = userMetrics.get(userId) || { totalHours: 0, totalBookings: 0, totalDials: 0 }
+      
+      let value = 0
+      if (metric.name === 'Bookings per Hour') {
+        value = userMetric.totalHours > 0 ? userMetric.totalBookings / userMetric.totalHours : 0
+      } else if (metric.name === 'Dials per Hour') {
+        value = userMetric.totalHours > 0 ? userMetric.totalDials / userMetric.totalHours : 0
+      } else if (metric.name === 'Hours Worked') {
+        value = userMetric.totalHours
+      }
+      
+      return {
+        userId,
+        value: Math.round(value * 100) / 100, // Round to 2 decimal places
+        role: 'setter' // Work timeframes are always setter-based
+      }
+    })
   }
 
   /**
