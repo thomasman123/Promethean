@@ -1,7 +1,7 @@
 import { MetricDefinition } from './types'
 import { createMetricFamilies } from './attribution-generator'
 
-// Define base metrics once - auto-generation creates all attribution variants
+// Define consolidated base metrics - variants are handled via options
 const BASE_METRICS = {
 	// === APPOINTMENTS METRICS ===
 	'total_appointments': {
@@ -12,10 +12,14 @@ const BASE_METRICS = {
 			table: 'appointments',
 			select: ['COUNT(*) as value']
 		},
-		unit: 'count' as const
+		unit: 'count' as const,
+		options: {
+			attribution: ['none', 'assigned', 'booked'],
+			breakdown: ['total', 'reps', 'setters', 'link']
+		}
 	},
 
-	'show_ups_appointments': {
+	'show_ups': {
 		name: 'Show Ups',
 		description: 'Appointments with call outcome Show',
 		breakdownType: 'total' as const,
@@ -24,34 +28,13 @@ const BASE_METRICS = {
 			select: ['COUNT(*) as value'],
 			where: ["LOWER(call_outcome) = 'show'"]
 		},
-		unit: 'count' as const
+		unit: 'count' as const,
+		options: {
+			attribution: ['none', 'assigned', 'booked'],
+			breakdown: ['total', 'reps', 'setters', 'link']
+		}
 	},
 
-	// === DISCOVERIES METRICS ===
-	'total_discoveries': {
-		name: 'Total Discoveries',
-		description: 'Total count of all discoveries',
-		breakdownType: 'total' as const,
-		query: {
-			table: 'discoveries',
-			select: ['COUNT(*) as value']
-		},
-		unit: 'count' as const
-	},
-
-	'show_ups_discoveries': {
-		name: 'Discovery Show Ups',
-		description: 'Discoveries with call outcome show',
-		breakdownType: 'total' as const,
-		query: {
-			table: 'discoveries',
-			select: ['COUNT(*) as value'],
-			where: ["call_outcome = 'show'"]
-		},
-		unit: 'count' as const
-	},
-
-	// === SALES METRICS ===
 	'sales_made': {
 		name: 'Sales Made',
 		description: "Count of appointments where the show's outcome is Won",
@@ -61,83 +44,11 @@ const BASE_METRICS = {
 			select: ['COUNT(*) as value'],
 			where: ["show_outcome = 'won'"]
 		},
-		unit: 'count' as const
-	},
-
-	// === CASH METRICS ===
-	'cash_collected': {
-		name: 'Cash Collected',
-		description: 'Sum of cash collected across appointments',
-		breakdownType: 'total' as const,
-		query: {
-			table: 'appointments',
-			select: ['COALESCE(SUM(cash_collected), 0) as value']
-		},
-		unit: 'currency' as const
-	},
-
-	'cash_per_appointment': {
-		name: 'Cash Per Appointment',
-		description: 'Average cash collected per appointment',
-		breakdownType: 'total' as const,
-		query: {
-			table: 'appointments',
-			select: ['COALESCE(AVG(cash_collected), 0) as value']
-		},
-		unit: 'currency' as const
-	},
-
-	'cash_per_sale': {
-		name: 'Cash Per Sale',
-		description: 'Average cash collected per sale (won appointments)',
-		breakdownType: 'total' as const,
-		query: {
-			table: 'appointments',
-			select: [
-				"COALESCE(SUM(cash_collected), 0) / NULLIF(SUM(CASE WHEN show_outcome = 'won' THEN 1 ELSE 0 END), 0) as value"
-			]
-		},
-		unit: 'currency' as const
-	},
-
-	// === RATE METRICS ===
-	'appointment_to_sale_rate': {
-		name: 'Appointment to Sale',
-		description: 'Ratio of won shows to total appointments',
-		breakdownType: 'total' as const,
-		query: {
-			table: 'appointments',
-			select: [
-				"COALESCE(AVG(CASE WHEN show_outcome = 'won' THEN 1.0 ELSE 0.0 END), 0) as value"
-			]
-		},
-		unit: 'percent' as const
-	},
-
-	'pitch_to_sale_rate': {
-		name: 'Pitch to Sale',
-		description: 'Ratio of sales (won) to pitched appointments',
-		breakdownType: 'total' as const,
-		query: {
-			table: 'appointments',
-			select: [
-				"COALESCE(AVG(CASE WHEN pitched = true THEN CASE WHEN show_outcome = 'won' THEN 1.0 ELSE 0.0 END END), 0) as value"
-			]
-		},
-		unit: 'percent' as const
-	},
-
-	'answer_to_sale_rate': {
-		name: 'Answer to Sale',
-		description: 'Ratio of sales (won) to shown appointments',
-		breakdownType: 'total' as const,
-		query: {
-			table: 'appointments',
-			select: [
-				"COALESCE(AVG(CASE WHEN call_outcome = 'Show' THEN CASE WHEN show_outcome = 'won' THEN 1.0 ELSE 0.0 END END), 0) as value"
-			]
-		},
-		unit: 'percent' as const
+		unit: 'count' as const,
+		options: {
+			attribution: ['none', 'assigned', 'booked'],
+			breakdown: ['total', 'reps', 'setters', 'link']
+		}
 	},
 
 	'show_up_rate': {
@@ -150,78 +61,65 @@ const BASE_METRICS = {
 				"COALESCE(AVG(CASE WHEN LOWER(call_outcome) = 'show' THEN 1.0 ELSE 0.0 END), 0) as value"
 			]
 		},
-		unit: 'percent' as const
+		unit: 'percent' as const,
+		options: {
+			attribution: ['none', 'assigned', 'booked'],
+			breakdown: ['total', 'reps', 'setters', 'link']
+		}
 	},
 
-	'show_up_rate_assigned': {
-		name: 'Show Up Rate (Assigned)',
-		description: 'Percentage of appointments where contacts showed up - attributed to assigned sales rep',
+	// === SALES METRICS ===
+	'appointment_to_sale_rate': {
+		name: 'Appointment to Sale',
+		description: 'Ratio of won shows to total appointments',
 		breakdownType: 'total' as const,
 		query: {
 			table: 'appointments',
 			select: [
-				"COALESCE(AVG(CASE WHEN LOWER(call_outcome) = 'show' THEN 1.0 ELSE 0.0 END), 0) as value"
+				"COALESCE(AVG(CASE WHEN show_outcome = 'won' THEN 1.0 ELSE 0.0 END), 0) as value"
 			]
 		},
 		unit: 'percent' as const,
-		attributionContext: 'assigned' as const
+		options: {
+			attribution: ['none', 'assigned', 'booked'],
+			breakdown: ['total', 'reps', 'setters', 'link']
+		}
 	},
 
-	'show_up_rate_booked': {
-		name: 'Show Up Rate (Booked)',
-		description: 'Percentage of appointments where contacts showed up - attributed to setter who booked it',
+	'pitch_to_sale_rate': {
+		name: 'Pitch to Sale',
+		description: 'Ratio of sales (won) to pitched appointments',
 		breakdownType: 'total' as const,
 		query: {
 			table: 'appointments',
 			select: [
-				"COALESCE(AVG(CASE WHEN LOWER(call_outcome) = 'show' THEN 1.0 ELSE 0.0 END), 0) as value"
+				"COALESCE(AVG(CASE WHEN pitched = true THEN CASE WHEN show_outcome = 'won' THEN 1.0 ELSE 0.0 END END), 0) as value"
 			]
 		},
 		unit: 'percent' as const,
-		attributionContext: 'booked' as const
+		options: {
+			attribution: ['none', 'assigned', 'booked'],
+			breakdown: ['total', 'reps', 'setters', 'link']
+		}
 	},
 
-	// Setter-specific show up rate variants
-	'show_up_rate_setters': {
-		name: 'Show Up Rate (by Setter)',
-		description: 'Percentage of appointments where contacts showed up, grouped by setter',
-		breakdownType: 'setter' as const,
-		query: {
-			table: 'appointments',
-			select: [
-				'setter_user_id as setter_id',
-				'profiles.full_name as setter_name',
-				"COALESCE(AVG(CASE WHEN LOWER(call_outcome) = 'show' THEN 1.0 ELSE 0.0 END), 0) as value"
-			],
-			joins: [
-				{
-					table: 'profiles',
-					on: 'appointments.setter_user_id = profiles.id',
-					type: 'LEFT'
-				}
-			],
-			groupBy: ['setter_user_id', 'profiles.full_name'],
-			having: ['COUNT(*) > 0'],
-			orderBy: ['value DESC']
-		},
-		unit: 'percent' as const
-	},
-
-	'show_up_rate_setter_attribution': {
-		name: 'Show Up Rate (Setter Attribution)',
-		description: 'Overall show up rate attributed to setters who booked the appointments',
+	'answer_to_sale_rate': {
+		name: 'Answer to Sale',
+		description: 'Ratio of sales (won) to shown appointments',
 		breakdownType: 'total' as const,
 		query: {
 			table: 'appointments',
 			select: [
-				"COALESCE(AVG(CASE WHEN LOWER(call_outcome) = 'show' THEN 1.0 ELSE 0.0 END), 0) as value"
+				"COALESCE(AVG(CASE WHEN call_outcome = 'Show' THEN CASE WHEN show_outcome = 'won' THEN 1.0 ELSE 0.0 END END), 0) as value"
 			]
 		},
 		unit: 'percent' as const,
-		attributionContext: 'booked' as const
+		options: {
+			attribution: ['none', 'assigned', 'booked'],
+			breakdown: ['total', 'reps', 'setters', 'link']
+		}
 	},
 
-	// === BOOKING TO CLOSE METRICS ===
 	'booking_to_close': {
 		name: 'Booking to Close',
 		description: 'Percentage of appointments that converted to sales (won outcomes)',
@@ -232,117 +130,59 @@ const BASE_METRICS = {
 				"COALESCE(AVG(CASE WHEN show_outcome = 'won' THEN 1.0 ELSE 0.0 END), 0) as value"
 			]
 		},
-		unit: 'percent' as const
+		unit: 'percent' as const,
+		options: {
+			attribution: ['none', 'assigned', 'booked'],
+			breakdown: ['total', 'reps', 'setters', 'link']
+		}
 	},
 
-	'booking_to_close_assigned': {
-		name: 'Booking to Close (Assigned)',
-		description: 'Percentage of appointments that converted to sales (won outcomes) - attributed to assigned sales rep',
+	// === CASH METRICS ===
+	'cash_collected': {
+		name: 'Cash Collected',
+		description: 'Sum of cash collected across appointments',
+		breakdownType: 'total' as const,
+		query: {
+			table: 'appointments',
+			select: ['COALESCE(SUM(cash_collected), 0) as value']
+		},
+		unit: 'currency' as const,
+		options: {
+			attribution: ['none', 'assigned', 'booked'],
+			breakdown: ['total', 'reps', 'setters', 'link']
+		}
+	},
+
+	'cash_per_appointment': {
+		name: 'Cash Per Appointment',
+		description: 'Average cash collected per appointment',
+		breakdownType: 'total' as const,
+		query: {
+			table: 'appointments',
+			select: ['COALESCE(AVG(cash_collected), 0) as value']
+		},
+		unit: 'currency' as const,
+		options: {
+			attribution: ['none', 'assigned', 'booked'],
+			breakdown: ['total', 'reps', 'setters', 'link']
+		}
+	},
+
+	'cash_per_sale': {
+		name: 'Cash Per Sale',
+		description: 'Average cash collected per sale (won appointments)',
 		breakdownType: 'total' as const,
 		query: {
 			table: 'appointments',
 			select: [
-				"COALESCE(AVG(CASE WHEN show_outcome = 'won' THEN 1.0 ELSE 0.0 END), 0) as value"
+				"COALESCE(SUM(cash_collected), 0) / NULLIF(SUM(CASE WHEN show_outcome = 'won' THEN 1 ELSE 0 END), 0) as value"
 			]
 		},
-		unit: 'percent' as const,
-		attributionContext: 'assigned' as const
-	},
-
-	'booking_to_close_booked': {
-		name: 'Booking to Close (Booked)',
-		description: 'Percentage of appointments that converted to sales (won outcomes) - attributed to setter who booked it',
-		breakdownType: 'total' as const,
-		query: {
-			table: 'appointments',
-			select: [
-				"COALESCE(AVG(CASE WHEN show_outcome = 'won' THEN 1.0 ELSE 0.0 END), 0) as value"
-			]
-		},
-		unit: 'percent' as const,
-		attributionContext: 'booked' as const
-	},
-
-	'booking_to_close_reps': {
-		name: 'Booking to Close (by Rep)',
-		description: 'Percentage of appointments that converted to sales, grouped by sales rep',
-		breakdownType: 'rep' as const,
-		query: {
-			table: 'appointments',
-			select: [
-				'sales_rep_user_id as rep_id',
-				'profiles.full_name as rep_name',
-				"COALESCE(AVG(CASE WHEN show_outcome = 'won' THEN 1.0 ELSE 0.0 END), 0) as value"
-			],
-			joins: [
-				{
-					table: 'profiles',
-					on: 'appointments.sales_rep_user_id = profiles.id',
-					type: 'LEFT'
-				}
-			],
-			groupBy: ['sales_rep_user_id', 'profiles.full_name'],
-			having: ['COUNT(*) > 0'],
-			orderBy: ['value DESC']
-		},
-		unit: 'percent' as const
-	},
-
-	'booking_to_close_setters': {
-		name: 'Booking to Close (by Setter)',
-		description: 'Percentage of appointments that converted to sales, grouped by setter',
-		breakdownType: 'setter' as const,
-		query: {
-			table: 'appointments',
-			select: [
-				'setter_user_id as setter_id',
-				'profiles.full_name as setter_name',
-				"COALESCE(AVG(CASE WHEN show_outcome = 'won' THEN 1.0 ELSE 0.0 END), 0) as value"
-			],
-			joins: [
-				{
-					table: 'profiles',
-					on: 'appointments.setter_user_id = profiles.id',
-					type: 'LEFT'
-				}
-			],
-			groupBy: ['setter_user_id', 'profiles.full_name'],
-			having: ['COUNT(*) > 0'],
-			orderBy: ['value DESC']
-		},
-		unit: 'percent' as const
-	},
-
-	'booking_to_close_link': {
-		name: 'Booking to Close (Setter→Rep Links)',
-		description: 'Percentage of appointments that converted to sales, showing setter to rep relationships',
-		breakdownType: 'link' as const,
-		query: {
-			table: 'appointments',
-			select: [
-				'setter_user_id as setter_id',
-				'setter_profiles.full_name as setter_name',
-				'sales_rep_user_id as rep_id',
-				'rep_profiles.full_name as rep_name',
-				"COALESCE(AVG(CASE WHEN show_outcome = 'won' THEN 1.0 ELSE 0.0 END), 0) as value"
-			],
-			joins: [
-				{
-					table: 'profiles setter_profiles',
-					on: 'appointments.setter_user_id = setter_profiles.id',
-					type: 'LEFT'
-				},
-				{
-					table: 'profiles rep_profiles',
-					on: 'appointments.sales_rep_user_id = rep_profiles.id',
-					type: 'LEFT'
-				}
-			],
-			groupBy: ['setter_user_id', 'setter_profiles.full_name', 'sales_rep_user_id', 'rep_profiles.full_name'],
-			having: ['COUNT(*) > 0'],
-			orderBy: ['value DESC']
-		},
-		unit: 'percent' as const
+		unit: 'currency' as const,
+		options: {
+			attribution: ['none', 'assigned', 'booked'],
+			breakdown: ['total', 'reps', 'setters', 'link']
+		}
 	},
 
 	// === DIALS METRICS ===
@@ -354,10 +194,13 @@ const BASE_METRICS = {
 			table: 'dials',
 			select: ['COUNT(*) as value']
 		},
-		unit: 'count' as const
+		unit: 'count' as const,
+		options: {
+			attribution: ['none', 'assigned', 'dialer'],
+			breakdown: ['total', 'reps', 'setters', 'link']
+		}
 	},
 
-	// === ANSWER PER DIAL METRICS ===
 	'answer_per_dial': {
 		name: 'Answer per Dial',
 		description: 'Percentage of dials that were answered',
@@ -368,120 +211,47 @@ const BASE_METRICS = {
 				"COALESCE(AVG(CASE WHEN answered = true THEN 1.0 ELSE 0.0 END), 0) as value"
 			]
 		},
-		unit: 'percent' as const
+		unit: 'percent' as const,
+		options: {
+			attribution: ['none', 'assigned', 'dialer'],
+			breakdown: ['total', 'reps', 'setters', 'link']
+		}
 	},
 
-	'answer_per_dial_assigned': {
-		name: 'Answer per Dial (Assigned)',
-		description: 'Percentage of dials that were answered - attributed to assigned sales rep',
+	'dials_per_booking': {
+		name: 'Dials per Booking',
+		description: 'Average number of dials needed to get one booking (total dials / bookings)',
 		breakdownType: 'total' as const,
 		query: {
 			table: 'dials',
 			select: [
-				"COALESCE(AVG(CASE WHEN answered = true THEN 1.0 ELSE 0.0 END), 0) as value"
+				'CASE WHEN SUM(CASE WHEN (booked = true OR booked_appointment_id IS NOT NULL) THEN 1 ELSE 0 END) > 0 THEN ROUND(COUNT(*)::DECIMAL / SUM(CASE WHEN (booked = true OR booked_appointment_id IS NOT NULL) THEN 1 ELSE 0 END), 1) ELSE 0 END as value'
 			]
 		},
-		unit: 'percent' as const,
-		attributionContext: 'assigned' as const
+		unit: 'count' as const,
+		options: {
+			attribution: ['none', 'assigned', 'dialer'],
+			breakdown: ['total', 'reps', 'setters', 'link']
+		}
 	},
 
-	'answer_per_dial_dialer': {
-		name: 'Answer per Dial (Dialer)',
-		description: 'Percentage of dials that were answered - attributed to the dialer',
+	'cash_per_dial': {
+		name: 'Cash Per Dial',
+		description: 'Average cash collected per dial made (cross-table calculation)',
 		breakdownType: 'total' as const,
 		query: {
 			table: 'dials',
-			select: [
-				"COALESCE(AVG(CASE WHEN answered = true THEN 1.0 ELSE 0.0 END), 0) as value"
-			]
+			select: ['0 as value'] // This will be calculated via cross-table join
 		},
-		unit: 'percent' as const,
-		attributionContext: 'dialer' as const
+		unit: 'currency' as const,
+		isSpecialMetric: true,
+		options: {
+			attribution: ['none', 'assigned', 'dialer'],
+			breakdown: ['total', 'reps', 'setters', 'link']
+		}
 	},
 
-	'answer_per_dial_reps': {
-		name: 'Answer per Dial (by Rep)',
-		description: 'Percentage of dials that were answered, grouped by sales rep',
-		breakdownType: 'rep' as const,
-		query: {
-			table: 'dials',
-			select: [
-				'sales_rep_user_id as rep_id',
-				'profiles.full_name as rep_name',
-				"COALESCE(AVG(CASE WHEN answered = true THEN 1.0 ELSE 0.0 END), 0) as value"
-			],
-			joins: [
-				{
-					table: 'profiles',
-					on: 'dials.sales_rep_user_id = profiles.id',
-					type: 'LEFT'
-				}
-			],
-			groupBy: ['sales_rep_user_id', 'profiles.full_name'],
-			having: ['COUNT(*) > 0'],
-			orderBy: ['value DESC']
-		},
-		unit: 'percent' as const
-	},
-
-	'answer_per_dial_setters': {
-		name: 'Answer per Dial (by Setter)',
-		description: 'Percentage of dials that were answered, grouped by setter',
-		breakdownType: 'setter' as const,
-		query: {
-			table: 'dials',
-			select: [
-				'setter_user_id as setter_id',
-				'profiles.full_name as setter_name',
-				"COALESCE(AVG(CASE WHEN answered = true THEN 1.0 ELSE 0.0 END), 0) as value"
-			],
-			joins: [
-				{
-					table: 'profiles',
-					on: 'dials.setter_user_id = profiles.id',
-					type: 'LEFT'
-				}
-			],
-			groupBy: ['setter_user_id', 'profiles.full_name'],
-			having: ['COUNT(*) > 0'],
-			orderBy: ['value DESC']
-		},
-		unit: 'percent' as const
-	},
-
-	'answer_per_dial_link': {
-		name: 'Answer per Dial (Setter→Rep Links)',
-		description: 'Percentage of dials that were answered, showing setter to rep relationships',
-		breakdownType: 'link' as const,
-		query: {
-			table: 'dials',
-			select: [
-				'setter_user_id as setter_id',
-				'setter_profiles.full_name as setter_name',
-				'sales_rep_user_id as rep_id',
-				'rep_profiles.full_name as rep_name',
-				"COALESCE(AVG(CASE WHEN answered = true THEN 1.0 ELSE 0.0 END), 0) as value"
-			],
-			joins: [
-				{
-					table: 'profiles setter_profiles',
-					on: 'dials.setter_user_id = setter_profiles.id',
-					type: 'LEFT'
-				},
-				{
-					table: 'profiles rep_profiles',
-					on: 'dials.sales_rep_user_id = rep_profiles.id',
-					type: 'LEFT'
-				}
-			],
-			groupBy: ['setter_user_id', 'setter_profiles.full_name', 'sales_rep_user_id', 'rep_profiles.full_name'],
-			having: ['COUNT(*) > 0'],
-			orderBy: ['value DESC']
-		},
-		unit: 'percent' as const
-	},
-
-	// === HOURLY PERFORMANCE METRICS ===
+	// === PERFORMANCE METRICS ===
 	'bookings_per_hour': {
 		name: 'Bookings per Hour',
 		description: 'Average bookings per work hour (from work timeframes)',
@@ -492,32 +262,10 @@ const BASE_METRICS = {
 				'COALESCE(AVG(bookings_per_hour), 0) as value'
 			]
 		},
-		unit: 'count' as const
-	},
-
-	'bookings_per_hour_setters': {
-		name: 'Bookings per Hour (by Setter)',
-		description: 'Average bookings per work hour, grouped by setter',
-		breakdownType: 'setter' as const,
-		query: {
-			table: 'work_timeframes',
-			select: [
-				'user_id as setter_id',
-				'profiles.full_name as setter_name',
-				'COALESCE(AVG(bookings_per_hour), 0) as value'
-			],
-			joins: [
-				{
-					table: 'profiles',
-					on: 'work_timeframes.user_id = profiles.id',
-					type: 'LEFT'
-				}
-			],
-			groupBy: ['user_id', 'profiles.full_name'],
-			having: ['COUNT(*) > 0'],
-			orderBy: ['value DESC']
-		},
-		unit: 'count' as const
+		unit: 'count' as const,
+		options: {
+			breakdown: ['total', 'setters']
+		}
 	},
 
 	'dials_per_hour': {
@@ -530,32 +278,10 @@ const BASE_METRICS = {
 				'COALESCE(AVG(dials_per_hour), 0) as value'
 			]
 		},
-		unit: 'count' as const
-	},
-
-	'dials_per_hour_setters': {
-		name: 'Dials per Hour (by Setter)',
-		description: 'Average dials per work hour, grouped by setter',
-		breakdownType: 'setter' as const,
-		query: {
-			table: 'work_timeframes',
-			select: [
-				'user_id as setter_id',
-				'profiles.full_name as setter_name',
-				'COALESCE(AVG(dials_per_hour), 0) as value'
-			],
-			joins: [
-				{
-					table: 'profiles',
-					on: 'work_timeframes.user_id = profiles.id',
-					type: 'LEFT'
-				}
-			],
-			groupBy: ['user_id', 'profiles.full_name'],
-			having: ['COUNT(*) > 0'],
-			orderBy: ['value DESC']
-		},
-		unit: 'count' as const
+		unit: 'count' as const,
+		options: {
+			breakdown: ['total', 'setters']
+		}
 	},
 
 	'hours_worked': {
@@ -568,43 +294,10 @@ const BASE_METRICS = {
 				'COALESCE(SUM(total_work_hours), 0) as value'
 			]
 		},
-		unit: 'count' as const
-	},
-
-	'hours_worked_setters': {
-		name: 'Hours Worked (by Setter)',
-		description: 'Total work hours grouped by setter',
-		breakdownType: 'setter' as const,
-		query: {
-			table: 'work_timeframes',
-			select: [
-				'user_id as setter_id',
-				'profiles.full_name as setter_name',
-				'COALESCE(SUM(total_work_hours), 0) as value'
-			],
-			joins: [
-				{
-					table: 'profiles',
-					on: 'work_timeframes.user_id = profiles.id',
-					type: 'LEFT'
-				}
-			],
-			groupBy: ['user_id', 'profiles.full_name'],
-			having: ['COUNT(*) > 0'],
-			orderBy: ['value DESC']
-		},
-		unit: 'count' as const
-	},
-
-	'cash_per_dial': {
-		name: 'Cash Per Dial',
-		description: 'Average cash collected per dial made (cross-table calculation)',
-		breakdownType: 'total' as const,
-		query: {
-			table: 'dials',
-			select: ['0 as value'] // This will be calculated via cross-table join
-		},
-		unit: 'currency' as const
+		unit: 'count' as const,
+		options: {
+			breakdown: ['total', 'setters']
+		}
 	},
 
 	// === META ADS & ROI METRICS ===
@@ -616,31 +309,11 @@ const BASE_METRICS = {
 			table: 'meta_ad_performance',
 			select: ['COALESCE(SUM(spend), 0) as value']
 		},
-		unit: 'currency' as const
-	},
-
-	'ad_spend_assigned': {
-		name: 'Ad Spend (Assigned)',
-		description: 'Total amount spent on Meta ads for the period - attributed to assigned sales rep',
-		breakdownType: 'total' as const,
-		query: {
-			table: 'meta_ad_performance',
-			select: ['COALESCE(SUM(spend), 0) as value']
-		},
 		unit: 'currency' as const,
-		attributionContext: 'assigned' as const
-	},
-
-	'ad_spend_booked': {
-		name: 'Ad Spend (Booked)',
-		description: 'Total amount spent on Meta ads for the period - attributed to setter who booked it',
-		breakdownType: 'total' as const,
-		query: {
-			table: 'meta_ad_performance',
-			select: ['COALESCE(SUM(spend), 0) as value']
-		},
-		unit: 'currency' as const,
-		attributionContext: 'booked' as const
+		options: {
+			attribution: ['none', 'assigned', 'booked'],
+			breakdown: ['total', 'reps', 'setters', 'link']
+		}
 	},
 
 	'cost_per_booked_call': {
@@ -652,33 +325,11 @@ const BASE_METRICS = {
 			select: ['0 as value'] // This will be calculated via cross-table calculation in engine
 		},
 		unit: 'currency' as const,
-		isSpecialMetric: true
-	},
-
-	'cost_per_booked_call_assigned': {
-		name: 'Cost Per Booked Call (Assigned)',
-		description: 'Total ad spend divided by total appointments for the period - attributed to assigned sales rep',
-		breakdownType: 'total' as const,
-		query: {
-			table: 'meta_ad_performance',
-			select: ['0 as value'] // This will be calculated via cross-table calculation in engine
-		},
-		unit: 'currency' as const,
-		attributionContext: 'assigned' as const,
-		isSpecialMetric: true
-	},
-
-	'cost_per_booked_call_booked': {
-		name: 'Cost Per Booked Call (Booked)',
-		description: 'Total ad spend divided by total appointments for the period - attributed to setter who booked it',
-		breakdownType: 'total' as const,
-		query: {
-			table: 'meta_ad_performance',
-			select: ['0 as value'] // This will be calculated via cross-table calculation in engine
-		},
-		unit: 'currency' as const,
-		attributionContext: 'booked' as const,
-		isSpecialMetric: true
+		isSpecialMetric: true,
+		options: {
+			attribution: ['none', 'assigned', 'booked'],
+			breakdown: ['total', 'reps', 'setters', 'link']
+		}
 	},
 
 	'roi': {
@@ -690,158 +341,43 @@ const BASE_METRICS = {
 			select: ['0 as value'] // This will be calculated via cross-table calculation in engine
 		},
 		unit: 'percent' as const,
-		isSpecialMetric: true
+		isSpecialMetric: true,
+		options: {
+			attribution: ['none', 'assigned', 'booked'],
+			breakdown: ['total', 'reps', 'setters', 'link']
+		}
 	},
 
-	'roi_assigned': {
-		name: 'ROI (Assigned)',
-		description: 'Return on Investment: Cash collected divided by ad spend - attributed to assigned sales rep',
+	// === DISCOVERY METRICS ===
+	'total_discoveries': {
+		name: 'Total Discoveries',
+		description: 'Total count of all discoveries',
 		breakdownType: 'total' as const,
 		query: {
-			table: 'appointments',
-			select: ['0 as value'] // This will be calculated via cross-table calculation in engine
-		},
-		unit: 'percent' as const,
-		attributionContext: 'assigned' as const,
-		isSpecialMetric: true
-	},
-
-	'roi_booked': {
-		name: 'ROI (Booked)',
-		description: 'Return on Investment: Cash collected divided by ad spend - attributed to setter who booked it',
-		breakdownType: 'total' as const,
-		query: {
-			table: 'appointments',
-			select: ['0 as value'] // This will be calculated via cross-table calculation in engine
-		},
-		unit: 'percent' as const,
-		attributionContext: 'booked' as const,
-		isSpecialMetric: true
-	},
-
-	// === DIALS CONVERSION METRICS ===
-	'dials_per_booking': {
-		name: 'Dials per Booking',
-		description: 'Average number of dials needed to get one booking (total dials / bookings)',
-		breakdownType: 'total' as const,
-		query: {
-			table: 'dials',
-			select: [
-				'CASE WHEN SUM(CASE WHEN (booked = true OR booked_appointment_id IS NOT NULL) THEN 1 ELSE 0 END) > 0 THEN ROUND(COUNT(*)::DECIMAL / SUM(CASE WHEN (booked = true OR booked_appointment_id IS NOT NULL) THEN 1 ELSE 0 END), 1) ELSE 0 END as value'
-			]
-		},
-		unit: 'count' as const
-	},
-
-	'dials_per_booking_assigned': {
-		name: 'Dials per Booking (Assigned)',
-		description: 'Average number of dials needed to get one booking (total dials / bookings) - attributed to assigned sales rep',
-		breakdownType: 'total' as const,
-		query: {
-			table: 'dials',
-			select: [
-				'CASE WHEN SUM(CASE WHEN (booked = true OR booked_appointment_id IS NOT NULL) THEN 1 ELSE 0 END) > 0 THEN ROUND(COUNT(*)::DECIMAL / SUM(CASE WHEN (booked = true OR booked_appointment_id IS NOT NULL) THEN 1 ELSE 0 END), 1) ELSE 0 END as value'
-			]
+			table: 'discoveries',
+			select: ['COUNT(*) as value']
 		},
 		unit: 'count' as const,
-		attributionContext: 'assigned' as const
+		options: {
+			attribution: ['none', 'assigned', 'booked'],
+			breakdown: ['total', 'reps', 'setters', 'link']
+		}
 	},
 
-	'dials_per_booking_dialer': {
-		name: 'Dials per Booking (Dialer)',
-		description: 'Average number of dials needed to get one booking (total dials / bookings) - attributed to the dialer',
+	'show_ups_discoveries': {
+		name: 'Discovery Show Ups',
+		description: 'Discoveries with call outcome show',
 		breakdownType: 'total' as const,
 		query: {
-			table: 'dials',
-			select: [
-				'CASE WHEN SUM(CASE WHEN (booked = true OR booked_appointment_id IS NOT NULL) THEN 1 ELSE 0 END) > 0 THEN ROUND(COUNT(*)::DECIMAL / SUM(CASE WHEN (booked = true OR booked_appointment_id IS NOT NULL) THEN 1 ELSE 0 END), 1) ELSE 0 END as value'
-			]
+			table: 'discoveries',
+			select: ['COUNT(*) as value'],
+			where: ["call_outcome = 'show'"]
 		},
 		unit: 'count' as const,
-		attributionContext: 'dialer' as const
-	},
-
-	// Rep breakdown variants
-	'dials_per_booking_reps': {
-		name: 'Dials per Booking (by Rep)',
-		description: 'Average number of dials needed to get one booking, grouped by sales rep',
-		breakdownType: 'rep' as const,
-		query: {
-			table: 'dials',
-			select: [
-				'sales_rep_user_id as rep_id',
-				'profiles.full_name as rep_name',
-				'CASE WHEN SUM(CASE WHEN (booked = true OR booked_appointment_id IS NOT NULL) THEN 1 ELSE 0 END) > 0 THEN ROUND(COUNT(*)::DECIMAL / SUM(CASE WHEN (booked = true OR booked_appointment_id IS NOT NULL) THEN 1 ELSE 0 END), 1) ELSE 0 END as value'
-			],
-			joins: [
-				{
-					table: 'profiles',
-					on: 'dials.sales_rep_user_id = profiles.id',
-					type: 'LEFT'
-				}
-			],
-			groupBy: ['sales_rep_user_id', 'profiles.full_name'],
-			having: ['COUNT(*) > 0'],
-			orderBy: ['value ASC']
-		},
-		unit: 'count' as const
-	},
-
-	'dials_per_booking_setters': {
-		name: 'Dials per Booking (by Setter)',
-		description: 'Average number of dials needed to get one booking, grouped by setter',
-		breakdownType: 'setter' as const,
-		query: {
-			table: 'dials',
-			select: [
-				'setter_user_id as setter_id',
-				'profiles.full_name as setter_name',
-				'CASE WHEN SUM(CASE WHEN (booked = true OR booked_appointment_id IS NOT NULL) THEN 1 ELSE 0 END) > 0 THEN ROUND(COUNT(*)::DECIMAL / SUM(CASE WHEN (booked = true OR booked_appointment_id IS NOT NULL) THEN 1 ELSE 0 END), 1) ELSE 0 END as value'
-			],
-			joins: [
-				{
-					table: 'profiles',
-					on: 'dials.setter_user_id = profiles.id',
-					type: 'LEFT'
-				}
-			],
-			groupBy: ['setter_user_id', 'profiles.full_name'],
-			having: ['COUNT(*) > 0'],
-			orderBy: ['value ASC']
-		},
-		unit: 'count' as const
-	},
-
-	'dials_per_booking_link': {
-		name: 'Dials per Booking (Setter→Rep Links)',
-		description: 'Average number of dials needed to get one booking, showing setter to rep relationships',
-		breakdownType: 'link' as const,
-		query: {
-			table: 'dials',
-			select: [
-				'setter_user_id as setter_id',
-				'setter_profiles.full_name as setter_name',
-				'sales_rep_user_id as rep_id',
-				'rep_profiles.full_name as rep_name',
-				'CASE WHEN SUM(CASE WHEN (booked = true OR booked_appointment_id IS NOT NULL) THEN 1 ELSE 0 END) > 0 THEN ROUND(COUNT(*)::DECIMAL / SUM(CASE WHEN (booked = true OR booked_appointment_id IS NOT NULL) THEN 1 ELSE 0 END), 1) ELSE 0 END as value'
-			],
-			joins: [
-				{
-					table: 'profiles setter_profiles',
-					on: 'dials.setter_user_id = setter_profiles.id',
-					type: 'LEFT'
-				},
-				{
-					table: 'profiles rep_profiles',
-					on: 'dials.sales_rep_user_id = rep_profiles.id',
-					type: 'LEFT'
-				}
-			],
-			groupBy: ['setter_user_id', 'setter_profiles.full_name', 'sales_rep_user_id', 'rep_profiles.full_name'],
-			having: ['COUNT(*) > 0'],
-			orderBy: ['value ASC']
-		},
-		unit: 'count' as const
+		options: {
+			attribution: ['none', 'assigned', 'booked'],
+			breakdown: ['total', 'reps', 'setters', 'link']
+		}
 	},
 
 	// === SPEED TO LEAD METRIC ===
@@ -854,7 +390,11 @@ const BASE_METRICS = {
 			select: ['0 as value'] // This will be calculated via special SQL in engine
 		},
 		unit: 'seconds' as const,
-		isSpecialMetric: true // Flag to indicate this uses custom SQL in the engine
+		isSpecialMetric: true,
+		options: {
+			calculation: ['average', 'median'],
+			businessHours: ['include', 'exclude']
+		}
 	}
 }
 

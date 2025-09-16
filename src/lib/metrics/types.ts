@@ -49,11 +49,24 @@ export interface MetricDefinition {
   unit?: 'count' | 'currency' | 'percent' | 'seconds' | 'days'
   attributionContext?: 'assigned' | 'booked' | 'dialer' // Context for user attribution
   isSpecialMetric?: boolean // Flag to indicate this metric uses custom SQL handling in the engine
+  options?: {
+    attribution?: string[]
+    breakdown?: string[]
+    calculation?: string[]
+    businessHours?: string[]
+  }
 }
 
 export interface MetricRequest {
   metricName: string
   filters: MetricFilters
+  options?: {
+    attribution?: string
+    breakdown?: string
+    calculation?: string
+    businessHours?: string
+    [key: string]: any
+  }
 }
 
 export type TotalResult = { type: 'total', data: { value: number } }
