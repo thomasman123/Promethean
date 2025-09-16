@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { TopBar } from '@/components/layout/topbar'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -72,18 +72,7 @@ export default function AccountSettingsPage() {
     business_timezone: 'UTC'
   })
 
-  // Load account details and overdue stats
-  useEffect(() => {
-    if (selectedAccountId && accounts.length > 0) {
-      const accountData = accounts.find(acc => acc.id === selectedAccountId)
-      if (accountData) {
-        loadAccountDetails(selectedAccountId)
-        loadOverdueStats()
-      }
-    }
-  }, [selectedAccountId, accounts])
-
-  const loadAccountDetails = async (accountId: string) => {
+  const loadAccountDetails = useCallback(async (accountId: string) => {
     setLoading(true)
     try {
       const response = await fetch(`/api/accounts/${accountId}`)
@@ -108,9 +97,9 @@ export default function AccountSettingsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [toast])
 
-  const loadOverdueStats = async () => {
+  const loadOverdueStats = useCallback(async () => {
     try {
       const response = await fetch('/api/notifications/overdue')
       if (response.ok) {
@@ -124,7 +113,7 @@ export default function AccountSettingsPage() {
     } catch (error) {
       console.error('Error loading overdue stats:', error)
     }
-  }
+  }, [])
 
   const checkOverdueItems = async () => {
     setCheckingOverdue(true)
@@ -200,6 +189,14 @@ export default function AccountSettingsPage() {
       setSaving(false)
     }
   }
+
+  // Load account details and overdue stats when account changes
+  useEffect(() => {
+    if (selectedAccountId) {
+      loadAccountDetails(selectedAccountId)
+      loadOverdueStats()
+    }
+  }, [selectedAccountId, loadAccountDetails, loadOverdueStats])
 
   const getTimezonePreview = (timezone: string) => {
     try {
