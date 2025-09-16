@@ -21,11 +21,12 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Search, UserCheck, Users, Settings2, Shield, Building2, Plus, X } from "lucide-react"
+import { Search, UserCheck, Users, Settings2, Shield, Building2, Plus, X, Building } from "lucide-react"
 import { createBrowserClient } from "@supabase/ssr"
 import { Database } from "@/lib/database.types"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
+import { UserAccountAccessManager } from "@/components/admin/user-account-access-manager"
 
 interface User {
   id: string
@@ -54,6 +55,8 @@ export function AdminSettingsModal({ open, onOpenChange }: AdminSettingsModalPro
   const [usersLoading, setUsersLoading] = useState(true)
   const [userSearchTerm, setUserSearchTerm] = useState("")
   const [impersonating, setImpersonating] = useState<string | null>(null)
+  const [accessManagerOpen, setAccessManagerOpen] = useState(false)
+  const [selectedUser, setSelectedUser] = useState<User | null>(null)
   
   // Account management state
   const [accounts, setAccounts] = useState<Account[]>([])
@@ -305,15 +308,28 @@ export function AdminSettingsModal({ open, onOpenChange }: AdminSettingsModalPro
                               {new Date(user.created_at).toLocaleDateString()}
                             </TableCell>
                             <TableCell className="text-right">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleImpersonate(user.id)}
-                                disabled={impersonating === user.id}
-                              >
-                                <UserCheck className="h-4 w-4 mr-2" />
-                                Impersonate
-                              </Button>
+                              <div className="flex items-center gap-2 justify-end">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    setSelectedUser(user)
+                                    setAccessManagerOpen(true)
+                                  }}
+                                  title="Manage account access"
+                                >
+                                  <Building className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleImpersonate(user.id)}
+                                  disabled={impersonating === user.id}
+                                >
+                                  <UserCheck className="h-4 w-4 mr-2" />
+                                  Impersonate
+                                </Button>
+                              </div>
                             </TableCell>
                           </TableRow>
                         ))
@@ -481,6 +497,13 @@ export function AdminSettingsModal({ open, onOpenChange }: AdminSettingsModalPro
           </Tabs>
         </div>
       </DialogContent>
+
+      {/* User Account Access Manager */}
+      <UserAccountAccessManager
+        open={accessManagerOpen}
+        onOpenChange={setAccessManagerOpen}
+        user={selectedUser}
+      />
     </Dialog>
   )
 } 

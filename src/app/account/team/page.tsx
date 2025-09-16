@@ -46,11 +46,9 @@ import {
   Users, 
   Mail,
   UserCheck,
-  UserX,
-  Building
+  UserX
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { UserAccountAccessManager } from "@/components/admin/user-account-access-manager"
 
 interface TeamMember {
   user_id: string
@@ -83,7 +81,6 @@ export default function TeamPage() {
   const [hasAccess, setHasAccess] = useState(false)
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
-  const [accessManagerOpen, setAccessManagerOpen] = useState(false)
   const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null)
   const [inviting, setInviting] = useState(false)
   const [updating, setUpdating] = useState(false)
@@ -580,17 +577,7 @@ export default function TeamPage() {
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => {
-                                setSelectedMember(member)
-                                setAccessManagerOpen(true)
-                              }}
-                              title="Manage account access"
-                            >
-                              <Building className="h-4 w-4" />
-                            </Button>
+
                             <Button
                               size="sm"
                               variant="ghost"
@@ -669,16 +656,7 @@ export default function TeamPage() {
         </DialogContent>
       </Dialog>
 
-      {/* User Account Access Manager */}
-      <UserAccountAccessManager
-        open={accessManagerOpen}
-        onOpenChange={setAccessManagerOpen}
-        user={selectedMember ? {
-          id: selectedMember.user_id,
-          email: selectedMember.email,
-          full_name: selectedMember.full_name
-        } : null}
-      />
+
     </div>
   )
 } 
