@@ -577,7 +577,23 @@ export async function POST(request: NextRequest) {
     else if (payload.type === 'ContactCreate') {
       console.log('👤 Processing contact creation webhook')
       try {
-        await processContactUpsertWebhook(payload)
+        // Use new contact sync strategy
+        const { processContactCreateWebhook } = await import('@/lib/contact-sync-strategy')
+        
+        // Find account first
+        const locationId = payload.locationId || payload.location_id
+        const { data: account } = await supabase
+          .from('accounts')
+          .select('id')
+          .eq('ghl_location_id', locationId)
+          .single()
+
+        if (account) {
+          await processContactCreateWebhook(payload, account.id)
+        } else {
+          console.warn('❌ Account not found for ContactCreate webhook:', locationId)
+        }
+        
         if (webhookId) {
           processedWebhookIds.add(webhookId)
           if (processedWebhookIds.size > 1000) {
