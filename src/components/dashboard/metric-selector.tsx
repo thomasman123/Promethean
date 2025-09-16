@@ -26,7 +26,8 @@ const METRIC_CATEGORIES = {
     "cash_collected",
     "cash_per_sale",
     "cash_per_appointment",
-    "cash_per_dial"
+    "cash_per_dial",
+    "average_contract_value_per_sale"
   ],
   "Payment": [
     "pif_rate",
