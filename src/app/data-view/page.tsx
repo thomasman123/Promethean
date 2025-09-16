@@ -164,7 +164,8 @@ export default function DataViewPage() {
         id: col.id,
         metricName: col.metricName,
         displayName: col.header,
-        unit: col.unit
+        unit: col.unit,
+        options: col.options
       }))
     
     setMetricColumns(metricCols)
@@ -450,7 +451,8 @@ export default function DataViewPage() {
         header: newColumn.displayName,
         type: getColumnType(newColumn.unit),
         metricName: newColumn.metricName,
-        unit: newColumn.unit
+        unit: newColumn.unit,
+        options: newColumn.options
       }]
 
       const { error } = await supabase
