@@ -22,6 +22,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
+import { TableTypeSelector } from '@/components/data-view/table-type-selector'
 
 interface DataTable {
   id: string
@@ -89,24 +90,15 @@ export function TablesManager({ accountId, currentTableId, onTableChange }: Tabl
     }
   }
 
-  async function createTable() {
-    if (!newTable.name.trim()) {
-      toast({
-        title: "Error",
-        description: "Table name is required",
-        variant: "destructive",
-      })
-      return
-    }
-
+  const handleCreateTable = async (tableConfig: {
+    name: string
+    description: string
+    tableType: 'user_metrics' | 'account_metrics' | 'time_series'
+  }) => {
     setLoading(true)
     
     try {
-      console.log('Creating table via API:', {
-        accountId,
-        name: newTable.name.trim(),
-        description: newTable.description.trim() || null
-      })
+      console.log('Creating table via API with type:', tableConfig)
 
       const response = await fetch('/api/data-view/tables', {
         method: 'POST',
@@ -115,8 +107,9 @@ export function TablesManager({ accountId, currentTableId, onTableChange }: Tabl
         },
         body: JSON.stringify({
           accountId,
-          name: newTable.name.trim(),
-          description: newTable.description.trim() || null
+          name: tableConfig.name,
+          description: tableConfig.description || null,
+          tableType: tableConfig.tableType
         }),
       })
 
@@ -129,13 +122,12 @@ export function TablesManager({ accountId, currentTableId, onTableChange }: Tabl
       console.log('Table created successfully via API:', result.table)
       
       setTables([result.table, ...tables])
-      setNewTable({ name: '', description: '' })
       setIsCreateOpen(false)
       onTableChange(result.table.id)
       
       toast({
         title: "Success",
-        description: "Table created successfully",
+        description: `${tableConfig.name} created successfully`,
       })
 
     } catch (error: any) {
@@ -282,49 +274,12 @@ export function TablesManager({ accountId, currentTableId, onTableChange }: Tabl
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {/* Create Table Dialog */}
-      <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Create New Table</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 pt-4">
-            <div>
-              <Label htmlFor="table-name">Table Name</Label>
-              <Input
-                id="table-name"
-                value={newTable.name}
-                onChange={(e) => setNewTable({ ...newTable, name: e.target.value })}
-                placeholder="e.g., Q1 Performance"
-              />
-            </div>
-            <div>
-              <Label htmlFor="table-description">Description (optional)</Label>
-              <Textarea
-                id="table-description"
-                value={newTable.description}
-                onChange={(e) => setNewTable({ ...newTable, description: e.target.value })}
-                placeholder="Describe what this table shows..."
-                rows={3}
-              />
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setIsCreateOpen(false)
-                  setNewTable({ name: '', description: '' })
-                }}
-              >
-                Cancel
-              </Button>
-              <Button onClick={createTable} disabled={loading}>
-                {loading ? 'Creating...' : 'Create Table'}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Table Type Selector */}
+      <TableTypeSelector
+        open={isCreateOpen}
+        onOpenChange={setIsCreateOpen}
+        onCreateTable={handleCreateTable}
+      />
 
       {/* Edit Table Dialog */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>

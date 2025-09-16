@@ -27,9 +27,9 @@ export async function POST(request: NextRequest) {
     console.log('API: Authenticated user:', user.id, user.email)
 
     const body = await request.json()
-    const { accountId, name, description } = body
+    const { accountId, name, description, tableType } = body
 
-    console.log('API: Request data:', { accountId, name, description, userId: user.id })
+    console.log('API: Request data:', { accountId, name, description, tableType, userId: user.id })
 
     // Validate required fields
     if (!accountId || !name?.trim()) {
@@ -108,6 +108,7 @@ export async function POST(request: NextRequest) {
         account_id: accountId,
         name: name.trim(),
         description: description?.trim() || null,
+        table_type: tableType || 'user_metrics',
         columns: [
           // Base columns (name, email, role) are now handled by baseColumns in the frontend
           // Only store metric/custom columns in the table configuration
