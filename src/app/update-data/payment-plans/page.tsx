@@ -336,7 +336,7 @@ export default function PaymentPlansPage() {
 
   const getStatusBadge = (plan: PaymentPlanData) => {
     if (plan.remainingBalance <= 0) {
-      return <Badge variant="default" className="bg-green-100 text-green-800 hover:bg-green-100">
+      return <Badge variant="default" className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">
         <CheckCircle2 className="h-3 w-3 mr-1" />
         Complete
       </Badge>
@@ -347,7 +347,7 @@ export default function PaymentPlansPage() {
         Overdue ({plan.overduePayments})
       </Badge>
     }
-    return <Badge variant="outline">
+    return <Badge variant="outline" className="text-slate-600">
       <Clock className="h-3 w-3 mr-1" />
       Active
     </Badge>
@@ -456,20 +456,20 @@ export default function PaymentPlansPage() {
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Total Paid</CardTitle>
-                  <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  <CheckCircle2 className="h-4 w-4 text-emerald-600" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-green-600">${summary.totalPaid.toFixed(2)}</div>
+                  <div className="text-2xl font-bold text-emerald-700">${summary.totalPaid.toFixed(2)}</div>
                 </CardContent>
               </Card>
 
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Remaining</CardTitle>
-                  <Clock className="h-4 w-4 text-orange-600" />
+                  <Clock className="h-4 w-4 text-amber-600" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-orange-600">${summary.totalRemaining.toFixed(2)}</div>
+                  <div className="text-2xl font-bold text-amber-700">${summary.totalRemaining.toFixed(2)}</div>
                 </CardContent>
               </Card>
 
@@ -486,10 +486,10 @@ export default function PaymentPlansPage() {
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Completed</CardTitle>
-                  <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  <CheckCircle2 className="h-4 w-4 text-emerald-600" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-green-600">{summary.completedCount}</div>
+                  <div className="text-2xl font-bold text-emerald-700">{summary.completedCount}</div>
                 </CardContent>
               </Card>
             </div>
@@ -583,10 +583,10 @@ export default function PaymentPlansPage() {
                         <TableCell>{plan.appointment.accounts?.name}</TableCell>
                         <TableCell>{plan.appointment.sales_rep || "Unassigned"}</TableCell>
                         <TableCell className="font-medium">${plan.totalScheduled.toFixed(2)}</TableCell>
-                        <TableCell className="font-medium text-green-600">
+                        <TableCell className="font-medium text-emerald-700">
                           ${plan.totalPaid.toFixed(2)}
                         </TableCell>
-                        <TableCell className="font-medium text-orange-600">
+                        <TableCell className="font-medium text-amber-700">
                           ${plan.remainingBalance.toFixed(2)}
                         </TableCell>
                         <TableCell>{getNextPaymentInfo(plan)}</TableCell>
@@ -615,7 +615,7 @@ export default function PaymentPlansPage() {
 
       {/* Payment Plan Detail Modal */}
       <Dialog open={!!selectedPlan} onOpenChange={() => setSelectedPlan(null)}>
-        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               Payment Plan - {selectedPlan?.appointment.contacts?.name || "Unknown Contact"}
@@ -665,7 +665,6 @@ export default function PaymentPlansPage() {
                 onPaymentUpdate={() => {
                   // Refresh the data when payments are updated
                   fetchPaymentPlans()
-                  setSelectedPlan(null)
                   toast({
                     title: "Payment Updated",
                     description: "Payment plan has been updated successfully.",

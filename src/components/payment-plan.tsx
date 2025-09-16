@@ -12,6 +12,8 @@ import { Badge } from "@/components/ui/badge";
 import { AlertCircle, Calendar, DollarSign, Plus, Trash2, Check } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
+import { useAccountTimezone } from "@/hooks/use-account-timezone";
+import { useDashboard } from "@/lib/dashboard-context";
 
 interface PaymentRow {
 	id?: string;
@@ -33,6 +35,9 @@ export function PaymentPlan({ appointmentId, totalSalesValue, cashCollected, onP
 	const [loading, setLoading] = useState<boolean>(false);
 	const [initialized, setInitialized] = useState<boolean>(false);
 	const [saving, setSaving] = useState<string | null>(null);
+
+	const { selectedAccountId } = useDashboard();
+	const { formatDate } = useAccountTimezone(selectedAccountId);
 
 	// Calculate collected amount from paid payments
 	const collected = useMemo(() => {
@@ -78,29 +83,34 @@ export function PaymentPlan({ appointmentId, totalSalesValue, cashCollected, onP
 	const ensureInitialized = async () => {
 		if (initialized || rows.length > 0) return;
 		
-		try {
-			const res = await fetch('/api/appointments/payments', { 
-				method: 'POST', 
-				headers: { 'Content-Type': 'application/json' }, 
-				body: JSON.stringify({ action: 'init', appointmentId }) 
-			});
-			if (res.ok) {
-				setInitialized(true);
-				// Refresh the data
-				const refreshRes = await fetch(`/api/appointments/payments?appointmentId=${appointmentId}`);
-				const refreshData = await refreshRes.json();
-				if (refreshRes.ok) {
-					const mapped: PaymentRow[] = (refreshData.payments || []).map((p: any) => ({ 
-						id: p.id, 
-						payment_date: p.payment_date, 
-						amount: String(p.amount ?? ''), 
-						paid: !!p.paid 
-					}));
-					setRows(mapped);
+		// If there's cash collected, automatically add it as the first payment (marked as paid)
+		if (cashCollected > 0) {
+			try {
+				const res = await fetch('/api/appointments/payments', { 
+					method: 'POST', 
+					headers: { 'Content-Type': 'application/json' }, 
+					body: JSON.stringify({ action: 'init', appointmentId }) 
+				});
+				if (res.ok) {
+					setInitialized(true);
+					// Refresh the data
+					const refreshRes = await fetch(`/api/appointments/payments?appointmentId=${appointmentId}`);
+					const refreshData = await refreshRes.json();
+					if (refreshRes.ok) {
+						const mapped: PaymentRow[] = (refreshData.payments || []).map((p: any) => ({ 
+							id: p.id, 
+							payment_date: p.payment_date, 
+							amount: String(p.amount ?? ''), 
+							paid: !!p.paid 
+						}));
+						setRows(mapped);
+					}
 				}
+			} catch (error) {
+				console.error('Failed to initialize payments:', error);
 			}
-		} catch (error) {
-			console.error('Failed to initialize payments:', error);
+		} else {
+			setInitialized(true);
 		}
 	};
 
@@ -250,27 +260,27 @@ export function PaymentPlan({ appointmentId, totalSalesValue, cashCollected, onP
 			<CardContent className="space-y-4">
 				{/* Summary Cards */}
 				<div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-					<div className="rounded-lg border p-3 bg-blue-50/50">
-						<div className="text-xs font-medium text-blue-600 mb-1">Total Sales Value</div>
-						<div className="text-lg font-bold text-blue-700">${totalSalesValue.toFixed(2)}</div>
+					<div className="rounded-lg border p-3 bg-slate-50">
+						<div className="text-xs font-medium text-slate-600 mb-1">Total Sales Value</div>
+						<div className="text-lg font-bold text-slate-900">${totalSalesValue.toFixed(2)}</div>
 					</div>
-					<div className="rounded-lg border p-3 bg-green-50/50">
-						<div className="text-xs font-medium text-green-600 mb-1">Collected</div>
-						<div className="text-lg font-bold text-green-700">${actualCollected.toFixed(2)}</div>
+					<div className="rounded-lg border p-3 bg-emerald-50">
+						<div className="text-xs font-medium text-emerald-700 mb-1">Collected</div>
+						<div className="text-lg font-bold text-emerald-800">${actualCollected.toFixed(2)}</div>
 					</div>
 					<div className={cn(
 						"rounded-lg border p-3",
-						remaining > 0 ? "bg-orange-50/50" : "bg-green-50/50"
+						remaining > 0 ? "bg-amber-50" : "bg-emerald-50"
 					)}>
 						<div className={cn(
 							"text-xs font-medium mb-1",
-							remaining > 0 ? "text-orange-600" : "text-green-600"
+							remaining > 0 ? "text-amber-700" : "text-emerald-700"
 						)}>
 							Remaining
 						</div>
 						<div className={cn(
 							"text-lg font-bold",
-							remaining > 0 ? "text-orange-700" : "text-green-700"
+							remaining > 0 ? "text-amber-800" : "text-emerald-800"
 						)}>
 							${remaining.toFixed(2)}
 						</div>
@@ -312,7 +322,7 @@ export function PaymentPlan({ appointmentId, totalSalesValue, cashCollected, onP
 							{rows.map((row, idx) => (
 								<div key={row.id || idx} className={cn(
 									"p-4 border rounded-lg transition-all",
-									row.paid ? "bg-green-50/50 border-green-200" : "bg-background",
+									row.paid ? "bg-emerald-50 border-emerald-200" : "bg-background",
 									saving === row.id || saving === `new-${idx}` ? "opacity-50" : ""
 								)}>
 									<div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
@@ -336,6 +346,8 @@ export function PaymentPlan({ appointmentId, totalSalesValue, cashCollected, onP
 													onChange={(e) => updateRow(idx, { amount: e.target.value })}
 													className="pl-8"
 													placeholder="0.00"
+													inputMode="numeric"
+													pattern="[0-9]*"
 												/>
 											</div>
 										</div>
@@ -350,12 +362,12 @@ export function PaymentPlan({ appointmentId, totalSalesValue, cashCollected, onP
 												/>
 												<Label htmlFor={`paid-${idx}`} className="text-sm cursor-pointer">
 													{row.paid ? (
-														<Badge variant="default" className="bg-green-100 text-green-800 hover:bg-green-100">
+														<Badge variant="default" className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">
 															<Check className="h-3 w-3 mr-1" />
 															Paid
 														</Badge>
 													) : (
-														<Badge variant="outline">Pending</Badge>
+														<Badge variant="outline" className="text-slate-600">Pending</Badge>
 													)}
 												</Label>
 											</div>
@@ -390,7 +402,7 @@ export function PaymentPlan({ appointmentId, totalSalesValue, cashCollected, onP
 						</div>
 						<div className="flex justify-between text-sm mt-1">
 							<span className="font-medium">Total Paid:</span>
-							<span className="font-bold text-green-600">
+							<span className="font-bold text-emerald-700">
 								${actualCollected.toFixed(2)}
 							</span>
 						</div>
