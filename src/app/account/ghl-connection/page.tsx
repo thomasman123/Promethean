@@ -13,8 +13,11 @@ import { useRouter } from "next/navigation"
 import { useSearchParams } from "next/navigation"
 import { useDashboard } from "@/lib/dashboard-context"
 import { useEffectiveUser } from "@/hooks/use-effective-user"
-import { Shield, AlertCircle, CheckCircle2, Loader2, Link, Unlink, RefreshCw } from "lucide-react"
+import { Shield, AlertCircle, CheckCircle2, Loader2, Link, Unlink, RefreshCw, Calendar, Settings } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface GhlConnectionStatus {
   isConnected: boolean
@@ -24,12 +27,39 @@ interface GhlConnectionStatus {
   webhookId: string | null
 }
 
+interface GhlCalendar {
+  id: string
+  name: string
+  description?: string
+  isActive: boolean
+  eventType?: string
+}
+
+interface CalendarMapping {
+  id: string
+  account_id: string
+  ghl_calendar_id: string
+  calendar_name: string
+  calendar_description?: string
+  is_enabled: boolean
+  target_table: 'appointments' | 'discoveries'
+  created_at: string
+  updated_at: string
+}
+
 function GHLConnectionContent() {
   const [loading, setLoading] = useState(true)
   const [connectionStatus, setConnectionStatus] = useState<GhlConnectionStatus | null>(null)
   const [disconnecting, setDisconnecting] = useState(false)
   const [resubscribing, setResubscribing] = useState(false)
   const [hasAccess, setHasAccess] = useState(false)
+  
+  // Calendar mapping state
+  const [calendars, setCalendars] = useState<GhlCalendar[]>([])
+  const [mappings, setMappings] = useState<CalendarMapping[]>([])
+  const [loadingCalendars, setLoadingCalendars] = useState(false)
+  const [savingMappings, setSavingMappings] = useState(false)
+  
   const { toast } = useToast()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -148,6 +178,11 @@ function GHLConnectionContent() {
       }
 
       setConnectionStatus(status)
+      
+      // If connected, also fetch calendars and mappings
+      if (status.isConnected) {
+        await fetchCalendarsAndMappings()
+      }
     } catch (error) {
       console.error('Error fetching connection status:', error)
       toast({
@@ -157,6 +192,112 @@ function GHLConnectionContent() {
       })
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchCalendarsAndMappings = async () => {
+    if (!selectedAccountId) return
+    
+    setLoadingCalendars(true)
+    try {
+      // Fetch calendars from GHL
+      const calendarsResponse = await fetch(`/api/ghl/calendars?accountId=${selectedAccountId}`)
+      const calendarsData = await calendarsResponse.json()
+      
+      if (calendarsData.success) {
+        setCalendars(calendarsData.calendars || [])
+      } else {
+        console.error('Failed to fetch calendars:', calendarsData.error)
+        setCalendars([])
+      }
+      
+      // Fetch existing mappings
+      const { data: mappingsData, error: mappingsError } = await supabase
+        .from('calendar_mappings')
+        .select('*')
+        .eq('account_id', selectedAccountId)
+        .order('calendar_name')
+      
+      if (mappingsError) {
+        console.error('Error fetching mappings:', mappingsError)
+        setMappings([])
+      } else {
+        setMappings(mappingsData || [])
+      }
+    } catch (error) {
+      console.error('Error fetching calendars and mappings:', error)
+      toast({
+        title: "Error",
+        description: "Failed to load calendar information",
+        variant: "destructive"
+      })
+    } finally {
+      setLoadingCalendars(false)
+    }
+  }
+
+  const updateMapping = async (calendarId: string, enabled: boolean, targetTable: 'appointments' | 'discoveries') => {
+    if (!selectedAccountId) return
+    
+    const calendar = calendars.find(c => c.id === calendarId)
+    if (!calendar) return
+    
+    const existingMapping = mappings.find(m => m.ghl_calendar_id === calendarId)
+    
+    try {
+      if (existingMapping) {
+        // Update existing mapping
+        const { error } = await supabase
+          .from('calendar_mappings')
+          .update({
+            is_enabled: enabled,
+            target_table: targetTable,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', existingMapping.id)
+        
+        if (error) throw error
+        
+        // Update local state
+        setMappings(prev => prev.map(m => 
+          m.id === existingMapping.id 
+            ? { ...m, is_enabled: enabled, target_table: targetTable, updated_at: new Date().toISOString() }
+            : m
+        ))
+      } else {
+        // Create new mapping
+        const newMapping = {
+          account_id: selectedAccountId,
+          ghl_calendar_id: calendarId,
+          calendar_name: calendar.name,
+          calendar_description: calendar.description || null,
+          is_enabled: enabled,
+          target_table: targetTable
+        }
+        
+        const { data, error } = await supabase
+          .from('calendar_mappings')
+          .insert(newMapping)
+          .select()
+          .single()
+        
+        if (error) throw error
+        
+        // Add to local state
+        setMappings(prev => [...prev, data])
+      }
+      
+      toast({
+        title: "Success",
+        description: `Calendar mapping ${enabled ? 'enabled' : 'disabled'} for ${calendar.name}`,
+      })
+    } catch (error) {
+      console.error('Error updating mapping:', error)
+      toast({
+        title: "Error",
+        description: "Failed to update calendar mapping",
+        variant: "destructive"
+      })
     }
   }
 
@@ -203,12 +344,13 @@ function GHLConnectionContent() {
 
     // Generate a nonce for CSRF protection
     const nonce = Math.random().toString(36).substring(2, 15)
+    const userId = effectiveUser.id
     
     // Create state parameter
     const state = JSON.stringify({
       accountId: selectedAccountId,
       nonce: nonce,
-      userId: effectiveUser.id
+      userId: userId
     })
 
     // Get OAuth URL
@@ -217,11 +359,11 @@ function GHLConnectionContent() {
     
     console.log('🔍 OAuth initiation details:', {
       selectedAccountId,
-      effectiveUserId: effectiveUser.id,
+      effectiveUserId: userId,
       clientId,
       redirectUri,
       origin: window.location.origin,
-      stateObject: { accountId: selectedAccountId, nonce, userId: effectiveUser.id },
+      stateObject: { accountId: selectedAccountId, nonce, userId: userId },
       stateString: state
     })
     
@@ -241,12 +383,12 @@ function GHLConnectionContent() {
       
       // Store in localStorage (survives page refresh)
       localStorage.setItem('oauth_selectedAccountId', selectedAccountId)
-      localStorage.setItem('oauth_userId', effectiveUser.id)
+      localStorage.setItem('oauth_userId', userId)
       localStorage.setItem('oauth_timestamp', timestamp)
       
       console.log('💾 Setting localStorage items:', {
         oauth_selectedAccountId: selectedAccountId,
-        oauth_userId: effectiveUser.id,
+        oauth_userId: userId,
         oauth_timestamp: timestamp
       })
       
@@ -254,28 +396,28 @@ function GHLConnectionContent() {
       // Set cookies for both current domain and callback domain
       const cookieOptions = `path=/; max-age=7200; samesite=lax${window.location.protocol === 'https:' ? '; secure' : ''}`
       document.cookie = `selectedAccountId=${selectedAccountId}; ${cookieOptions}`
-      document.cookie = `oauth_userId=${effectiveUser.id}; ${cookieOptions}`
+      document.cookie = `oauth_userId=${userId}; ${cookieOptions}`
       document.cookie = `oauth_timestamp=${timestamp}; ${cookieOptions}`
       
       console.log('🍪 Setting client-side cookies:', {
         selectedAccountId: `selectedAccountId=${selectedAccountId}; ${cookieOptions}`,
-        oauth_userId: `oauth_userId=${effectiveUser.id}; ${cookieOptions}`,
+        oauth_userId: `oauth_userId=${userId}; ${cookieOptions}`,
         oauth_timestamp: `oauth_timestamp=${timestamp}; ${cookieOptions}`
       })
       
       // Additional backup - store in sessionStorage as well
       sessionStorage.setItem('oauth_selectedAccountId', selectedAccountId)
-      sessionStorage.setItem('oauth_userId', effectiveUser.id)
+      sessionStorage.setItem('oauth_userId', userId)
       
-      console.log('💾 Stored account info in multiple locations:', {
-        localStorage: true,
-        sessionStorage: true,
-        cookies: true,
-        selectedAccountId,
-        userId: effectiveUser.id,
-        cookieOptions,
-        protocol: window.location.protocol
-      })
+              console.log('💾 Stored account info in multiple locations:', {
+          localStorage: true,
+          sessionStorage: true,
+          cookies: true,
+          selectedAccountId,
+          userId: userId,
+          cookieOptions,
+          protocol: window.location.protocol
+        })
       
       // Verify cookies were set
       const cookieCheck = document.cookie.includes(`selectedAccountId=${selectedAccountId}`)
@@ -312,7 +454,7 @@ function GHLConnectionContent() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             selectedAccountId,
-            userId: effectiveUser.id
+            userId: userId
           })
         })
         
@@ -331,7 +473,7 @@ function GHLConnectionContent() {
           console.log('🔄 Trying alternative client-side cookie setting method...')
           const expires = new Date(Date.now() + 7200000).toUTCString() // 2 hours
           document.cookie = `selectedAccountId=${selectedAccountId}; expires=${expires}; path=/`
-          document.cookie = `oauth_userId=${effectiveUser.id}; expires=${expires}; path=/`
+          document.cookie = `oauth_userId=${userId}; expires=${expires}; path=/`
           document.cookie = `oauth_timestamp=${timestamp}; expires=${expires}; path=/`
           
           // Verify again
@@ -673,6 +815,138 @@ function GHLConnectionContent() {
               )}
             </CardContent>
           </Card>
+
+          {/* Calendar Mapping Card */}
+          {connectionStatus?.isConnected && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Calendar className="h-5 w-5" />
+                  Calendar Mapping
+                </CardTitle>
+                <CardDescription>
+                  Configure which GHL calendars sync to appointments or discoveries in your system.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {loadingCalendars ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    <span className="ml-2 text-muted-foreground">Loading calendars...</span>
+                  </div>
+                ) : calendars.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Calendar className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                    <p className="text-muted-foreground">No calendars found in your GHL account</p>
+                    <Button 
+                      variant="outline" 
+                      onClick={fetchCalendarsAndMappings}
+                      className="mt-4"
+                    >
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Refresh Calendars
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm text-muted-foreground">
+                        Found {calendars.length} calendar{calendars.length !== 1 ? 's' : ''} in your GHL account
+                      </p>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={fetchCalendarsAndMappings}
+                        disabled={loadingCalendars}
+                      >
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Refresh
+                      </Button>
+                    </div>
+                    
+                    <div className="border rounded-lg">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Calendar</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>Enabled</TableHead>
+                            <TableHead>Map To</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {calendars.map((calendar) => {
+                            const mapping = mappings.find(m => m.ghl_calendar_id === calendar.id)
+                            const isEnabled = mapping?.is_enabled || false
+                            const targetTable = mapping?.target_table || 'appointments'
+                            
+                            return (
+                              <TableRow key={calendar.id}>
+                                <TableCell>
+                                  <div>
+                                    <div className="font-medium">{calendar.name}</div>
+                                    {calendar.description && (
+                                      <div className="text-sm text-muted-foreground">
+                                        {calendar.description}
+                                      </div>
+                                    )}
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <Badge 
+                                    variant={calendar.isActive ? "default" : "secondary"}
+                                    className={calendar.isActive ? "bg-green-100 text-green-800" : ""}
+                                  >
+                                    {calendar.isActive ? 'Active' : 'Inactive'}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>
+                                  <Checkbox
+                                    checked={isEnabled}
+                                    onCheckedChange={(checked) => 
+                                      updateMapping(calendar.id, checked as boolean, targetTable)
+                                    }
+                                    disabled={savingMappings}
+                                  />
+                                </TableCell>
+                                <TableCell>
+                                  <Select
+                                    value={targetTable}
+                                    onValueChange={(value: 'appointments' | 'discoveries') =>
+                                      updateMapping(calendar.id, isEnabled, value)
+                                    }
+                                    disabled={!isEnabled || savingMappings}
+                                  >
+                                    <SelectTrigger className="w-[140px]">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="appointments">Appointments</SelectItem>
+                                      <SelectItem value="discoveries">Discoveries</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </TableCell>
+                              </TableRow>
+                            )
+                          })}
+                        </TableBody>
+                      </Table>
+                    </div>
+                    
+                    {mappings.filter(m => m.is_enabled).length > 0 && (
+                      <Alert>
+                        <CheckCircle2 className="h-4 w-4 text-green-600" />
+                        <AlertTitle>Active Mappings</AlertTitle>
+                        <AlertDescription>
+                          {mappings.filter(m => m.is_enabled).length} calendar{mappings.filter(m => m.is_enabled).length !== 1 ? 's are' : ' is'} currently syncing data to your system.
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {/* Webhooks Card */}
           {connectionStatus?.isConnected && (
