@@ -4,12 +4,14 @@ import { useState, useEffect, useMemo } from "react"
 import { TopBar } from "@/components/layout/topbar"
 import { UserMetricsTable, type UserMetric, type MetricColumn } from "@/components/data-view/user-metrics-table"
 import { UnifiedMetricSelector } from "@/components/shared/unified-metric-selector"
+import { TableTypeSelector } from "@/components/data-view/table-type-selector"
 import { useDashboard } from "@/lib/dashboard-context"
 import { createBrowserClient } from "@supabase/ssr"
 import { ColumnDef } from "@tanstack/react-table"
 import { ArrowUpDown, Trash2 } from "lucide-react"
 import { format } from "date-fns"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import {
   Tooltip,
   TooltipContent,
@@ -26,6 +28,7 @@ export default function DataViewPage() {
   const [loading, setLoading] = useState(false)
   const [metricsLoading, setMetricsLoading] = useState(false)
   const [isMetricModalOpen, setIsMetricModalOpen] = useState(false)
+  const [isTableTypeSelectorOpen, setIsTableTypeSelectorOpen] = useState(false)
   const [metricColumns, setMetricColumns] = useState<MetricColumn[]>([])
   const { toast } = useToast()
   const supabase = createBrowserClient(
@@ -157,6 +160,12 @@ export default function DataViewPage() {
 
     setTableConfig(data)
     
+    console.log('📊 Loaded table config:', { 
+      name: data.name, 
+      tableType: data.table_type || 'user_metrics',
+      columnsCount: data.columns?.length || 0
+    })
+    
     // Extract metric columns from table configuration
     const columns = data.columns || []
     const metricCols = columns
@@ -171,9 +180,20 @@ export default function DataViewPage() {
     
     setMetricColumns(metricCols)
     
-    // Load metric data for existing metric columns
-    if (metricCols.length > 0 && users.length > 0) {
-      await loadAllMetricData(metricCols)
+    // Load data based on table type
+    const tableType = data.table_type || 'user_metrics'
+    
+    if (tableType === 'user_metrics') {
+      // Load metric data for existing metric columns (current functionality)
+      if (metricCols.length > 0 && users.length > 0) {
+        await loadAllMetricData(metricCols)
+      }
+    } else if (tableType === 'account_metrics') {
+      // TODO: Load account-level metrics
+      console.log('📊 Account metrics table - will implement account-level data loading')
+    } else if (tableType === 'time_series') {
+      // TODO: Load time series data
+      console.log('📊 Time series table - will implement time-based data loading')
     }
   }
 
@@ -619,25 +639,29 @@ export default function DataViewPage() {
     }
   }
 
-  const createDefaultTable = async () => {
+  const handleCreateTable = async (tableConfig: {
+    name: string
+    description: string
+    tableType: 'user_metrics' | 'account_metrics' | 'time_series'
+  }) => {
     if (!selectedAccountId) return
 
     try {
       const { data: userData } = await supabase.auth.getUser()
       if (!userData.user) return
 
+      console.log('🔄 Creating table with config:', tableConfig)
+
       const { data, error } = await supabase
         .from('data_tables')
         .insert({
           account_id: selectedAccountId,
-          name: 'User Metrics',
-          description: 'Default table for viewing user performance metrics',
-          columns: [
-            // Base columns (name, email, role) are now handled by baseColumns
-            // Only store metric/custom columns in the table configuration
-          ],
+          name: tableConfig.name,
+          description: tableConfig.description || null,
+          table_type: tableConfig.tableType,
+          columns: [], // Start with empty columns, user will add metrics
           filters: { roles: [] },
-          is_default: true,
+          is_default: false,
           created_by: userData.user.id
         })
         .select()
@@ -645,19 +669,21 @@ export default function DataViewPage() {
 
       if (error) throw error
 
+      console.log('✅ Table created:', data)
+
       // Trigger the table change event to select the new table
       window.dispatchEvent(new CustomEvent('tableChanged', { detail: { tableId: data.id } }))
       
       toast({
         title: "Table created",
-        description: "Default table created successfully",
+        description: `${tableConfig.name} created successfully`,
       })
 
     } catch (error) {
-      console.error('Error creating default table:', error)
+      console.error('❌ Error creating table:', error)
       toast({
         title: "Error",
-        description: "Failed to create default table",
+        description: "Failed to create table",
         variant: "destructive",
       })
     }
@@ -675,15 +701,36 @@ export default function DataViewPage() {
               {/* Table Header */}
               <div className="flex items-center justify-between">
                 <div>
-                  <h1 className="text-2xl font-semibold">{tableConfig?.name || 'Data Table'}</h1>
+                  <div className="flex items-center gap-2">
+                    <h1 className="text-2xl font-semibold">{tableConfig?.name || 'Data Table'}</h1>
+                    {tableConfig?.table_type && (
+                      <Badge variant="outline" className="text-xs">
+                        {tableConfig.table_type === 'user_metrics' ? 'User Performance' :
+                         tableConfig.table_type === 'account_metrics' ? 'Account Metrics' :
+                         tableConfig.table_type === 'time_series' ? 'Time Series' : 
+                         tableConfig.table_type}
+                      </Badge>
+                    )}
+                  </div>
                   {tableConfig?.description && (
                     <p className="text-muted-foreground mt-1">{tableConfig.description}</p>
                   )}
                 </div>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <span>{users.length} users</span>
-                  {metricColumns.length > 0 && (
-                    <span>• {metricColumns.length} metrics</span>
+                  {tableConfig?.table_type === 'user_metrics' ? (
+                    <>
+                      <span>{users.length} users</span>
+                      {metricColumns.length > 0 && (
+                        <span>• {metricColumns.length} metrics</span>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <span>{tableConfig?.table_type === 'account_metrics' ? 'Account Level' : 'Time Series'}</span>
+                      {metricColumns.length > 0 && (
+                        <span>• {metricColumns.length} metrics</span>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
@@ -704,8 +751,8 @@ export default function DataViewPage() {
                     <h3 className="text-lg font-medium mb-2">No table selected</h3>
                     <p>Create or select a table to view user metrics data</p>
                   </div>
-                  <Button onClick={createDefaultTable} variant="outline">
-                    Create Default Table
+                  <Button onClick={() => setIsTableTypeSelectorOpen(true)} variant="outline">
+                    Create Table
                   </Button>
                 </>
               ) : (
@@ -719,12 +766,19 @@ export default function DataViewPage() {
         </div>
       </main>
 
-             <UnifiedMetricSelector
+                    <UnifiedMetricSelector
          open={isMetricModalOpen}
          onOpenChange={setIsMetricModalOpen}
          onMetricSelect={handleMetricSelect}
          mode="data-view"
        />
-    </div>
-  )
-} 
+
+       {/* Table Type Selector */}
+       <TableTypeSelector
+         open={isTableTypeSelectorOpen}
+         onOpenChange={setIsTableTypeSelectorOpen}
+         onCreateTable={handleCreateTable}
+       />
+     </div>
+   )
+ } 
