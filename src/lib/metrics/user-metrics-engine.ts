@@ -216,7 +216,8 @@ export class UserMetricsEngine {
     accountId: string,
     startDate: string,
     endDate: string,
-    userIds: string[]
+    userIds: string[],
+    options?: any
   ): Promise<UserMetricResult[]> {
     
     console.log(`Calculating discovery metrics for users: ${userIds.join(', ')}`)
@@ -248,7 +249,7 @@ export class UserMetricsEngine {
 
     console.log(`Found ${discoveries?.length || 0} discoveries`)
 
-    return this.processResults(discoveries || [], userIds, metric, 'discoveries')
+    return this.processResults(discoveries || [], userIds, metric, 'discoveries', options)
   }
 
   /**
@@ -259,7 +260,8 @@ export class UserMetricsEngine {
     accountId: string,
     startDate: string,
     endDate: string,
-    userIds: string[]
+    userIds: string[],
+    options?: any
   ): Promise<UserMetricResult[]> {
     
     console.log(`Calculating dial metrics for users: ${userIds.join(', ')}`)
@@ -289,7 +291,7 @@ export class UserMetricsEngine {
 
     console.log(`Found ${dials?.length || 0} dials`)
 
-    return this.processResults(dials || [], userIds, metric, 'dials')
+    return this.processResults(dials || [], userIds, metric, 'dials', options)
   }
 
   /**
@@ -782,7 +784,8 @@ export class UserMetricsEngine {
     accountId: string,
     startDate: string,
     endDate: string,
-    userIds: string[]
+    userIds: string[],
+    options?: any
   ): Promise<UserMetricResult[]> {
     
     // For now, return zeros since Meta ads attribution to individual users needs more complex logic
