@@ -65,7 +65,7 @@ export function PaymentPlan({ appointmentId, totalSalesValue, cashCollected, onP
 						paid: !!p.paid 
 					}));
 					setRows(mapped);
-					setInitialized(mapped.length > 0);
+					setInitialized(true); // Always mark as initialized after loading, regardless of payment count
 				} else {
 					setRows([]);
 				}
@@ -88,10 +88,14 @@ export function PaymentPlan({ appointmentId, totalSalesValue, cashCollected, onP
 			appointmentId
 		});
 		
-		if (initialized) return;
+		// Don't initialize if already initialized OR if payments already exist
+		if (initialized || rows.length > 0) {
+			console.log('🚫 [PaymentPlan] Skipping initialization - already done or payments exist');
+			return;
+		}
 		
 		// If there's cash collected and no payments exist, automatically add it as the first payment (marked as paid)
-		if (cashCollected > 0 && rows.length === 0) {
+		if (cashCollected > 0) {
 			console.log('💰 [PaymentPlan] Auto-initializing with cash collected:', cashCollected);
 			try {
 				const res = await fetch('/api/appointments/payments', { 
@@ -131,11 +135,11 @@ export function PaymentPlan({ appointmentId, totalSalesValue, cashCollected, onP
 	};
 
 	useEffect(() => {
-		// Only try to initialize after we've loaded existing payments
-		if (!loading) {
+		// Only try to initialize after we've loaded existing payments and not already initialized
+		if (!loading && !initialized && rows.length === 0 && cashCollected > 0) {
 			ensureInitialized();
 		}
-	}, [initialized, rows.length, loading, cashCollected]);
+	}, [loading, initialized, rows.length, cashCollected]);
 
 	const addRow = () => {
 		const newRow: PaymentRow = {
