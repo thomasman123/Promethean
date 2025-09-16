@@ -147,6 +147,9 @@ export class UserMetricsEngine {
       case 'dials':
         return this.calculateDialMetrics(metric, accountId, startDate, endDate, userIds, options)
       
+      case 'contacts':
+        return this.calculateContactMetrics(metric, accountId, startDate, endDate, userIds, options)
+      
       case 'work_timeframes':
         return this.calculateWorkTimeframeMetrics(metric, accountId, startDate, endDate, userIds, options)
       
@@ -250,6 +253,88 @@ export class UserMetricsEngine {
     console.log(`Found ${discoveries?.length || 0} discoveries`)
 
     return this.processResults(discoveries || [], userIds, metric, 'discoveries', options)
+  }
+
+  /**
+   * Calculate contact-based metrics for users using Supabase queries
+   */
+  private async calculateContactMetrics(
+    metric: MetricDefinition,
+    accountId: string,
+    startDate: string,
+    endDate: string,
+    userIds: string[],
+    options?: any
+  ): Promise<UserMetricResult[]> {
+    
+    console.log(`Calculating contact metrics for users: ${userIds.join(', ')}`)
+
+    // For contacts, we need to look at appointments and discoveries to see which users are associated
+    // Since contacts don't have direct user attribution, we'll count contacts via appointments/discoveries
+    let query = supabaseService
+      .from('contacts')
+      .select(`
+        id,
+        created_at,
+        appointments!inner(setter_user_id, sales_rep_user_id),
+        discoveries!inner(setter_user_id, sales_rep_user_id)
+      `)
+      .eq('account_id', accountId)
+      .gte('created_at', startDate)
+      .lte('created_at', endDate)
+
+    const { data: contacts, error } = await query
+
+    if (error) {
+      throw new Error(`Database query failed: ${error.message}`)
+    }
+
+    console.log(`Found ${contacts?.length || 0} contacts`)
+
+    // For contacts, we need to count unique contacts per user based on appointments/discoveries
+    const userStats = new Map<string, Set<string>>() // userId -> Set of contact IDs
+    
+    // Initialize all users
+    userIds.forEach(userId => {
+      userStats.set(userId, new Set())
+    })
+
+    // Process contacts through appointments and discoveries
+    contacts?.forEach(contact => {
+      // Count contact for setters/reps in appointments
+      contact.appointments?.forEach((apt: any) => {
+        if (apt.setter_user_id && userIds.includes(apt.setter_user_id)) {
+          userStats.get(apt.setter_user_id)!.add(contact.id)
+        }
+        if (apt.sales_rep_user_id && userIds.includes(apt.sales_rep_user_id)) {
+          userStats.get(apt.sales_rep_user_id)!.add(contact.id)
+        }
+      })
+
+      // Count contact for setters/reps in discoveries  
+      contact.discoveries?.forEach((disc: any) => {
+        if (disc.setter_user_id && userIds.includes(disc.setter_user_id)) {
+          userStats.get(disc.setter_user_id)!.add(contact.id)
+        }
+        if (disc.sales_rep_user_id && userIds.includes(disc.sales_rep_user_id)) {
+          userStats.get(disc.sales_rep_user_id)!.add(contact.id)
+        }
+      })
+    })
+
+    // Convert to results format
+    return userIds.map(userId => {
+      const contactSet = userStats.get(userId)!
+      const uniqueContactCount = contactSet.size
+      const role = uniqueContactCount > 0 ? 'both' : 'none' // Contacts can be attributed to both setters and reps
+      
+      return {
+        userId,
+        value: uniqueContactCount,
+        role,
+        displayValue: this.formatValue(uniqueContactCount, metric, options)
+      }
+    })
   }
 
   /**
