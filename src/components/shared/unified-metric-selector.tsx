@@ -42,7 +42,8 @@ const METRIC_CATEGORIES = {
     "cash_per_dial"
   ],
   "Payment": [
-    "pif_rate"
+    "pif_rate",
+    "cash_collection_rate"
   ],
   "Marketing & ROI": [
     "ad_spend",
