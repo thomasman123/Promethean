@@ -11,7 +11,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
-import { Search } from 'lucide-react'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Search, ArrowLeft } from 'lucide-react'
 import { METRICS_REGISTRY } from '@/lib/metrics/registry'
 import { MetricDefinition } from '@/lib/metrics/types'
 import { cn } from '@/lib/utils'
@@ -19,7 +21,7 @@ import { cn } from '@/lib/utils'
 interface MetricSelectionModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onMetricSelect: (metricName: string, metricDefinition: MetricDefinition) => void
+  onMetricSelect: (metricName: string, metricDefinition: MetricDefinition, options?: any) => void
 }
 
 // Use the same categorization as the main dashboard
@@ -75,6 +77,8 @@ export function MetricSelectionModal({
 }: MetricSelectionModalProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedMetric, setSelectedMetric] = useState<string | null>(null)
+  const [showOptions, setShowOptions] = useState(false)
+  const [selectedOptions, setSelectedOptions] = useState<any>({})
 
   // Filter metrics based on search query
   const filteredCategories = useMemo(() => {
@@ -138,109 +142,308 @@ export function MetricSelectionModal({
 
   const handleMetricSelect = (metricId: string) => {
     const metric = METRICS_REGISTRY[metricId]
-    if (metric) {
+    if (!metric) return
+
+    setSelectedMetric(metricId)
+    
+    // If metric has options, show options step
+    if (metric.options && Object.keys(metric.options).length > 0) {
+      setShowOptions(true)
+      // Set default options
+      const defaultOptions: any = {}
+      if (metric.options.attribution) {
+        defaultOptions.attribution = metric.options.attribution[0]
+      }
+      if (metric.options.breakdown) {
+        defaultOptions.breakdown = metric.options.breakdown[0]
+      }
+      if (metric.options.timeFormat) {
+        defaultOptions.timeFormat = metric.options.timeFormat[0]
+      }
+      if (metric.options.calculation) {
+        defaultOptions.calculation = metric.options.calculation[0]
+      }
+      if (metric.options.businessHours) {
+        defaultOptions.businessHours = metric.options.businessHours[0]
+      }
+      setSelectedOptions(defaultOptions)
+    } else {
+      // No options, proceed directly
       onMetricSelect(metricId, metric)
       onOpenChange(false)
-      setSearchQuery('')
-      setSelectedMetric(null)
+      resetState()
     }
   }
 
+  const handleConfirmWithOptions = () => {
+    if (!selectedMetric) return
+    
+    const metric = METRICS_REGISTRY[selectedMetric]
+    if (metric) {
+      onMetricSelect(selectedMetric, metric, selectedOptions)
+      onOpenChange(false)
+      resetState()
+    }
+  }
+
+  const resetState = () => {
+    setSearchQuery('')
+    setSelectedMetric(null)
+    setShowOptions(false)
+    setSelectedOptions({})
+  }
+
+  const handleBack = () => {
+    setShowOptions(false)
+    setSelectedMetric(null)
+    setSelectedOptions({})
+  }
+
+  const selectedMetricDef = selectedMetric ? METRICS_REGISTRY[selectedMetric] : null
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(open) => {
+      onOpenChange(open)
+      if (!open) resetState()
+    }}>
       <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle>Add Metric Column</DialogTitle>
+          <DialogTitle>
+            {showOptions ? 'Configure Metric Options' : 'Add Metric Column'}
+          </DialogTitle>
         </DialogHeader>
         
-        <div className="space-y-4 flex-1 min-h-0">
-          {/* Search Bar */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Search metrics..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
-          </div>
+        {!showOptions ? (
+          <div className="space-y-4 flex-1 min-h-0">
+            {/* Search Bar */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Search metrics..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
 
-          {/* Metrics List - Scrollable */}
-          <div className="flex-1 overflow-y-auto pr-4 max-h-[60vh]">
-            <div className="space-y-6">
-              {Object.entries(filteredCategories).map(([category, metrics]) => (
-                <div key={category}>
-                  <h3 className="mb-3 text-sm font-semibold text-muted-foreground">
-                    {category}
-                  </h3>
-                  <div className="grid gap-2">
-                    {metrics.map((metricId) => {
-                      const metric = METRICS_REGISTRY[metricId]
-                      if (!metric) return null
+            {/* Metrics List - Scrollable */}
+            <div className="flex-1 overflow-y-auto pr-4 max-h-[60vh]">
+              <div className="space-y-6">
+                {Object.entries(filteredCategories).map(([category, metrics]) => (
+                  <div key={category}>
+                    <h3 className="mb-3 text-sm font-semibold text-muted-foreground">
+                      {category}
+                    </h3>
+                    <div className="grid gap-2">
+                      {metrics.map((metricId) => {
+                        const metric = METRICS_REGISTRY[metricId]
+                        if (!metric) return null
 
-                      return (
-                        <Card
-                          key={metricId}
-                          className={cn(
-                            "p-3 cursor-pointer transition-all hover:bg-accent/50",
-                            selectedMetric === metricId && "ring-2 ring-primary bg-accent"
-                          )}
-                          onClick={() => handleMetricSelect(metricId)}
-                        >
-                          <div className="space-y-1">
-                            <div className="flex items-center justify-between">
-                              <h4 className="text-sm font-medium">{metric.name}</h4>
-                              <div className="flex gap-1">
-                                <Badge variant={getUnitBadgeVariant(metric.unit)} className="text-xs">
-                                  {formatUnit(metric.unit)}
-                                </Badge>
-                                {metric.options?.attribution && (
-                                  <Badge variant="outline" className="text-xs">
-                                    Attr
-                                  </Badge>
-                                )}
-                                {metric.options?.breakdown && (
-                                  <Badge variant="outline" className="text-xs">
-                                    Break
-                                  </Badge>
-                                )}
-                              </div>
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                              {metric.description}
-                            </p>
-                            {metric.options && (
-                              <div className="text-xs text-muted-foreground">
-                                {metric.options.attribution && (
-                                  <span>Attribution: {metric.options.attribution.join(', ')} </span>
-                                )}
-                                {metric.options.breakdown && (
-                                  <span>Breakdown: {metric.options.breakdown.join(', ')}</span>
-                                )}
-                              </div>
+                        return (
+                          <Card
+                            key={metricId}
+                            className={cn(
+                              "p-3 cursor-pointer transition-all hover:bg-accent/50",
+                              selectedMetric === metricId && "ring-2 ring-primary bg-accent"
                             )}
-                          </div>
-                        </Card>
-                      )
-                    })}
+                            onClick={() => handleMetricSelect(metricId)}
+                          >
+                            <div className="space-y-1">
+                              <div className="flex items-center justify-between">
+                                <h4 className="text-sm font-medium">{metric.name}</h4>
+                                <div className="flex gap-1">
+                                  <Badge variant={getUnitBadgeVariant(metric.unit)} className="text-xs">
+                                    {formatUnit(metric.unit)}
+                                  </Badge>
+                                  {metric.options?.attribution && (
+                                    <Badge variant="outline" className="text-xs">
+                                      Attr
+                                    </Badge>
+                                  )}
+                                  {metric.options?.breakdown && (
+                                    <Badge variant="outline" className="text-xs">
+                                      Break
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
+                              <p className="text-xs text-muted-foreground">
+                                {metric.description}
+                              </p>
+                              {metric.options && (
+                                <div className="text-xs text-muted-foreground">
+                                  {metric.options.attribution && (
+                                    <span>Attribution: {metric.options.attribution.join(', ')} </span>
+                                  )}
+                                  {metric.options.breakdown && (
+                                    <span>Breakdown: {metric.options.breakdown.join(', ')}</span>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </Card>
+                        )
+                      })}
+                    </div>
                   </div>
+                ))}
+                
+                {Object.keys(filteredCategories).length === 0 && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Search className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p>No metrics found matching "{searchQuery}"</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* Options Configuration Step */
+          <div className="space-y-6 flex-1">
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="sm" onClick={handleBack}>
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+              <div>
+                <h3 className="font-medium">{selectedMetricDef?.name}</h3>
+                <p className="text-sm text-muted-foreground">{selectedMetricDef?.description}</p>
+              </div>
+            </div>
+
+            <div className="grid gap-4">
+              {/* Attribution Options */}
+              {selectedMetricDef?.options?.attribution && (
+                <div className="space-y-2">
+                  <Label>Attribution</Label>
+                  <Select 
+                    value={selectedOptions.attribution || selectedMetricDef.options.attribution[0]}
+                    onValueChange={(value) => setSelectedOptions(prev => ({ ...prev, attribution: value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {selectedMetricDef.options.attribution.map(option => (
+                        <SelectItem key={option} value={option}>
+                          {option === 'none' ? 'No Attribution' : 
+                           option === 'assigned' ? 'Assigned Sales Rep' :
+                           option === 'booked' ? 'Setter Who Booked' :
+                           option === 'dialer' ? 'Dialer' : option}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-              ))}
-              
-              {Object.keys(filteredCategories).length === 0 && (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Search className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  <p>No metrics found matching "{searchQuery}"</p>
+              )}
+
+              {/* Breakdown Options */}
+              {selectedMetricDef?.options?.breakdown && (
+                <div className="space-y-2">
+                  <Label>Breakdown</Label>
+                  <Select 
+                    value={selectedOptions.breakdown || selectedMetricDef.options.breakdown[0]}
+                    onValueChange={(value) => setSelectedOptions(prev => ({ ...prev, breakdown: value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {selectedMetricDef.options.breakdown.map(option => (
+                        <SelectItem key={option} value={option}>
+                          {option === 'total' ? 'Total (Single Value)' :
+                           option === 'reps' ? 'By Sales Rep' :
+                           option === 'setters' ? 'By Setter' :
+                           option === 'link' ? 'Setter→Rep Links' : option}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* Time Format Options */}
+              {selectedMetricDef?.options?.timeFormat && (
+                <div className="space-y-2">
+                  <Label>Time Format</Label>
+                  <Select 
+                    value={selectedOptions.timeFormat || selectedMetricDef.options.timeFormat[0]}
+                    onValueChange={(value) => setSelectedOptions(prev => ({ ...prev, timeFormat: value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {selectedMetricDef.options.timeFormat.map(option => (
+                        <SelectItem key={option} value={option}>
+                          {option === 'seconds' ? 'Seconds (e.g., 210s)' :
+                           option === 'minutes' ? 'Minutes (e.g., 3.5m)' :
+                           option === 'hours' ? 'Hours (e.g., 0.06h)' :
+                           option === 'human_readable' ? 'Human Readable (e.g., 3m 30s)' : option}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* Calculation Options */}
+              {selectedMetricDef?.options?.calculation && (
+                <div className="space-y-2">
+                  <Label>Calculation</Label>
+                  <Select 
+                    value={selectedOptions.calculation || selectedMetricDef.options.calculation[0]}
+                    onValueChange={(value) => setSelectedOptions(prev => ({ ...prev, calculation: value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {selectedMetricDef.options.calculation.map(option => (
+                        <SelectItem key={option} value={option}>
+                          {option === 'average' ? 'Average' :
+                           option === 'median' ? 'Median' : option}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* Business Hours Options */}
+              {selectedMetricDef?.options?.businessHours && (
+                <div className="space-y-2">
+                  <Label>Business Hours</Label>
+                  <Select 
+                    value={selectedOptions.businessHours || selectedMetricDef.options.businessHours[0]}
+                    onValueChange={(value) => setSelectedOptions(prev => ({ ...prev, businessHours: value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {selectedMetricDef.options.businessHours.map(option => (
+                        <SelectItem key={option} value={option}>
+                          {option === 'include' ? 'Include Business Hours' :
+                           option === 'exclude' ? 'Exclude Business Hours' : option}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               )}
             </div>
           </div>
-        </div>
+        )}
 
         <div className="flex justify-end gap-2 pt-4 border-t">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
+          {showOptions && (
+            <Button onClick={handleConfirmWithOptions}>
+              Add Metric with Options
+            </Button>
+          )}
         </div>
       </DialogContent>
     </Dialog>

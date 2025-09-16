@@ -54,6 +54,7 @@ export interface MetricDefinition {
     breakdown?: string[]
     calculation?: string[]
     businessHours?: string[]
+    timeFormat?: string[]
   }
 }
 
@@ -65,6 +66,7 @@ export interface MetricRequest {
     breakdown?: string
     calculation?: string
     businessHours?: string
+    timeFormat?: string
     [key: string]: any
   }
 }
