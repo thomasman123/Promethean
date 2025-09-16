@@ -300,6 +300,22 @@ const BASE_METRICS = {
 		}
 	},
 
+	// === LEADS METRICS ===
+	'total_leads': {
+		name: 'Total Leads',
+		description: 'Total count of unique contacts/leads in the system',
+		breakdownType: 'total' as const,
+		query: {
+			table: 'contacts',
+			select: ['COUNT(*) as value']
+		},
+		unit: 'count' as const,
+		options: {
+			attribution: ['all', 'assigned', 'booked'],
+			breakdown: ['total', 'reps', 'setters', 'link']
+		}
+	},
+
 	'answer_per_dial': {
 		name: 'Answer per Dial',
 		description: 'Percentage of dials that were answered',

@@ -46,6 +46,9 @@ const METRIC_CATEGORIES = {
     "cost_per_booked_call",
     "roi"
   ],
+  "Leads": [
+    "total_leads"
+  ],
   "Dials": [
     "total_dials",
     "answers",
