@@ -133,7 +133,7 @@ export default function PaymentPlansPage() {
       })
 
       // Get payment plans with appointment and contact details using direct Supabase query
-      const { data: paymentPlansData, error } = await supabase
+      let query = supabase
         .from('appointment_payments')
         .select(`
           *,
@@ -164,8 +164,14 @@ export default function PaymentPlansPage() {
             )
           )
         `)
-        .eq(selectedAccountId ? 'appointments.account_id' : '', selectedAccountId || '')
-        .order('payment_date', { ascending: true })
+        .order('payment_date', { ascending: true });
+
+      // Filter by account if one is selected
+      if (selectedAccountId) {
+        query = query.eq('appointments.account_id', selectedAccountId);
+      }
+
+      const { data: paymentPlansData, error } = await query;
 
       if (error) {
         console.error('Error fetching payment plans:', error)
