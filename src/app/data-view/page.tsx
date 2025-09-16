@@ -593,6 +593,7 @@ export default function DataViewPage() {
 
       const result = await response.json()
       console.log('loadMetricData: API result', result)
+      console.log('loadMetricData: Sample userMetric:', result.userMetrics?.[0])
       
       // Update users with metric data
       setUsers(prev => prev.map(user => {
