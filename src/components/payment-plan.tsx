@@ -14,6 +14,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
 import { useAccountTimezone } from "@/hooks/use-account-timezone";
 import { useDashboard } from "@/lib/dashboard-context";
+import { useToast } from "@/hooks/use-toast";
 
 interface PaymentRow {
 	id?: string;
@@ -38,6 +39,7 @@ export function PaymentPlan({ appointmentId, totalSalesValue, cashCollected, onP
 
 	const { selectedAccountId } = useDashboard();
 	const { formatDate } = useAccountTimezone(selectedAccountId);
+	const { toast } = useToast();
 
 	// Calculate collected amount from paid payments
 	const collected = useMemo(() => {
@@ -49,6 +51,10 @@ export function PaymentPlan({ appointmentId, totalSalesValue, cashCollected, onP
 	const actualCollected = rows.length === 0 ? cashCollected : collected;
 	const remaining = Math.max(0, Number(totalSalesValue || 0) - Number(actualCollected || 0));
 	const isComplete = remaining === 0;
+
+	// Calculate total scheduled to check if we can add more payments
+	const totalScheduled = rows.reduce((sum, row) => sum + (Number(row.amount) || 0), 0);
+	const canAddMorePayments = totalScheduled < totalSalesValue;
 
 	// Load existing payments
 	useEffect(() => {
@@ -142,6 +148,19 @@ export function PaymentPlan({ appointmentId, totalSalesValue, cashCollected, onP
 	}, [loading, initialized, rows.length, cashCollected]);
 
 	const addRow = () => {
+		// Calculate total scheduled payments
+		const totalScheduled = rows.reduce((sum, row) => sum + (Number(row.amount) || 0), 0);
+		
+		// Don't allow adding more payments if already at or above total sales value
+		if (totalScheduled >= totalSalesValue) {
+			toast({
+				title: "Cannot Add Payment",
+				description: "Total scheduled payments already equal or exceed the total sales value.",
+				variant: "destructive",
+			});
+			return;
+		}
+
 		const newRow: PaymentRow = {
 			payment_date: new Date().toISOString(),
 			amount: String(remaining > 0 ? remaining : 0),
@@ -328,11 +347,25 @@ export function PaymentPlan({ appointmentId, totalSalesValue, cashCollected, onP
 							<Calendar className="h-4 w-4" />
 							Payment Schedule
 						</div>
-						<Button size="sm" onClick={addRow} className="gap-2">
+						<Button 
+							size="sm" 
+							onClick={addRow} 
+							className="gap-2"
+							disabled={!canAddMorePayments}
+						>
 							<Plus className="h-4 w-4" />
 							Add Payment
 						</Button>
 					</div>
+
+					{!canAddMorePayments && totalScheduled >= totalSalesValue && (
+						<Alert>
+							<AlertCircle className="h-4 w-4" />
+							<AlertDescription>
+								Cannot add more payments. Total scheduled (${totalScheduled.toFixed(2)}) equals or exceeds total sales value (${totalSalesValue.toFixed(2)}).
+							</AlertDescription>
+						</Alert>
+					)}
 
 					{rows.length === 0 ? (
 						<div className="text-center py-6 text-muted-foreground">
