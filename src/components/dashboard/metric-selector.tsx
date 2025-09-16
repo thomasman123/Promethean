@@ -55,6 +55,7 @@ const METRIC_CATEGORIES = {
     "pitch_to_sale_rate",
     "answer_to_sale_rate",
     "answer_to_conversation_ratio",
+    "meaningful_conversation_to_booking_ratio",
     "booking_to_close",
     "speed_to_lead"
   ]

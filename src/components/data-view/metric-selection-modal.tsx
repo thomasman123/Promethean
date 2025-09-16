@@ -66,6 +66,7 @@ const METRIC_CATEGORIES = {
     "pitch_to_sale_rate",
     "answer_to_sale_rate",
     "answer_to_conversation_ratio",
+    "meaningful_conversation_to_booking_ratio",
     "booking_to_close",
     "speed_to_lead"
   ]
@@ -326,10 +327,10 @@ export function MetricSelectionModal({
                     <SelectContent>
                       {selectedMetricDef.options.attribution.map(option => (
                         <SelectItem key={option} value={option}>
-                          {option === 'none' ? 'No Attribution' : 
-                           option === 'assigned' ? 'Assigned Sales Rep' :
-                           option === 'booked' ? 'Setter Who Booked' :
-                           option === 'dialer' ? 'Dialer' : option}
+                                                     {option === 'all' ? 'All Attribution' : 
+                            option === 'assigned' ? 'Assigned Sales Rep' :
+                            option === 'booked' ? 'Setter Who Booked' :
+                            option === 'dialer' ? 'Dialer' : option}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -337,30 +338,7 @@ export function MetricSelectionModal({
                 </div>
               )}
 
-              {/* Breakdown Options */}
-              {selectedMetricDef?.options?.breakdown && (
-                <div className="space-y-2">
-                  <Label>Breakdown</Label>
-                  <Select 
-                    value={selectedOptions.breakdown || selectedMetricDef.options.breakdown[0]}
-                    onValueChange={(value) => setSelectedOptions(prev => ({ ...prev, breakdown: value }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {selectedMetricDef.options.breakdown.map(option => (
-                        <SelectItem key={option} value={option}>
-                          {option === 'total' ? 'Total (Single Value)' :
-                           option === 'reps' ? 'By Sales Rep' :
-                           option === 'setters' ? 'By Setter' :
-                           option === 'link' ? 'Setter→Rep Links' : option}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
+              {/* Breakdown Options - Hidden in data view since it's already broken down by user */}
 
               {/* Time Format Options */}
               {selectedMetricDef?.options?.timeFormat && (
