@@ -201,6 +201,22 @@ const BASE_METRICS = {
 		}
 	},
 
+	'answers': {
+		name: 'Answers',
+		description: 'Total count of dials that were answered',
+		breakdownType: 'total' as const,
+		query: {
+			table: 'dials',
+			select: ['COUNT(*) as value'],
+			where: ['answered = true']
+		},
+		unit: 'count' as const,
+		options: {
+			attribution: ['none', 'assigned', 'dialer'],
+			breakdown: ['total', 'reps', 'setters', 'link']
+		}
+	},
+
 	'answer_per_dial': {
 		name: 'Answer per Dial',
 		description: 'Percentage of dials that were answered',
