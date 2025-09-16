@@ -60,14 +60,21 @@ function AccountSettingsContent() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
 
+  // ONLY run once when all dependencies are ready
   useEffect(() => {
-    if (!userLoading && effectiveUser && selectedAccountId) {
+    let mounted = true
+    
+    if (!userLoading && effectiveUser && selectedAccountId && mounted) {
       checkAccess()
     }
-  }, [effectiveUser, selectedAccountId, userLoading])
+    
+    return () => { mounted = false }
+  }, [effectiveUser?.id, selectedAccountId, userLoading]) // Use effectiveUser.id instead of full object
 
   const checkAccess = async () => {
-    if (!effectiveUser || !selectedAccountId) return
+    if (!effectiveUser || !selectedAccountId || loading) return
+
+    console.log('🔍 [AccountSettings] Checking access for account:', selectedAccountId)
 
     try {
       // Check if user is global admin
@@ -101,6 +108,8 @@ function AccountSettingsContent() {
 
   const fetchAccountDetails = async () => {
     if (!selectedAccountId) return
+
+    console.log('🔍 [AccountSettings] Fetching account details for:', selectedAccountId)
 
     try {
       const { data: accountData, error } = await supabase
