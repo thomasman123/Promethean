@@ -47,6 +47,10 @@ const METRIC_CATEGORIES = {
     "pif_rate",
     "cash_collection_rate"
   ],
+  "Quality": [
+    "lead_quality",
+    "discovery_lead_quality"
+  ],
   "Marketing & ROI": [
     "ad_spend",
     "cost_per_booked_call",

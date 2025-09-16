@@ -372,6 +372,43 @@ const BASE_METRICS = {
 		}
 	},
 
+	// === QUALITY METRICS ===
+	'lead_quality': {
+		name: 'Lead Quality (1-5)',
+		description: 'Average lead quality score from appointments (1-5 scale)',
+		breakdownType: 'total' as const,
+		query: {
+			table: 'appointments',
+			select: [
+				'COALESCE(AVG(lead_quality), 0) as value'
+			],
+			where: ['lead_quality IS NOT NULL']
+		},
+		unit: 'count' as const,
+		options: {
+			attribution: ['all', 'assigned', 'booked'],
+			breakdown: ['total', 'reps', 'setters', 'link']
+		}
+	},
+
+	'discovery_lead_quality': {
+		name: 'Discovery Lead Quality (1-5)',
+		description: 'Average lead quality score from discoveries (1-5 scale)',
+		breakdownType: 'total' as const,
+		query: {
+			table: 'discoveries',
+			select: [
+				'COALESCE(AVG(lead_quality), 0) as value'
+			],
+			where: ['lead_quality IS NOT NULL']
+		},
+		unit: 'count' as const,
+		options: {
+			attribution: ['all', 'assigned', 'booked'],
+			breakdown: ['total', 'reps', 'setters', 'link']
+		}
+	},
+
 	// === LEADS METRICS ===
 	'total_leads': {
 		name: 'Total Leads',
