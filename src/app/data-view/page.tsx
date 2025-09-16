@@ -556,7 +556,8 @@ export default function DataViewPage() {
         userIds, 
         metricName: metricColumn.metricName, 
         dateRange, 
-        roleFilter 
+        roleFilter,
+        options: metricColumn.options
       })
       
       const response = await fetch('/api/data-view/user-metrics', {
