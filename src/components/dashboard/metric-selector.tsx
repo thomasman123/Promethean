@@ -47,7 +47,13 @@ const METRIC_CATEGORIES = {
     "answers_dials",
     "meaningful_conversations_dials",
     "booked_calls_dials",
-    "meaningful_conversation_avg_call_length_dials"
+    "meaningful_conversation_avg_call_length_dials",
+    "dials_per_booking",
+    "dials_per_booking_assigned",
+    "dials_per_booking_dialer",
+    "dials_per_booking_reps",
+    "dials_per_booking_setters",
+    "dials_per_booking_link"
   ],
   "Discovery": [
     "show_ups_discoveries"
