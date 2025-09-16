@@ -17,15 +17,10 @@ interface MetricSelectorProps {
 const METRIC_CATEGORIES = {
   "Appointments": [
     "total_appointments",
-    "show_ups_appointments",
+    "show_ups",
     "sales_made",
     "show_up_rate",
-    "show_up_rate_assigned",
-    "show_up_rate_booked",
-    "show_up_rate_setters",
-    "show_up_rate_setter_attribution",
-    "appointment_to_sale_rate",
-    "booking_lead_time"
+    "appointment_to_sale_rate"
   ],
   "Financial": [
     "cash_collected",
@@ -35,54 +30,27 @@ const METRIC_CATEGORIES = {
   ],
   "Marketing & ROI": [
     "ad_spend",
-    "ad_spend_assigned", 
-    "ad_spend_booked",
     "cost_per_booked_call",
-    "cost_per_booked_call_assigned",
-    "cost_per_booked_call_booked",
-    "roi",
-    "roi_assigned",
-    "roi_booked"
+    "roi"
   ],
   "Dials": [
     "total_dials",
     "answer_per_dial",
-    "answer_per_dial_assigned",
-    "answer_per_dial_dialer",
-    "answer_per_dial_reps",
-    "answer_per_dial_setters",
-    "answer_per_dial_link",
-    "answers_dials",
-    "meaningful_conversations_dials",
-    "booked_calls_dials",
-    "meaningful_conversation_avg_call_length_dials",
-    "dials_per_booking",
-    "dials_per_booking_assigned",
-    "dials_per_booking_dialer",
-    "dials_per_booking_reps",
-    "dials_per_booking_setters",
-    "dials_per_booking_link"
+    "dials_per_booking"
   ],
   "Performance": [
     "bookings_per_hour",
-    "bookings_per_hour_setters",
-    "dials_per_hour", 
-    "dials_per_hour_setters",
-    "hours_worked",
-    "hours_worked_setters"
+    "dials_per_hour",
+    "hours_worked"
   ],
   "Discovery": [
+    "total_discoveries",
     "show_ups_discoveries"
   ],
   "Conversion": [
     "pitch_to_sale_rate",
     "answer_to_sale_rate",
     "booking_to_close",
-    "booking_to_close_assigned",
-    "booking_to_close_booked",
-    "booking_to_close_reps",
-    "booking_to_close_setters",
-    "booking_to_close_link",
     "speed_to_lead"
   ]
 }
