@@ -2742,6 +2742,7 @@ async function processContactUpsertWebhook(payload: any) {
     assigned_to: c.assignedTo || null,
     date_added: c.dateAdded ? new Date(c.dateAdded).toISOString() : null,
     date_updated: c.dateUpdated ? new Date(c.dateUpdated).toISOString() : null,
+    ghl_created_at: c.dateAdded ? new Date(c.dateAdded).toISOString() : new Date().toISOString(), // Capture GHL creation date
     tags: Array.isArray(c.tags) ? c.tags : [],
     attribution_source: c.attributionSource || null,
     last_attribution_source: c.lastAttributionSource || null,

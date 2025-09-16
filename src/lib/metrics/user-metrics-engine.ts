@@ -280,13 +280,14 @@ export class UserMetricsEngine {
       .from('contacts')
       .select(`
         id,
-        created_at,
+        ghl_created_at,
         appointments!inner(setter_user_id, sales_rep_user_id),
         discoveries!inner(setter_user_id, sales_rep_user_id)
       `)
       .eq('account_id', accountId)
-      .gte('created_at', startDate)
-      .lte('created_at', endDate)
+      .gte('ghl_created_at', startDate)
+      .lte('ghl_created_at', endDate)
+      .not('ghl_created_at', 'is', null)
 
     const { data: contacts, error } = await query
 
@@ -373,8 +374,9 @@ export class UserMetricsEngine {
         discoveries!inner(setter_user_id, sales_rep_user_id)
       `)
       .eq('account_id', accountId)
-      .gte('created_at', startDate)
-      .lte('created_at', endDate)
+      .gte('ghl_created_at', startDate)
+      .lte('ghl_created_at', endDate)
+      .not('ghl_created_at', 'is', null)
 
     if (contactsError) {
       throw new Error(`Database query failed: ${contactsError.message}`)
