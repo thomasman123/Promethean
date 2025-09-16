@@ -30,16 +30,18 @@ import {
   AlertTriangle, 
   CheckCircle2, 
   Clock, 
-  Filter,
   Eye,
   ArrowUpDown,
   Users
 } from "lucide-react"
 import { useEffectiveUser } from "@/hooks/use-effective-user"
 import { useImpersonation } from "@/hooks/use-impersonation"
+import { useDashboard } from "@/lib/dashboard-context"
 import { cn } from "@/lib/utils"
 import { format, isAfter, isBefore, addDays } from "date-fns"
 import { PaymentPlan } from "@/components/payment-plan"
+import { createBrowserClient } from "@supabase/ssr"
+import { Database } from "@/lib/database.types"
 
 interface PaymentPlanData {
   appointment: {
@@ -103,42 +105,154 @@ export default function PaymentPlansPage() {
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
   const [selectedPlan, setSelectedPlan] = useState<PaymentPlanData | null>(null)
   
-  const { user } = useEffectiveUser()
+  const { user: effectiveUser, loading: userLoading } = useEffectiveUser()
   const { isImpersonating } = useImpersonation()
+  const { selectedAccountId } = useDashboard()
   const { toast } = useToast()
 
-  // Load payment plans data
+  const supabase = createBrowserClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
+
+  // Load payment plans data using direct Supabase client
   useEffect(() => {
-    const fetchPaymentPlans = async () => {
-      setLoading(true)
-      try {
-        const res = await fetch('/api/payment-plans')
-        const data = await res.json()
-        
-        if (res.ok) {
-          setPaymentPlans(data.paymentPlans || [])
-          setSummary(data.summary || null)
-        } else {
-          toast({
-            title: "Error",
-            description: data.error || "Failed to load payment plans",
-            variant: "destructive",
-          })
-        }
-      } catch (error) {
+    if (effectiveUser) {
+      fetchPaymentPlans()
+    }
+  }, [effectiveUser, selectedAccountId])
+
+  const fetchPaymentPlans = async () => {
+    if (!effectiveUser) return
+    
+    setLoading(true)
+    try {
+      console.log('🔍 [payment-plans] Fetching data with:', {
+        effectiveUser: effectiveUser.id,
+        selectedAccountId
+      })
+
+      // Get payment plans with appointment and contact details using direct Supabase query
+      const { data: paymentPlansData, error } = await supabase
+        .from('appointment_payments')
+        .select(`
+          *,
+          appointments!inner (
+            id,
+            account_id,
+            setter,
+            sales_rep,
+            setter_user_id,
+            sales_rep_user_id,
+            call_outcome,
+            show_outcome,
+            cash_collected,
+            total_sales_value,
+            lead_quality,
+            date_booked_for,
+            date_booked,
+            contact_id,
+            contacts (
+              id,
+              name,
+              email,
+              phone
+            ),
+            accounts (
+              id,
+              name
+            )
+          )
+        `)
+        .eq(selectedAccountId ? 'appointments.account_id' : '', selectedAccountId || '')
+        .order('payment_date', { ascending: true })
+
+      if (error) {
         console.error('Error fetching payment plans:', error)
         toast({
           title: "Error",
-          description: "Failed to load payment plans",
+          description: error.message || "Failed to load payment plans",
           variant: "destructive",
         })
-      } finally {
-        setLoading(false)
+        return
       }
-    }
 
-    fetchPaymentPlans()
-  }, [toast])
+      // Group payments by appointment and calculate totals
+      const appointmentPayments = paymentPlansData?.reduce((acc, payment) => {
+        const appointmentId = payment.appointments.id
+        if (!acc[appointmentId]) {
+          acc[appointmentId] = {
+            appointment: payment.appointments,
+            payments: [],
+            totalScheduled: 0,
+            totalPaid: 0,
+            remainingBalance: 0,
+            nextPaymentDue: null,
+            overduePayments: 0
+          }
+        }
+
+        acc[appointmentId].payments.push(payment)
+        acc[appointmentId].totalScheduled += Number(payment.amount || 0)
+        if (payment.paid) {
+          acc[appointmentId].totalPaid += Number(payment.amount || 0)
+        }
+
+        // Find next payment due
+        const paymentDate = new Date(payment.payment_date)
+        const now = new Date()
+        if (!payment.paid) {
+          if (!acc[appointmentId].nextPaymentDue || paymentDate < new Date(acc[appointmentId].nextPaymentDue)) {
+            acc[appointmentId].nextPaymentDue = payment.payment_date
+          }
+          // Count overdue payments
+          if (paymentDate < now) {
+            acc[appointmentId].overduePayments += 1
+          }
+        }
+
+        return acc
+      }, {} as any) || {}
+
+      // Calculate remaining balance for each appointment
+      Object.keys(appointmentPayments).forEach(appointmentId => {
+        const plan = appointmentPayments[appointmentId]
+        const totalSalesValue = Number(plan.appointment.total_sales_value || 0)
+        plan.remainingBalance = totalSalesValue - plan.totalPaid
+      })
+
+      // Convert to array and sort by next payment due
+      const paymentPlansArray = Object.values(appointmentPayments).sort((a: any, b: any) => {
+        if (!a.nextPaymentDue && !b.nextPaymentDue) return 0
+        if (!a.nextPaymentDue) return 1
+        if (!b.nextPaymentDue) return -1
+        return new Date(a.nextPaymentDue).getTime() - new Date(b.nextPaymentDue).getTime()
+      })
+
+      // Calculate summary statistics
+      const summaryStats: SummaryData = {
+        totalPlans: paymentPlansArray.length,
+        totalScheduled: paymentPlansArray.reduce((sum: number, plan: any) => sum + Number(plan.totalScheduled || 0), 0),
+        totalPaid: paymentPlansArray.reduce((sum: number, plan: any) => sum + Number(plan.totalPaid || 0), 0),
+        totalRemaining: paymentPlansArray.reduce((sum: number, plan: any) => sum + Number(plan.remainingBalance || 0), 0),
+        overdueCount: paymentPlansArray.filter((plan: any) => plan.overduePayments > 0).length,
+        completedCount: paymentPlansArray.filter((plan: any) => plan.remainingBalance <= 0).length
+      }
+
+      setPaymentPlans(paymentPlansArray as PaymentPlanData[])
+      setSummary(summaryStats)
+
+    } catch (error) {
+      console.error('Error fetching payment plans:', error)
+      toast({
+        title: "Error",
+        description: "Failed to load payment plans",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
 
   // Filter and sort payment plans
   const filteredAndSortedPlans = useMemo(() => {
@@ -271,6 +385,21 @@ export default function PaymentPlansPage() {
       </div>
     </TableHead>
   )
+
+  if (userLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <TopBar />
+        <main className={cn("h-screen", isImpersonating ? "pt-[104px]" : "pt-16")}>
+          <div className="h-full p-6 flex items-center justify-center">
+            <div className="text-center">
+              <div className="text-lg text-muted-foreground">Loading user data...</div>
+            </div>
+          </div>
+        </main>
+      </div>
+    )
+  }
 
   if (loading) {
     return (
@@ -535,7 +664,12 @@ export default function PaymentPlansPage() {
                 cashCollected={Number(selectedPlan.appointment.cash_collected || 0)}
                 onPaymentUpdate={() => {
                   // Refresh the data when payments are updated
-                  window.location.reload()
+                  fetchPaymentPlans()
+                  setSelectedPlan(null)
+                  toast({
+                    title: "Payment Updated",
+                    description: "Payment plan has been updated successfully.",
+                  })
                 }}
               />
             </div>
