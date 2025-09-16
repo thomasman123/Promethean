@@ -300,6 +300,24 @@ const BASE_METRICS = {
 		}
 	},
 
+	// === PAYMENT METRICS ===
+	'pif_rate': {
+		name: 'PIF Rate',
+		description: 'Percentage of won appointments that were paid in full (cash_collected = total_sales_value)',
+		breakdownType: 'total' as const,
+		query: {
+			table: 'appointments',
+			select: [
+				"CASE WHEN COUNT(*) FILTER (WHERE show_outcome = 'won') > 0 THEN COALESCE(COUNT(*) FILTER (WHERE pif = true AND show_outcome = 'won')::DECIMAL / COUNT(*) FILTER (WHERE show_outcome = 'won'), 0) ELSE 0 END as value"
+			]
+		},
+		unit: 'percent' as const,
+		options: {
+			attribution: ['all', 'assigned', 'booked'],
+			breakdown: ['total', 'reps', 'setters', 'link']
+		}
+	},
+
 	// === LEADS METRICS ===
 	'total_leads': {
 		name: 'Total Leads',
