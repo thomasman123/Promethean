@@ -190,6 +190,7 @@ export default function AppointmentsDiscoveriesPage() {
   const openEditModal = (appointment: AppointmentData) => {
     setSelectedAppointment(appointment)
     setEditForm({
+      id: appointment.id, // Add the appointment ID
       callOutcome: appointment.call_outcome || '',
       showOutcome: appointment.show_outcome || '',
       cashCollected: appointment.cash_collected?.toString() || '',
@@ -882,7 +883,7 @@ export default function AppointmentsDiscoveriesPage() {
                          Number(editForm.totalSalesValue || 0) > 0 && (
                           <div className="mt-4">
                             <PaymentPlan
-                              appointmentId={editForm.id}
+                              appointmentId={editForm.id || selectedAppointment?.id || ''}
                               totalSalesValue={Number(editForm.totalSalesValue || 0)}
                               cashCollected={Number(editForm.cashCollected || 0)}
                               onPaymentUpdate={() => {
