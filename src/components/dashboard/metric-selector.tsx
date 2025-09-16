@@ -34,7 +34,8 @@ const METRIC_CATEGORIES = {
     "roi"
   ],
   "Leads": [
-    "total_leads"
+    "total_leads",
+    "lead_to_appointment"
   ],
   "Dials": [
     "total_dials",

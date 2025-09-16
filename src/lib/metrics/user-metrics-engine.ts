@@ -269,6 +269,11 @@ export class UserMetricsEngine {
     
     console.log(`Calculating contact metrics for users: ${userIds.join(', ')}`)
 
+    // Special handling for Lead to Appointment ratio
+    if (metric.name === 'Lead to Appointment') {
+      return this.calculateLeadToAppointmentRatio(accountId, startDate, endDate, userIds, metric, options)
+    }
+
     // For contacts, we need to look at appointments and discoveries to see which users are associated
     // Since contacts don't have direct user attribution, we'll count contacts via appointments/discoveries
     let query = supabaseService
@@ -333,6 +338,105 @@ export class UserMetricsEngine {
         value: uniqueContactCount,
         role,
         displayValue: this.formatValue(uniqueContactCount, metric, options)
+      }
+    })
+  }
+
+  /**
+   * Calculate Lead to Appointment ratio for users
+   */
+  private async calculateLeadToAppointmentRatio(
+    accountId: string,
+    startDate: string,
+    endDate: string,
+    userIds: string[],
+    metric: MetricDefinition,
+    options?: any
+  ): Promise<UserMetricResult[]> {
+    
+    console.log(`Calculating Lead to Appointment ratio for users: ${userIds.join(', ')}`)
+
+    // Get contacts and appointments for each user
+    const userStats = new Map<string, { contacts: Set<string>, appointments: number }>()
+    
+    // Initialize all users
+    userIds.forEach(userId => {
+      userStats.set(userId, { contacts: new Set(), appointments: 0 })
+    })
+
+    // Get contacts via appointments and discoveries
+    const { data: contacts, error: contactsError } = await supabaseService
+      .from('contacts')
+      .select(`
+        id,
+        appointments!inner(setter_user_id, sales_rep_user_id),
+        discoveries!inner(setter_user_id, sales_rep_user_id)
+      `)
+      .eq('account_id', accountId)
+      .gte('created_at', startDate)
+      .lte('created_at', endDate)
+
+    if (contactsError) {
+      throw new Error(`Database query failed: ${contactsError.message}`)
+    }
+
+    // Get appointments for each user
+    const { data: appointments, error: appointmentsError } = await supabaseService
+      .from('appointments')
+      .select('setter_user_id, sales_rep_user_id')
+      .eq('account_id', accountId)
+      .gte('created_at', startDate)
+      .lte('created_at', endDate)
+
+    if (appointmentsError) {
+      throw new Error(`Database query failed: ${appointmentsError.message}`)
+    }
+
+    // Count contacts per user
+    contacts?.forEach(contact => {
+      contact.appointments?.forEach((apt: any) => {
+        if (apt.setter_user_id && userIds.includes(apt.setter_user_id)) {
+          userStats.get(apt.setter_user_id)!.contacts.add(contact.id)
+        }
+        if (apt.sales_rep_user_id && userIds.includes(apt.sales_rep_user_id)) {
+          userStats.get(apt.sales_rep_user_id)!.contacts.add(contact.id)
+        }
+      })
+
+      contact.discoveries?.forEach((disc: any) => {
+        if (disc.setter_user_id && userIds.includes(disc.setter_user_id)) {
+          userStats.get(disc.setter_user_id)!.contacts.add(contact.id)
+        }
+        if (disc.sales_rep_user_id && userIds.includes(disc.sales_rep_user_id)) {
+          userStats.get(disc.sales_rep_user_id)!.contacts.add(contact.id)
+        }
+      })
+    })
+
+    // Count appointments per user
+    appointments?.forEach(appointment => {
+      if (appointment.setter_user_id && userIds.includes(appointment.setter_user_id)) {
+        userStats.get(appointment.setter_user_id)!.appointments += 1
+      }
+      if (appointment.sales_rep_user_id && userIds.includes(appointment.sales_rep_user_id)) {
+        userStats.get(appointment.sales_rep_user_id)!.appointments += 1
+      }
+    })
+
+    // Calculate ratio for each user
+    return userIds.map(userId => {
+      const stats = userStats.get(userId)!
+      const contactCount = stats.contacts.size
+      const appointmentCount = stats.appointments
+      
+      const ratio = contactCount > 0 ? appointmentCount / contactCount : 0
+      const role = contactCount > 0 || appointmentCount > 0 ? 'both' : 'none'
+      
+      return {
+        userId,
+        value: ratio,
+        role,
+        displayValue: this.formatValue(ratio, metric, options)
       }
     })
   }
