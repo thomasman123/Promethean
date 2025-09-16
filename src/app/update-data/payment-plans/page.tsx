@@ -669,12 +669,8 @@ export default function PaymentPlansPage() {
                 totalSalesValue={Number(selectedPlan.appointment.total_sales_value || 0)}
                 cashCollected={Number(selectedPlan.appointment.cash_collected || 0)}
                 onPaymentUpdate={() => {
-                  // Refresh the data when payments are updated
+                  // Refresh the data when payments are updated (no toast here, component handles it)
                   fetchPaymentPlans()
-                  toast({
-                    title: "Payment Updated",
-                    description: "Payment plan has been updated successfully.",
-                  })
                 }}
               />
             </div>
