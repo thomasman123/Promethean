@@ -50,6 +50,7 @@ export interface MetricColumn {
   metricName: string
   displayName: string
   unit?: 'count' | 'currency' | 'percent' | 'seconds' | 'days'
+  options?: any
 }
 
 interface UserMetricsTableProps {

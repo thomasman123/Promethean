@@ -8,6 +8,7 @@ export interface UserMetricRequest {
   startDate: string
   endDate: string
   userIds: string[]
+  options?: any
 }
 
 export interface UserMetricResult {
@@ -18,6 +19,7 @@ export interface UserMetricResult {
     asRep?: number
     asSetter?: number
   }
+  displayValue?: string // Formatted value based on options
 }
 
 export interface UserMetricsResponse {
@@ -33,6 +35,55 @@ export interface UserMetricsResponse {
  */
 export class UserMetricsEngine {
   
+  /**
+   * Format a value based on metric unit and options
+   */
+  private formatValue(value: number, metric: MetricDefinition, options?: any): string {
+    // Handle time format options for time-based metrics
+    if (metric.unit === 'seconds' && options?.timeFormat) {
+      const format = options.timeFormat
+      
+      if (format === 'minutes') {
+        return `${(value / 60).toFixed(1)}m`
+      } else if (format === 'hours') {
+        return `${(value / 3600).toFixed(2)}h`
+      } else if (format === 'human_readable') {
+        const hours = Math.floor(value / 3600)
+        const minutes = Math.floor((value % 3600) / 60)
+        const seconds = Math.floor(value % 60)
+        
+        if (hours > 0) {
+          return `${hours}h ${minutes}m ${seconds}s`
+        } else if (minutes > 0) {
+          return `${minutes}m ${seconds}s`
+        } else {
+          return `${seconds}s`
+        }
+      }
+    }
+    
+    // Default formatting based on unit
+    switch (metric.unit) {
+      case 'currency':
+        return `$${value.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
+      case 'percent':
+        return `${(value * 100).toFixed(1)}%`
+      case 'seconds':
+        if (value < 60) {
+          return `${value.toFixed(0)}s`
+        } else if (value < 3600) {
+          return `${(value / 60).toFixed(1)}m`
+        } else {
+          return `${(value / 3600).toFixed(1)}h`
+        }
+      case 'days':
+        return `${value.toFixed(1)}d`
+      case 'count':
+      default:
+        return value.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
+    }
+  }
+
   /**
    * Calculate a metric for multiple users by analyzing their actual data presence
    */
@@ -97,7 +148,7 @@ export class UserMetricsEngine {
         return this.calculateDialMetrics(metric, accountId, startDate, endDate, userIds)
       
       case 'work_timeframes':
-        return this.calculateWorkTimeframeMetrics(metric, accountId, startDate, endDate, userIds)
+        return this.calculateWorkTimeframeMetrics(metric, accountId, startDate, endDate, userIds, request.options)
       
       case 'meta_ad_performance':
         return this.calculateMetaAdMetrics(metric, accountId, startDate, endDate, userIds)
@@ -599,7 +650,8 @@ export class UserMetricsEngine {
     accountId: string,
     startDate: string,
     endDate: string,
-    userIds: string[]
+    userIds: string[],
+    options?: any
   ): Promise<UserMetricResult[]> {
     
     // Get account timezone
@@ -708,10 +760,13 @@ export class UserMetricsEngine {
         value = userMetric.totalHours
       }
       
+      const roundedValue = Math.round(value * 100) / 100 // Round to 2 decimal places
+      
       return {
         userId,
-        value: Math.round(value * 100) / 100, // Round to 2 decimal places
-        role: 'setter' // Work timeframes are always setter-based
+        value: roundedValue,
+        role: 'setter', // Work timeframes are always setter-based
+        displayValue: this.formatValue(roundedValue, metric, options)
       }
     })
   }

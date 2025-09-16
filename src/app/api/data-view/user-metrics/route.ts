@@ -32,7 +32,8 @@ export async function POST(request: NextRequest) {
       userIds, 
       metricName, 
       dateRange,
-      roleFilter 
+      roleFilter,
+      options
     } = body
 
     // Validate required fields
@@ -134,7 +135,8 @@ export async function POST(request: NextRequest) {
       accountId,
       startDate,
       endDate,
-      userIds
+      userIds,
+      options
     })
 
     console.log(`UserMetricsEngine response:`, {

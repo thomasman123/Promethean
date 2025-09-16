@@ -400,7 +400,7 @@ export default function DataViewPage() {
     setIsMetricModalOpen(true)
   }
 
-  const handleMetricSelect = async (metricName: string, metricDefinition: MetricDefinition) => {
+  const handleMetricSelect = async (metricName: string, metricDefinition: MetricDefinition, options?: any) => {
     if (!selectedAccountId || !currentTableId) return
 
     // Check if metric is already added
@@ -413,11 +413,30 @@ export default function DataViewPage() {
       return
     }
 
+    // Create display name with options info
+    let displayName = metricDefinition.name
+    if (options) {
+      const optionParts = []
+      if (options.attribution && options.attribution !== 'all') {
+        optionParts.push(options.attribution)
+      }
+      if (options.timeFormat && options.timeFormat !== 'seconds') {
+        optionParts.push(options.timeFormat)
+      }
+      if (options.calculation && options.calculation !== 'average') {
+        optionParts.push(options.calculation)
+      }
+      if (optionParts.length > 0) {
+        displayName += ` (${optionParts.join(', ')})`
+      }
+    }
+
     const newColumn: MetricColumn = {
       id: `metric_${metricName}_${Date.now()}`,
       metricName,
-      displayName: metricDefinition.name,
-      unit: metricDefinition.unit
+      displayName,
+      unit: metricDefinition.unit,
+      options // Store the options for later use
     }
 
     // Add to local state
@@ -547,7 +566,8 @@ export default function DataViewPage() {
           userIds,
           metricName: metricColumn.metricName,
           dateRange: dateRange,
-          roleFilter
+          roleFilter,
+          options: metricColumn.options
         }),
       })
 
