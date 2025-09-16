@@ -8,7 +8,7 @@ import { TableTypeSelector } from "@/components/data-view/table-type-selector"
 import { useDashboard } from "@/lib/dashboard-context"
 import { createBrowserClient } from "@supabase/ssr"
 import { ColumnDef } from "@tanstack/react-table"
-import { ArrowUpDown, Trash2 } from "lucide-react"
+import { ArrowUpDown, Trash2, Building, TrendingUp } from "lucide-react"
 import { format } from "date-fns"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -735,13 +735,46 @@ export default function DataViewPage() {
                 </div>
               </div>
               
-              <UserMetricsTable
-                data={users}
-                columns={columns}
-                onAddColumn={handleAddColumn}
-                onRemoveColumn={handleRemoveColumn}
-                loading={metricsLoading}
-              />
+              {/* Render different table types */}
+              {tableConfig?.table_type === 'user_metrics' ? (
+                <UserMetricsTable
+                  data={users}
+                  columns={columns}
+                  onAddColumn={handleAddColumn}
+                  onRemoveColumn={handleRemoveColumn}
+                  loading={metricsLoading}
+                />
+              ) : tableConfig?.table_type === 'account_metrics' ? (
+                <div className="border rounded-lg p-8 text-center">
+                  <Building className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                  <h3 className="text-lg font-medium mb-2">Account Metrics Table</h3>
+                  <p className="text-muted-foreground mb-4">
+                    This table will show account-level metrics without user attribution.
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Account metrics implementation coming soon...
+                  </p>
+                </div>
+              ) : tableConfig?.table_type === 'time_series' ? (
+                <div className="border rounded-lg p-8 text-center">
+                  <TrendingUp className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                  <h3 className="text-lg font-medium mb-2">Time Series Table</h3>
+                  <p className="text-muted-foreground mb-4">
+                    This table will show metrics over time periods (daily, weekly, monthly).
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Time series implementation coming soon...
+                  </p>
+                </div>
+              ) : (
+                <UserMetricsTable
+                  data={users}
+                  columns={columns}
+                  onAddColumn={handleAddColumn}
+                  onRemoveColumn={handleRemoveColumn}
+                  loading={metricsLoading}
+                />
+              )}
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center h-64 text-muted-foreground space-y-4">
