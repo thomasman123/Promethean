@@ -336,6 +336,24 @@ const BASE_METRICS = {
 		}
 	},
 
+	'average_contract_value_per_sale': {
+		name: 'Average Contract Value per Sale',
+		description: 'Average total sales value for won appointments',
+		breakdownType: 'total' as const,
+		query: {
+			table: 'appointments',
+			select: [
+				'COALESCE(AVG(total_sales_value), 0) as value'
+			],
+			where: ["show_outcome = 'won'", "total_sales_value > 0"]
+		},
+		unit: 'currency' as const,
+		options: {
+			attribution: ['all', 'assigned', 'booked'],
+			breakdown: ['total', 'reps', 'setters', 'link']
+		}
+	},
+
 	// === LEADS METRICS ===
 	'total_leads': {
 		name: 'Total Leads',
