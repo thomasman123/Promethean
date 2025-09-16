@@ -96,6 +96,12 @@ export class UserMetricsEngine {
       case 'dials':
         return this.calculateDialMetrics(metric, accountId, startDate, endDate, userIds)
       
+      case 'work_timeframes':
+        return this.calculateWorkTimeframeMetrics(metric, accountId, startDate, endDate, userIds)
+      
+      case 'meta_ad_performance':
+        return this.calculateMetaAdMetrics(metric, accountId, startDate, endDate, userIds)
+      
       default:
         throw new Error(`Unsupported table type: ${table}`)
     }
@@ -583,6 +589,81 @@ export class UserMetricsEngine {
 
       return result
     })
+  }
+
+  /**
+   * Calculate work timeframe metrics for users
+   */
+  private async calculateWorkTimeframeMetrics(
+    metric: MetricDefinition,
+    accountId: string,
+    startDate: string,
+    endDate: string,
+    userIds: string[]
+  ): Promise<UserMetricResult[]> {
+    
+    // Query work timeframes data for all users
+    const { data: workTimeframes, error } = await supabaseService
+      .from('work_timeframes')
+      .select('user_id, bookings_per_hour, dials_per_hour, total_work_hours')
+      .eq('account_id', accountId)
+      .gte('work_date', startDate)
+      .lte('work_date', endDate)
+      .in('user_id', userIds)
+
+    if (error) {
+      console.error('Error fetching work timeframes:', error)
+      return userIds.map(userId => ({ userId, value: 0, role: 'none' }))
+    }
+
+    // Group by user and calculate based on metric type
+    const userMetrics = new Map<string, number>()
+    
+    userIds.forEach(userId => {
+      const userTimeframes = workTimeframes?.filter(wt => wt.user_id === userId) || []
+      
+      if (userTimeframes.length === 0) {
+        userMetrics.set(userId, 0)
+        return
+      }
+
+      let value = 0
+      if (metric.name === 'Bookings per Hour') {
+        value = userTimeframes.reduce((sum, wt) => sum + (wt.bookings_per_hour || 0), 0) / userTimeframes.length
+      } else if (metric.name === 'Dials per Hour') {
+        value = userTimeframes.reduce((sum, wt) => sum + (wt.dials_per_hour || 0), 0) / userTimeframes.length
+      } else if (metric.name === 'Hours Worked') {
+        value = userTimeframes.reduce((sum, wt) => sum + (wt.total_work_hours || 0), 0)
+      }
+      
+      userMetrics.set(userId, value)
+    })
+
+    return userIds.map(userId => ({
+      userId,
+      value: userMetrics.get(userId) || 0,
+      role: 'setter' // Work timeframes are always setter-based
+    }))
+  }
+
+  /**
+   * Calculate Meta ad metrics for users
+   */
+  private async calculateMetaAdMetrics(
+    metric: MetricDefinition,
+    accountId: string,
+    startDate: string,
+    endDate: string,
+    userIds: string[]
+  ): Promise<UserMetricResult[]> {
+    
+    // For now, return zeros since Meta ads attribution to individual users needs more complex logic
+    // This can be enhanced later when we implement proper Meta ads attribution
+    return userIds.map(userId => ({
+      userId,
+      value: 0,
+      role: 'none'
+    }))
   }
 }
 
