@@ -8,6 +8,7 @@ import { useDashboard } from "@/lib/dashboard-context"
 import { createBrowserClient } from "@supabase/ssr"
 import { ColumnDef } from "@tanstack/react-table"
 import { ArrowUpDown, Trash2 } from "lucide-react"
+import { format } from "date-fns"
 import { Button } from "@/components/ui/button"
 import {
   Tooltip,
@@ -567,7 +568,10 @@ export default function DataViewPage() {
           accountId: selectedAccountId,
           userIds,
           metricName: metricColumn.metricName,
-          dateRange: dateRange,
+          dateRange: {
+            start: format(dateRange.from, 'yyyy-MM-dd'),
+            end: format(dateRange.to, 'yyyy-MM-dd')
+          },
           roleFilter,
           options: metricColumn.options
         }),
