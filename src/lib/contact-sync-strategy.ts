@@ -234,4 +234,111 @@ export async function backfillContactGHLDates(accountId: string, accessToken: st
 
   console.log(`✅ Backfill complete. Processed ${processedCount} contacts`)
   return processedCount
+}
+
+/**
+ * Sync ALL contacts from GHL API - gets every contact that exists in GHL but not in our app
+ */
+export async function syncAllContactsFromGHL(accountId: string, accessToken: string, locationId: string): Promise<number> {
+  console.log('🔄 Starting full contact sync from GHL for account:', accountId)
+  
+  let syncedCount = 0
+  let hasMore = true
+  let offset = 0
+  const limit = 100
+
+  while (hasMore) {
+    try {
+      // Get contacts from GHL API with pagination
+      const response = await fetch(`https://services.leadconnectorhq.com/contacts/?locationId=${locationId}&limit=${limit}&offset=${offset}`, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Version': '2021-07-28',
+        },
+      })
+
+      if (!response.ok) {
+        console.error('❌ Failed to fetch contacts from GHL API:', response.status)
+        break
+      }
+
+      const json = await response.json()
+      const contacts = json.contacts || []
+      
+      if (!contacts || contacts.length === 0) {
+        hasMore = false
+        break
+      }
+
+      console.log(`📞 Processing batch of ${contacts.length} contacts from GHL (offset: ${offset})`)
+
+      // Process each contact from GHL
+      for (const ghlContact of contacts) {
+        try {
+          // Check if contact already exists
+          const { data: existingContact } = await supabase
+            .from('contacts')
+            .select('id')
+            .eq('account_id', accountId)
+            .eq('ghl_contact_id', ghlContact.id)
+            .single()
+
+          if (!existingContact) {
+            // Contact doesn't exist, create it
+            const contactData = mapGHLContactToSupabase(ghlContact, accountId)
+            
+            const { data: newContact, error } = await supabase
+              .from('contacts')
+              .insert(contactData)
+              .select('id')
+              .single()
+
+            if (error) {
+              console.error('❌ Failed to create contact:', ghlContact.id, error)
+            } else {
+              console.log('✅ Created new contact from GHL:', newContact.id)
+              syncedCount++
+            }
+          } else {
+            // Contact exists, update it with latest GHL data
+            const contactData = mapGHLContactToSupabase(ghlContact, accountId)
+            delete (contactData as any).account_id // Don't update account_id
+            delete (contactData as any).ghl_contact_id // Don't update ghl_contact_id
+            
+            const { error } = await supabase
+              .from('contacts')
+              .update({
+                ...contactData,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', existingContact.id)
+
+            if (error) {
+              console.error('❌ Failed to update contact:', ghlContact.id, error)
+            } else {
+              console.log('✅ Updated existing contact from GHL:', existingContact.id)
+              syncedCount++
+            }
+          }
+          
+        } catch (error) {
+          console.error('❌ Error processing contact from GHL:', ghlContact.id, error)
+        }
+      }
+
+      offset += limit
+      
+      // Rate limiting between batches
+      await new Promise(resolve => setTimeout(resolve, 500))
+      
+      console.log(`🔄 Synced ${syncedCount} contacts so far...`)
+      
+    } catch (error) {
+      console.error('❌ Error fetching contacts batch from GHL:', error)
+      break
+    }
+  }
+
+  console.log(`✅ Full contact sync complete. Synced ${syncedCount} contacts`)
+  return syncedCount
 } 
