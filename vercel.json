@@ -36,6 +36,14 @@
     {
       "path": "/api/notifications/overdue",
       "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/ghl/refresh-tokens",
+      "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/ghl/token-health-alerts",
+      "schedule": "0 9 * * *"
     }
   ]
 } 

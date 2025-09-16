@@ -25,6 +25,8 @@ interface GhlConnectionStatus {
   authType: string | null
   tokenExpiresAt: string | null
   webhookId: string | null
+  tokenHealthStatus?: 'healthy' | 'warning' | 'expired' | 'needs_reauth'
+  tokenLastRefreshed?: string | null
 }
 
 interface GhlCalendar {
@@ -59,6 +61,7 @@ function GHLConnectionContent() {
   const [mappings, setMappings] = useState<CalendarMapping[]>([])
   const [loadingCalendars, setLoadingCalendars] = useState(false)
   const [savingMappings, setSavingMappings] = useState(false)
+  const [refreshingToken, setRefreshingToken] = useState(false)
   
   const { toast } = useToast()
   const router = useRouter()
@@ -160,10 +163,10 @@ function GHLConnectionContent() {
     if (!selectedAccountId) return
 
     try {
-      // Get account with GHL connection data
+      // Get account with GHL connection data including token health
       const { data: account, error } = await supabase
         .from('accounts')
-        .select('ghl_api_key, ghl_location_id, ghl_auth_type, ghl_token_expires_at, ghl_webhook_id')
+        .select('ghl_api_key, ghl_location_id, ghl_auth_type, ghl_token_expires_at, ghl_webhook_id, ghl_token_health_status, ghl_token_last_refreshed')
         .eq('id', selectedAccountId)
         .single()
 
@@ -174,7 +177,9 @@ function GHLConnectionContent() {
         locationId: account.ghl_location_id,
         authType: account.ghl_auth_type,
         tokenExpiresAt: account.ghl_token_expires_at,
-        webhookId: account.ghl_webhook_id
+        webhookId: account.ghl_webhook_id,
+        tokenHealthStatus: account.ghl_token_health_status,
+        tokenLastRefreshed: account.ghl_token_last_refreshed
       }
 
       setConnectionStatus(status)
@@ -298,6 +303,59 @@ function GHLConnectionContent() {
         description: "Failed to update calendar mapping",
         variant: "destructive"
       })
+    }
+  }
+
+  const manualRefreshToken = async () => {
+    if (!selectedAccountId) return
+    
+    setRefreshingToken(true)
+    try {
+      const response = await fetch('/api/ghl/refresh-tokens', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-cron-secret': 'manual-refresh' // Special header for manual refresh
+        },
+        body: JSON.stringify({ accountId: selectedAccountId, manual: true })
+      })
+      
+      const data = await response.json()
+      
+      if (data.success) {
+        toast({
+          title: "Success",
+          description: "Token refreshed successfully",
+        })
+        // Refresh connection status to show updated info
+        await fetchConnectionStatus()
+      } else {
+        throw new Error(data.error || 'Failed to refresh token')
+      }
+    } catch (error) {
+      console.error('Token refresh error:', error)
+      toast({
+        title: "Error",
+        description: "Failed to refresh token. You may need to reconnect.",
+        variant: "destructive"
+      })
+    } finally {
+      setRefreshingToken(false)
+    }
+  }
+
+  const getTokenHealthBadge = (status?: string) => {
+    switch (status) {
+      case 'healthy':
+        return <Badge className="bg-green-100 text-green-800">Healthy</Badge>
+      case 'warning':
+        return <Badge className="bg-yellow-100 text-yellow-800">Expires Soon</Badge>
+      case 'expired':
+        return <Badge variant="destructive">Expired</Badge>
+      case 'needs_reauth':
+        return <Badge variant="destructive">Needs Re-auth</Badge>
+      default:
+        return <Badge variant="outline">Unknown</Badge>
     }
   }
 
@@ -793,13 +851,8 @@ function GHLConnectionContent() {
                     <span>{connectionStatus.authType || 'Unknown'}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Token Status</span>
-                    <span className={cn(
-                      "font-medium",
-                      isTokenExpired() ? "text-red-600" : "text-green-600"
-                    )}>
-                      {isTokenExpired() ? 'Expired' : 'Valid'}
-                    </span>
+                    <span className="text-muted-foreground">Token Health</span>
+                    {getTokenHealthBadge(connectionStatus.tokenHealthStatus)}
                   </div>
                   {connectionStatus.tokenExpiresAt && (
                     <div className="flex justify-between text-sm">
@@ -811,8 +864,69 @@ function GHLConnectionContent() {
                     <span className="text-muted-foreground">Webhook Status</span>
                     <span>{connectionStatus.webhookId ? 'Subscribed' : 'Not subscribed'}</span>
                   </div>
+                  {connectionStatus.tokenLastRefreshed && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Last Token Refresh</span>
+                      <span>{new Date(connectionStatus.tokenLastRefreshed).toLocaleString()}</span>
+                    </div>
+                  )}
                 </div>
               )}
+
+              {/* Token Health Actions */}
+              {connectionStatus?.isConnected && (
+                  <div className="pt-4 border-t space-y-3">
+                    {(connectionStatus.tokenHealthStatus === 'warning' || connectionStatus.tokenHealthStatus === 'expired') && (
+                      <Alert className={connectionStatus.tokenHealthStatus === 'expired' ? 'border-red-200 bg-red-50' : 'border-yellow-200 bg-yellow-50'}>
+                        <AlertCircle className={`h-4 w-4 ${connectionStatus.tokenHealthStatus === 'expired' ? 'text-red-600' : 'text-yellow-600'}`} />
+                        <AlertTitle>
+                          {connectionStatus.tokenHealthStatus === 'expired' ? 'Token Expired' : 'Token Expires Soon'}
+                        </AlertTitle>
+                        <AlertDescription>
+                          {connectionStatus.tokenHealthStatus === 'expired' 
+                            ? 'Your GHL token has expired. Try refreshing it or reconnect if needed.'
+                            : 'Your GHL token will expire within 7 days. It will be automatically refreshed, but you can manually refresh it now.'
+                          }
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                    
+                    {connectionStatus.tokenHealthStatus === 'needs_reauth' && (
+                      <Alert className="border-red-200 bg-red-50">
+                        <AlertCircle className="h-4 w-4 text-red-600" />
+                        <AlertTitle>Re-authentication Required</AlertTitle>
+                        <AlertDescription>
+                          Your GHL connection needs to be re-established. Please disconnect and reconnect your account.
+                        </AlertDescription>
+                      </Alert>
+                    )}
+
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={manualRefreshToken}
+                        disabled={refreshingToken || connectionStatus.tokenHealthStatus === 'needs_reauth'}
+                      >
+                        {refreshingToken ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <RefreshCw className="h-4 w-4 mr-2" />
+                        )}
+                        Refresh Token
+                      </Button>
+                      
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={fetchConnectionStatus}
+                      >
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Check Status
+                      </Button>
+                    </div>
+                  </div>
+                )}
             </CardContent>
           </Card>
 
