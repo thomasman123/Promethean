@@ -591,10 +591,11 @@ export default function DataViewPage() {
       setUsers(prev => prev.map(user => {
         const userMetric = result.userMetrics.find((um: any) => um.userId === user.id)
         const value = userMetric?.value || 0
-        console.log(`loadMetricData: Setting ${metricColumn.id} = ${value} for user ${user.name}`)
+        const displayValue = userMetric?.displayValue || value
+        console.log(`loadMetricData: Setting ${metricColumn.id} = ${displayValue} (raw: ${value}) for user ${user.name}`)
         return {
           ...user,
-          [metricColumn.id]: value
+          [metricColumn.id]: displayValue
         }
       }))
 
