@@ -319,56 +319,56 @@ const BASE_METRICS = {
 	// === DIALS CONVERSION METRICS ===
 	'dials_per_booking': {
 		name: 'Dials per Booking',
-		description: 'Percentage of dials that resulted in bookings (booked=true or linked_appointment_id exists)',
+		description: 'Average number of dials needed to get one booking (total dials / bookings)',
 		breakdownType: 'total' as const,
 		query: {
 			table: 'dials',
 			select: [
-				'COALESCE(AVG(CASE WHEN (booked = true OR linked_appointment_id IS NOT NULL) THEN 1.0 ELSE 0.0 END) * 100, 0) as value'
+				'CASE WHEN SUM(CASE WHEN (booked = true OR linked_appointment_id IS NOT NULL) THEN 1 ELSE 0 END) > 0 THEN ROUND(COUNT(*)::DECIMAL / SUM(CASE WHEN (booked = true OR linked_appointment_id IS NOT NULL) THEN 1 ELSE 0 END), 1) ELSE 0 END as value'
 			]
 		},
-		unit: 'percent' as const
+		unit: 'count' as const
 	},
 
 	'dials_per_booking_assigned': {
 		name: 'Dials per Booking (Assigned)',
-		description: 'Percentage of dials that resulted in bookings (booked=true or linked_appointment_id exists) - attributed to assigned sales rep',
+		description: 'Average number of dials needed to get one booking (total dials / bookings) - attributed to assigned sales rep',
 		breakdownType: 'total' as const,
 		query: {
 			table: 'dials',
 			select: [
-				'COALESCE(AVG(CASE WHEN (booked = true OR linked_appointment_id IS NOT NULL) THEN 1.0 ELSE 0.0 END) * 100, 0) as value'
+				'CASE WHEN SUM(CASE WHEN (booked = true OR linked_appointment_id IS NOT NULL) THEN 1 ELSE 0 END) > 0 THEN ROUND(COUNT(*)::DECIMAL / SUM(CASE WHEN (booked = true OR linked_appointment_id IS NOT NULL) THEN 1 ELSE 0 END), 1) ELSE 0 END as value'
 			]
 		},
-		unit: 'percent' as const,
+		unit: 'count' as const,
 		attributionContext: 'assigned' as const
 	},
 
 	'dials_per_booking_dialer': {
 		name: 'Dials per Booking (Dialer)',
-		description: 'Percentage of dials that resulted in bookings (booked=true or linked_appointment_id exists) - attributed to the dialer',
+		description: 'Average number of dials needed to get one booking (total dials / bookings) - attributed to the dialer',
 		breakdownType: 'total' as const,
 		query: {
 			table: 'dials',
 			select: [
-				'COALESCE(AVG(CASE WHEN (booked = true OR linked_appointment_id IS NOT NULL) THEN 1.0 ELSE 0.0 END) * 100, 0) as value'
+				'CASE WHEN SUM(CASE WHEN (booked = true OR linked_appointment_id IS NOT NULL) THEN 1 ELSE 0 END) > 0 THEN ROUND(COUNT(*)::DECIMAL / SUM(CASE WHEN (booked = true OR linked_appointment_id IS NOT NULL) THEN 1 ELSE 0 END), 1) ELSE 0 END as value'
 			]
 		},
-		unit: 'percent' as const,
+		unit: 'count' as const,
 		attributionContext: 'dialer' as const
 	},
 
 	// Rep breakdown variants
 	'dials_per_booking_reps': {
 		name: 'Dials per Booking (by Rep)',
-		description: 'Percentage of dials that resulted in bookings, grouped by sales rep',
+		description: 'Average number of dials needed to get one booking, grouped by sales rep',
 		breakdownType: 'rep' as const,
 		query: {
 			table: 'dials',
 			select: [
 				'sales_rep_user_id as rep_id',
 				'profiles.full_name as rep_name',
-				'COALESCE(AVG(CASE WHEN (booked = true OR linked_appointment_id IS NOT NULL) THEN 1.0 ELSE 0.0 END) * 100, 0) as value'
+				'CASE WHEN SUM(CASE WHEN (booked = true OR linked_appointment_id IS NOT NULL) THEN 1 ELSE 0 END) > 0 THEN ROUND(COUNT(*)::DECIMAL / SUM(CASE WHEN (booked = true OR linked_appointment_id IS NOT NULL) THEN 1 ELSE 0 END), 1) ELSE 0 END as value'
 			],
 			joins: [
 				{
@@ -379,21 +379,21 @@ const BASE_METRICS = {
 			],
 			groupBy: ['sales_rep_user_id', 'profiles.full_name'],
 			having: ['COUNT(*) > 0'],
-			orderBy: ['value DESC']
+			orderBy: ['value ASC']
 		},
-		unit: 'percent' as const
+		unit: 'count' as const
 	},
 
 	'dials_per_booking_setters': {
 		name: 'Dials per Booking (by Setter)',
-		description: 'Percentage of dials that resulted in bookings, grouped by setter',
+		description: 'Average number of dials needed to get one booking, grouped by setter',
 		breakdownType: 'setter' as const,
 		query: {
 			table: 'dials',
 			select: [
 				'setter_user_id as setter_id',
 				'profiles.full_name as setter_name',
-				'COALESCE(AVG(CASE WHEN (booked = true OR linked_appointment_id IS NOT NULL) THEN 1.0 ELSE 0.0 END) * 100, 0) as value'
+				'CASE WHEN SUM(CASE WHEN (booked = true OR linked_appointment_id IS NOT NULL) THEN 1 ELSE 0 END) > 0 THEN ROUND(COUNT(*)::DECIMAL / SUM(CASE WHEN (booked = true OR linked_appointment_id IS NOT NULL) THEN 1 ELSE 0 END), 1) ELSE 0 END as value'
 			],
 			joins: [
 				{
@@ -404,14 +404,14 @@ const BASE_METRICS = {
 			],
 			groupBy: ['setter_user_id', 'profiles.full_name'],
 			having: ['COUNT(*) > 0'],
-			orderBy: ['value DESC']
+			orderBy: ['value ASC']
 		},
-		unit: 'percent' as const
+		unit: 'count' as const
 	},
 
 	'dials_per_booking_link': {
 		name: 'Dials per Booking (Setter→Rep Links)',
-		description: 'Percentage of dials that resulted in bookings, showing setter to rep relationships',
+		description: 'Average number of dials needed to get one booking, showing setter to rep relationships',
 		breakdownType: 'link' as const,
 		query: {
 			table: 'dials',
@@ -420,7 +420,7 @@ const BASE_METRICS = {
 				'setter_profiles.full_name as setter_name',
 				'sales_rep_user_id as rep_id',
 				'rep_profiles.full_name as rep_name',
-				'COALESCE(AVG(CASE WHEN (booked = true OR linked_appointment_id IS NOT NULL) THEN 1.0 ELSE 0.0 END) * 100, 0) as value'
+				'CASE WHEN SUM(CASE WHEN (booked = true OR linked_appointment_id IS NOT NULL) THEN 1 ELSE 0 END) > 0 THEN ROUND(COUNT(*)::DECIMAL / SUM(CASE WHEN (booked = true OR linked_appointment_id IS NOT NULL) THEN 1 ELSE 0 END), 1) ELSE 0 END as value'
 			],
 			joins: [
 				{
@@ -436,9 +436,9 @@ const BASE_METRICS = {
 			],
 			groupBy: ['setter_user_id', 'setter_profiles.full_name', 'sales_rep_user_id', 'rep_profiles.full_name'],
 			having: ['COUNT(*) > 0'],
-			orderBy: ['value DESC']
+			orderBy: ['value ASC']
 		},
-		unit: 'percent' as const
+		unit: 'count' as const
 	},
 
 	// === SPEED TO LEAD METRIC ===
