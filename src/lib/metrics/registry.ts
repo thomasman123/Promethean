@@ -481,6 +481,121 @@ const BASE_METRICS = {
 		unit: 'percent' as const
 	},
 
+	// === HOURLY PERFORMANCE METRICS ===
+	'bookings_per_hour': {
+		name: 'Bookings per Hour',
+		description: 'Average bookings per work hour (from work timeframes)',
+		breakdownType: 'total' as const,
+		query: {
+			table: 'work_timeframes',
+			select: [
+				'COALESCE(AVG(bookings_per_hour), 0) as value'
+			]
+		},
+		unit: 'count' as const
+	},
+
+	'bookings_per_hour_setters': {
+		name: 'Bookings per Hour (by Setter)',
+		description: 'Average bookings per work hour, grouped by setter',
+		breakdownType: 'setter' as const,
+		query: {
+			table: 'work_timeframes',
+			select: [
+				'user_id as setter_id',
+				'profiles.full_name as setter_name',
+				'COALESCE(AVG(bookings_per_hour), 0) as value'
+			],
+			joins: [
+				{
+					table: 'profiles',
+					on: 'work_timeframes.user_id = profiles.id',
+					type: 'LEFT'
+				}
+			],
+			groupBy: ['user_id', 'profiles.full_name'],
+			having: ['COUNT(*) > 0'],
+			orderBy: ['value DESC']
+		},
+		unit: 'count' as const
+	},
+
+	'dials_per_hour': {
+		name: 'Dials per Hour',
+		description: 'Average dials per work hour (from work timeframes)',
+		breakdownType: 'total' as const,
+		query: {
+			table: 'work_timeframes',
+			select: [
+				'COALESCE(AVG(dials_per_hour), 0) as value'
+			]
+		},
+		unit: 'count' as const
+	},
+
+	'dials_per_hour_setters': {
+		name: 'Dials per Hour (by Setter)',
+		description: 'Average dials per work hour, grouped by setter',
+		breakdownType: 'setter' as const,
+		query: {
+			table: 'work_timeframes',
+			select: [
+				'user_id as setter_id',
+				'profiles.full_name as setter_name',
+				'COALESCE(AVG(dials_per_hour), 0) as value'
+			],
+			joins: [
+				{
+					table: 'profiles',
+					on: 'work_timeframes.user_id = profiles.id',
+					type: 'LEFT'
+				}
+			],
+			groupBy: ['user_id', 'profiles.full_name'],
+			having: ['COUNT(*) > 0'],
+			orderBy: ['value DESC']
+		},
+		unit: 'count' as const
+	},
+
+	'hours_worked': {
+		name: 'Hours Worked',
+		description: 'Total work hours (from first dial to last dial each day)',
+		breakdownType: 'total' as const,
+		query: {
+			table: 'work_timeframes',
+			select: [
+				'COALESCE(SUM(total_work_hours), 0) as value'
+			]
+		},
+		unit: 'count' as const
+	},
+
+	'hours_worked_setters': {
+		name: 'Hours Worked (by Setter)',
+		description: 'Total work hours grouped by setter',
+		breakdownType: 'setter' as const,
+		query: {
+			table: 'work_timeframes',
+			select: [
+				'user_id as setter_id',
+				'profiles.full_name as setter_name',
+				'COALESCE(SUM(total_work_hours), 0) as value'
+			],
+			joins: [
+				{
+					table: 'profiles',
+					on: 'work_timeframes.user_id = profiles.id',
+					type: 'LEFT'
+				}
+			],
+			groupBy: ['user_id', 'profiles.full_name'],
+			having: ['COUNT(*) > 0'],
+			orderBy: ['value DESC']
+		},
+		unit: 'count' as const
+	},
+
 	'cash_per_dial': {
 		name: 'Cash Per Dial',
 		description: 'Average cash collected per dial made (cross-table calculation)',

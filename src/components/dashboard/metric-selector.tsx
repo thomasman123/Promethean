@@ -63,6 +63,14 @@ const METRIC_CATEGORIES = {
     "dials_per_booking_setters",
     "dials_per_booking_link"
   ],
+  "Performance": [
+    "bookings_per_hour",
+    "bookings_per_hour_setters",
+    "dials_per_hour", 
+    "dials_per_hour_setters",
+    "hours_worked",
+    "hours_worked_setters"
+  ],
   "Discovery": [
     "show_ups_discoveries"
   ],
