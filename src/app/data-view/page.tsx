@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from "react"
 import { TopBar } from "@/components/layout/topbar"
 import { UserMetricsTable, type UserMetric, type MetricColumn } from "@/components/data-view/user-metrics-table"
-import { MetricSelectionModal } from "@/components/data-view/metric-selection-modal"
+import { UnifiedMetricSelector } from "@/components/shared/unified-metric-selector"
 import { useDashboard } from "@/lib/dashboard-context"
 import { createBrowserClient } from "@supabase/ssr"
 import { ColumnDef } from "@tanstack/react-table"
@@ -717,11 +717,12 @@ export default function DataViewPage() {
         </div>
       </main>
 
-      <MetricSelectionModal
-        open={isMetricModalOpen}
-        onOpenChange={setIsMetricModalOpen}
-        onMetricSelect={handleMetricSelect}
-      />
+             <UnifiedMetricSelector
+         open={isMetricModalOpen}
+         onOpenChange={setIsMetricModalOpen}
+         onMetricSelect={handleMetricSelect}
+         mode="data-view"
+       />
     </div>
   )
 } 

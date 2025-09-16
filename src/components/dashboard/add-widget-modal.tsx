@@ -6,13 +6,11 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { 
   BarChart3, 
@@ -20,14 +18,12 @@ import {
   AreaChart, 
   Square,
   ArrowLeft,
-  ArrowRight,
-  Clock,
-  Calculator 
+  ArrowRight
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { MetricSelector } from "@/components/dashboard/metric-selector"
+import { UnifiedMetricSelector } from "@/components/shared/unified-metric-selector"
 import { METRICS_REGISTRY } from "@/lib/metrics/registry"
-import { BusinessHoursSelector } from "@/components/dashboard/business-hours-selector"
+import { MetricDefinition } from "@/lib/metrics/types"
 
 interface AddWidgetModalProps {
   open: boolean
@@ -41,10 +37,10 @@ export interface WidgetConfig {
   title: string
   metric?: string // For single metric (KPI)
   metrics?: string[] // For multiple metrics (charts)
-  options?: Record<string, any> // Additional options from step 3
+  options?: Record<string, any> // Additional options
 }
 
-type Step = "visualization" | "metric" | "options"
+type Step = "visualization" | "metric"
 
 const visualizationTypes = [
   {
@@ -74,19 +70,15 @@ const visualizationTypes = [
 ]
 
 export function AddWidgetModal({ open, onOpenChange, onAddWidget }: AddWidgetModalProps) {
+  
   const [currentStep, setCurrentStep] = useState<Step>("visualization")
   const [selectedVisualization, setSelectedVisualization] = useState<string | null>(null)
   const [selectedMetric, setSelectedMetric] = useState<string | null>(null)
   const [selectedMetrics, setSelectedMetrics] = useState<string[]>([])
   const [widgetTitle, setWidgetTitle] = useState("")
-  
-  // Speed to Lead specific options
-  const [speedToLeadCalculation, setSpeedToLeadCalculation] = useState<'average' | 'median'>('average')
-  const [speedToLeadTimeFormat, setSpeedToLeadTimeFormat] = useState(false)
-  const [speedToLeadBusinessHours, setSpeedToLeadBusinessHours] = useState<any[]>([])
+  const [isMetricSelectorOpen, setIsMetricSelectorOpen] = useState(false)
   
   const isChartType = selectedVisualization && ["bar", "line", "area"].includes(selectedVisualization)
-  const isSpeedToLead = selectedMetric === 'speed_to_lead' || selectedMetrics.includes('speed_to_lead')
   
   const handleReset = () => {
     setCurrentStep("visualization")
@@ -94,9 +86,6 @@ export function AddWidgetModal({ open, onOpenChange, onAddWidget }: AddWidgetMod
     setSelectedMetric(null)
     setSelectedMetrics([])
     setWidgetTitle("")
-    setSpeedToLeadCalculation('average')
-    setSpeedToLeadTimeFormat(false)
-    setSpeedToLeadBusinessHours([])
   }
 
   const handleClose = () => {
@@ -107,41 +96,38 @@ export function AddWidgetModal({ open, onOpenChange, onAddWidget }: AddWidgetMod
   const handleNext = () => {
     if (currentStep === "visualization" && selectedVisualization) {
       setCurrentStep("metric")
-    } else if (currentStep === "metric") {
-      setCurrentStep("options")
     }
   }
 
   const handleBack = () => {
     if (currentStep === "metric") {
       setCurrentStep("visualization")
-    } else if (currentStep === "options") {
-      setCurrentStep("metric")
     }
   }
 
-  const handleCreate = () => {
-    if (!selectedVisualization) return
-    if (isChartType && selectedMetrics.length === 0) return
-    if (!isChartType && !selectedMetric) return
-
+  const handleMetricSelect = (metricName: string, metricDefinition: MetricDefinition, options?: any) => {
+    if (isChartType) {
+      // For charts, add to metrics array
+      if (!selectedMetrics.includes(metricName)) {
+        setSelectedMetrics(prev => [...prev, metricName])
+      }
+    } else {
+      // For KPI, set single metric
+      setSelectedMetric(metricName)
+    }
+    
+    // Create widget immediately with options
     const defaultTitle = isChartType 
-      ? selectedMetrics.map(m => METRICS_REGISTRY[m]?.name || m).join(' vs ')
-      : METRICS_REGISTRY[selectedMetric!]?.name || `New ${visualizationTypes.find(v => v.id === selectedVisualization)?.name}`
+      ? [...selectedMetrics, metricName].map(m => METRICS_REGISTRY[m]?.name || m).join(' vs ')
+      : metricDefinition.name
 
     const widget: WidgetConfig = {
       id: `widget-${Date.now()}`,
       type: selectedVisualization as WidgetConfig["type"],
       title: widgetTitle || defaultTitle,
-      metric: isChartType ? undefined : (selectedMetric || undefined),
-      metrics: isChartType ? selectedMetrics : undefined,
-      options: {
-        ...(isSpeedToLead && {
-          speedToLeadCalculation,
-          speedToLeadTimeFormat,
-          speedToLeadBusinessHours
-        })
-      }
+      metric: isChartType ? undefined : metricName,
+      metrics: isChartType ? [...selectedMetrics, metricName] : undefined,
+      options: options || {}
     }
 
     onAddWidget(widget)
@@ -160,229 +146,148 @@ export function AddWidgetModal({ open, onOpenChange, onAddWidget }: AddWidgetMod
   }
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
-        <DialogHeader className="flex-shrink-0">
-          <DialogTitle>
-            {currentStep === "visualization" && "Select Visualization Type"}
-            {currentStep === "metric" && "Select Metric"}
-            {currentStep === "options" && "Widget Options"}
-          </DialogTitle>
-        </DialogHeader>
-
-        <div className="flex-1 overflow-y-auto py-6 px-1">
-          {/* Step 1: Visualization Type */}
-          {currentStep === "visualization" && (
-            <div className="grid grid-cols-2 gap-4">
-              {visualizationTypes.map((type) => {
-                const Icon = type.icon
-                return (
-                  <Card
-                    key={type.id}
-                    className={cn(
-                      "p-6 cursor-pointer transition-all hover:shadow-md",
-                      selectedVisualization === type.id && "ring-2 ring-primary"
-                    )}
-                    onClick={() => setSelectedVisualization(type.id)}
-                  >
-                    <div className="flex flex-col items-center text-center space-y-3">
-                      <Icon className="h-12 w-12 text-muted-foreground" />
-                      <h3 className="font-semibold">{type.name}</h3>
-                      <p className="text-sm text-muted-foreground">
-                        {type.description}
-                      </p>
-                    </div>
-                  </Card>
-                )
-              })}
-            </div>
-          )}
-
-          {/* Step 2: Metric Selection */}
-          {currentStep === "metric" && (
-            <div>
-              {isChartType ? (
-                <div className="space-y-4">
-                  <p className="text-sm text-muted-foreground">
-                    Select up to 3 metrics to display on your {selectedVisualization} chart
-                  </p>
-                  <MetricSelector
-                    selectedMetric={null}
-                    onSelect={(metric) => {
-                      if (!selectedMetrics.includes(metric) && selectedMetrics.length < 3) {
-                        setSelectedMetrics([...selectedMetrics, metric])
-                      }
-                    }}
-                  />
-                  {selectedMetrics.length > 0 && (
-                    <div className="space-y-2">
-                      <Label>Selected Metrics ({selectedMetrics.length}/3)</Label>
-                      <div className="space-y-2">
-                        {selectedMetrics.map((metric) => (
-                          <div key={metric} className="flex items-center justify-between p-2 bg-muted rounded-md">
-                            <span className="text-sm">{METRICS_REGISTRY[metric]?.name || metric}</span>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setSelectedMetrics(selectedMetrics.filter(m => m !== metric))}
-                            >
-                              Remove
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <MetricSelector
-                  selectedMetric={selectedMetric}
-                  onSelect={setSelectedMetric}
-                />
-              )}
-            </div>
-          )}
-
-          {/* Step 3: Widget Options */}
-          {currentStep === "options" && (
-            <div className="space-y-4 pr-2">
-              <div>
-                <Label htmlFor="widget-title">Widget Title</Label>
-                <Input
-                  id="widget-title"
-                  placeholder={
-                    isChartType 
-                      ? selectedMetrics.map(m => METRICS_REGISTRY[m]?.name || m).join(' vs ')
-                      : (selectedMetric ? METRICS_REGISTRY[selectedMetric]?.name : `New ${visualizationTypes.find(v => v.id === selectedVisualization)?.name}`)
-                  }
-                  value={widgetTitle}
-                  onChange={(e) => setWidgetTitle(e.target.value)}
-                  className="mt-2"
-                />
+    <>
+      <Dialog open={open && !isMetricSelectorOpen} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Add Widget</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-6">
+            {/* Step Indicator */}
+            <div className="flex items-center justify-center space-x-2">
+              <div className={cn("w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium", 
+                currentStep === "visualization" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>
+                1
               </div>
-              
-              {/* Speed to Lead specific options */}
-              {isSpeedToLead && (
-                <>
-                  {/* Calculation Type */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-sm flex items-center gap-2">
-                        <Calculator className="h-4 w-4" />
-                        Calculation Method
-                      </CardTitle>
-                      <CardDescription className="text-xs">
-                        Choose how to calculate speed to lead
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <RadioGroup
-                        value={speedToLeadCalculation}
-                        onValueChange={(value) => setSpeedToLeadCalculation(value as 'average' | 'median')}
-                      >
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="average" id="average" />
-                          <Label htmlFor="average" className="text-sm cursor-pointer">
-                            Average (Mean)
-                          </Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="median" id="median" />
-                          <Label htmlFor="median" className="text-sm cursor-pointer">
-                            Median
-                          </Label>
-                        </div>
-                      </RadioGroup>
-                      <p className="text-xs text-muted-foreground mt-2">
-                        {speedToLeadCalculation === 'average' 
-                          ? 'Calculate the mean of all speed to lead times'
-                          : 'Calculate the middle value, reducing impact of outliers'}
-                      </p>
-                    </CardContent>
-                  </Card>
-
-                  {/* Time Format */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-sm flex items-center gap-2">
-                        <Clock className="h-4 w-4" />
-                        Display Format
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="flex items-center justify-between">
-                        <Label htmlFor="time-format" className="text-sm">
-                          Show time in human-readable format
-                        </Label>
-                        <Switch
-                          id="time-format"
-                          checked={speedToLeadTimeFormat}
-                          onCheckedChange={setSpeedToLeadTimeFormat}
-                        />
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-2">
-                        {speedToLeadTimeFormat 
-                          ? 'Display as "2h 30m" instead of seconds'
-                          : 'Display raw seconds value'}
-                      </p>
-                    </CardContent>
-                  </Card>
-
-                  {/* Business Hours */}
-                  <Card>
-                    <CardContent className="pt-6">
-                      <BusinessHoursSelector
-                        value={speedToLeadBusinessHours}
-                        onChange={setSpeedToLeadBusinessHours}
-                      />
-                    </CardContent>
-                  </Card>
-                </>
-              )}
-              
-              {!isSpeedToLead && (
-                <div className="text-sm text-muted-foreground mt-6">
-                  <p>More options will be available in future updates:</p>
-                  <ul className="list-disc list-inside mt-2 space-y-1">
-                    <li>Date range preferences</li>
-                    <li>Color themes</li>
-                    <li>Data aggregation options</li>
-                    <li>Comparison settings</li>
-                  </ul>
-                </div>
-              )}
+              <div className="w-12 h-px bg-border" />
+              <div className={cn("w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium",
+                currentStep === "metric" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>
+                2
+              </div>
             </div>
-          )}
-        </div>
 
-        <DialogFooter className="flex-shrink-0 flex justify-between border-t pt-4">
-          <div className="flex gap-2">
-            {currentStep !== "visualization" && (
-              <Button variant="outline" onClick={handleBack}>
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back
-              </Button>
+            {/* Step Content */}
+            {currentStep === "visualization" && (
+              <div className="space-y-4">
+                <div>
+                  <h3 className="text-lg font-medium mb-2">Choose Visualization Type</h3>
+                  <p className="text-sm text-muted-foreground">Select how you want to display your data</p>
+                </div>
+                
+                <RadioGroup value={selectedVisualization || ""} onValueChange={setSelectedVisualization}>
+                  <div className="grid grid-cols-2 gap-4">
+                    {visualizationTypes.map((viz) => (
+                      <div key={viz.id}>
+                        <RadioGroupItem value={viz.id} id={viz.id} className="sr-only" />
+                        <Card 
+                          className={cn(
+                            "cursor-pointer transition-all hover:bg-accent/50",
+                            selectedVisualization === viz.id && "ring-2 ring-primary bg-accent"
+                          )}
+                          onClick={() => setSelectedVisualization(viz.id)}
+                        >
+                          <CardHeader className="pb-3">
+                            <div className="flex items-center space-x-2">
+                              <viz.icon className="h-5 w-5" />
+                              <CardTitle className="text-base">{viz.name}</CardTitle>
+                            </div>
+                          </CardHeader>
+                          <CardContent className="pt-0">
+                            <CardDescription className="text-sm">{viz.description}</CardDescription>
+                          </CardContent>
+                        </Card>
+                      </div>
+                    ))}
+                  </div>
+                </RadioGroup>
+              </div>
+            )}
+
+            {currentStep === "metric" && (
+              <div className="space-y-4">
+                <div>
+                  <h3 className="text-lg font-medium mb-2">
+                    {isChartType ? "Add Metrics" : "Select Metric"}
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    {isChartType 
+                      ? "Click metrics to add them to your chart. Each metric will be configured with options."
+                      : "Choose the metric to display in your KPI tile"
+                    }
+                  </p>
+                </div>
+
+                {/* Selected Metrics Display for Charts */}
+                {isChartType && selectedMetrics.length > 0 && (
+                  <div className="space-y-2">
+                    <Label>Selected Metrics ({selectedMetrics.length})</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedMetrics.map(metricId => (
+                        <Button
+                          key={metricId}
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setSelectedMetrics(prev => prev.filter(m => m !== metricId))}
+                        >
+                          {METRICS_REGISTRY[metricId]?.name || metricId} ×
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <Button 
+                  onClick={() => setIsMetricSelectorOpen(true)}
+                  variant="outline"
+                  className="w-full"
+                >
+                  {isChartType ? "Add Metric" : "Select Metric"}
+                </Button>
+
+                {/* Widget Title */}
+                <div className="space-y-2">
+                  <Label>Widget Title (Optional)</Label>
+                  <Input
+                    placeholder={isChartType 
+                      ? selectedMetrics.map(m => METRICS_REGISTRY[m]?.name || m).join(' vs ')
+                      : selectedMetric ? METRICS_REGISTRY[selectedMetric]?.name : "Enter title"
+                    }
+                    value={widgetTitle}
+                    onChange={(e) => setWidgetTitle(e.target.value)}
+                  />
+                </div>
+              </div>
             )}
           </div>
-          
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={handleClose}>
-              Cancel
+
+          {/* Footer */}
+          <div className="flex justify-between">
+            <Button variant="outline" onClick={currentStep === "visualization" ? handleClose : handleBack}>
+              {currentStep === "visualization" ? "Cancel" : <><ArrowLeft className="h-4 w-4 mr-2" />Back</>}
             </Button>
             
-            {currentStep !== "options" ? (
-              <Button onClick={handleNext} disabled={!canProceed()}>
-                Next
-                <ArrowRight className="h-4 w-4 ml-2" />
+            {currentStep === "metric" && canProceed() ? (
+              <Button onClick={() => setIsMetricSelectorOpen(true)}>
+                {isChartType ? "Add Metrics" : "Select Metric"}
               </Button>
             ) : (
-              <Button onClick={handleCreate}>
-                Create Widget
+              <Button onClick={handleNext} disabled={!canProceed()}>
+                Next <ArrowRight className="h-4 w-4 ml-2" />
               </Button>
             )}
           </div>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+
+      {/* Unified Metric Selector */}
+      <UnifiedMetricSelector
+        open={isMetricSelectorOpen}
+        onOpenChange={setIsMetricSelectorOpen}
+        onMetricSelect={handleMetricSelect}
+        mode="dashboard"
+        title={isChartType ? "Add Chart Metric" : "Select KPI Metric"}
+      />
+    </>
   )
 } 
