@@ -78,6 +78,31 @@ export function MetricWidget({ metric, metrics, type, options }: MetricWidgetPro
       }
     }
 
+    // Special handling for Meaningful Conversation Avg Call Length with time format option
+    if (metric === 'meaningful_conversation_avg_call_length' && options?.timeFormat) {
+      const format = options.timeFormat
+      
+      if (format === 'minutes') {
+        return `${(val / 60).toFixed(1)}m`
+      } else if (format === 'hours') {
+        return `${(val / 3600).toFixed(2)}h`
+      } else if (format === 'human_readable') {
+        const hours = Math.floor(val / 3600)
+        const minutes = Math.floor((val % 3600) / 60)
+        const seconds = Math.floor(val % 60)
+        
+        if (hours > 0) {
+          return `${hours}h ${minutes}m ${seconds}s`
+        } else if (minutes > 0) {
+          return `${minutes}m ${seconds}s`
+        } else {
+          return `${seconds}s`
+        }
+      } else {
+        return `${val.toFixed(0)}s` // Default to seconds
+      }
+    }
+
     switch (metricInfo.unit) {
       case 'currency':
         return `$${val.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
