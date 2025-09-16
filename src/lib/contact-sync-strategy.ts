@@ -244,33 +244,50 @@ export async function syncAllContactsFromGHL(accountId: string, accessToken: str
   
   let syncedCount = 0
   let hasMore = true
-  let offset = 0
+  let searchAfter: any[] = []
   const limit = 100
 
   while (hasMore) {
     try {
-      // Get contacts from GHL API with pagination
-      const response = await fetch(`https://services.leadconnectorhq.com/contacts/?locationId=${locationId}&limit=${limit}&offset=${offset}`, {
+      // Use GHL Search Contacts API with proper pagination
+      const requestBody: any = {
+        locationId: locationId,
+        limit: limit
+      }
+      
+      // Add searchAfter for pagination (skip on first request)
+      if (searchAfter.length > 0) {
+        requestBody.searchAfter = searchAfter
+      }
+
+      console.log(`📞 Fetching contacts from GHL API - batch with limit ${limit}`, searchAfter.length > 0 ? `(searchAfter: ${searchAfter})` : '(first batch)')
+
+      const response = await fetch('https://services.leadconnectorhq.com/contacts/search', {
+        method: 'POST',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Version': '2021-07-28',
+          'Content-Type': 'application/json',
         },
+        body: JSON.stringify(requestBody)
       })
 
       if (!response.ok) {
-        console.error('❌ Failed to fetch contacts from GHL API:', response.status)
+        const errorText = await response.text()
+        console.error('❌ Failed to fetch contacts from GHL Search API:', response.status, errorText)
         break
       }
 
       const json = await response.json()
       const contacts = json.contacts || []
+      const total = json.total || 0
       
+      console.log(`📞 Received ${contacts.length} contacts from GHL (total available: ${total})`)
+
       if (!contacts || contacts.length === 0) {
         hasMore = false
         break
       }
-
-      console.log(`📞 Processing batch of ${contacts.length} contacts from GHL (offset: ${offset})`)
 
       // Process each contact from GHL
       for (const ghlContact of contacts) {
@@ -326,12 +343,24 @@ export async function syncAllContactsFromGHL(accountId: string, accessToken: str
         }
       }
 
-      offset += limit
+      // Set up pagination for next request
+      if (contacts.length === limit) {
+        // More contacts available, use searchAfter from last contact
+        const lastContact = contacts[contacts.length - 1]
+        if (lastContact.searchAfter) {
+          searchAfter = lastContact.searchAfter
+        } else {
+          // Fallback pagination using timestamp and ID
+          searchAfter = [new Date(lastContact.dateAdded || lastContact.dateUpdated || new Date()).getTime(), lastContact.id]
+        }
+      } else {
+        hasMore = false
+      }
       
       // Rate limiting between batches
       await new Promise(resolve => setTimeout(resolve, 500))
       
-      console.log(`🔄 Synced ${syncedCount} contacts so far...`)
+      console.log(`🔄 Synced ${syncedCount} contacts so far... (${contacts.length < limit ? 'Last batch' : 'More available'})`)
       
     } catch (error) {
       console.error('❌ Error fetching contacts batch from GHL:', error)
