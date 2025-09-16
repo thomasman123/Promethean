@@ -355,13 +355,13 @@ export default function AppointmentsDiscoveriesPage() {
     if (!outcome) return <Badge variant="outline">Not Set</Badge>
     switch (outcome.toLowerCase()) {
       case 'show':
-        return <Badge className="bg-green-100 text-green-800">Show</Badge>
+        return <Badge variant="default">Show</Badge>
       case 'no_show':
-        return <Badge className="bg-red-100 text-red-800">No Show</Badge>
+        return <Badge variant="destructive">No Show</Badge>
       case 'reschedule':
-        return <Badge className="bg-yellow-100 text-yellow-800">Reschedule</Badge>
+        return <Badge variant="secondary">Reschedule</Badge>
       case 'cancel':
-        return <Badge className="bg-gray-100 text-gray-800">Cancel</Badge>
+        return <Badge variant="outline">Cancel</Badge>
       default:
         return <Badge variant="outline">{outcome}</Badge>
     }
@@ -371,12 +371,12 @@ export default function AppointmentsDiscoveriesPage() {
     if (!outcome) return null
     switch (outcome.toLowerCase()) {
       case 'won':
-        return <Badge className="bg-green-100 text-green-800">Won</Badge>
+        return <Badge variant="default">Won</Badge>
       case 'lost':
-        return <Badge className="bg-red-100 text-red-800">Lost</Badge>
+        return <Badge variant="destructive">Lost</Badge>
       case 'follow up':
       case 'follow_up':
-        return <Badge className="bg-yellow-100 text-yellow-800">Follow Up</Badge>
+        return <Badge variant="secondary">Follow Up</Badge>
       default:
         return <Badge variant="outline">{outcome}</Badge>
     }
@@ -597,9 +597,9 @@ export default function AppointmentsDiscoveriesPage() {
                               </TableCell>
                               <TableCell>
                                 {apt.data_filled ? (
-                                  <Badge variant="outline" className="text-green-600">Complete</Badge>
+                                  <Badge variant="default">Complete</Badge>
                                 ) : (
-                                  <Badge variant="outline" className="text-yellow-600">Pending</Badge>
+                                  <Badge variant="secondary">Pending</Badge>
                                 )}
                               </TableCell>
                               <TableCell>
@@ -670,22 +670,15 @@ export default function AppointmentsDiscoveriesPage() {
                               <TableCell>
                                 {disc.lead_quality ? (
                                   <div className="flex items-center gap-1">
-                                    {[...Array(5)].map((_, i) => (
-                                      <span
-                                        key={i}
-                                        className={i < disc.lead_quality! ? "text-yellow-500" : "text-gray-300"}
-                                      >
-                                        ★
-                                      </span>
-                                    ))}
+                                    <span className="text-sm font-medium">{disc.lead_quality}/5</span>
                                   </div>
                                 ) : '-'}
                               </TableCell>
                               <TableCell>
                                 {disc.data_filled ? (
-                                  <Badge variant="outline" className="text-green-600">Complete</Badge>
+                                  <Badge variant="default">Complete</Badge>
                                 ) : (
-                                  <Badge variant="outline" className="text-yellow-600">Pending</Badge>
+                                  <Badge variant="secondary">Pending</Badge>
                                 )}
                               </TableCell>
                             </TableRow>
