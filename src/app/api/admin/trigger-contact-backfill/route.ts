@@ -11,23 +11,29 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { accountId } = body as {
+    const { accountId, checkOnly } = body as {
       accountId?: string;
+      checkOnly?: boolean;
     };
 
-    console.log(`🔄 Triggering contact GHL dates backfill for account: ${accountId || 'ALL'}`);
+    // If checkOnly flag is set, just return current status
+    if (checkOnly) {
+      console.log(`📊 Checking contact status for account: ${accountId || 'ALL'}`);
+    } else {
+      console.log(`🔄 Triggering contact GHL dates backfill for account: ${accountId || 'ALL'}`);
 
-    // Call the database function to backfill ghl_created_at
-    const { data: result, error } = await supabase.rpc('backfill_contact_ghl_dates', {
-      p_account_id: accountId || null
-    });
+      // Call the database function to backfill ghl_created_at
+      const { data: result, error } = await supabase.rpc('backfill_contact_ghl_dates', {
+        p_account_id: accountId || null
+      });
 
-    if (error) {
-      console.error('❌ Error calling backfill function:', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      if (error) {
+        console.error('❌ Error calling backfill function:', error);
+        return NextResponse.json({ error: error.message }, { status: 500 });
+      }
+
+      console.log(`✅ Backfill function completed. Processed ${result} contacts`);
     }
-
-    console.log(`✅ Backfill function completed. Processed ${result} contacts`);
 
     // Check the results
     let statusQuery = supabase
@@ -64,12 +70,14 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ 
       success: true, 
-      processedContacts: result,
+      processedContacts: checkOnly ? 0 : (result || 0),
       totalContacts,
       withGhlCreatedAt: withGhlDate,
       withLocalDate,
       accountId: accountId || 'ALL',
-      message: `Backfilled ${result} contacts. ${withGhlDate}/${totalContacts} now have GHL creation dates, ${withLocalDate}/${totalContacts} have local dates`
+      message: checkOnly 
+        ? `Status check: ${withGhlDate}/${totalContacts} contacts have GHL creation dates, ${totalContacts - (withGhlDate || 0)} need backfill`
+        : `Backfilled ${result || 0} contacts. ${withGhlDate}/${totalContacts} now have GHL creation dates, ${withLocalDate}/${totalContacts} have local dates`
     });
 
   } catch (error) {

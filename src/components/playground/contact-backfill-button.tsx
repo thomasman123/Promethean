@@ -1,17 +1,59 @@
 "use client"
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Database, Loader2, CheckCircle, AlertCircle } from 'lucide-react'
+import { Database, Loader2, CheckCircle, AlertCircle, RefreshCw } from 'lucide-react'
 import { useDashboard } from '@/lib/dashboard-context'
 import { useToast } from '@/hooks/use-toast'
+
+interface ContactStats {
+  totalContacts: number
+  withGhlCreated: number
+  needBackfill: number
+}
 
 export function ContactBackfillButton() {
   const [isLoading, setIsLoading] = useState(false)
   const [lastResult, setLastResult] = useState<any>(null)
+  const [contactStats, setContactStats] = useState<ContactStats | null>(null)
   const { selectedAccountId } = useDashboard()
   const { toast } = useToast()
+
+  // Load contact stats on mount and when account changes
+  useEffect(() => {
+    if (selectedAccountId) {
+      loadContactStats()
+    }
+  }, [selectedAccountId])
+
+  const loadContactStats = async () => {
+    if (!selectedAccountId) return
+    
+    try {
+      const response = await fetch('/api/admin/trigger-contact-backfill', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          accountId: selectedAccountId,
+          checkOnly: true // Add this flag to just check status
+        }),
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        setContactStats({
+          totalContacts: result.totalContacts || 0,
+          withGhlCreated: result.withGhlCreatedAt || 0,
+          needBackfill: (result.totalContacts || 0) - (result.withGhlCreatedAt || 0)
+        })
+      }
+    } catch (error) {
+      console.error('❌ Error loading contact stats:', error)
+    }
+  }
 
   const handleBackfill = async () => {
     if (!selectedAccountId) {
@@ -46,6 +88,8 @@ export function ContactBackfillButton() {
           description: result.message,
         })
         console.log('✅ Contact backfill completed:', result)
+        // Reload stats after successful backfill
+        await loadContactStats()
       } else {
         toast({
           title: "Backfill failed",
@@ -79,32 +123,73 @@ export function ContactBackfillButton() {
     return null
   }
 
+  const needsBackfill = contactStats && contactStats.needBackfill > 0
+  const isComplete = contactStats && contactStats.needBackfill === 0
+
   return (
     <div className="space-y-2">
-      <Button
-        variant="outline"
-        size="sm"
-        className="w-full justify-start"
-        onClick={handleBackfill}
-        disabled={isLoading || !selectedAccountId}
-      >
-        <Database className="h-4 w-4 mr-2" />
-        {isLoading ? 'Backfilling...' : 'Backfill Contact Dates'}
-      </Button>
+      <div className="flex items-center justify-between">
+        <Button
+          variant="outline"
+          size="sm"
+          className="flex-1 justify-start mr-2"
+          onClick={handleBackfill}
+          disabled={isLoading || !selectedAccountId}
+        >
+          <Database className="h-4 w-4 mr-2" />
+          {isLoading ? 'Backfilling...' : needsBackfill ? 'Continue Backfill' : 'Backfill Contact Dates'}
+        </Button>
+        
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={loadContactStats}
+          disabled={isLoading}
+          title="Refresh status"
+        >
+          <RefreshCw className="h-4 w-4" />
+        </Button>
+      </div>
       
-      {getStatusBadge()}
+      {/* Status Display */}
+      <div className="flex items-center gap-2">
+        {getStatusBadge()}
+        {isComplete && (
+          <Badge variant="default"><CheckCircle className="h-3 w-3 mr-1" />Complete</Badge>
+        )}
+      </div>
+
+      {/* Contact Stats */}
+      {contactStats && (
+        <div className="text-xs space-y-1">
+          <div className="flex justify-between">
+            <span>Total Contacts:</span>
+            <span className="font-medium">{contactStats.totalContacts}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>With GHL Dates:</span>
+            <span className="font-medium">{contactStats.withGhlCreated}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Need Backfill:</span>
+            <span className={`font-medium ${contactStats.needBackfill > 0 ? 'text-orange-600' : 'text-green-600'}`}>
+              {contactStats.needBackfill}
+            </span>
+          </div>
+        </div>
+      )}
       
       {lastResult && (
         <div className="text-xs text-muted-foreground">
           {lastResult.success 
-            ? `Processed ${lastResult.totalProcessed || 0} contacts`
+            ? `Last run: Processed ${lastResult.totalProcessed || 0} contacts`
             : `Error: ${lastResult.error}`
           }
         </div>
       )}
       
       <p className="text-xs text-muted-foreground">
-        Updates contacts with accurate GHL creation dates for proper lead tracking and date filtering.
+        Updates contacts with accurate GHL creation dates. Run until "Need Backfill" shows 0.
       </p>
     </div>
   )
