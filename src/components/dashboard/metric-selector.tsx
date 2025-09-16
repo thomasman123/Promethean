@@ -54,6 +54,7 @@ const METRIC_CATEGORIES = {
   "Conversion": [
     "pitch_to_sale_rate",
     "answer_to_sale_rate",
+    "answer_to_conversation_ratio",
     "booking_to_close",
     "speed_to_lead"
   ]

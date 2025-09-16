@@ -266,6 +266,23 @@ const BASE_METRICS = {
 		}
 	},
 
+	'answer_to_conversation_ratio': {
+		name: 'Answer to Conversation Ratio',
+		description: 'Percentage of answered calls that became meaningful conversations',
+		breakdownType: 'total' as const,
+		query: {
+			table: 'dials',
+			select: [
+				'CASE WHEN COUNT(*) FILTER (WHERE answered = true) > 0 THEN COALESCE(COUNT(*) FILTER (WHERE meaningful_conversation = true)::DECIMAL / COUNT(*) FILTER (WHERE answered = true), 0) ELSE 0 END as value'
+			]
+		},
+		unit: 'percent' as const,
+		options: {
+			attribution: ['none', 'assigned', 'dialer'],
+			breakdown: ['total', 'reps', 'setters', 'link']
+		}
+	},
+
 	'answer_per_dial': {
 		name: 'Answer per Dial',
 		description: 'Percentage of dials that were answered',
