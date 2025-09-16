@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from "react"
 import { TopBar } from "@/components/layout/topbar"
 import { UserMetricsTable, type UserMetric, type MetricColumn } from "@/components/data-view/user-metrics-table"
+import { AccountMetricsTable, type AccountMetric, type AccountMetricColumn } from "@/components/data-view/account-metrics-table"
 import { UnifiedMetricSelector } from "@/components/shared/unified-metric-selector"
 import { TableTypeSelector } from "@/components/data-view/table-type-selector"
 import { useDashboard } from "@/lib/dashboard-context"
@@ -30,6 +31,7 @@ export default function DataViewPage() {
   const [isMetricModalOpen, setIsMetricModalOpen] = useState(false)
   const [isTableTypeSelectorOpen, setIsTableTypeSelectorOpen] = useState(false)
   const [metricColumns, setMetricColumns] = useState<MetricColumn[]>([])
+  const [accountMetrics, setAccountMetrics] = useState<AccountMetric[]>([])
   const { toast } = useToast()
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -189,8 +191,10 @@ export default function DataViewPage() {
         await loadAllMetricData(metricCols)
       }
     } else if (tableType === 'account_metrics') {
-      // TODO: Load account-level metrics
-      console.log('📊 Account metrics table - will implement account-level data loading')
+      // Load account-level metrics
+      if (metricCols.length > 0) {
+        await loadAllAccountMetrics(metricCols)
+      }
     } else if (tableType === 'time_series') {
       // TODO: Load time series data
       console.log('📊 Time series table - will implement time-based data loading')
@@ -260,6 +264,75 @@ export default function DataViewPage() {
       toast({
         title: "Error",
         description: "Failed to load some metric data",
+        variant: "destructive",
+      })
+    } finally {
+      setMetricsLoading(false)
+    }
+  }
+
+  const loadAllAccountMetrics = async (metricCols: MetricColumn[]) => {
+    if (!selectedAccountId) return
+
+    setMetricsLoading(true)
+    console.log('🔄 Loading account metrics:', { 
+      metricColumns: metricCols.length, 
+      dateRange 
+    })
+
+    try {
+      // Load all account metrics in parallel
+      const accountMetricsData = await Promise.all(
+        metricCols.map(async (col) => {
+          try {
+            const response = await fetch('/api/data-view/account-metrics', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                accountId: selectedAccountId,
+                metricName: col.metricName,
+                dateRange: {
+                  start: format(dateRange.from, 'yyyy-MM-dd'),
+                  end: format(dateRange.to, 'yyyy-MM-dd')
+                },
+                options: col.options
+              }),
+            })
+
+            if (response.ok) {
+              const result = await response.json()
+              return {
+                metricName: col.displayName,
+                value: result.accountMetric.value,
+                displayValue: result.accountMetric.displayValue,
+                unit: result.accountMetric.unit
+              }
+            } else {
+              console.error('Failed to load account metric:', col.metricName)
+              throw new Error(`Failed to load ${col.displayName}`)
+            }
+          } catch (error) {
+            console.error('Error loading account metric:', col.metricName, error)
+            return {
+              metricName: col.displayName,
+              value: 0,
+              displayValue: '0',
+              unit: col.unit || 'count'
+            }
+          }
+        })
+      )
+
+      setAccountMetrics(accountMetricsData)
+      console.log('✅ Account metrics loaded:', accountMetricsData)
+
+    } catch (error) {
+      console.error('Error loading account metrics:', error)
+      toast({
+        title: "Error",
+        description: "Failed to load account metrics",
         variant: "destructive",
       })
     } finally {
@@ -745,16 +818,13 @@ export default function DataViewPage() {
                   loading={metricsLoading}
                 />
               ) : tableConfig?.table_type === 'account_metrics' ? (
-                <div className="border rounded-lg p-8 text-center">
-                  <Building className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                  <h3 className="text-lg font-medium mb-2">Account Metrics Table</h3>
-                  <p className="text-muted-foreground mb-4">
-                    This table will show account-level metrics without user attribution.
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Account metrics implementation coming soon...
-                  </p>
-                </div>
+                <AccountMetricsTable
+                  data={accountMetrics}
+                  columns={[]} // Account metrics use different column structure
+                  onAddColumn={handleAddColumn}
+                  onRemoveColumn={handleRemoveColumn}
+                  loading={metricsLoading}
+                />
               ) : tableConfig?.table_type === 'time_series' ? (
                 <div className="border rounded-lg p-8 text-center">
                   <TrendingUp className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
@@ -804,6 +874,7 @@ export default function DataViewPage() {
          onOpenChange={setIsMetricModalOpen}
          onMetricSelect={handleMetricSelect}
          mode="data-view"
+         tableType={tableConfig?.table_type as any}
        />
 
        {/* Table Type Selector */}
