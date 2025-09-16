@@ -181,6 +181,46 @@ const BASE_METRICS = {
 		attributionContext: 'booked' as const
 	},
 
+	// Setter-specific show up rate variants
+	'show_up_rate_setters': {
+		name: 'Show Up Rate (by Setter)',
+		description: 'Percentage of appointments where contacts showed up, grouped by setter',
+		breakdownType: 'setter' as const,
+		query: {
+			table: 'appointments',
+			select: [
+				'setter_user_id as setter_id',
+				'profiles.full_name as setter_name',
+				"COALESCE(AVG(CASE WHEN LOWER(call_outcome) = 'show' THEN 1.0 ELSE 0.0 END) * 100, 0) as value"
+			],
+			joins: [
+				{
+					table: 'profiles',
+					on: 'appointments.setter_user_id = profiles.id',
+					type: 'LEFT'
+				}
+			],
+			groupBy: ['setter_user_id', 'profiles.full_name'],
+			having: ['COUNT(*) > 0'],
+			orderBy: ['value DESC']
+		},
+		unit: 'percent' as const
+	},
+
+	'show_up_rate_setter_attribution': {
+		name: 'Show Up Rate (Setter Attribution)',
+		description: 'Overall show up rate attributed to setters who booked the appointments',
+		breakdownType: 'total' as const,
+		query: {
+			table: 'appointments',
+			select: [
+				"COALESCE(AVG(CASE WHEN LOWER(call_outcome) = 'show' THEN 1.0 ELSE 0.0 END) * 100, 0) as value"
+			]
+		},
+		unit: 'percent' as const,
+		attributionContext: 'booked' as const
+	},
+
 	// === DIALS METRICS ===
 	'total_dials': {
 		name: 'Total Dials',

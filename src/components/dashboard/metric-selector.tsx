@@ -22,6 +22,8 @@ const METRIC_CATEGORIES = {
     "show_up_rate",
     "show_up_rate_assigned",
     "show_up_rate_booked",
+    "show_up_rate_setters",
+    "show_up_rate_setter_attribution",
     "appointment_to_sale_rate",
     "booking_lead_time"
   ],
