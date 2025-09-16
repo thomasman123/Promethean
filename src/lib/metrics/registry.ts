@@ -354,6 +354,24 @@ const BASE_METRICS = {
 		}
 	},
 
+	'total_revenue_generated': {
+		name: 'Total Revenue Generated',
+		description: 'Total sales value from all won appointments (contracts signed)',
+		breakdownType: 'total' as const,
+		query: {
+			table: 'appointments',
+			select: [
+				'COALESCE(SUM(total_sales_value), 0) as value'
+			],
+			where: ["show_outcome = 'won'", "total_sales_value > 0"]
+		},
+		unit: 'currency' as const,
+		options: {
+			attribution: ['all', 'assigned', 'booked'],
+			breakdown: ['total', 'reps', 'setters', 'link']
+		}
+	},
+
 	// === LEADS METRICS ===
 	'total_leads': {
 		name: 'Total Leads',
