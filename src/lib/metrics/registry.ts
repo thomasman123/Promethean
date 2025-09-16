@@ -221,6 +221,130 @@ const BASE_METRICS = {
 		attributionContext: 'booked' as const
 	},
 
+	// === BOOKING TO CLOSE METRICS ===
+	'booking_to_close': {
+		name: 'Booking to Close',
+		description: 'Percentage of appointments that converted to sales (won outcomes)',
+		breakdownType: 'total' as const,
+		query: {
+			table: 'appointments',
+			select: [
+				"COALESCE(AVG(CASE WHEN show_outcome = 'won' THEN 1.0 ELSE 0.0 END) * 100, 0) as value"
+			]
+		},
+		unit: 'percent' as const
+	},
+
+	'booking_to_close_assigned': {
+		name: 'Booking to Close (Assigned)',
+		description: 'Percentage of appointments that converted to sales (won outcomes) - attributed to assigned sales rep',
+		breakdownType: 'total' as const,
+		query: {
+			table: 'appointments',
+			select: [
+				"COALESCE(AVG(CASE WHEN show_outcome = 'won' THEN 1.0 ELSE 0.0 END) * 100, 0) as value"
+			]
+		},
+		unit: 'percent' as const,
+		attributionContext: 'assigned' as const
+	},
+
+	'booking_to_close_booked': {
+		name: 'Booking to Close (Booked)',
+		description: 'Percentage of appointments that converted to sales (won outcomes) - attributed to setter who booked it',
+		breakdownType: 'total' as const,
+		query: {
+			table: 'appointments',
+			select: [
+				"COALESCE(AVG(CASE WHEN show_outcome = 'won' THEN 1.0 ELSE 0.0 END) * 100, 0) as value"
+			]
+		},
+		unit: 'percent' as const,
+		attributionContext: 'booked' as const
+	},
+
+	'booking_to_close_reps': {
+		name: 'Booking to Close (by Rep)',
+		description: 'Percentage of appointments that converted to sales, grouped by sales rep',
+		breakdownType: 'rep' as const,
+		query: {
+			table: 'appointments',
+			select: [
+				'sales_rep_user_id as rep_id',
+				'profiles.full_name as rep_name',
+				"COALESCE(AVG(CASE WHEN show_outcome = 'won' THEN 1.0 ELSE 0.0 END) * 100, 0) as value"
+			],
+			joins: [
+				{
+					table: 'profiles',
+					on: 'appointments.sales_rep_user_id = profiles.id',
+					type: 'LEFT'
+				}
+			],
+			groupBy: ['sales_rep_user_id', 'profiles.full_name'],
+			having: ['COUNT(*) > 0'],
+			orderBy: ['value DESC']
+		},
+		unit: 'percent' as const
+	},
+
+	'booking_to_close_setters': {
+		name: 'Booking to Close (by Setter)',
+		description: 'Percentage of appointments that converted to sales, grouped by setter',
+		breakdownType: 'setter' as const,
+		query: {
+			table: 'appointments',
+			select: [
+				'setter_user_id as setter_id',
+				'profiles.full_name as setter_name',
+				"COALESCE(AVG(CASE WHEN show_outcome = 'won' THEN 1.0 ELSE 0.0 END) * 100, 0) as value"
+			],
+			joins: [
+				{
+					table: 'profiles',
+					on: 'appointments.setter_user_id = profiles.id',
+					type: 'LEFT'
+				}
+			],
+			groupBy: ['setter_user_id', 'profiles.full_name'],
+			having: ['COUNT(*) > 0'],
+			orderBy: ['value DESC']
+		},
+		unit: 'percent' as const
+	},
+
+	'booking_to_close_link': {
+		name: 'Booking to Close (Setter→Rep Links)',
+		description: 'Percentage of appointments that converted to sales, showing setter to rep relationships',
+		breakdownType: 'link' as const,
+		query: {
+			table: 'appointments',
+			select: [
+				'setter_user_id as setter_id',
+				'setter_profiles.full_name as setter_name',
+				'sales_rep_user_id as rep_id',
+				'rep_profiles.full_name as rep_name',
+				"COALESCE(AVG(CASE WHEN show_outcome = 'won' THEN 1.0 ELSE 0.0 END) * 100, 0) as value"
+			],
+			joins: [
+				{
+					table: 'profiles setter_profiles',
+					on: 'appointments.setter_user_id = setter_profiles.id',
+					type: 'LEFT'
+				},
+				{
+					table: 'profiles rep_profiles',
+					on: 'appointments.sales_rep_user_id = rep_profiles.id',
+					type: 'LEFT'
+				}
+			],
+			groupBy: ['setter_user_id', 'setter_profiles.full_name', 'sales_rep_user_id', 'rep_profiles.full_name'],
+			having: ['COUNT(*) > 0'],
+			orderBy: ['value DESC']
+		},
+		unit: 'percent' as const
+	},
+
 	// === DIALS METRICS ===
 	'total_dials': {
 		name: 'Total Dials',
@@ -364,7 +488,7 @@ const BASE_METRICS = {
 		query: {
 			table: 'dials',
 			select: [
-				'CASE WHEN SUM(CASE WHEN (booked = true OR linked_appointment_id IS NOT NULL) THEN 1 ELSE 0 END) > 0 THEN ROUND(COUNT(*)::DECIMAL / SUM(CASE WHEN (booked = true OR linked_appointment_id IS NOT NULL) THEN 1 ELSE 0 END), 1) ELSE 0 END as value'
+				'CASE WHEN SUM(CASE WHEN (booked = true OR booked_appointment_id IS NOT NULL) THEN 1 ELSE 0 END) > 0 THEN ROUND(COUNT(*)::DECIMAL / SUM(CASE WHEN (booked = true OR booked_appointment_id IS NOT NULL) THEN 1 ELSE 0 END), 1) ELSE 0 END as value'
 			]
 		},
 		unit: 'count' as const
@@ -377,7 +501,7 @@ const BASE_METRICS = {
 		query: {
 			table: 'dials',
 			select: [
-				'CASE WHEN SUM(CASE WHEN (booked = true OR linked_appointment_id IS NOT NULL) THEN 1 ELSE 0 END) > 0 THEN ROUND(COUNT(*)::DECIMAL / SUM(CASE WHEN (booked = true OR linked_appointment_id IS NOT NULL) THEN 1 ELSE 0 END), 1) ELSE 0 END as value'
+				'CASE WHEN SUM(CASE WHEN (booked = true OR booked_appointment_id IS NOT NULL) THEN 1 ELSE 0 END) > 0 THEN ROUND(COUNT(*)::DECIMAL / SUM(CASE WHEN (booked = true OR booked_appointment_id IS NOT NULL) THEN 1 ELSE 0 END), 1) ELSE 0 END as value'
 			]
 		},
 		unit: 'count' as const,
@@ -391,7 +515,7 @@ const BASE_METRICS = {
 		query: {
 			table: 'dials',
 			select: [
-				'CASE WHEN SUM(CASE WHEN (booked = true OR linked_appointment_id IS NOT NULL) THEN 1 ELSE 0 END) > 0 THEN ROUND(COUNT(*)::DECIMAL / SUM(CASE WHEN (booked = true OR linked_appointment_id IS NOT NULL) THEN 1 ELSE 0 END), 1) ELSE 0 END as value'
+				'CASE WHEN SUM(CASE WHEN (booked = true OR booked_appointment_id IS NOT NULL) THEN 1 ELSE 0 END) > 0 THEN ROUND(COUNT(*)::DECIMAL / SUM(CASE WHEN (booked = true OR booked_appointment_id IS NOT NULL) THEN 1 ELSE 0 END), 1) ELSE 0 END as value'
 			]
 		},
 		unit: 'count' as const,
@@ -408,7 +532,7 @@ const BASE_METRICS = {
 			select: [
 				'sales_rep_user_id as rep_id',
 				'profiles.full_name as rep_name',
-				'CASE WHEN SUM(CASE WHEN (booked = true OR linked_appointment_id IS NOT NULL) THEN 1 ELSE 0 END) > 0 THEN ROUND(COUNT(*)::DECIMAL / SUM(CASE WHEN (booked = true OR linked_appointment_id IS NOT NULL) THEN 1 ELSE 0 END), 1) ELSE 0 END as value'
+				'CASE WHEN SUM(CASE WHEN (booked = true OR booked_appointment_id IS NOT NULL) THEN 1 ELSE 0 END) > 0 THEN ROUND(COUNT(*)::DECIMAL / SUM(CASE WHEN (booked = true OR booked_appointment_id IS NOT NULL) THEN 1 ELSE 0 END), 1) ELSE 0 END as value'
 			],
 			joins: [
 				{
@@ -433,7 +557,7 @@ const BASE_METRICS = {
 			select: [
 				'setter_user_id as setter_id',
 				'profiles.full_name as setter_name',
-				'CASE WHEN SUM(CASE WHEN (booked = true OR linked_appointment_id IS NOT NULL) THEN 1 ELSE 0 END) > 0 THEN ROUND(COUNT(*)::DECIMAL / SUM(CASE WHEN (booked = true OR linked_appointment_id IS NOT NULL) THEN 1 ELSE 0 END), 1) ELSE 0 END as value'
+				'CASE WHEN SUM(CASE WHEN (booked = true OR booked_appointment_id IS NOT NULL) THEN 1 ELSE 0 END) > 0 THEN ROUND(COUNT(*)::DECIMAL / SUM(CASE WHEN (booked = true OR booked_appointment_id IS NOT NULL) THEN 1 ELSE 0 END), 1) ELSE 0 END as value'
 			],
 			joins: [
 				{
@@ -460,7 +584,7 @@ const BASE_METRICS = {
 				'setter_profiles.full_name as setter_name',
 				'sales_rep_user_id as rep_id',
 				'rep_profiles.full_name as rep_name',
-				'CASE WHEN SUM(CASE WHEN (booked = true OR linked_appointment_id IS NOT NULL) THEN 1 ELSE 0 END) > 0 THEN ROUND(COUNT(*)::DECIMAL / SUM(CASE WHEN (booked = true OR linked_appointment_id IS NOT NULL) THEN 1 ELSE 0 END), 1) ELSE 0 END as value'
+				'CASE WHEN SUM(CASE WHEN (booked = true OR booked_appointment_id IS NOT NULL) THEN 1 ELSE 0 END) > 0 THEN ROUND(COUNT(*)::DECIMAL / SUM(CASE WHEN (booked = true OR booked_appointment_id IS NOT NULL) THEN 1 ELSE 0 END), 1) ELSE 0 END as value'
 			],
 			joins: [
 				{
