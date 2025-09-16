@@ -31,6 +31,17 @@ const METRIC_CATEGORIES = {
     "cash_per_appointment",
     "cash_per_dial"
   ],
+  "Marketing & ROI": [
+    "ad_spend",
+    "ad_spend_assigned", 
+    "ad_spend_booked",
+    "cost_per_booked_call",
+    "cost_per_booked_call_assigned",
+    "cost_per_booked_call_booked",
+    "roi",
+    "roi_assigned",
+    "roi_booked"
+  ],
   "Dials": [
     "total_dials",
     "answers_dials",

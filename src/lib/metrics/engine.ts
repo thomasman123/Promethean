@@ -33,7 +33,7 @@ export class MetricsEngine {
       }
 
       // Get metric definition
-      metric = getMetric(request.metricName)
+      metric = getMetric(request.metricName) || null
       if (!metric) {
         throw new Error(`Metric '${request.metricName}' not found`)
       }
@@ -153,6 +153,16 @@ export class MetricsEngine {
       } else {
         return this.buildSpeedToLeadSQL(appliedFilters, 'average', options)
       }
+    }
+
+    // Handle ROI calculation (Cash collected / Ad spend)
+    if (metric.name?.startsWith('ROI')) {
+      return this.buildROISQL(appliedFilters, metric, options)
+    }
+
+    // Handle Cost Per Booked Call calculation (Ad spend / Total appointments)
+    if (metric.name?.startsWith('Cost Per Booked Call')) {
+      return this.buildCostPerBookedCallSQL(appliedFilters, metric, options)
     }
     
     // Build SELECT clause
@@ -423,6 +433,80 @@ WHERE speed_to_lead_seconds IS NOT NULL
     
     return sql.trim()
   }
+
+     /**
+    * Special SQL builder for ROI calculation (Cash collected / Ad spend)
+    */
+   private buildROISQL(appliedFilters: any, metric: MetricDefinition, options?: any): string {
+     // ROI = (Cash Collected / Ad Spend) * 100 for percentage
+     // We need to join appointments and meta_ad_performance tables
+     
+     const whereClause = buildWhereClause(appliedFilters, [])
+     
+     return `
+       WITH cash_data AS (
+         SELECT 
+           account_id,
+           COALESCE(SUM(cash_collected), 0) as total_cash
+         FROM appointments
+         ${whereClause}
+         GROUP BY account_id
+       ),
+       spend_data AS (
+         SELECT 
+           account_id,
+           COALESCE(SUM(spend), 0) as total_spend
+         FROM meta_ad_performance
+         ${whereClause.replace('appointments.', 'meta_ad_performance.')}
+         GROUP BY account_id
+       )
+       SELECT 
+         CASE 
+           WHEN spend_data.total_spend > 0 
+           THEN ROUND((cash_data.total_cash / spend_data.total_spend) * 100, 2)
+           ELSE 0 
+         END as value
+       FROM cash_data
+       FULL OUTER JOIN spend_data ON cash_data.account_id = spend_data.account_id
+     `.trim()
+   }
+
+     /**
+    * Special SQL builder for Cost Per Booked Call calculation (Ad spend / Total appointments)
+    */
+   private buildCostPerBookedCallSQL(appliedFilters: any, metric: MetricDefinition, options?: any): string {
+     // Cost Per Booked Call = Total Ad Spend / Total Appointments
+     // We need to join appointments and meta_ad_performance tables
+     
+     const whereClause = buildWhereClause(appliedFilters, [])
+     
+     return `
+       WITH appointment_data AS (
+         SELECT 
+           account_id,
+           COUNT(*) as total_appointments
+         FROM appointments
+         ${whereClause}
+         GROUP BY account_id
+       ),
+       spend_data AS (
+         SELECT 
+           account_id,
+           COALESCE(SUM(spend), 0) as total_spend
+         FROM meta_ad_performance
+         ${whereClause.replace('appointments.', 'meta_ad_performance.')}
+         GROUP BY account_id
+       )
+       SELECT 
+         CASE 
+           WHEN appointment_data.total_appointments > 0 
+           THEN ROUND(spend_data.total_spend / appointment_data.total_appointments, 2)
+           ELSE 0 
+         END as value
+       FROM appointment_data
+       FULL OUTER JOIN spend_data ON appointment_data.account_id = spend_data.account_id
+     `.trim()
+   }
 
   /**
    * Determine time aggregation level based on date range

@@ -204,6 +204,118 @@ const BASE_METRICS = {
 		unit: 'currency' as const
 	},
 
+	// === META ADS & ROI METRICS ===
+	'ad_spend': {
+		name: 'Ad Spend',
+		description: 'Total amount spent on Meta ads for the period',
+		breakdownType: 'total' as const,
+		query: {
+			table: 'meta_ad_performance',
+			select: ['COALESCE(SUM(spend), 0) as value']
+		},
+		unit: 'currency' as const
+	},
+
+	'ad_spend_assigned': {
+		name: 'Ad Spend (Assigned)',
+		description: 'Total amount spent on Meta ads for the period - attributed to assigned sales rep',
+		breakdownType: 'total' as const,
+		query: {
+			table: 'meta_ad_performance',
+			select: ['COALESCE(SUM(spend), 0) as value']
+		},
+		unit: 'currency' as const,
+		attributionContext: 'assigned' as const
+	},
+
+	'ad_spend_booked': {
+		name: 'Ad Spend (Booked)',
+		description: 'Total amount spent on Meta ads for the period - attributed to setter who booked it',
+		breakdownType: 'total' as const,
+		query: {
+			table: 'meta_ad_performance',
+			select: ['COALESCE(SUM(spend), 0) as value']
+		},
+		unit: 'currency' as const,
+		attributionContext: 'booked' as const
+	},
+
+	'cost_per_booked_call': {
+		name: 'Cost Per Booked Call',
+		description: 'Total ad spend divided by total appointments for the period',
+		breakdownType: 'total' as const,
+		query: {
+			table: 'meta_ad_performance',
+			select: ['0 as value'] // This will be calculated via cross-table calculation in engine
+		},
+		unit: 'currency' as const,
+		isSpecialMetric: true
+	},
+
+	'cost_per_booked_call_assigned': {
+		name: 'Cost Per Booked Call (Assigned)',
+		description: 'Total ad spend divided by total appointments for the period - attributed to assigned sales rep',
+		breakdownType: 'total' as const,
+		query: {
+			table: 'meta_ad_performance',
+			select: ['0 as value'] // This will be calculated via cross-table calculation in engine
+		},
+		unit: 'currency' as const,
+		attributionContext: 'assigned' as const,
+		isSpecialMetric: true
+	},
+
+	'cost_per_booked_call_booked': {
+		name: 'Cost Per Booked Call (Booked)',
+		description: 'Total ad spend divided by total appointments for the period - attributed to setter who booked it',
+		breakdownType: 'total' as const,
+		query: {
+			table: 'meta_ad_performance',
+			select: ['0 as value'] // This will be calculated via cross-table calculation in engine
+		},
+		unit: 'currency' as const,
+		attributionContext: 'booked' as const,
+		isSpecialMetric: true
+	},
+
+	'roi': {
+		name: 'ROI',
+		description: 'Return on Investment: Cash collected divided by ad spend',
+		breakdownType: 'total' as const,
+		query: {
+			table: 'appointments',
+			select: ['0 as value'] // This will be calculated via cross-table calculation in engine
+		},
+		unit: 'percent' as const,
+		isSpecialMetric: true
+	},
+
+	'roi_assigned': {
+		name: 'ROI (Assigned)',
+		description: 'Return on Investment: Cash collected divided by ad spend - attributed to assigned sales rep',
+		breakdownType: 'total' as const,
+		query: {
+			table: 'appointments',
+			select: ['0 as value'] // This will be calculated via cross-table calculation in engine
+		},
+		unit: 'percent' as const,
+		attributionContext: 'assigned' as const,
+		isSpecialMetric: true
+	},
+
+	'roi_booked': {
+		name: 'ROI (Booked)',
+		description: 'Return on Investment: Cash collected divided by ad spend - attributed to setter who booked it',
+		breakdownType: 'total' as const,
+		query: {
+			table: 'appointments',
+			select: ['0 as value'] // This will be calculated via cross-table calculation in engine
+		},
+		unit: 'percent' as const,
+		attributionContext: 'booked' as const,
+		isSpecialMetric: true
+	},
+
 	// === SPEED TO LEAD METRIC ===
 	'speed_to_lead': {
 		name: 'Speed to Lead',
