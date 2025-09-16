@@ -25,7 +25,6 @@ import { SnapGuides, snapToGuides } from '@/components/playground/snap-guides'
 import { useUndoRedo } from '@/hooks/use-undo-redo'
 import { AutosaveStatus } from '@/components/playground/autosave-status'
 import { TopBar } from '@/components/layout/topbar'
-import { ContactBackfillButton } from '@/components/playground/contact-backfill-button'
 
 interface Page {
   id: string
@@ -454,12 +453,6 @@ export default function PlaygroundPage() {
                       {page.name}
                     </button>
                   ))}
-                </div>
-
-                {/* Admin Tools Section */}
-                <div className="border-t p-4">
-                  <h4 className="font-medium text-sm mb-3 text-muted-foreground">Admin Tools</h4>
-                  <ContactBackfillButton />
                 </div>
               </>
             )}

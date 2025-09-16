@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast"
 import { useDashboard } from "@/lib/dashboard-context"
 import { useEffectiveUser } from "@/hooks/use-effective-user"
 import { Settings, AlertCircle, Loader2, Globe, Save, RefreshCw } from "lucide-react"
+import { ContactSyncTools } from "@/components/account/contact-sync-tools"
 
 // Simple timezone list
 const TIMEZONES = [
@@ -261,6 +262,9 @@ export default function AccountSettingsPage() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Contact Sync Tools */}
+          <ContactSyncTools accountId={selectedAccountId} />
         </div>
       </main>
     </div>
