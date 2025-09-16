@@ -140,6 +140,19 @@ const BASE_METRICS = {
 		unit: 'percent' as const
 	},
 
+	'show_up_rate': {
+		name: 'Show Up Rate',
+		description: 'Percentage of appointments where contacts showed up',
+		breakdownType: 'total' as const,
+		query: {
+			table: 'appointments',
+			select: [
+				"COALESCE(AVG(CASE WHEN LOWER(call_outcome) = 'show' THEN 1.0 ELSE 0.0 END), 0) as value"
+			]
+		},
+		unit: 'percent' as const
+	},
+
 	// === DIALS METRICS ===
 	'total_dials': {
 		name: 'Total Dials',
