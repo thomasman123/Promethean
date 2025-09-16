@@ -162,9 +162,8 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // Create clean display value without role suffixes
-      // Note: Formatting is now handled in the frontend based on column type
-      let displayValue = metricResult.value.toString()
+      // Use formatted displayValue from UserMetricsEngine if available, otherwise fallback to raw value
+      let displayValue = metricResult.displayValue || metricResult.value.toString()
 
       return {
         userId: profile.id,
