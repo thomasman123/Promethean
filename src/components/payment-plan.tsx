@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, useCallback } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -9,12 +9,20 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { Badge } from "@/components/ui/badge";
-import { AlertCircle, Calendar, DollarSign, Plus, Trash2, Check, CreditCard, Clock, TrendingUp } from "lucide-react";
+import { AlertCircle, Plus, Trash2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
 import { useAccountTimezone } from "@/hooks/use-account-timezone";
 import { useDashboard } from "@/lib/dashboard-context";
 import { useToast } from "@/hooks/use-toast";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 interface PaymentRow {
 	id?: string;
@@ -55,7 +63,7 @@ export function PaymentPlan({ appointmentId, totalSalesValue, cashCollected, onP
 	// Otherwise use the actual payments data
 	const actualCollected = rows.length === 0 ? cashCollected : collected;
 	const remaining = Math.max(0, Number(totalSalesValue || 0) - Number(actualCollected || 0));
-	const isComplete = remaining === 0;
+	const isComplete = remaining === 0 && totalSalesValue > 0;
 
 	// Calculate total scheduled to check if we can add more payments
 	const totalScheduled = rows.reduce((sum, row) => sum + (Number(row.amount) || 0), 0);
@@ -139,7 +147,7 @@ export function PaymentPlan({ appointmentId, totalSalesValue, cashCollected, onP
 		if (!canAddMorePayments) {
 			toast({
 				title: "Cannot Add Payment",
-				description: `Total scheduled payments (${totalScheduled.toFixed(2)}) would exceed total sales value.`,
+				description: `Total scheduled payments would exceed total sales value.`,
 				variant: "destructive"
 			});
 			return;
@@ -263,343 +271,162 @@ export function PaymentPlan({ appointmentId, totalSalesValue, cashCollected, onP
 
 	if (loading) {
 		return (
-			<Card className="w-full">
-				<CardHeader className="pb-4">
-					<div className="flex items-center gap-3">
-						<div className="p-2 bg-blue-100 rounded-lg">
-							<CreditCard className="h-5 w-5 text-blue-600" />
-						</div>
-						<div>
-							<CardTitle className="text-lg">Payment Plan</CardTitle>
-							<CardDescription>Loading payment schedule...</CardDescription>
-						</div>
-					</div>
+			<Card>
+				<CardHeader>
+					<CardTitle>Payment Plan</CardTitle>
 				</CardHeader>
 				<CardContent>
 					<div className="animate-pulse space-y-4">
-						<div className="grid grid-cols-3 gap-4">
-							<div className="h-16 bg-gray-200 rounded-lg"></div>
-							<div className="h-16 bg-gray-200 rounded-lg"></div>
-							<div className="h-16 bg-gray-200 rounded-lg"></div>
-						</div>
-						<div className="h-32 bg-gray-200 rounded-lg"></div>
+						<div className="h-4 bg-muted rounded w-1/4"></div>
+						<div className="h-4 bg-muted rounded w-1/2"></div>
+						<div className="h-4 bg-muted rounded w-3/4"></div>
 					</div>
 				</CardContent>
 			</Card>
 		);
 	}
 
-	const progressPercentage = totalSalesValue > 0 ? (actualCollected / totalSalesValue) * 100 : 0;
-
 	return (
-		<Card className="w-full">
-			<CardHeader className="pb-4">
-				<div className="flex items-center justify-between">
-					<div className="flex items-center gap-3">
-						<div className="p-2 bg-blue-100 rounded-lg">
-							<CreditCard className="h-5 w-5 text-blue-600" />
-						</div>
-						<div>
-							<CardTitle className="text-lg flex items-center gap-2">
-								Payment Plan
-								{isComplete && (
-									<Badge className="bg-green-100 text-green-700 hover:bg-green-100">
-										<Check className="h-3 w-3 mr-1" />
-										Complete
-									</Badge>
-								)}
-							</CardTitle>
-							<CardDescription>Track payment schedule and collection progress</CardDescription>
-						</div>
-					</div>
-					<div className="text-right">
-						<div className="text-2xl font-bold text-gray-900">
-							{progressPercentage.toFixed(0)}%
-						</div>
-						<div className="text-sm text-gray-500">Collected</div>
-					</div>
-				</div>
-
-				{/* Progress Bar */}
-				<div className="mt-4">
-					<div className="flex justify-between text-sm text-gray-600 mb-2">
-						<span>Collection Progress</span>
-						<span>${actualCollected.toFixed(2)} of ${totalSalesValue.toFixed(2)}</span>
-					</div>
-					<div className="w-full bg-gray-200 rounded-full h-3">
-						<div 
-							className={cn(
-								"h-3 rounded-full transition-all duration-500",
-								isComplete ? "bg-green-500" : "bg-blue-500"
-							)}
-							style={{ width: `${Math.min(progressPercentage, 100)}%` }}
-						/>
-					</div>
-				</div>
+		<Card>
+			<CardHeader>
+				<CardTitle>Payment Plan</CardTitle>
 			</CardHeader>
-
 			<CardContent className="space-y-6">
-				{/* Summary Stats */}
-				<div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-					<div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
-						<div className="flex items-center gap-3">
-							<div className="p-2 bg-blue-100 rounded-lg">
-								<TrendingUp className="h-4 w-4 text-blue-600" />
-							</div>
-							<div>
-								<div className="text-xs font-medium text-gray-600 uppercase tracking-wide">Total Value</div>
-								<div className="text-xl font-bold text-gray-900">${totalSalesValue.toFixed(2)}</div>
-							</div>
-						</div>
+				{/* Summary */}
+				<div className="grid grid-cols-3 gap-4">
+					<div>
+						<p className="text-sm text-muted-foreground">Total Value</p>
+						<p className="text-2xl font-semibold">${totalSalesValue.toFixed(2)}</p>
 					</div>
-
-					<div className="bg-green-50 rounded-xl p-4 border border-green-200">
-						<div className="flex items-center gap-3">
-							<div className="p-2 bg-green-100 rounded-lg">
-								<Check className="h-4 w-4 text-green-600" />
-							</div>
-							<div>
-								<div className="text-xs font-medium text-green-700 uppercase tracking-wide">Collected</div>
-								<div className="text-xl font-bold text-green-800">${actualCollected.toFixed(2)}</div>
-							</div>
-						</div>
+					<div>
+						<p className="text-sm text-muted-foreground">Collected</p>
+						<p className="text-2xl font-semibold">${actualCollected.toFixed(2)}</p>
 					</div>
-
-					<div className={cn(
-						"rounded-xl p-4 border",
-						remaining > 0 
-							? "bg-amber-50 border-amber-200" 
-							: "bg-green-50 border-green-200"
-					)}>
-						<div className="flex items-center gap-3">
-							<div className={cn(
-								"p-2 rounded-lg",
-								remaining > 0 ? "bg-amber-100" : "bg-green-100"
-							)}>
-								<Clock className={cn(
-									"h-4 w-4",
-									remaining > 0 ? "text-amber-600" : "text-green-600"
-								)} />
-							</div>
-							<div>
-								<div className={cn(
-									"text-xs font-medium uppercase tracking-wide",
-									remaining > 0 ? "text-amber-700" : "text-green-700"
-								)}>
-									Remaining
-								</div>
-								<div className={cn(
-									"text-xl font-bold",
-									remaining > 0 ? "text-amber-800" : "text-green-800"
-								)}>
-									${remaining.toFixed(2)}
-								</div>
-							</div>
-						</div>
-					</div>
-
-					<div className="bg-purple-50 rounded-xl p-4 border border-purple-200">
-						<div className="flex items-center gap-3">
-							<div className="p-2 bg-purple-100 rounded-lg">
-								<Calendar className="h-4 w-4 text-purple-600" />
-							</div>
-							<div>
-								<div className="text-xs font-medium text-purple-700 uppercase tracking-wide">Payments</div>
-								<div className="text-xl font-bold text-purple-800">{rows.length}</div>
-							</div>
-						</div>
+					<div>
+						<p className="text-sm text-muted-foreground">Remaining</p>
+						<p className={cn(
+							"text-2xl font-semibold",
+							remaining > 0 ? "text-destructive" : "text-green-600"
+						)}>
+							${remaining.toFixed(2)}
+						</p>
 					</div>
 				</div>
+
+				{isComplete && (
+					<Badge variant="default" className="w-fit">
+						Payment Plan Complete
+					</Badge>
+				)}
 
 				{remaining > 0 && (
-					<Alert className="border-amber-200 bg-amber-50">
-						<AlertCircle className="h-4 w-4 text-amber-600" />
-						<AlertDescription className="text-amber-800">
-							<strong>${remaining.toFixed(2)} remaining to collect.</strong> Add payment installments below to complete the plan.
+					<Alert>
+						<AlertCircle className="h-4 w-4" />
+						<AlertDescription>
+							${remaining.toFixed(2)} remaining to be collected.
 						</AlertDescription>
 					</Alert>
 				)}
 
 				<Separator />
 
-				{/* Payment Schedule Section */}
+				{/* Payment Schedule */}
 				<div className="space-y-4">
 					<div className="flex items-center justify-between">
-						<h3 className="text-lg font-semibold flex items-center gap-2">
-							<Calendar className="h-5 w-5 text-gray-600" />
-							Payment Schedule
-						</h3>
+						<h3 className="text-lg font-semibold">Payment Schedule</h3>
 						<Button 
 							onClick={addRow} 
 							disabled={!canAddMorePayments}
-							className="gap-2 bg-blue-600 hover:bg-blue-700"
+							size="sm"
 						>
-							<Plus className="h-4 w-4" />
+							<Plus className="h-4 w-4 mr-2" />
 							Add Payment
 						</Button>
 					</div>
 
-					{!canAddMorePayments && totalScheduled >= totalSalesValue && (
-						<Alert className="border-red-200 bg-red-50">
-							<AlertCircle className="h-4 w-4 text-red-600" />
-							<AlertDescription className="text-red-800">
-								Cannot add more payments. Total scheduled (${totalScheduled.toFixed(2)}) equals or exceeds total sales value.
-							</AlertDescription>
-						</Alert>
-					)}
-
 					{rows.length === 0 ? (
-						<div className="text-center py-12 bg-gray-50 rounded-xl border-2 border-dashed border-gray-300">
-							<div className="p-3 bg-gray-200 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-								<Calendar className="h-8 w-8 text-gray-400" />
-							</div>
-							<h4 className="text-lg font-medium text-gray-900 mb-2">No payments scheduled</h4>
-							<p className="text-gray-600 mb-4">Create your first payment installment to get started</p>
-							<Button onClick={addRow} className="gap-2">
-								<Plus className="h-4 w-4" />
-								Add First Payment
-							</Button>
+						<div className="text-center py-8 text-muted-foreground">
+							<p>No payments scheduled</p>
+							<p className="text-sm mt-2">Click "Add Payment" to create a payment schedule</p>
 						</div>
 					) : (
-						<div className="space-y-3">
-							{rows.map((row, idx) => (
-								<div key={row.id || idx} className={cn(
-									"rounded-xl border-2 p-5 transition-all duration-200",
-									row.paid 
-										? "bg-green-50 border-green-200 shadow-sm" 
-										: "bg-white border-gray-200 hover:border-gray-300 hover:shadow-sm",
-									saving === row.id || saving === `new-${idx}` ? "opacity-50 pointer-events-none" : ""
-								)}>
-									<div className="grid grid-cols-1 lg:grid-cols-6 gap-6 items-end">
-										{/* Due Date */}
-										<div className="lg:col-span-2 space-y-2">
-											<Label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-												<Calendar className="h-4 w-4" />
-												Due Date
-											</Label>
+						<Table>
+							<TableHeader>
+								<TableRow>
+									<TableHead>Due Date</TableHead>
+									<TableHead>Amount</TableHead>
+									<TableHead>Status</TableHead>
+									<TableHead className="w-[100px]">Actions</TableHead>
+								</TableRow>
+							</TableHeader>
+							<TableBody>
+								{rows.map((row, idx) => (
+									<TableRow key={row.id || idx}>
+										<TableCell>
 											<DateTimePicker
 												value={row.payment_date}
 												onChange={(date) => date && updateRow(idx, { payment_date: date })}
 												placeholder="Select date"
-												className="w-full"
 											/>
-										</div>
-										
-										{/* Amount */}
-										<div className="space-y-2">
-											<Label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-												<DollarSign className="h-4 w-4" />
-												Amount
-											</Label>
-											<div className="relative">
-												<span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium">$</span>
+										</TableCell>
+										<TableCell>
+											<div className="flex items-center gap-2">
+												<span className="text-muted-foreground">$</span>
 												<Input
 													type="number"
 													step="0.01"
 													value={row.amount}
 													onChange={(e) => updateRow(idx, { amount: e.target.value })}
-													className="pl-8 text-lg font-semibold"
+													className="w-32"
 													placeholder="0.00"
+													disabled={saving === row.id || saving === `new-${idx}`}
 												/>
 											</div>
-										</div>
-
-										{/* Status */}
-										<div className="space-y-2">
-											<Label className="text-sm font-semibold text-gray-700">Status</Label>
-											<div className="flex items-center space-x-3">
+										</TableCell>
+										<TableCell>
+											<div className="flex items-center space-x-2">
 												<Checkbox
 													id={`paid-${idx}`}
 													checked={row.paid}
 													onCheckedChange={(checked) => updateRow(idx, { paid: !!checked })}
-													className="h-5 w-5"
+													disabled={saving === row.id || saving === `new-${idx}`}
 												/>
 												<Label htmlFor={`paid-${idx}`} className="cursor-pointer">
 													{row.paid ? (
-														<Badge className="bg-green-100 text-green-800 hover:bg-green-100 px-3 py-1">
-															<Check className="h-3 w-3 mr-1" />
-															Paid
-														</Badge>
+														<Badge variant="default">Paid</Badge>
 													) : (
-														<Badge variant="outline" className="px-3 py-1 border-gray-300">
-															<Clock className="h-3 w-3 mr-1" />
-															Pending
-														</Badge>
+														<Badge variant="outline">Pending</Badge>
 													)}
 												</Label>
 											</div>
-										</div>
-
-										{/* Payment Info */}
-										<div className="space-y-2">
-											<Label className="text-sm font-semibold text-gray-700">Info</Label>
-											<div className="text-sm text-gray-600">
-												{row.paid ? (
-													<span className="text-green-700 font-medium">✓ Collected</span>
-												) : (
-													<span>Due {formatDate(row.payment_date)}</span>
-												)}
-											</div>
-										</div>
-
-										{/* Actions */}
-										<div className="space-y-2">
-											<Label className="text-sm font-semibold text-gray-700">Actions</Label>
+										</TableCell>
+										<TableCell>
 											<Button
-												variant="outline"
+												variant="ghost"
 												size="sm"
 												onClick={() => deleteRow(idx)}
-												className="w-full gap-2 text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
+												disabled={saving === row.id || saving === `new-${idx}`}
 											>
 												<Trash2 className="h-4 w-4" />
-												Remove
 											</Button>
-										</div>
-									</div>
-
-									{saving === row.id || saving === `new-${idx}` ? (
-										<div className="mt-3 text-sm text-blue-600 flex items-center gap-2">
-											<div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-											Saving changes...
-										</div>
-									) : null}
-								</div>
-							))}
-						</div>
+										</TableCell>
+									</TableRow>
+								))}
+							</TableBody>
+						</Table>
 					)}
 				</div>
 
-				{/* Summary Footer */}
+				{/* Footer Summary */}
 				{rows.length > 0 && (
-					<div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
-						<div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-							<div>
-								<div className="text-sm text-gray-600">Total Scheduled</div>
-								<div className="text-lg font-bold text-gray-900">
-									${totalScheduled.toFixed(2)}
-								</div>
-							</div>
-							<div>
-								<div className="text-sm text-gray-600">Total Paid</div>
-								<div className="text-lg font-bold text-green-700">
-									${actualCollected.toFixed(2)}
-								</div>
-							</div>
-							<div>
-								<div className="text-sm text-gray-600">Remaining</div>
-								<div className={cn(
-									"text-lg font-bold",
-									remaining > 0 ? "text-amber-700" : "text-green-700"
-								)}>
-									${remaining.toFixed(2)}
-								</div>
-							</div>
-							<div>
-								<div className="text-sm text-gray-600">Progress</div>
-								<div className="text-lg font-bold text-blue-700">
-									{progressPercentage.toFixed(0)}%
-								</div>
-							</div>
+					<div className="pt-4 border-t space-y-2">
+						<div className="flex justify-between text-sm">
+							<span className="text-muted-foreground">Total Scheduled</span>
+							<span className="font-medium">${totalScheduled.toFixed(2)}</span>
+						</div>
+						<div className="flex justify-between text-sm">
+							<span className="text-muted-foreground">Total Paid</span>
+							<span className="font-medium">${actualCollected.toFixed(2)}</span>
 						</div>
 					</div>
 				)}

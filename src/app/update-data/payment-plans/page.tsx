@@ -342,7 +342,7 @@ export default function PaymentPlansPage() {
 
   const getStatusBadge = (plan: PaymentPlanData) => {
     if (plan.remainingBalance <= 0) {
-      return <Badge variant="default" className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">
+      return <Badge variant="default">
         <CheckCircle2 className="h-3 w-3 mr-1" />
         Complete
       </Badge>
@@ -353,7 +353,7 @@ export default function PaymentPlansPage() {
         Overdue ({plan.overduePayments})
       </Badge>
     }
-    return <Badge variant="outline" className="text-slate-600">
+    return <Badge variant="outline">
       <Clock className="h-3 w-3 mr-1" />
       Active
     </Badge>
@@ -368,8 +368,8 @@ export default function PaymentPlansPage() {
     const isUpcoming = isAfter(dueDate, now) && isBefore(dueDate, addDays(now, 7))
 
     let className = "text-muted-foreground"
-    if (isOverdue) className = "text-red-600 font-medium"
-    else if (isUpcoming) className = "text-orange-600 font-medium"
+    if (isOverdue) className = "text-destructive font-medium"
+    else if (isUpcoming) className = "text-foreground font-medium"
 
     return (
       <span className={className}>
@@ -462,40 +462,40 @@ export default function PaymentPlansPage() {
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Total Paid</CardTitle>
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                  <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-emerald-700">${summary.totalPaid.toFixed(2)}</div>
+                  <div className="text-2xl font-bold">${summary.totalPaid.toFixed(2)}</div>
                 </CardContent>
               </Card>
 
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Remaining</CardTitle>
-                  <Clock className="h-4 w-4 text-amber-600" />
+                  <Clock className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-amber-700">${summary.totalRemaining.toFixed(2)}</div>
+                  <div className="text-2xl font-bold">${summary.totalRemaining.toFixed(2)}</div>
                 </CardContent>
               </Card>
 
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Overdue</CardTitle>
-                  <AlertTriangle className="h-4 w-4 text-red-600" />
+                  <AlertTriangle className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-red-600">{summary.overdueCount}</div>
+                  <div className="text-2xl font-bold">{summary.overdueCount}</div>
                 </CardContent>
               </Card>
 
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Completed</CardTitle>
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                  <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-emerald-700">{summary.completedCount}</div>
+                  <div className="text-2xl font-bold">{summary.completedCount}</div>
                 </CardContent>
               </Card>
             </div>
@@ -589,10 +589,10 @@ export default function PaymentPlansPage() {
                         <TableCell>{plan.appointment.accounts?.name}</TableCell>
                         <TableCell>{plan.appointment.sales_rep || "Unassigned"}</TableCell>
                         <TableCell className="font-medium">${plan.totalScheduled.toFixed(2)}</TableCell>
-                        <TableCell className="font-medium text-emerald-700">
+                        <TableCell className="font-medium">
                           ${plan.totalPaid.toFixed(2)}
                         </TableCell>
-                        <TableCell className="font-medium text-amber-700">
+                        <TableCell className="font-medium">
                           ${plan.remainingBalance.toFixed(2)}
                         </TableCell>
                         <TableCell>{getNextPaymentInfo(plan)}</TableCell>
