@@ -37,7 +37,8 @@ export interface WidgetConfig {
   title: string
   metric?: string // For single metric (KPI)
   metrics?: string[] // For multiple metrics (charts)
-  options?: Record<string, any> // Additional options
+  metricOptions?: Record<string, any> // Options for single metric (KPI)
+  metricsOptions?: Record<string, Record<string, any>> // Options per metric for charts
 }
 
 type Step = "visualization" | "metric"
@@ -77,6 +78,7 @@ export function AddWidgetModal({ open, onOpenChange, onAddWidget }: AddWidgetMod
   const [selectedMetrics, setSelectedMetrics] = useState<string[]>([])
   const [widgetTitle, setWidgetTitle] = useState("")
   const [isMetricSelectorOpen, setIsMetricSelectorOpen] = useState(false)
+  const [metricsWithOptions, setMetricsWithOptions] = useState<Record<string, any>>({})
   
   const isChartType = selectedVisualization && ["bar", "line", "area"].includes(selectedVisualization)
   
@@ -86,6 +88,7 @@ export function AddWidgetModal({ open, onOpenChange, onAddWidget }: AddWidgetMod
     setSelectedMetric(null)
     setSelectedMetrics([])
     setWidgetTitle("")
+    setMetricsWithOptions({})
   }
 
   const handleClose = () => {
@@ -107,27 +110,41 @@ export function AddWidgetModal({ open, onOpenChange, onAddWidget }: AddWidgetMod
 
   const handleMetricSelect = (metricName: string, metricDefinition: MetricDefinition, options?: any) => {
     if (isChartType) {
-      // For charts, add to metrics array
+      // For charts, add to metrics array with options and return to widget modal
       if (!selectedMetrics.includes(metricName)) {
         setSelectedMetrics(prev => [...prev, metricName])
+        setMetricsWithOptions(prev => ({ ...prev, [metricName]: options || {} }))
       }
+      setIsMetricSelectorOpen(false)
     } else {
-      // For KPI, set single metric
+      // For KPI, set single metric and create widget immediately
       setSelectedMetric(metricName)
+      
+      const widget: WidgetConfig = {
+        id: `widget-${Date.now()}`,
+        type: selectedVisualization as WidgetConfig["type"],
+        title: widgetTitle || metricDefinition.name,
+        metric: metricName,
+        metricOptions: options || {}
+      }
+
+      onAddWidget(widget)
+      handleClose()
     }
-    
-    // Create widget immediately with options
-    const defaultTitle = isChartType 
-      ? [...selectedMetrics, metricName].map(m => METRICS_REGISTRY[m]?.name || m).join(' vs ')
-      : metricDefinition.name
+  }
+
+  const handleCreateWidget = () => {
+    if (!selectedVisualization) return
+    if (isChartType && selectedMetrics.length === 0) return
+
+    const defaultTitle = selectedMetrics.map(m => METRICS_REGISTRY[m]?.name || m).join(' vs ')
 
     const widget: WidgetConfig = {
       id: `widget-${Date.now()}`,
       type: selectedVisualization as WidgetConfig["type"],
       title: widgetTitle || defaultTitle,
-      metric: isChartType ? undefined : metricName,
-      metrics: isChartType ? [...selectedMetrics, metricName] : undefined,
-      options: options || {}
+      metrics: selectedMetrics,
+      metricsOptions: metricsWithOptions
     }
 
     onAddWidget(widget)
@@ -218,24 +235,45 @@ export function AddWidgetModal({ open, onOpenChange, onAddWidget }: AddWidgetMod
                   </p>
                 </div>
 
-                {/* Selected Metrics Display for Charts */}
-                {isChartType && selectedMetrics.length > 0 && (
-                  <div className="space-y-2">
-                    <Label>Selected Metrics ({selectedMetrics.length})</Label>
-                    <div className="flex flex-wrap gap-2">
-                      {selectedMetrics.map(metricId => (
-                        <Button
-                          key={metricId}
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setSelectedMetrics(prev => prev.filter(m => m !== metricId))}
-                        >
-                          {METRICS_REGISTRY[metricId]?.name || metricId} ×
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                                 {/* Selected Metrics Display for Charts */}
+                 {isChartType && selectedMetrics.length > 0 && (
+                   <div className="space-y-2">
+                     <Label>Selected Metrics ({selectedMetrics.length})</Label>
+                     <div className="space-y-2">
+                       {selectedMetrics.map(metricId => {
+                         const options = metricsWithOptions[metricId]
+                         const optionsText = options ? Object.entries(options)
+                           .filter(([key, value]) => value !== 'all' && value !== 'total')
+                           .map(([key, value]) => `${key}: ${value}`)
+                           .join(', ') : ''
+                         
+                         return (
+                           <div key={metricId} className="flex items-center justify-between p-2 bg-muted rounded-md">
+                             <div className="flex-1 min-w-0">
+                               <div className="font-medium text-sm">{METRICS_REGISTRY[metricId]?.name || metricId}</div>
+                               {optionsText && (
+                                 <div className="text-xs text-muted-foreground">{optionsText}</div>
+                               )}
+                             </div>
+                             <Button
+                               variant="ghost"
+                               size="sm"
+                               onClick={() => {
+                                 setSelectedMetrics(prev => prev.filter(m => m !== metricId))
+                                 setMetricsWithOptions(prev => {
+                                   const { [metricId]: removed, ...rest } = prev
+                                   return rest
+                                 })
+                               }}
+                             >
+                               ×
+                             </Button>
+                           </div>
+                         )
+                       })}
+                     </div>
+                   </div>
+                 )}
 
                 <Button 
                   onClick={() => setIsMetricSelectorOpen(true)}
@@ -261,22 +299,37 @@ export function AddWidgetModal({ open, onOpenChange, onAddWidget }: AddWidgetMod
             )}
           </div>
 
-          {/* Footer */}
-          <div className="flex justify-between">
-            <Button variant="outline" onClick={currentStep === "visualization" ? handleClose : handleBack}>
-              {currentStep === "visualization" ? "Cancel" : <><ArrowLeft className="h-4 w-4 mr-2" />Back</>}
-            </Button>
-            
-            {currentStep === "metric" && canProceed() ? (
-              <Button onClick={() => setIsMetricSelectorOpen(true)}>
-                {isChartType ? "Add Metrics" : "Select Metric"}
-              </Button>
-            ) : (
-              <Button onClick={handleNext} disabled={!canProceed()}>
-                Next <ArrowRight className="h-4 w-4 ml-2" />
-              </Button>
-            )}
-          </div>
+                     {/* Footer */}
+           <div className="flex justify-between">
+             <Button variant="outline" onClick={currentStep === "visualization" ? handleClose : handleBack}>
+               {currentStep === "visualization" ? "Cancel" : <><ArrowLeft className="h-4 w-4 mr-2" />Back</>}
+             </Button>
+             
+             <div className="flex gap-2">
+               {currentStep === "metric" && (
+                 <>
+                   <Button 
+                     variant="outline"
+                     onClick={() => setIsMetricSelectorOpen(true)}
+                   >
+                     {isChartType ? "Add Metric" : "Select Metric"}
+                   </Button>
+                   
+                   {isChartType && selectedMetrics.length > 0 && (
+                     <Button onClick={handleCreateWidget}>
+                       Create Widget ({selectedMetrics.length} metrics)
+                     </Button>
+                   )}
+                 </>
+               )}
+               
+               {currentStep === "visualization" && (
+                 <Button onClick={handleNext} disabled={!canProceed()}>
+                   Next <ArrowRight className="h-4 w-4 ml-2" />
+                 </Button>
+               )}
+             </div>
+           </div>
         </DialogContent>
       </Dialog>
 
