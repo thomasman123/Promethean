@@ -270,15 +270,14 @@ const BASE_METRICS = {
 	// === PERFORMANCE METRICS ===
 	'bookings_per_hour': {
 		name: 'Bookings per Hour',
-		description: 'Average bookings per work hour (from work timeframes)',
+		description: 'Average bookings per work hour (calculated from dials data)',
 		breakdownType: 'total' as const,
 		query: {
 			table: 'work_timeframes',
-			select: [
-				'COALESCE(AVG(bookings_per_hour), 0) as value'
-			]
+			select: ['0 as value'] // This will be calculated on-demand in UserMetricsEngine
 		},
 		unit: 'count' as const,
+		isSpecialMetric: true,
 		options: {
 			breakdown: ['total', 'setters']
 		}
@@ -286,15 +285,14 @@ const BASE_METRICS = {
 
 	'dials_per_hour': {
 		name: 'Dials per Hour',
-		description: 'Average dials per work hour (from work timeframes)',
+		description: 'Average dials per work hour (calculated from dials data)',
 		breakdownType: 'total' as const,
 		query: {
 			table: 'work_timeframes',
-			select: [
-				'COALESCE(AVG(dials_per_hour), 0) as value'
-			]
+			select: ['0 as value'] // This will be calculated on-demand in UserMetricsEngine
 		},
 		unit: 'count' as const,
+		isSpecialMetric: true,
 		options: {
 			breakdown: ['total', 'setters']
 		}
@@ -306,11 +304,10 @@ const BASE_METRICS = {
 		breakdownType: 'total' as const,
 		query: {
 			table: 'work_timeframes',
-			select: [
-				'COALESCE(SUM(total_work_hours), 0) as value'
-			]
+			select: ['0 as value'] // This will be calculated on-demand in UserMetricsEngine
 		},
 		unit: 'count' as const,
+		isSpecialMetric: true,
 		options: {
 			breakdown: ['total', 'setters']
 		}
