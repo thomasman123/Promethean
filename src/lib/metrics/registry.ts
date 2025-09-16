@@ -191,7 +191,7 @@ const BASE_METRICS = {
 			select: [
 				'setter_user_id as setter_id',
 				'profiles.full_name as setter_name',
-				"COALESCE(AVG(CASE WHEN LOWER(call_outcome) = 'show' THEN 1.0 ELSE 0.0 END) * 100, 0) as value"
+				"COALESCE(AVG(CASE WHEN LOWER(call_outcome) = 'show' THEN 1.0 ELSE 0.0 END), 0) as value"
 			],
 			joins: [
 				{
@@ -214,7 +214,7 @@ const BASE_METRICS = {
 		query: {
 			table: 'appointments',
 			select: [
-				"COALESCE(AVG(CASE WHEN LOWER(call_outcome) = 'show' THEN 1.0 ELSE 0.0 END) * 100, 0) as value"
+				"COALESCE(AVG(CASE WHEN LOWER(call_outcome) = 'show' THEN 1.0 ELSE 0.0 END), 0) as value"
 			]
 		},
 		unit: 'percent' as const,
@@ -229,7 +229,7 @@ const BASE_METRICS = {
 		query: {
 			table: 'appointments',
 			select: [
-				"COALESCE(AVG(CASE WHEN show_outcome = 'won' THEN 1.0 ELSE 0.0 END) * 100, 0) as value"
+				"COALESCE(AVG(CASE WHEN show_outcome = 'won' THEN 1.0 ELSE 0.0 END), 0) as value"
 			]
 		},
 		unit: 'percent' as const
@@ -242,7 +242,7 @@ const BASE_METRICS = {
 		query: {
 			table: 'appointments',
 			select: [
-				"COALESCE(AVG(CASE WHEN show_outcome = 'won' THEN 1.0 ELSE 0.0 END) * 100, 0) as value"
+				"COALESCE(AVG(CASE WHEN show_outcome = 'won' THEN 1.0 ELSE 0.0 END), 0) as value"
 			]
 		},
 		unit: 'percent' as const,
@@ -256,7 +256,7 @@ const BASE_METRICS = {
 		query: {
 			table: 'appointments',
 			select: [
-				"COALESCE(AVG(CASE WHEN show_outcome = 'won' THEN 1.0 ELSE 0.0 END) * 100, 0) as value"
+				"COALESCE(AVG(CASE WHEN show_outcome = 'won' THEN 1.0 ELSE 0.0 END), 0) as value"
 			]
 		},
 		unit: 'percent' as const,
@@ -272,7 +272,7 @@ const BASE_METRICS = {
 			select: [
 				'sales_rep_user_id as rep_id',
 				'profiles.full_name as rep_name',
-				"COALESCE(AVG(CASE WHEN show_outcome = 'won' THEN 1.0 ELSE 0.0 END) * 100, 0) as value"
+				"COALESCE(AVG(CASE WHEN show_outcome = 'won' THEN 1.0 ELSE 0.0 END), 0) as value"
 			],
 			joins: [
 				{
@@ -297,7 +297,7 @@ const BASE_METRICS = {
 			select: [
 				'setter_user_id as setter_id',
 				'profiles.full_name as setter_name',
-				"COALESCE(AVG(CASE WHEN show_outcome = 'won' THEN 1.0 ELSE 0.0 END) * 100, 0) as value"
+				"COALESCE(AVG(CASE WHEN show_outcome = 'won' THEN 1.0 ELSE 0.0 END), 0) as value"
 			],
 			joins: [
 				{
@@ -324,7 +324,7 @@ const BASE_METRICS = {
 				'setter_profiles.full_name as setter_name',
 				'sales_rep_user_id as rep_id',
 				'rep_profiles.full_name as rep_name',
-				"COALESCE(AVG(CASE WHEN show_outcome = 'won' THEN 1.0 ELSE 0.0 END) * 100, 0) as value"
+				"COALESCE(AVG(CASE WHEN show_outcome = 'won' THEN 1.0 ELSE 0.0 END), 0) as value"
 			],
 			joins: [
 				{
