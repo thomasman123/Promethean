@@ -39,7 +39,10 @@ export function PaymentPlan({ appointmentId, totalSalesValue, cashCollected, onP
 		return rows.filter(r => r.paid).reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
 	}, [rows]);
 
-	const remaining = Math.max(0, Number(totalSalesValue || 0) - Number(collected || 0));
+	// If no payments exist yet, use the cashCollected from the appointment
+	// Otherwise use the actual payments data
+	const actualCollected = rows.length === 0 ? cashCollected : collected;
+	const remaining = Math.max(0, Number(totalSalesValue || 0) - Number(actualCollected || 0));
 	const isComplete = remaining === 0;
 
 	// Load existing payments
@@ -253,7 +256,7 @@ export function PaymentPlan({ appointmentId, totalSalesValue, cashCollected, onP
 					</div>
 					<div className="rounded-lg border p-3 bg-green-50/50">
 						<div className="text-xs font-medium text-green-600 mb-1">Collected</div>
-						<div className="text-lg font-bold text-green-700">${collected.toFixed(2)}</div>
+						<div className="text-lg font-bold text-green-700">${actualCollected.toFixed(2)}</div>
 					</div>
 					<div className={cn(
 						"rounded-lg border p-3",
@@ -312,9 +315,9 @@ export function PaymentPlan({ appointmentId, totalSalesValue, cashCollected, onP
 									row.paid ? "bg-green-50/50 border-green-200" : "bg-background",
 									saving === row.id || saving === `new-${idx}` ? "opacity-50" : ""
 								)}>
-									<div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
-										<div className="space-y-2">
-											<Label className="text-xs">Due Date</Label>
+									<div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+										<div className="space-y-2 md:col-span-2">
+											<Label className="text-xs font-medium">Due Date</Label>
 											<DateTimePicker
 												value={row.payment_date}
 												onChange={(date) => date && updateRow(idx, { payment_date: date })}
@@ -323,7 +326,7 @@ export function PaymentPlan({ appointmentId, totalSalesValue, cashCollected, onP
 										</div>
 										
 										<div className="space-y-2">
-											<Label className="text-xs">Amount Due</Label>
+											<Label className="text-xs font-medium">Amount Due</Label>
 											<div className="relative">
 												<span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
 												<Input
@@ -338,7 +341,7 @@ export function PaymentPlan({ appointmentId, totalSalesValue, cashCollected, onP
 										</div>
 
 										<div className="space-y-2">
-											<Label className="text-xs">Status</Label>
+											<Label className="text-xs font-medium">Status</Label>
 											<div className="flex items-center space-x-2 h-10">
 												<Checkbox
 													id={`paid-${idx}`}
@@ -359,7 +362,7 @@ export function PaymentPlan({ appointmentId, totalSalesValue, cashCollected, onP
 										</div>
 
 										<div className="space-y-2">
-											<Label className="text-xs">Action</Label>
+											<Label className="text-xs font-medium">Action</Label>
 											<Button
 												variant="outline"
 												size="sm"
@@ -388,7 +391,7 @@ export function PaymentPlan({ appointmentId, totalSalesValue, cashCollected, onP
 						<div className="flex justify-between text-sm mt-1">
 							<span className="font-medium">Total Paid:</span>
 							<span className="font-bold text-green-600">
-								${collected.toFixed(2)}
+								${actualCollected.toFixed(2)}
 							</span>
 						</div>
 					</div>

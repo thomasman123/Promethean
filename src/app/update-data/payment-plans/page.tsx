@@ -615,7 +615,7 @@ export default function PaymentPlansPage() {
 
       {/* Payment Plan Detail Modal */}
       <Dialog open={!!selectedPlan} onOpenChange={() => setSelectedPlan(null)}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               Payment Plan - {selectedPlan?.appointment.contacts?.name || "Unknown Contact"}
