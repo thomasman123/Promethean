@@ -137,6 +137,15 @@ export class UserMetricsEngine {
     const { table } = metric.query
     const { accountId, startDate, endDate, userIds, options } = request
 
+    // Handle special metrics first
+    if (metric.name === 'Data Completion Rate') {
+      return this.calculateDataCompletionRate(metric, accountId, startDate, endDate, userIds, options)
+    }
+    
+    if (metric.name === 'Overdue Items') {
+      return this.calculateOverdueItems(metric, accountId, startDate, endDate, userIds, options)
+    }
+
     switch (table) {
       case 'appointments':
         return this.calculateAppointmentMetrics(metric, accountId, startDate, endDate, userIds, options)
@@ -1041,6 +1050,130 @@ export class UserMetricsEngine {
       value: 0,
       role: 'none'
     }))
+  }
+
+  /**
+   * Calculate Data Completion Rate for users
+   * Percentage of appointments (sales_rep_user_id) and discoveries (setter_user_id) that have data_filled = true
+   */
+  private async calculateDataCompletionRate(
+    metric: MetricDefinition,
+    accountId: string,
+    startDate: string,
+    endDate: string,
+    userIds: string[],
+    options?: any
+  ): Promise<UserMetricResult[]> {
+    
+    const results: UserMetricResult[] = []
+
+    for (const userId of userIds) {
+      try {
+        // Get appointments where user is sales rep
+        const { data: appointments } = await supabaseService
+          .from('appointments')
+          .select('id, data_filled, date_booked_for')
+          .eq('account_id', accountId)
+          .eq('sales_rep_user_id', userId)
+          .gte('local_date', startDate)
+          .lte('local_date', endDate)
+
+        // Get discoveries where user is setter
+        const { data: discoveries } = await supabaseService
+          .from('discoveries')
+          .select('id, data_filled, date_booked_for')
+          .eq('account_id', accountId)
+          .eq('setter_user_id', userId)
+          .gte('local_date', startDate)
+          .lte('local_date', endDate)
+
+        const allItems = [...(appointments || []), ...(discoveries || [])]
+        const completedItems = allItems.filter(item => item.data_filled === true)
+        
+        const completionRate = allItems.length > 0 ? (completedItems.length / allItems.length) * 100 : 0
+
+        results.push({
+          userId,
+          value: completionRate,
+          displayValue: this.formatValue(completionRate, metric, options),
+          role: 'both' // Can be both setter and rep
+        })
+
+      } catch (error) {
+        console.error(`Error calculating data completion rate for user ${userId}:`, error)
+        results.push({
+          userId,
+          value: 0,
+          displayValue: '0%',
+          role: 'none'
+        })
+      }
+    }
+
+    return results
+  }
+
+  /**
+   * Calculate Overdue Items for users
+   * Count of appointments and discoveries that are 24+ hours overdue without data entry
+   */
+  private async calculateOverdueItems(
+    metric: MetricDefinition,
+    accountId: string,
+    startDate: string,
+    endDate: string,
+    userIds: string[],
+    options?: any
+  ): Promise<UserMetricResult[]> {
+    
+    const results: UserMetricResult[] = []
+    const overdueThreshold = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+
+    for (const userId of userIds) {
+      try {
+        // Get overdue appointments where user is sales rep
+        const { data: overdueAppointments } = await supabaseService
+          .from('appointments')
+          .select('id, data_filled, date_booked_for')
+          .eq('account_id', accountId)
+          .eq('sales_rep_user_id', userId)
+          .gte('local_date', startDate)
+          .lte('local_date', endDate)
+          .lt('date_booked_for', overdueThreshold)
+          .eq('data_filled', false)
+
+        // Get overdue discoveries where user is setter
+        const { data: overdueDiscoveries } = await supabaseService
+          .from('discoveries')
+          .select('id, data_filled, date_booked_for')
+          .eq('account_id', accountId)
+          .eq('setter_user_id', userId)
+          .gte('local_date', startDate)
+          .lte('local_date', endDate)
+          .lt('date_booked_for', overdueThreshold)
+          .eq('data_filled', false)
+
+        const overdueCount = (overdueAppointments?.length || 0) + (overdueDiscoveries?.length || 0)
+
+        results.push({
+          userId,
+          value: overdueCount,
+          displayValue: this.formatValue(overdueCount, metric, options),
+          role: 'both' // Can be both setter and rep
+        })
+
+      } catch (error) {
+        console.error(`Error calculating overdue items for user ${userId}:`, error)
+        results.push({
+          userId,
+          value: 0,
+          displayValue: '0',
+          role: 'none'
+        })
+      }
+    }
+
+    return results
   }
 }
 

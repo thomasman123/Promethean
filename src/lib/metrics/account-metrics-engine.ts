@@ -123,6 +123,9 @@ export class AccountMetricsEngine {
       }
     }
 
+    // Data Completion Rate and Overdue Items are handled by the main metrics engine
+    // through the interchangeable metrics path since they're marked as special metrics
+    
     // TODO: Implement other special metrics (ROI, cost per lead, etc.)
     return {
       metricName: metric.name,
