@@ -43,6 +43,7 @@ export function TopBar({ onAddWidget }: TopBarProps) {
   const [currentUserId, setCurrentUserId] = useState<string>("")
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null)
   const [currentTableId, setCurrentTableId] = useState<string | null>(null)
+  const [currentTableType, setCurrentTableType] = useState<string | null>(null)
   const [roleFilter, setRoleFilter] = useState<RoleFilter>('both')
   const [showAddWidgetModal, setShowAddWidgetModal] = useState(false)
   const [showAdminSettingsModal, setShowAdminSettingsModal] = useState(false)
@@ -168,6 +169,23 @@ export function TopBar({ onAddWidget }: TopBarProps) {
     // Dispatch custom event for data view page to listen to
     window.dispatchEvent(new CustomEvent('tableChanged', { detail: { tableId } }))
   }
+
+  const handleTableTypeChange = (tableType: string) => {
+    setCurrentTableType(tableType)
+  }
+
+  // Listen for table type changes from data view page
+  useEffect(() => {
+    const handleTableTypeChanged = (event: CustomEvent) => {
+      handleTableTypeChange(event.detail.tableType)
+    }
+
+    window.addEventListener('tableTypeChanged' as any, handleTableTypeChanged)
+
+    return () => {
+      window.removeEventListener('tableTypeChanged' as any, handleTableTypeChanged)
+    }
+  }, [])
 
   const handleAppointmentsTabChange = (tab: 'appointments' | 'discoveries') => {
     setAppointmentsTab(tab)
@@ -483,10 +501,13 @@ export function TopBar({ onAddWidget }: TopBarProps) {
             {/* Show RoleFilter and TablesManager on data-view page */}
             {pathname === "/data-view" && selectedAccountId && (
               <>
-                <RoleFilterDropdown
-                  value={roleFilter}
-                  onChange={handleRoleFilterChange}
-                />
+                {/* Only show role filter for user_metrics tables */}
+                {currentTableType !== 'account_metrics' && (
+                  <RoleFilterDropdown
+                    value={roleFilter}
+                    onChange={handleRoleFilterChange}
+                  />
+                )}
                 <TablesManager
                   accountId={selectedAccountId}
                   currentTableId={currentTableId}

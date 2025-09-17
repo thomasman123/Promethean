@@ -61,6 +61,15 @@ export default function DataViewPage() {
     }
   }, [])
 
+  // Notify topbar about table type changes
+  useEffect(() => {
+    if (tableConfig?.table_type) {
+      window.dispatchEvent(new CustomEvent('tableTypeChanged', { 
+        detail: { tableType: tableConfig.table_type } 
+      }))
+    }
+  }, [tableConfig?.table_type])
+
   // Load users based on role filter
   useEffect(() => {
     if (!selectedAccountId) return
@@ -450,9 +459,9 @@ export default function DataViewPage() {
     }
   }
 
-  // Define base columns
-  const baseColumns: ColumnDef<UserMetric>[] = [
-        {
+  // Define base columns for user metrics
+  const baseUserColumns: ColumnDef<UserMetric>[] = [
+    {
       accessorKey: "name",
       header: ({ column }) => {
         return (
@@ -486,6 +495,29 @@ export default function DataViewPage() {
       },
     },
   ]
+
+  // Define base columns for account metrics (periods only)
+  const basePeriodColumns: ColumnDef<UserMetric>[] = [
+    {
+      accessorKey: "name",
+      header: ({ column }) => {
+        return (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+            className="h-auto p-1 text-xs font-medium leading-tight"
+          >
+            Period
+            <ArrowUpDown className="ml-0.5 h-3 w-3" />
+          </Button>
+        )
+      },
+      cell: ({ row }) => <div className="font-medium text-sm truncate">{row.getValue("name")}</div>,
+    }
+  ]
+
+  // Choose base columns based on table type
+  const baseColumns = tableConfig?.table_type === 'account_metrics' ? basePeriodColumns : baseUserColumns
 
   // Combine base columns with dynamic metric columns from table config
   const columns = useMemo(() => {
