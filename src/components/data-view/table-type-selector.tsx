@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
-import { Users, Building, TrendingUp, Plus } from 'lucide-react'
+import { Users, Building, TrendingUp, Plus, Grid3X3 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface TableTypeSelectorProps {
@@ -23,7 +23,7 @@ interface TableTypeSelectorProps {
   onCreateTable: (tableConfig: {
     name: string
     description: string
-    tableType: 'user_metrics' | 'account_metrics' | 'time_series'
+    tableType: 'user_metrics' | 'account_metrics' | 'time_series' | 'user_period_matrix'
   }) => void
 }
 
@@ -35,6 +35,14 @@ const TABLE_TYPES = [
     description: 'Track metrics by individual users (setters, sales reps)',
     details: 'Users as rows, metrics as columns. Perfect for comparing performance across team members.',
     examples: ['Hours worked per setter', 'Appointments booked per rep', 'Call performance by user']
+  },
+  {
+    id: 'user_period_matrix',
+    name: 'User Period Matrix',
+    icon: Grid3X3,
+    description: 'Track user performance across time periods',
+    details: 'Matrix view with users and time periods. Shows performance trends for each team member.',
+    examples: ['Weekly appointments per user', 'Monthly sales by rep', 'Daily dial performance']
   },
   {
     id: 'account_metrics',
@@ -55,7 +63,7 @@ const TABLE_TYPES = [
 ] as const
 
 export function TableTypeSelector({ open, onOpenChange, onCreateTable }: TableTypeSelectorProps) {
-  const [selectedType, setSelectedType] = useState<'user_metrics' | 'account_metrics' | 'time_series'>('user_metrics')
+  const [selectedType, setSelectedType] = useState<'user_metrics' | 'account_metrics' | 'time_series' | 'user_period_matrix'>('user_metrics')
   const [tableName, setTableName] = useState('')
   const [tableDescription, setTableDescription] = useState('')
 
