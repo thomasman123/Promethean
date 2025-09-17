@@ -399,6 +399,32 @@ export default function DataViewPage() {
     console.log('🔄 Loading account metric time series:', metricColumn.metricName)
     
     try {
+      // Generate date points if they don't exist (same as loadAllAccountMetrics)
+      const aggregationType = getAggregationType()
+      let datePoints: Array<{ date: string; label: string }> = []
+      
+      if (aggregationType === 'daily') {
+        datePoints = eachDayOfInterval({ start: dateRange.from, end: dateRange.to })
+          .map(date => ({ 
+            date: format(date, 'yyyy-MM-dd'), 
+            label: format(date, 'MMM d') 
+          }))
+      } else if (aggregationType === 'weekly') {
+        datePoints = eachWeekOfInterval({ start: dateRange.from, end: dateRange.to }, { weekStartsOn: 0 })
+          .map(weekStart => ({ 
+            date: format(weekStart, 'yyyy-MM-dd'), 
+            label: `Week of ${format(weekStart, 'MMM d')}` 
+          }))
+      } else {
+        datePoints = eachMonthOfInterval({ start: dateRange.from, end: dateRange.to })
+          .map(monthStart => ({ 
+            date: format(monthStart, 'yyyy-MM-dd'), 
+            label: format(monthStart, 'MMM yyyy') 
+          }))
+      }
+
+      console.log('📅 Generated date points for single metric:', datePoints.length, 'periods')
+
       // Get time series data like dashboard charts
       const response = await fetch('/api/metrics', {
         method: 'POST',
@@ -430,28 +456,41 @@ export default function DataViewPage() {
         const timeSeriesData = result.result.data
         console.log('📊 Time series data received:', timeSeriesData)
 
-        // Update account metrics data - add this metric to all existing periods
+        // Create or update account metrics data with proper date matching
         setAccountMetrics(prev => {
+          // If no existing data, create new data structure
           if (prev.length === 0) {
-            // No existing data, need to regenerate periods first
-            console.log('⚠️ No existing periods, will reload all metrics')
-            return prev
+            console.log('🔄 Creating new periods data structure')
+            return datePoints.map(point => {
+              const matchingData = timeSeriesData.find((d: any) => d.date === point.date)
+              const value = matchingData?.value || 0
+              console.log(`📊 Creating period ${point.label} with ${metricColumn.id} = ${value}`)
+              
+              return {
+                period: point.label,
+                [metricColumn.id]: value
+              }
+            })
           }
 
+          // Update existing periods
           return prev.map(row => {
-            // Find matching time series data for this period
-            const matchingData = timeSeriesData.find((d: any) => {
-              // Convert period label back to date for matching
-              // This is a simplified match - need to improve
-              return d.date && d.value !== undefined
-            })
-            
-            const value = matchingData?.value || 0
-            console.log(`📊 Setting ${metricColumn.id} = ${value} for period ${row.period}`)
+            // Find the date point for this row
+            const datePoint = datePoints.find(p => p.label === row.period)
+            if (datePoint) {
+              const matchingData = timeSeriesData.find((d: any) => d.date === datePoint.date)
+              const value = matchingData?.value || 0
+              console.log(`📊 Updating ${row.period} with ${metricColumn.id} = ${value}`)
+              
+              return {
+                ...row,
+                [metricColumn.id]: value
+              }
+            }
             
             return {
               ...row,
-              [metricColumn.id]: value
+              [metricColumn.id]: 0
             }
           })
         })
