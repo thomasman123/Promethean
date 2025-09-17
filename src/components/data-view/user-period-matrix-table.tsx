@@ -169,6 +169,29 @@ export function UserPeriodMatrixTable({
     user.userRole === 'setter'
   )
 
+  // Group metrics by role for section display
+  const closerMetrics = metricColumns.filter(col => {
+    const isCloserMetric = col.metricName.includes('appointment') || 
+                         col.metricName.includes('sales') || 
+                         col.metricName.includes('cash') ||
+                         col.metricName.includes('show_up') ||
+                         col.metricName.includes('close') ||
+                         col.metricName.includes('revenue') ||
+                         col.metricName.includes('booking_to_close') ||
+                         col.metricName.includes('pitch')
+    return isCloserMetric
+  })
+
+  const setterMetrics = metricColumns.filter(col => {
+    const isSetterMetric = col.metricName.includes('dial') || 
+                         col.metricName.includes('answer') || 
+                         col.metricName.includes('booking') ||
+                         col.metricName.includes('discovery') ||
+                         col.metricName.includes('work') ||
+                         col.metricName.includes('speed')
+    return isSetterMetric
+  })
+
   return (
     <div className="w-full space-y-6">
       <div className="flex items-center py-4">
@@ -199,138 +222,156 @@ export function UserPeriodMatrixTable({
         </div>
       </div>
 
-      {/* Role-based sections with users as rows */}
+      {/* Single table with all metrics and users */}
       <div className="space-y-6">
-        {/* CLOSERS Section */}
-        {closerUsers.length > 0 && metricColumns.length > 0 && (
+        {metricColumns.length > 0 && (
           <div className="border rounded-lg">
-            <div className="bg-muted/50 px-4 py-2 font-medium text-sm flex items-center gap-2">
-              <Building2 className="h-4 w-4" />
-              CLOSERS
-            </div>
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[200px]">User</TableHead>
+                    <TableHead className="w-[200px]"></TableHead>
                     {periods.map(period => (
                       <TableHead key={period.key} className="text-center min-w-[80px]">
                         <div className="text-xs">{period.label}</div>
                       </TableHead>
                     ))}
                     <TableHead className="text-center font-medium min-w-[80px]">TOTAL</TableHead>
+                    {data.map(user => (
+                      <TableHead key={user.userId} className="text-center min-w-[100px]">
+                        <div className="text-xs">{user.userName}</div>
+                        <div className="text-xs text-muted-foreground">{user.userRole}</div>
+                      </TableHead>
+                    ))}
                     <TableHead className="w-[50px]"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {/* Total row for closers */}
-                  <TableRow className="bg-muted/30">
-                    <TableCell className="font-bold">TOTAL</TableCell>
-                    {periods.map(period => {
-                      const periodTotal = closerUsers.reduce((sum, user) => {
-                        const userPeriodData = user.periods.find(p => p.periodKey === period.key)
-                        return sum + (userPeriodData?.value || 0)
-                      }, 0)
-                      
-                      return (
-                        <TableCell key={period.key} className="text-center font-bold">
-                          {periodTotal}
-                        </TableCell>
-                      )
-                    })}
-                    <TableCell className="text-center font-bold">
-                      {closerUsers.reduce((sum, user) => sum + user.total.value, 0)}
-                    </TableCell>
-                    <TableCell></TableCell>
-                  </TableRow>
+                  {/* CLOSERS section header */}
+                  {closerMetrics.length > 0 && (
+                    <TableRow className="bg-muted/50">
+                      <TableCell colSpan={periods.length + 3 + data.length} className="font-bold text-sm">
+                        <div className="flex items-center gap-2">
+                          <Building2 className="h-4 w-4" />
+                          CLOSERS
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )}
                   
-                  {/* Individual closer users */}
-                  {closerUsers.map((user) => (
-                    <TableRow key={user.userId}>
+                  {/* Closer metrics */}
+                  {closerMetrics.map((metricCol) => (
+                    <TableRow key={metricCol.id}>
                       <TableCell className="font-medium">
-                        {user.userName}
+                        {metricCol.displayName}
                       </TableCell>
                       {periods.map(period => {
-                        const userPeriodData = user.periods.find(p => p.periodKey === period.key)
+                        // Calculate total for this period across all closer users
+                        const periodTotal = closerUsers.reduce((sum, user) => {
+                          const userPeriodData = user.periods.find(p => p.periodKey === period.key)
+                          return sum + (userPeriodData?.value || 0)
+                        }, 0)
+                        
                         return (
                           <TableCell key={period.key} className="text-center">
-                            {userPeriodData?.displayValue || '0'}
+                            {periodTotal}
                           </TableCell>
                         )
                       })}
                       <TableCell className="text-center font-medium">
-                        {user.total.displayValue}
+                        {closerUsers.reduce((sum, user) => sum + user.total.value, 0)}
                       </TableCell>
-                      <TableCell></TableCell>
+                      {data.map(user => {
+                        // Show data only for closer users, empty for setters
+                        if (user.userRole === 'sales_rep' || user.userRole === 'rep') {
+                          return (
+                            <TableCell key={user.userId} className="text-center">
+                              {user.total.displayValue}
+                            </TableCell>
+                          )
+                        } else {
+                          return (
+                            <TableCell key={user.userId} className="text-center text-muted-foreground">
+                              -
+                            </TableCell>
+                          )
+                        }
+                      })}
+                      <TableCell>
+                        {onRemoveColumn && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => onRemoveColumn(metricCol.id)}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </TableCell>
                     </TableRow>
                   ))}
-                </TableBody>
-              </Table>
-            </div>
-          </div>
-        )}
 
-        {/* SETTERS Section */}
-        {setterUsers.length > 0 && metricColumns.length > 0 && (
-          <div className="border rounded-lg">
-            <div className="bg-muted/50 px-4 py-2 font-medium text-sm flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              SETTERS
-            </div>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[200px]">User</TableHead>
-                    {periods.map(period => (
-                      <TableHead key={period.key} className="text-center min-w-[80px]">
-                        <div className="text-xs">{period.label}</div>
-                      </TableHead>
-                    ))}
-                    <TableHead className="text-center font-medium min-w-[80px]">TOTAL</TableHead>
-                    <TableHead className="w-[50px]"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {/* Total row for setters */}
-                  <TableRow className="bg-muted/30">
-                    <TableCell className="font-bold">TOTAL</TableCell>
-                    {periods.map(period => {
-                      const periodTotal = setterUsers.reduce((sum, user) => {
-                        const userPeriodData = user.periods.find(p => p.periodKey === period.key)
-                        return sum + (userPeriodData?.value || 0)
-                      }, 0)
-                      
-                      return (
-                        <TableCell key={period.key} className="text-center font-bold">
-                          {periodTotal}
-                        </TableCell>
-                      )
-                    })}
-                    <TableCell className="text-center font-bold">
-                      {setterUsers.reduce((sum, user) => sum + user.total.value, 0)}
-                    </TableCell>
-                    <TableCell></TableCell>
-                  </TableRow>
+                  {/* SETTERS section header */}
+                  {setterMetrics.length > 0 && (
+                    <TableRow className="bg-muted/50">
+                      <TableCell colSpan={periods.length + 3 + data.length} className="font-bold text-sm">
+                        <div className="flex items-center gap-2">
+                          <Users className="h-4 w-4" />
+                          SETTERS
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )}
                   
-                  {/* Individual setter users */}
-                  {setterUsers.map((user) => (
-                    <TableRow key={user.userId}>
+                  {/* Setter metrics */}
+                  {setterMetrics.map((metricCol) => (
+                    <TableRow key={metricCol.id}>
                       <TableCell className="font-medium">
-                        {user.userName}
+                        {metricCol.displayName}
                       </TableCell>
                       {periods.map(period => {
-                        const userPeriodData = user.periods.find(p => p.periodKey === period.key)
+                        // Calculate total for this period across all setter users
+                        const periodTotal = setterUsers.reduce((sum, user) => {
+                          const userPeriodData = user.periods.find(p => p.periodKey === period.key)
+                          return sum + (userPeriodData?.value || 0)
+                        }, 0)
+                        
                         return (
                           <TableCell key={period.key} className="text-center">
-                            {userPeriodData?.displayValue || '0'}
+                            {periodTotal}
                           </TableCell>
                         )
                       })}
                       <TableCell className="text-center font-medium">
-                        {user.total.displayValue}
+                        {setterUsers.reduce((sum, user) => sum + user.total.value, 0)}
                       </TableCell>
-                      <TableCell></TableCell>
+                      {data.map(user => {
+                        // Show data only for setter users, empty for closers
+                        if (user.userRole === 'setter') {
+                          return (
+                            <TableCell key={user.userId} className="text-center">
+                              {user.total.displayValue}
+                            </TableCell>
+                          )
+                        } else {
+                          return (
+                            <TableCell key={user.userId} className="text-center text-muted-foreground">
+                              -
+                            </TableCell>
+                          )
+                        }
+                      })}
+                      <TableCell>
+                        {onRemoveColumn && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => onRemoveColumn(metricCol.id)}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
