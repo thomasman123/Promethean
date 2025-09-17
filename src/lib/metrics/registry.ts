@@ -644,6 +644,39 @@ const BASE_METRICS = {
 			calculation: ['average', 'median'],
 			businessHours: ['include', 'exclude']
 		}
+	},
+
+	// === DATA COMPLETION METRICS ===
+	'data_completion_rate': {
+		name: 'Data Completion Rate',
+		description: 'Percentage of appointments and discoveries that have completed data entry (data_filled = true)',
+		breakdownType: 'total' as const,
+		query: {
+			table: 'appointments', // Will be handled specially to include both appointments and discoveries
+			select: ['0 as value'] // This will be calculated via special SQL in engine
+		},
+		unit: 'percent' as const,
+		isSpecialMetric: true,
+		options: {
+			attribution: ['all', 'assigned', 'booked'],
+			breakdown: ['total', 'reps', 'setters', 'link']
+		}
+	},
+
+	'overdue_items': {
+		name: 'Overdue Items',
+		description: 'Count of appointments and discoveries that are overdue (24+ hours past date_booked_for without data entry)',
+		breakdownType: 'total' as const,
+		query: {
+			table: 'appointments', // Will be handled specially to include both appointments and discoveries
+			select: ['0 as value'] // This will be calculated via special SQL in engine
+		},
+		unit: 'count' as const,
+		isSpecialMetric: true,
+		options: {
+			attribution: ['all', 'assigned', 'booked'],
+			breakdown: ['total', 'reps', 'setters', 'link']
+		}
 	}
 }
 

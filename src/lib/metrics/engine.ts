@@ -169,6 +169,16 @@ export class MetricsEngine {
     if (metric.name === 'Lead to Appointment') {
       return this.buildLeadToAppointmentSQL(appliedFilters, metric, options)
     }
+
+    // Handle Data Completion Rate calculation
+    if (metric.name === 'Data Completion Rate') {
+      return this.buildDataCompletionRateSQL(appliedFilters, metric, options)
+    }
+
+    // Handle Overdue Items calculation
+    if (metric.name === 'Overdue Items') {
+      return this.buildOverdueItemsSQL(appliedFilters, metric, options)
+    }
     
     // Build SELECT clause
     const selectClause = `SELECT ${selectFields.join(', ')}`
@@ -626,6 +636,87 @@ WHERE speed_to_lead_seconds IS NOT NULL
       default:
         return { type: 'total', data: { value: 0 } };
     }
+  }
+
+  /**
+   * Build SQL for Data Completion Rate metric
+   * Calculates percentage of appointments and discoveries with data_filled = true
+   */
+  private buildDataCompletionRateSQL(appliedFilters: any, metric: MetricDefinition, options?: any): string {
+    const whereClauseWithMetric = buildWhereClause(appliedFilters, [])
+
+    const sql = `
+    WITH completion_data AS (
+      -- Appointments where sales_rep_user_id is assigned
+      SELECT 
+        data_filled,
+        sales_rep_user_id as user_id,
+        'appointment' as item_type
+      FROM appointments 
+      ${whereClauseWithMetric.replace(/(?<!\$)\baccount_id\b/g, 'appointments.account_id')}
+        AND sales_rep_user_id IS NOT NULL
+      
+      UNION ALL
+      
+      -- Discoveries where setter_user_id is assigned  
+      SELECT 
+        data_filled,
+        setter_user_id as user_id,
+        'discovery' as item_type
+      FROM discoveries 
+      ${whereClauseWithMetric.replace(/(?<!\$)\baccount_id\b/g, 'discoveries.account_id')}
+        AND setter_user_id IS NOT NULL
+    )
+    SELECT 
+      CASE 
+        WHEN COUNT(*) > 0 THEN ROUND(COUNT(*) FILTER (WHERE data_filled = true)::DECIMAL / COUNT(*) * 100, 2)
+        ELSE 0 
+      END as value
+    FROM completion_data
+    `
+    
+    return sql.trim()
+  }
+
+  /**
+   * Build SQL for Overdue Items metric
+   * Counts appointments and discoveries that are 24+ hours overdue without data entry
+   */
+  private buildOverdueItemsSQL(appliedFilters: any, metric: MetricDefinition, options?: any): string {
+    const whereClauseWithMetric = buildWhereClause(appliedFilters, [])
+    const overdueThreshold = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+
+    const sql = `
+    WITH overdue_data AS (
+      -- Overdue appointments where sales_rep_user_id is assigned
+      SELECT 
+        id,
+        sales_rep_user_id as user_id,
+        'appointment' as item_type
+      FROM appointments 
+      ${whereClauseWithMetric.replace(/(?<!\$)\baccount_id\b/g, 'appointments.account_id')}
+        AND sales_rep_user_id IS NOT NULL
+        AND date_booked_for < '${overdueThreshold}'
+        AND data_filled = false
+      
+      UNION ALL
+      
+      -- Overdue discoveries where setter_user_id is assigned
+      SELECT 
+        id,
+        setter_user_id as user_id,
+        'discovery' as item_type
+      FROM discoveries 
+      ${whereClauseWithMetric.replace(/(?<!\$)\baccount_id\b/g, 'discoveries.account_id')}
+        AND setter_user_id IS NOT NULL
+        AND date_booked_for < '${overdueThreshold}'
+        AND data_filled = false
+    )
+    SELECT COUNT(*) as value
+    FROM overdue_data
+    `
+    
+    return sql.trim()
   }
 
   private createErrorResult(breakdownType: string, error: Error): MetricResult {
