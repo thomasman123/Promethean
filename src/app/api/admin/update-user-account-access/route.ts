@@ -3,7 +3,7 @@ import { createServerClient } from "@supabase/ssr";
 import type { Database } from "@/lib/database-temp.types";
 
 export async function POST(req: NextRequest) {
-  console.log('🚀 Admin update user account access API called');
+  console.log('🚀🚀🚀 ADMIN API HIT - update-user-account-access 🚀🚀🚀');
   
   const supabase = createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -12,6 +12,27 @@ export async function POST(req: NextRequest) {
   );
 
   try {
+    // Check authentication first
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      console.log('❌ Authentication failed:', authError?.message)
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Check if user is admin
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+
+    if (profileError || !profile || profile.role !== 'admin') {
+      console.log('❌ Admin access denied for user:', user.id, 'role:', profile?.role)
+      return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
+    }
+
+    console.log('✅ Admin access verified for user:', user.id)
+
     const body = await req.json();
     console.log('📥 Received request body:', body);
     
