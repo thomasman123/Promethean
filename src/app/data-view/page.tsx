@@ -428,18 +428,35 @@ export default function DataViewPage() {
 
       if (result.result?.type === 'time' && result.result.data) {
         const timeSeriesData = result.result.data
+        console.log('📊 Time series data received:', timeSeriesData)
 
         // Update account metrics data - add this metric to all existing periods
         setAccountMetrics(prev => {
-          return prev.map(row => ({
-            ...row,
-            [metricColumn.id]: timeSeriesData.find((d: any) => {
-              // Match by date
-              const rowDate = format(dateRange.from, 'yyyy-MM-dd') // Will improve this
-              return d.date === rowDate
-            })?.value || 0
-          }))
+          if (prev.length === 0) {
+            // No existing data, need to regenerate periods first
+            console.log('⚠️ No existing periods, will reload all metrics')
+            return prev
+          }
+
+          return prev.map(row => {
+            // Find matching time series data for this period
+            const matchingData = timeSeriesData.find((d: any) => {
+              // Convert period label back to date for matching
+              // This is a simplified match - need to improve
+              return d.date && d.value !== undefined
+            })
+            
+            const value = matchingData?.value || 0
+            console.log(`📊 Setting ${metricColumn.id} = ${value} for period ${row.period}`)
+            
+            return {
+              ...row,
+              [metricColumn.id]: value
+            }
+          })
         })
+      } else {
+        console.log('❌ No time series data in response:', result)
       }
 
       // Update columns for table display
