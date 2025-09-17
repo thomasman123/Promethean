@@ -238,20 +238,22 @@ export function UserPeriodMatrixTable({
                         </TableHead>
                       ))}
                       <TableHead className="text-center font-medium min-w-[80px]">TOTAL</TableHead>
-                      {closerUsers.length > 0 && (
-                        <TableHead className="text-center min-w-[100px]" colSpan={closerUsers.length * periods.length}>
-                          <div className="text-xs font-medium">CLOSERS</div>
+                      {closerUsers.map(user => (
+                        <TableHead key={user.userId} className="text-center min-w-[100px]" colSpan={periods.length}>
+                          <div className="text-xs">{user.userName}</div>
+                          <div className="text-xs text-muted-foreground">sales_rep</div>
                         </TableHead>
-                      )}
-                      {setterUsers.length > 0 && (
-                        <TableHead className="text-center min-w-[100px]" colSpan={setterUsers.length * periods.length}>
-                          <div className="text-xs font-medium">SETTERS</div>
+                      ))}
+                      {setterUsers.map(user => (
+                        <TableHead key={user.userId} className="text-center min-w-[100px]" colSpan={periods.length}>
+                          <div className="text-xs">{user.userName}</div>
+                          <div className="text-xs text-muted-foreground">setter</div>
                         </TableHead>
-                      )}
+                      ))}
                       <TableHead className="w-[50px]"></TableHead>
                     </TableRow>
                     
-                    {/* Sub-header row for individual users */}
+                    {/* Sub-header row for user periods */}
                     <TableRow className="bg-muted/30">
                       <TableHead></TableHead>
                       {periods.map(period => (
@@ -265,7 +267,6 @@ export function UserPeriodMatrixTable({
                       {closerUsers.map(user => 
                         periods.map(period => (
                           <TableHead key={`${user.userId}-${period.key}`} className="text-center min-w-[60px]">
-                            <div className="text-xs">{user.userName}</div>
                             <div className="text-xs text-muted-foreground">{period.label}</div>
                           </TableHead>
                         ))
@@ -273,7 +274,6 @@ export function UserPeriodMatrixTable({
                       {setterUsers.map(user => 
                         periods.map(period => (
                           <TableHead key={`${user.userId}-${period.key}`} className="text-center min-w-[60px]">
-                            <div className="text-xs">{user.userName}</div>
                             <div className="text-xs text-muted-foreground">{period.label}</div>
                           </TableHead>
                         ))
@@ -281,142 +281,136 @@ export function UserPeriodMatrixTable({
                       <TableHead></TableHead>
                     </TableRow>
                   </TableHeader>
-                <TableBody>
-                  {/* CLOSERS section header */}
-                  {closerMetrics.length > 0 && (
-                    <TableRow className="bg-muted/50">
-                      <TableCell colSpan={periods.length + 3 + data.length} className="font-bold text-sm">
-                        <div className="flex items-center gap-2">
-                          <Building2 className="h-4 w-4" />
-                          CLOSERS
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  )}
-                  
-                  {/* Closer metrics */}
-                  {closerMetrics.map((metricCol) => (
-                    <TableRow key={metricCol.id}>
-                      <TableCell className="font-medium">
-                        {metricCol.displayName}
-                      </TableCell>
-                      {periods.map(period => {
-                        // Calculate total for this period across all closer users
-                        const periodTotal = closerUsers.reduce((sum, user) => {
-                          const userPeriodData = user.periods.find(p => p.periodKey === period.key)
-                          return sum + (userPeriodData?.value || 0)
-                        }, 0)
-                        
-                        return (
-                          <TableCell key={period.key} className="text-center">
-                            {periodTotal}
-                          </TableCell>
-                        )
-                      })}
-                      <TableCell className="text-center font-medium">
-                        {closerUsers.reduce((sum, user) => sum + user.total.value, 0)}
-                      </TableCell>
-                      {closerUsers.map(user => 
-                        periods.map(period => {
-                          const userPeriodData = user.periods.find(p => p.periodKey === period.key)
+                                  <TableBody>
+                    {/* CLOSERS section header */}
+                    {closerMetrics.length > 0 && (
+                      <TableRow className="bg-muted/50">
+                        <TableCell colSpan={periods.length + 3 + (closerUsers.length * periods.length) + (setterUsers.length * periods.length)} className="font-bold text-sm">
+                          <div className="flex items-center gap-2">
+                            <Building2 className="h-4 w-4" />
+                            CLOSERS
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                    
+                    {/* Closer metrics */}
+                    {closerMetrics.map((metricCol) => (
+                      <TableRow key={metricCol.id}>
+                        <TableCell className="font-medium">
+                          {metricCol.displayName}
+                        </TableCell>
+                        {periods.map(period => {
+                          // Calculate total for this period across all closer users
+                          const periodTotal = closerUsers.reduce((sum, user) => {
+                            const userPeriodData = user.periods.find(p => p.periodKey === period.key)
+                            return sum + (userPeriodData?.value || 0)
+                          }, 0)
+                          
                           return (
-                            <TableCell key={`closer-${user.userId}-${period.key}`} className="text-center">
-                              {userPeriodData?.displayValue || '0'}
+                            <TableCell key={period.key} className="text-center">
+                              {periodTotal}
                             </TableCell>
                           )
-                        })
-                      ).flat()}
-                      {setterUsers.map(user => 
-                        periods.map(period => {
-                          const userPeriodData = user.periods.find(p => p.periodKey === period.key)
-                          return (
+                        })}
+                        <TableCell className="text-center font-medium">
+                          {closerUsers.reduce((sum, user) => sum + user.total.value, 0)}
+                        </TableCell>
+                        {closerUsers.map(user => 
+                          periods.map(period => {
+                            const userPeriodData = user.periods.find(p => p.periodKey === period.key)
+                            return (
+                              <TableCell key={`closer-${user.userId}-${period.key}`} className="text-center">
+                                {userPeriodData?.displayValue || '0'}
+                              </TableCell>
+                            )
+                          })
+                        ).flat()}
+                        {setterUsers.map(user => 
+                          periods.map(period => (
                             <TableCell key={`setter-${user.userId}-${period.key}`} className="text-center text-muted-foreground">
                               -
                             </TableCell>
-                          )
-                        })
-                      ).flat()}
-                      <TableCell>
-                        {onRemoveColumn && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => onRemoveColumn(metricCol.id)}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                          ))
+                        ).flat()}
+                        <TableCell>
+                          {onRemoveColumn && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => onRemoveColumn(metricCol.id)}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
 
-                  {/* SETTERS section header */}
-                  {setterMetrics.length > 0 && (
-                    <TableRow className="bg-muted/50">
-                      <TableCell colSpan={periods.length + 3 + data.length} className="font-bold text-sm">
-                        <div className="flex items-center gap-2">
-                          <Users className="h-4 w-4" />
-                          SETTERS
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  )}
-                  
-                  {/* Setter metrics */}
-                  {setterMetrics.map((metricCol) => (
-                    <TableRow key={metricCol.id}>
-                      <TableCell className="font-medium">
-                        {metricCol.displayName}
-                      </TableCell>
-                      {periods.map(period => {
-                        // Calculate total for this period across all setter users
-                        const periodTotal = setterUsers.reduce((sum, user) => {
-                          const userPeriodData = user.periods.find(p => p.periodKey === period.key)
-                          return sum + (userPeriodData?.value || 0)
-                        }, 0)
-                        
-                        return (
-                          <TableCell key={period.key} className="text-center">
-                            {periodTotal}
-                          </TableCell>
-                        )
-                      })}
-                      <TableCell className="text-center font-medium">
-                        {setterUsers.reduce((sum, user) => sum + user.total.value, 0)}
-                      </TableCell>
-                      {closerUsers.map(user => 
-                        periods.map(period => {
-                          const userPeriodData = user.periods.find(p => p.periodKey === period.key)
+                    {/* SETTERS section header */}
+                    {setterMetrics.length > 0 && (
+                      <TableRow className="bg-muted/50">
+                        <TableCell colSpan={periods.length + 3 + (closerUsers.length * periods.length) + (setterUsers.length * periods.length)} className="font-bold text-sm">
+                          <div className="flex items-center gap-2">
+                            <Users className="h-4 w-4" />
+                            SETTERS
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                    
+                    {/* Setter metrics */}
+                    {setterMetrics.map((metricCol) => (
+                      <TableRow key={metricCol.id}>
+                        <TableCell className="font-medium">
+                          {metricCol.displayName}
+                        </TableCell>
+                        {periods.map(period => {
+                          // Calculate total for this period across all setter users
+                          const periodTotal = setterUsers.reduce((sum, user) => {
+                            const userPeriodData = user.periods.find(p => p.periodKey === period.key)
+                            return sum + (userPeriodData?.value || 0)
+                          }, 0)
+                          
                           return (
+                            <TableCell key={period.key} className="text-center">
+                              {periodTotal}
+                            </TableCell>
+                          )
+                        })}
+                        <TableCell className="text-center font-medium">
+                          {setterUsers.reduce((sum, user) => sum + user.total.value, 0)}
+                        </TableCell>
+                        {closerUsers.map(user => 
+                          periods.map(period => (
                             <TableCell key={`closer-${user.userId}-${period.key}`} className="text-center text-muted-foreground">
                               -
                             </TableCell>
-                          )
-                        })
-                      ).flat()}
-                      {setterUsers.map(user => 
-                        periods.map(period => {
-                          const userPeriodData = user.periods.find(p => p.periodKey === period.key)
-                          return (
-                            <TableCell key={`setter-${user.userId}-${period.key}`} className="text-center">
-                              {userPeriodData?.displayValue || '0'}
-                            </TableCell>
-                          )
-                        })
-                      ).flat()}
-                      <TableCell>
-                        {onRemoveColumn && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => onRemoveColumn(metricCol.id)}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                          ))
+                        ).flat()}
+                        {setterUsers.map(user => 
+                          periods.map(period => {
+                            const userPeriodData = user.periods.find(p => p.periodKey === period.key)
+                            return (
+                              <TableCell key={`setter-${user.userId}-${period.key}`} className="text-center">
+                                {userPeriodData?.displayValue || '0'}
+                              </TableCell>
+                            )
+                          })
+                        ).flat()}
+                        <TableCell>
+                          {onRemoveColumn && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => onRemoveColumn(metricCol.id)}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
                 </TableBody>
               </Table>
             </div>
