@@ -155,7 +155,7 @@ export function useAccountsCache(effectiveUserId?: string) {
       console.log('🔍 [useAccountsCache] Auto-loading accounts for new user:', effectiveUserId)
       loadAccounts()
     }
-  }, [effectiveUserId, state.accounts.length, state.loading, loadAccounts])
+  }, [effectiveUserId, state.accounts.length, state.loading])
 
   return {
     accounts: state.accounts,
