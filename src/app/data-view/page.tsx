@@ -272,62 +272,114 @@ export default function DataViewPage() {
     }
   }
 
+  // Determine aggregation type based on date range (same as dashboard charts)
+  const getAggregationType = (): 'daily' | 'weekly' | 'monthly' => {
+    if (!dateRange.from || !dateRange.to) return 'daily'
+    
+    const daysDiff = differenceInDays(dateRange.to, dateRange.from)
+    
+    if (daysDiff <= 14) {
+      return 'daily'
+    } else if (daysDiff <= 90) {
+      return 'weekly'
+    } else {
+      return 'monthly'
+    }
+  }
+
   const loadAllAccountMetrics = async (metricCols: MetricColumn[]) => {
     if (!selectedAccountId) return
 
     setMetricsLoading(true)
-    console.log('🔄 Loading account metrics:', { 
+    const aggregationType = getAggregationType()
+    console.log('🔄 Loading account metrics with aggregation:', { 
       metricColumns: metricCols.length, 
-      dateRange 
+      dateRange,
+      aggregationType
     })
 
     try {
-      // Load all account metrics in parallel
-      const accountMetricsData = await Promise.all(
+      // Generate date points like dashboard charts
+      let datePoints: Array<{ date: string; label: string }> = []
+      
+      if (aggregationType === 'daily') {
+        datePoints = eachDayOfInterval({ start: dateRange.from, end: dateRange.to })
+          .map(date => ({ 
+            date: format(date, 'yyyy-MM-dd'), 
+            label: format(date, 'MMM d') 
+          }))
+      } else if (aggregationType === 'weekly') {
+        datePoints = eachWeekOfInterval({ start: dateRange.from, end: dateRange.to }, { weekStartsOn: 0 })
+          .map(weekStart => ({ 
+            date: format(weekStart, 'yyyy-MM-dd'), 
+            label: `Week of ${format(weekStart, 'MMM d')}` 
+          }))
+      } else {
+        datePoints = eachMonthOfInterval({ start: dateRange.from, end: dateRange.to })
+          .map(monthStart => ({ 
+            date: format(monthStart, 'yyyy-MM-dd'), 
+            label: format(monthStart, 'MMM yyyy') 
+          }))
+      }
+
+      console.log('📅 Generated date points:', datePoints.length, 'periods')
+
+      // Load metrics with time series data (like dashboard)
+      const metricsData = await Promise.all(
         metricCols.map(async (col) => {
           try {
-            const response = await fetch('/api/data-view/account-metrics', {
+            const response = await fetch('/api/metrics', {
               method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
+              headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                accountId: selectedAccountId,
                 metricName: col.metricName,
-                dateRange: {
-                  start: format(dateRange.from, 'yyyy-MM-dd'),
-                  end: format(dateRange.to, 'yyyy-MM-dd')
+                filters: {
+                  accountId: selectedAccountId,
+                  dateRange: {
+                    start: format(dateRange.from, 'yyyy-MM-dd'),
+                    end: format(dateRange.to, 'yyyy-MM-dd')
+                  }
                 },
-                options: col.options
-              }),
+                options: {
+                  vizType: 'line', // Get time series data
+                  widgetSettings: col.options
+                }
+              })
             })
 
             if (response.ok) {
               const result = await response.json()
-              return {
-                metricName: col.displayName,
-                value: result.accountMetric.value,
-                displayValue: result.accountMetric.displayValue,
-                unit: result.accountMetric.unit
+              if (result.result?.type === 'time' && result.result.data) {
+                return { metric: col.displayName, data: result.result.data, metricId: col.id }
               }
-            } else {
-              console.error('Failed to load account metric:', col.metricName)
-              throw new Error(`Failed to load ${col.displayName}`)
             }
+            
+            console.error('Failed to load time series for:', col.metricName)
+            return { metric: col.displayName, data: [], metricId: col.id }
+            
           } catch (error) {
-            console.error('Error loading account metric:', col.metricName, error)
-            return {
-              metricName: col.displayName,
-              value: 0,
-              displayValue: '0',
-              unit: col.unit || 'count'
-            }
+            console.error('Error loading metric time series:', col.metricName, error)
+            return { metric: col.displayName, data: [], metricId: col.id }
           }
         })
       )
 
-      setAccountMetrics(accountMetricsData)
-      console.log('✅ Account metrics loaded:', accountMetricsData)
+      // Combine data like dashboard charts
+      const combinedData = datePoints.map(point => {
+        const dataPoint: AccountMetric = {
+          period: point.label
+        }
+
+        metricsData.forEach(({ metric, data, metricId }) => {
+          const metricData = data.find((d: any) => d.date === point.date)
+          dataPoint[metricId] = metricData?.value || 0
+        })
+
+        return dataPoint
+      })
+
+      setAccountMetrics(combinedData)
+      console.log('✅ Account metrics time series loaded:', combinedData.length, 'periods')
 
     } catch (error) {
       console.error('Error loading account metrics:', error)
