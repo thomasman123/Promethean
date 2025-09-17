@@ -252,7 +252,7 @@ export function OrderedDataFlow({ className }: OrderedDataFlowProps) {
     return (
       <Card className={cn("w-full max-w-4xl mx-auto", className)}>
         <CardContent className="flex flex-col items-center justify-center p-12 text-center">
-          <CheckCircle2 className="h-16 w-16 text-green-500 mb-4" />
+          <CheckCircle2 className="h-16 w-16 text-muted-foreground mb-4" />
           <h3 className="text-xl font-semibold mb-2">All Caught Up!</h3>
           <p className="text-muted-foreground">All appointments and discoveries have been updated.</p>
         </CardContent>
@@ -284,12 +284,12 @@ export function OrderedDataFlow({ className }: OrderedDataFlowProps) {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               {currentItem.type === 'appointment' ? (
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <Calendar className="h-6 w-6 text-blue-600" />
+                <div className="p-2 bg-muted rounded-lg">
+                  <Calendar className="h-6 w-6 text-muted-foreground" />
                 </div>
               ) : (
-                <div className="p-2 bg-purple-100 rounded-lg">
-                  <Users className="h-6 w-6 text-purple-600" />
+                <div className="p-2 bg-muted rounded-lg">
+                  <Users className="h-6 w-6 text-muted-foreground" />
                 </div>
               )}
               <div>
@@ -417,7 +417,7 @@ export function OrderedDataFlow({ className }: OrderedDataFlowProps) {
                     <div className="flex flex-col items-center">
                       <div className="flex mb-1">
                         {[...Array(rating)].map((_, i) => (
-                          <span key={i} className="text-yellow-500">★</span>
+                          <span key={i} className={editForm.leadQuality === rating ? "text-primary-foreground" : "text-muted-foreground"}>★</span>
                         ))}
                       </div>
                       <span className="text-xs">
@@ -495,8 +495,8 @@ export function OrderedDataFlow({ className }: OrderedDataFlowProps) {
                       <label className={cn(
                         "flex items-center gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all",
                         editForm.showOutcome === 'won' 
-                          ? "border-green-500 bg-green-50" 
-                          : "border-border hover:border-green-500/50"
+                          ? "border-primary bg-primary/5" 
+                          : "border-border hover:border-primary/50"
                       )}>
                         <RadioGroupItem value="won" />
                         <div>
@@ -506,8 +506,8 @@ export function OrderedDataFlow({ className }: OrderedDataFlowProps) {
                       <label className={cn(
                         "flex items-center gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all",
                         editForm.showOutcome === 'lost' 
-                          ? "border-red-500 bg-red-50" 
-                          : "border-border hover:border-red-500/50"
+                          ? "border-primary bg-primary/5" 
+                          : "border-border hover:border-primary/50"
                       )}>
                         <RadioGroupItem value="lost" />
                         <div>
@@ -517,8 +517,8 @@ export function OrderedDataFlow({ className }: OrderedDataFlowProps) {
                       <label className={cn(
                         "flex items-center gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all",
                         editForm.showOutcome === 'follow_up' 
-                          ? "border-yellow-500 bg-yellow-50" 
-                          : "border-border hover:border-yellow-500/50"
+                          ? "border-primary bg-primary/5" 
+                          : "border-border hover:border-primary/50"
                       )}>
                         <RadioGroupItem value="follow_up" />
                         <div>
@@ -531,7 +531,7 @@ export function OrderedDataFlow({ className }: OrderedDataFlowProps) {
 
                 {/* Payment fields for won outcomes */}
                 {editForm.showOutcome === 'won' && (
-                  <div className="grid grid-cols-2 gap-4 p-4 bg-green-50 rounded-lg border border-green-200">
+                  <div className="grid grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg border">
                     <div className="space-y-2">
                       <Label htmlFor="cash-collected" className="text-base font-medium">
                         Cash Collected
