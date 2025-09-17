@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
     }
 
     console.log(`🔄 Updating account access for user: ${userId}`);
-    console.log(`📝 Changes:`, changes);
+    console.log(`📝 Processing ${changes.length} changes:`, changes);
 
     let addedCount = 0;
     let removedCount = 0;
@@ -33,6 +33,7 @@ export async function POST(req: NextRequest) {
 
     for (const change of changes) {
       const { accountId, hasAccess, role } = change;
+      console.log(`🔄 Processing change for account ${accountId}: hasAccess=${hasAccess}, role=${role}`);
 
       if (hasAccess) {
         // Grant or update access

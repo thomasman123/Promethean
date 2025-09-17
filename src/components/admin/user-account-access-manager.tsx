@@ -104,12 +104,19 @@ export function UserAccountAccessManager({ open, onOpenChange, user }: UserAccou
 
     setSaving(true)
     try {
-      // Prepare changes
-      const changes = accounts.map(account => ({
+      // Prepare changes - only send accounts that actually changed
+      const changes = accounts.filter(account => {
+        const original = originalAccess.find(orig => orig.accountId === account.accountId)
+        return !original || 
+               original.hasAccess !== account.hasAccess || 
+               original.role !== account.role
+      }).map(account => ({
         accountId: account.accountId,
         hasAccess: account.hasAccess,
         role: account.role
       }))
+
+      console.log('🔄 Sending account access changes:', changes)
 
       const response = await fetch('/api/admin/update-user-account-access', {
         method: 'POST',
