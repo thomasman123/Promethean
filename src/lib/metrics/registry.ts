@@ -10,7 +10,8 @@ const BASE_METRICS = {
 		breakdownType: 'total' as const,
 		query: {
 			table: 'appointments',
-			select: ['COUNT(*) as value']
+			select: ['COUNT(*) as value'],
+			where: ['data_filled = true']
 		},
 		unit: 'count' as const,
 		options: {
@@ -26,7 +27,7 @@ const BASE_METRICS = {
 		query: {
 			table: 'appointments',
 			select: ['COUNT(*) as value'],
-			where: ["LOWER(call_outcome) = 'show'"]
+			where: ["LOWER(call_outcome) = 'show'", "data_filled = true"]
 		},
 		unit: 'count' as const,
 		options: {
@@ -42,7 +43,7 @@ const BASE_METRICS = {
 		query: {
 			table: 'appointments',
 			select: ['COUNT(*) as value'],
-			where: ["show_outcome = 'won'"]
+			where: ["show_outcome = 'won'", "data_filled = true"]
 		},
 		unit: 'count' as const,
 		options: {
@@ -59,7 +60,8 @@ const BASE_METRICS = {
 			table: 'appointments',
 			select: [
 				"COALESCE(AVG(CASE WHEN LOWER(call_outcome) = 'show' THEN 1.0 ELSE 0.0 END), 0) as value"
-			]
+			],
+			where: ['data_filled = true']
 		},
 		unit: 'percent' as const,
 		options: {
@@ -77,7 +79,8 @@ const BASE_METRICS = {
 			table: 'appointments',
 			select: [
 				"COALESCE(AVG(CASE WHEN show_outcome = 'won' THEN 1.0 ELSE 0.0 END), 0) as value"
-			]
+			],
+			where: ['data_filled = true']
 		},
 		unit: 'percent' as const,
 		options: {
@@ -94,7 +97,8 @@ const BASE_METRICS = {
 			table: 'appointments',
 			select: [
 				"COALESCE(AVG(CASE WHEN pitched = true THEN CASE WHEN show_outcome = 'won' THEN 1.0 ELSE 0.0 END END), 0) as value"
-			]
+			],
+			where: ['data_filled = true']
 		},
 		unit: 'percent' as const,
 		options: {
@@ -111,7 +115,8 @@ const BASE_METRICS = {
 			table: 'appointments',
 			select: [
 				"COALESCE(AVG(CASE WHEN call_outcome = 'Show' THEN CASE WHEN show_outcome = 'won' THEN 1.0 ELSE 0.0 END END), 0) as value"
-			]
+			],
+			where: ['data_filled = true']
 		},
 		unit: 'percent' as const,
 		options: {
@@ -128,7 +133,8 @@ const BASE_METRICS = {
 			table: 'appointments',
 			select: [
 				"COALESCE(AVG(CASE WHEN show_outcome = 'won' THEN 1.0 ELSE 0.0 END), 0) as value"
-			]
+			],
+			where: ['data_filled = true']
 		},
 		unit: 'percent' as const,
 		options: {
@@ -144,7 +150,8 @@ const BASE_METRICS = {
 		breakdownType: 'total' as const,
 		query: {
 			table: 'appointments',
-			select: ['COALESCE(SUM(cash_collected), 0) as value']
+			select: ['COALESCE(SUM(cash_collected), 0) as value'],
+			where: ['data_filled = true']
 		},
 		unit: 'currency' as const,
 		options: {
@@ -159,7 +166,8 @@ const BASE_METRICS = {
 		breakdownType: 'total' as const,
 		query: {
 			table: 'appointments',
-			select: ['COALESCE(AVG(cash_collected), 0) as value']
+			select: ['COALESCE(AVG(cash_collected), 0) as value'],
+			where: ['data_filled = true']
 		},
 		unit: 'currency' as const,
 		options: {
@@ -176,7 +184,8 @@ const BASE_METRICS = {
 			table: 'appointments',
 			select: [
 				"COALESCE(SUM(cash_collected), 0) / NULLIF(SUM(CASE WHEN show_outcome = 'won' THEN 1 ELSE 0 END), 0) as value"
-			]
+			],
+			where: ['data_filled = true']
 		},
 		unit: 'currency' as const,
 		options: {
@@ -309,7 +318,8 @@ const BASE_METRICS = {
 			table: 'appointments',
 			select: [
 				"CASE WHEN COUNT(*) FILTER (WHERE show_outcome = 'won') > 0 THEN COALESCE(COUNT(*) FILTER (WHERE pif = true AND show_outcome = 'won')::DECIMAL / COUNT(*) FILTER (WHERE show_outcome = 'won'), 0) ELSE 0 END as value"
-			]
+			],
+			where: ['data_filled = true']
 		},
 		unit: 'percent' as const,
 		options: {
@@ -327,7 +337,7 @@ const BASE_METRICS = {
 			select: [
 				'CASE WHEN SUM(total_sales_value) > 0 THEN COALESCE(SUM(cash_collected)::DECIMAL / SUM(total_sales_value), 0) ELSE 0 END as value'
 			],
-			where: ["show_outcome = 'won'", "total_sales_value > 0"]
+			where: ["show_outcome = 'won'", "total_sales_value > 0", "data_filled = true"]
 		},
 		unit: 'percent' as const,
 		options: {
@@ -345,7 +355,7 @@ const BASE_METRICS = {
 			select: [
 				'COALESCE(AVG(total_sales_value), 0) as value'
 			],
-			where: ["show_outcome = 'won'", "total_sales_value > 0"]
+			where: ["show_outcome = 'won'", "total_sales_value > 0", "data_filled = true"]
 		},
 		unit: 'currency' as const,
 		options: {
@@ -363,7 +373,7 @@ const BASE_METRICS = {
 			select: [
 				'COALESCE(SUM(total_sales_value), 0) as value'
 			],
-			where: ["show_outcome = 'won'", "total_sales_value > 0"]
+			where: ["show_outcome = 'won'", "total_sales_value > 0", "data_filled = true"]
 		},
 		unit: 'currency' as const,
 		options: {
@@ -382,7 +392,7 @@ const BASE_METRICS = {
 			select: [
 				'COALESCE(AVG(lead_quality), 0) as value'
 			],
-			where: ['lead_quality IS NOT NULL']
+			where: ['lead_quality IS NOT NULL', 'data_filled = true']
 		},
 		unit: 'count' as const,
 		options: {
@@ -400,7 +410,7 @@ const BASE_METRICS = {
 			select: [
 				'COALESCE(AVG(lead_quality), 0) as value'
 			],
-			where: ['lead_quality IS NOT NULL']
+			where: ['lead_quality IS NOT NULL', 'data_filled = true']
 		},
 		unit: 'count' as const,
 		options: {
@@ -593,7 +603,8 @@ const BASE_METRICS = {
 		breakdownType: 'total' as const,
 		query: {
 			table: 'discoveries',
-			select: ['COUNT(*) as value']
+			select: ['COUNT(*) as value'],
+			where: ['data_filled = true']
 		},
 		unit: 'count' as const,
 		options: {
@@ -609,7 +620,7 @@ const BASE_METRICS = {
 		query: {
 			table: 'discoveries',
 			select: ['COUNT(*) as value'],
-			where: ["call_outcome = 'show'"]
+			where: ["call_outcome = 'show'", "data_filled = true"]
 		},
 		unit: 'count' as const,
 		options: {

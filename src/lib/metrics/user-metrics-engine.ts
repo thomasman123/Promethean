@@ -182,6 +182,7 @@ export class UserMetricsEngine {
       .eq('account_id', accountId)
       .gte('created_at', startDate)
       .lte('created_at', endDate)
+      .eq('data_filled', true)
 
     // Add metric-specific filters
     if (metric.query.where) {
@@ -231,6 +232,7 @@ export class UserMetricsEngine {
       .eq('account_id', accountId)
       .gte('created_at', startDate)
       .lte('created_at', endDate)
+      .eq('data_filled', true)
 
     // Add metric-specific filters
     if (metric.query.where) {
