@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast"
 import { useImpersonation } from "@/hooks/use-impersonation"
 import { useEffectiveUser } from "@/hooks/use-effective-user"
 import { cn } from "@/lib/utils"
+import { OrderedDataFlow } from "@/components/update-data/ordered-data-flow"
 
 interface TaskAppointment {
   id: string
@@ -475,7 +476,7 @@ export default function UpdateDataPage() {
 
               {/* Recently Completed */}
               {recentCompleted.length > 0 && (
-                <Card>
+                <Card className="mb-6">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <CheckCircle2 className="h-5 w-5 text-green-600" />
@@ -501,6 +502,9 @@ export default function UpdateDataPage() {
                   </CardContent>
                 </Card>
               )}
+
+              {/* Ordered Data Flow */}
+              <OrderedDataFlow />
             </>
           )}
         </div>
