@@ -68,8 +68,10 @@ export function UserAccountAccessManager({ open, onOpenChange, user }: UserAccou
       }
 
       const data = await response.json()
+      console.log('🔍 Loaded user account access:', data.accounts)
       setAccounts(data.accounts || [])
-      setOriginalAccess(data.accounts || [])
+      // Deep copy to prevent reference sharing
+      setOriginalAccess(JSON.parse(JSON.stringify(data.accounts || [])))
       
     } catch (error) {
       console.error('Error loading user account access:', error)
@@ -84,6 +86,7 @@ export function UserAccountAccessManager({ open, onOpenChange, user }: UserAccou
   }
 
   const handleAccessChange = (accountId: string, hasAccess: boolean) => {
+    console.log(`🔄 Access change: account ${accountId} -> hasAccess: ${hasAccess}`)
     setAccounts(prev => prev.map(account => 
       account.accountId === accountId 
         ? { ...account, hasAccess }
@@ -92,6 +95,7 @@ export function UserAccountAccessManager({ open, onOpenChange, user }: UserAccou
   }
 
   const handleRoleChange = (accountId: string, role: string) => {
+    console.log(`🔄 Role change: account ${accountId} -> role: ${role}`)
     setAccounts(prev => prev.map(account => 
       account.accountId === accountId 
         ? { ...account, role }
@@ -105,11 +109,21 @@ export function UserAccountAccessManager({ open, onOpenChange, user }: UserAccou
     setSaving(true)
     try {
       // Prepare changes - only send accounts that actually changed
+      console.log('🔍 Current accounts state:', accounts)
+      console.log('🔍 Original access state:', originalAccess)
+      
       const changes = accounts.filter(account => {
         const original = originalAccess.find(orig => orig.accountId === account.accountId)
-        return !original || 
+        const hasChanged = !original || 
                original.hasAccess !== account.hasAccess || 
                original.role !== account.role
+        
+        console.log(`🔍 Account ${account.accountName}: hasChanged=${hasChanged}`, {
+          current: { hasAccess: account.hasAccess, role: account.role },
+          original: original ? { hasAccess: original.hasAccess, role: original.role } : 'not found'
+        })
+        
+        return hasChanged
       }).map(account => ({
         accountId: account.accountId,
         hasAccess: account.hasAccess,
