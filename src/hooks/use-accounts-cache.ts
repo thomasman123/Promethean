@@ -73,16 +73,12 @@ export function useAccountsCache(effectiveUserId?: string) {
     loadingRef.current = true
     
     // Set loading state while preserving current state
-    setState(prevState => {
-      const newState = {
-        accounts: prevState.accounts, // Keep existing accounts during loading
-        loading: true,
-        error: null,
-        lastFetched: prevState.lastFetched
-      }
-      globalAccountsCache[effectiveUserId] = newState
-      return newState
-    })
+    setState(prevState => ({
+      accounts: prevState.accounts, // Keep existing accounts during loading
+      loading: true,
+      error: null,
+      lastFetched: prevState.lastFetched
+    }))
 
     try {
       const response = await fetch('/api/accounts-simple', {
@@ -119,11 +115,11 @@ export function useAccountsCache(effectiveUserId?: string) {
       console.error('❌ [useAccountsCache] Failed to load accounts:', errorMessage)
       
       setState(prevState => {
-        const errorState = {
+        const errorState: AccountsCacheState = {
           accounts: prevState.accounts, // Keep existing accounts on error
           loading: false,
           error: errorMessage,
-          lastFetched: prevState.lastFetched
+          lastFetched: Date.now() // Set lastFetched even on error to prevent infinite loop
         }
         globalAccountsCache[effectiveUserId] = errorState
         return errorState
@@ -154,11 +150,11 @@ export function useAccountsCache(effectiveUserId?: string) {
 
   // Auto-load accounts when user changes
   useEffect(() => {
-    if (effectiveUserId && state.accounts.length === 0 && !state.loading) {
+    if (effectiveUserId && state.accounts.length === 0 && !state.loading && !state.lastFetched) {
       console.log('🔍 [useAccountsCache] Auto-loading accounts for new user:', effectiveUserId)
       loadAccounts()
     }
-  }, [effectiveUserId, state.accounts.length, state.loading])
+  }, [effectiveUserId, state.accounts.length, state.loading, state.lastFetched])
 
   return {
     accounts: state.accounts,
