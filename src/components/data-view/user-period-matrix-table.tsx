@@ -160,28 +160,14 @@ export function UserPeriodMatrixTable({
     },
   })
 
-  // Group metrics by role for section display
-  const closerMetrics = metricColumns.filter(col => {
-    const isCloserMetric = col.metricName.includes('appointment') || 
-                         col.metricName.includes('sales') || 
-                         col.metricName.includes('cash') ||
-                         col.metricName.includes('show_up') ||
-                         col.metricName.includes('close') ||
-                         col.metricName.includes('revenue') ||
-                         col.metricName.includes('booking_to_close') ||
-                         col.metricName.includes('pitch')
-    return isCloserMetric
-  })
-
-  const setterMetrics = metricColumns.filter(col => {
-    const isSetterMetric = col.metricName.includes('dial') || 
-                         col.metricName.includes('answer') || 
-                         col.metricName.includes('booking') ||
-                         col.metricName.includes('discovery') ||
-                         col.metricName.includes('work') ||
-                         col.metricName.includes('speed')
-    return isSetterMetric
-  })
+  // Group users by role
+  const closerUsers = data.filter(user => 
+    user.userRole === 'sales_rep' || user.userRole === 'rep'
+  )
+  
+  const setterUsers = data.filter(user => 
+    user.userRole === 'setter'
+  )
 
   return (
     <div className="w-full space-y-6">
@@ -213,10 +199,10 @@ export function UserPeriodMatrixTable({
         </div>
       </div>
 
-      {/* Metrics sections */}
+      {/* Role-based sections with users as rows */}
       <div className="space-y-6">
         {/* CLOSERS Section */}
-        {closerMetrics.length > 0 && (
+        {closerUsers.length > 0 && metricColumns.length > 0 && (
           <div className="border rounded-lg">
             <div className="bg-muted/50 px-4 py-2 font-medium text-sm flex items-center gap-2">
               <Building2 className="h-4 w-4" />
@@ -226,7 +212,7 @@ export function UserPeriodMatrixTable({
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[200px]">Metric</TableHead>
+                    <TableHead className="w-[200px]">User</TableHead>
                     {periods.map(period => (
                       <TableHead key={period.key} className="text-center min-w-[80px]">
                         <div className="text-xs">{period.label}</div>
@@ -237,38 +223,45 @@ export function UserPeriodMatrixTable({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {closerMetrics.map((metricCol) => (
-                    <TableRow key={metricCol.id}>
+                  {/* Total row for closers */}
+                  <TableRow className="bg-muted/30">
+                    <TableCell className="font-bold">TOTAL</TableCell>
+                    {periods.map(period => {
+                      const periodTotal = closerUsers.reduce((sum, user) => {
+                        const userPeriodData = user.periods.find(p => p.periodKey === period.key)
+                        return sum + (userPeriodData?.value || 0)
+                      }, 0)
+                      
+                      return (
+                        <TableCell key={period.key} className="text-center font-bold">
+                          {periodTotal}
+                        </TableCell>
+                      )
+                    })}
+                    <TableCell className="text-center font-bold">
+                      {closerUsers.reduce((sum, user) => sum + user.total.value, 0)}
+                    </TableCell>
+                    <TableCell></TableCell>
+                  </TableRow>
+                  
+                  {/* Individual closer users */}
+                  {closerUsers.map((user) => (
+                    <TableRow key={user.userId}>
                       <TableCell className="font-medium">
-                        {metricCol.displayName}
+                        {user.userName}
                       </TableCell>
                       {periods.map(period => {
-                        // Calculate total for this period across all users
-                        const periodTotal = data.reduce((sum, user) => {
-                          const userPeriodData = user.periods.find(p => p.periodKey === period.key)
-                          return sum + (userPeriodData?.value || 0)
-                        }, 0)
-                        
+                        const userPeriodData = user.periods.find(p => p.periodKey === period.key)
                         return (
                           <TableCell key={period.key} className="text-center">
-                            {periodTotal}
+                            {userPeriodData?.displayValue || '0'}
                           </TableCell>
                         )
                       })}
                       <TableCell className="text-center font-medium">
-                        {data.reduce((sum, user) => sum + user.total.value, 0)}
+                        {user.total.displayValue}
                       </TableCell>
-                      <TableCell>
-                        {onRemoveColumn && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => onRemoveColumn(metricCol.id)}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </TableCell>
+                      <TableCell></TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -278,7 +271,7 @@ export function UserPeriodMatrixTable({
         )}
 
         {/* SETTERS Section */}
-        {setterMetrics.length > 0 && (
+        {setterUsers.length > 0 && metricColumns.length > 0 && (
           <div className="border rounded-lg">
             <div className="bg-muted/50 px-4 py-2 font-medium text-sm flex items-center gap-2">
               <Users className="h-4 w-4" />
@@ -288,7 +281,7 @@ export function UserPeriodMatrixTable({
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[200px]">Metric</TableHead>
+                    <TableHead className="w-[200px]">User</TableHead>
                     {periods.map(period => (
                       <TableHead key={period.key} className="text-center min-w-[80px]">
                         <div className="text-xs">{period.label}</div>
@@ -299,38 +292,45 @@ export function UserPeriodMatrixTable({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {setterMetrics.map((metricCol) => (
-                    <TableRow key={metricCol.id}>
+                  {/* Total row for setters */}
+                  <TableRow className="bg-muted/30">
+                    <TableCell className="font-bold">TOTAL</TableCell>
+                    {periods.map(period => {
+                      const periodTotal = setterUsers.reduce((sum, user) => {
+                        const userPeriodData = user.periods.find(p => p.periodKey === period.key)
+                        return sum + (userPeriodData?.value || 0)
+                      }, 0)
+                      
+                      return (
+                        <TableCell key={period.key} className="text-center font-bold">
+                          {periodTotal}
+                        </TableCell>
+                      )
+                    })}
+                    <TableCell className="text-center font-bold">
+                      {setterUsers.reduce((sum, user) => sum + user.total.value, 0)}
+                    </TableCell>
+                    <TableCell></TableCell>
+                  </TableRow>
+                  
+                  {/* Individual setter users */}
+                  {setterUsers.map((user) => (
+                    <TableRow key={user.userId}>
                       <TableCell className="font-medium">
-                        {metricCol.displayName}
+                        {user.userName}
                       </TableCell>
                       {periods.map(period => {
-                        // Calculate total for this period across all users
-                        const periodTotal = data.reduce((sum, user) => {
-                          const userPeriodData = user.periods.find(p => p.periodKey === period.key)
-                          return sum + (userPeriodData?.value || 0)
-                        }, 0)
-                        
+                        const userPeriodData = user.periods.find(p => p.periodKey === period.key)
                         return (
                           <TableCell key={period.key} className="text-center">
-                            {periodTotal}
+                            {userPeriodData?.displayValue || '0'}
                           </TableCell>
                         )
                       })}
                       <TableCell className="text-center font-medium">
-                        {data.reduce((sum, user) => sum + user.total.value, 0)}
+                        {user.total.displayValue}
                       </TableCell>
-                      <TableCell>
-                        {onRemoveColumn && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => onRemoveColumn(metricCol.id)}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </TableCell>
+                      <TableCell></TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -339,71 +339,43 @@ export function UserPeriodMatrixTable({
           </div>
         )}
 
-        {/* Individual user data */}
-        {data.length > 0 && metricColumns.length > 0 && (
-          <div className="border rounded-lg">
-            <div className="bg-muted/50 px-4 py-2 font-medium text-sm">
-              INDIVIDUAL USERS
+        {/* Metric management section */}
+        {metricColumns.length > 0 && (
+          <div className="border rounded-lg p-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-medium">Current Metrics</h3>
+              {onAddColumn && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onAddColumn({
+                    id: `metric_${Date.now()}`,
+                    metricName: '',
+                    displayName: 'New Metric',
+                    options: {}
+                  })}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Metric
+                </Button>
+              )}
             </div>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  {table.getHeaderGroups().map((headerGroup) => (
-                    <TableRow key={headerGroup.id}>
-                      {headerGroup.headers.map((header) => (
-                        <TableHead key={header.id} className="text-center">
-                          {header.isPlaceholder
-                            ? null
-                            : flexRender(
-                                header.column.columnDef.header,
-                                header.getContext()
-                              )}
-                        </TableHead>
-                      ))}
-                    </TableRow>
-                  ))}
-                </TableHeader>
-                <TableBody>
-                  {loading ? (
-                    <TableRow>
-                      <TableCell
-                        colSpan={columns.length}
-                        className="h-24 text-center"
-                      >
-                        <div className="flex items-center justify-center gap-2">
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
-                          Loading metrics...
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ) : table.getRowModel().rows?.length ? (
-                    table.getRowModel().rows.map((row) => (
-                      <TableRow
-                        key={row.id}
-                        data-state={row.getIsSelected() && "selected"}
-                      >
-                        {row.getVisibleCells().map((cell) => (
-                          <TableCell key={cell.id} className="px-2 py-1.5">
-                            {flexRender(
-                              cell.column.columnDef.cell,
-                              cell.getContext()
-                            )}
-                          </TableCell>
-                        ))}
-                      </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell
-                        colSpan={columns.length}
-                        className="h-24 text-center"
-                      >
-                        No users found.
-                      </TableCell>
-                    </TableRow>
+            <div className="flex flex-wrap gap-2">
+              {metricColumns.map((metric) => (
+                <div key={metric.id} className="flex items-center gap-2 bg-muted/50 px-3 py-1 rounded-md">
+                  <span className="text-sm">{metric.displayName}</span>
+                  {onRemoveColumn && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onRemoveColumn(metric.id)}
+                      className="h-6 w-6 p-0"
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
                   )}
-                </TableBody>
-              </Table>
+                </div>
+              ))}
             </div>
           </div>
         )}
