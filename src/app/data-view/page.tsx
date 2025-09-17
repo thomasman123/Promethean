@@ -52,12 +52,18 @@ export default function DataViewPage() {
       setCurrentTableId(event.detail.tableId)
     }
 
+    const handlePeriodViewChange = (event: CustomEvent) => {
+      setPeriodView(event.detail.periodView)
+    }
+
     window.addEventListener('roleFilterChanged' as any, handleRoleFilterChange)
     window.addEventListener('tableChanged' as any, handleTableChange)
+    window.addEventListener('periodViewChanged' as any, handlePeriodViewChange)
 
     return () => {
       window.removeEventListener('roleFilterChanged' as any, handleRoleFilterChange)
       window.removeEventListener('tableChanged' as any, handleTableChange)
+      window.removeEventListener('periodViewChanged' as any, handlePeriodViewChange)
     }
   }, [])
 
@@ -965,61 +971,13 @@ export default function DataViewPage() {
                   loading={metricsLoading}
                 />
               ) : tableConfig?.table_type === 'account_metrics' ? (
-                <div className="space-y-4">
-                  {/* Period View Selector */}
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium">Period View:</span>
-                    <div className="flex items-center bg-muted rounded-md p-1">
-                      <Button
-                        variant={periodView === 'daily' ? 'secondary' : 'ghost'}
-                        size="sm"
-                        onClick={() => {
-                          setPeriodView('daily')
-                          if (metricColumns.length > 0) {
-                            loadAllAccountMetrics(metricColumns)
-                          }
-                        }}
-                        className="h-7 px-3 text-xs"
-                      >
-                        Daily
-                      </Button>
-                      <Button
-                        variant={periodView === 'weekly' ? 'secondary' : 'ghost'}
-                        size="sm"
-                        onClick={() => {
-                          setPeriodView('weekly')
-                          if (metricColumns.length > 0) {
-                            loadAllAccountMetrics(metricColumns)
-                          }
-                        }}
-                        className="h-7 px-3 text-xs"
-                      >
-                        Weekly
-                      </Button>
-                      <Button
-                        variant={periodView === 'monthly' ? 'secondary' : 'ghost'}
-                        size="sm"
-                        onClick={() => {
-                          setPeriodView('monthly')
-                          if (metricColumns.length > 0) {
-                            loadAllAccountMetrics(metricColumns)
-                          }
-                        }}
-                        className="h-7 px-3 text-xs"
-                      >
-                        Monthly
-                      </Button>
-                    </div>
-                  </div>
-
-                  <UserMetricsTable
-                    data={periods}
-                    columns={columns}
-                    onAddColumn={handleAddColumn}
-                    onRemoveColumn={handleRemoveColumn}
-                    loading={metricsLoading}
-                  />
-                </div>
+                <UserMetricsTable
+                  data={periods}
+                  columns={columns}
+                  onAddColumn={handleAddColumn}
+                  onRemoveColumn={handleRemoveColumn}
+                  loading={metricsLoading}
+                />
               ) : tableConfig?.table_type === 'time_series' ? (
                 <div className="border rounded-lg p-8 text-center">
                   <TrendingUp className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />

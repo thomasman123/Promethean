@@ -18,6 +18,7 @@ import { DatePicker } from "@/components/ui/date-picker"
 import { ViewsManager } from "@/components/dashboard/views-manager"
 import { TablesManager } from "@/components/data-view/tables-manager"
 import { RoleFilterDropdown, type RoleFilter } from "@/components/data-view/role-filter"
+import { PeriodViewDropdown, type PeriodView } from "@/components/data-view/period-view-filter"
 import { AddWidgetModal, WidgetConfig } from "@/components/dashboard/add-widget-modal"
 import { AdminSettingsModal } from "./admin-settings-modal"
 import { useDashboard } from "@/lib/dashboard-context"
@@ -45,6 +46,7 @@ export function TopBar({ onAddWidget }: TopBarProps) {
   const [currentTableId, setCurrentTableId] = useState<string | null>(null)
   const [currentTableType, setCurrentTableType] = useState<string | null>(null)
   const [roleFilter, setRoleFilter] = useState<RoleFilter>('both')
+  const [periodView, setPeriodView] = useState<PeriodView>('weekly')
   const [showAddWidgetModal, setShowAddWidgetModal] = useState(false)
   const [showAdminSettingsModal, setShowAdminSettingsModal] = useState(false)
   const [isImpersonating, setIsImpersonating] = useState(false)
@@ -160,6 +162,12 @@ export function TopBar({ onAddWidget }: TopBarProps) {
     window.dispatchEvent(new CustomEvent('roleFilterChanged', { detail: { roleFilter: newRoleFilter } }))
   }
 
+  const handlePeriodViewChange = (newPeriodView: PeriodView) => {
+    setPeriodView(newPeriodView)
+    // Dispatch custom event for data view page to listen to
+    window.dispatchEvent(new CustomEvent('periodViewChanged', { detail: { periodView: newPeriodView } }))
+  }
+
   const handleTableChange = (tableId: string | null) => {
     setCurrentTableId(tableId)
     // Save the last opened table to localStorage
@@ -186,6 +194,14 @@ export function TopBar({ onAddWidget }: TopBarProps) {
       window.removeEventListener('tableTypeChanged' as any, handleTableTypeChanged)
     }
   }, [])
+
+  // When table type changes to account_metrics, notify data view about current period view
+  useEffect(() => {
+    if (currentTableType === 'account_metrics') {
+      // Send current period view to data view page
+      window.dispatchEvent(new CustomEvent('periodViewChanged', { detail: { periodView } }))
+    }
+  }, [currentTableType, periodView])
 
   const handleAppointmentsTabChange = (tab: 'appointments' | 'discoveries') => {
     setAppointmentsTab(tab)
@@ -498,7 +514,7 @@ export function TopBar({ onAddWidget }: TopBarProps) {
               </>
             )}
             
-            {/* Show RoleFilter and TablesManager on data-view page */}
+            {/* Show RoleFilter, PeriodView and TablesManager on data-view page */}
             {pathname === "/data-view" && selectedAccountId && (
               <>
                 {/* Only show role filter for user_metrics tables */}
@@ -506,6 +522,13 @@ export function TopBar({ onAddWidget }: TopBarProps) {
                   <RoleFilterDropdown
                     value={roleFilter}
                     onChange={handleRoleFilterChange}
+                  />
+                )}
+                {/* Only show period view for account_metrics tables */}
+                {currentTableType === 'account_metrics' && (
+                  <PeriodViewDropdown
+                    value={periodView}
+                    onChange={handlePeriodViewChange}
                   />
                 )}
                 <TablesManager
