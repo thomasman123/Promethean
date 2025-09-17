@@ -3,6 +3,8 @@ import { createServerClient } from "@supabase/ssr";
 import type { Database } from "@/lib/database-temp.types";
 
 export async function POST(req: NextRequest) {
+  console.log('🚀 Admin update user account access API called');
+  
   const supabase = createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -11,6 +13,8 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
+    console.log('📥 Received request body:', body);
+    
     const { userId, changes } = body as {
       userId: string;
       changes: Array<{
@@ -21,6 +25,7 @@ export async function POST(req: NextRequest) {
     };
 
     if (!userId || !changes) {
+      console.log('❌ Missing required fields:', { userId: !!userId, changes: !!changes });
       return NextResponse.json({ error: 'userId and changes are required' }, { status: 400 });
     }
 
@@ -71,21 +76,24 @@ export async function POST(req: NextRequest) {
         } else {
           // Grant new access
           console.log(`🆕 Granting new access for user ${userId} on account ${accountId}: ${role}`);
-          const { error } = await supabase
+          const { data: insertData, error } = await supabase
             .from('account_access')
             .insert({
               user_id: userId,
               account_id: accountId,
               role: role as any,
+              is_active: true,
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString()
-            });
+            })
+            .select();
 
           if (error) {
             console.error('❌ Error granting access:', error);
             console.error('❌ Insert error details:', error);
           } else {
             console.log(`✅ Granted access for user ${userId} on account ${accountId}: ${role}`);
+            console.log(`✅ Insert result:`, insertData);
             addedCount++;
           }
         }
