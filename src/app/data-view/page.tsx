@@ -113,6 +113,15 @@ export default function DataViewPage() {
     }
   }, [dateRange.from, dateRange.to])
 
+  // Reload matrix data when period view changes
+  useEffect(() => {
+    if (tableConfig?.table_type === 'user_period_matrix' && metricColumns.length > 0 && users.length > 0) {
+      console.log('📊 Period view changed, reloading matrix data:', periodView)
+      // Reload all matrix metrics when period view changes
+      metricColumns.forEach(col => loadUserPeriodMetricData(col))
+    }
+  }, [periodView])
+
   // Load table configuration and metric columns
   useEffect(() => {
     if (!currentTableId) {
@@ -991,7 +1000,7 @@ export default function DataViewPage() {
   const handleCreateTable = async (tableConfig: {
     name: string
     description: string
-    tableType: 'user_metrics' | 'account_metrics' | 'time_series'
+    tableType: 'user_metrics' | 'account_metrics' | 'time_series' | 'user_period_matrix'
   }) => {
     if (!selectedAccountId) return
 

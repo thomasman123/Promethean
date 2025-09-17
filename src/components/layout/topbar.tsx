@@ -524,8 +524,8 @@ export function TopBar({ onAddWidget }: TopBarProps) {
                     onChange={handleRoleFilterChange}
                   />
                 )}
-                {/* Only show period view for account_metrics tables */}
-                {currentTableType === 'account_metrics' && (
+                {/* Only show period view for account_metrics and user_period_matrix tables */}
+                {(currentTableType === 'account_metrics' || currentTableType === 'user_period_matrix') && (
                   <PeriodViewDropdown
                     value={periodView}
                     onChange={handlePeriodViewChange}
