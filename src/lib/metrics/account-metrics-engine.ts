@@ -140,7 +140,7 @@ export class AccountMetricsEngine {
     request: AccountMetricRequest
   ): Promise<AccountMetricResult> {
     
-    // Use the existing metrics engine for account-level calculations
+    // Use the existing metrics engine for TIME SERIES data like dashboard charts
     const { MetricsEngine } = await import('./engine')
     const metricsEngine = new MetricsEngine()
     
@@ -155,12 +155,25 @@ export class AccountMetricsEngine {
       }
     }
 
-    console.log('📊 Using MetricsEngine for account metric:', request.metricName)
+    console.log('📊 Using MetricsEngine for time series account metric:', request.metricName)
     
-    const response = await metricsEngine.execute(metricsRequest)
+    // Get TIME SERIES data (not total) - same as dashboard charts
+    const response = await metricsEngine.execute(metricsRequest, { vizType: 'line' })
     
-    if (response.result.type === 'total' && response.result.data?.value !== undefined) {
-      const value = response.result.data.value
+    if (response.result.type === 'time' && response.result.data) {
+      // Return time series data for aggregation
+      return {
+        metricName: metric.name,
+        value: response.result.data, // Return time series array
+        displayValue: JSON.stringify(response.result.data), // Temporary
+        unit: metric.unit || 'count'
+      }
+    }
+    
+    // Fallback to total if time series fails
+    const totalResponse = await metricsEngine.execute(metricsRequest)
+    if (totalResponse.result.type === 'total' && totalResponse.result.data?.value !== undefined) {
+      const value = totalResponse.result.data.value
       return {
         metricName: metric.name,
         value,
@@ -169,7 +182,7 @@ export class AccountMetricsEngine {
       }
     }
     
-    // Fallback
+    // Final fallback
     return {
       metricName: metric.name,
       value: 0,
