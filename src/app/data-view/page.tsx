@@ -32,6 +32,7 @@ export default function DataViewPage() {
   const [isTableTypeSelectorOpen, setIsTableTypeSelectorOpen] = useState(false)
   const [metricColumns, setMetricColumns] = useState<MetricColumn[]>([])
   const [accountMetrics, setAccountMetrics] = useState<AccountMetric[]>([])
+  const [accountMetricsColumns, setAccountMetricsColumns] = useState<ColumnDef<AccountMetric>[]>([])
   const { toast } = useToast()
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -337,6 +338,97 @@ export default function DataViewPage() {
       })
     } finally {
       setMetricsLoading(false)
+    }
+  }
+
+  const loadAccountMetricData = async (metricColumn: MetricColumn) => {
+    if (!selectedAccountId) return
+
+    console.log('🔄 Loading account metric:', metricColumn.metricName)
+    
+    try {
+      const response = await fetch('/api/data-view/account-metrics', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          accountId: selectedAccountId,
+          metricName: metricColumn.metricName,
+          dateRange: {
+            start: format(dateRange.from, 'yyyy-MM-dd'),
+            end: format(dateRange.to, 'yyyy-MM-dd')
+          },
+          options: metricColumn.options
+        }),
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('❌ Account metric API error:', response.status, errorText)
+        throw new Error(`Failed to load ${metricColumn.displayName}`)
+      }
+
+      const result = await response.json()
+      console.log('✅ Account metric loaded:', result)
+
+      // Update account metrics data structure
+      setAccountMetrics(prev => {
+        const existing = prev.find(row => row.period === 'Total')
+        if (existing) {
+          // Update existing row
+          return prev.map(row => 
+            row.period === 'Total' 
+              ? { ...row, [metricColumn.id]: result.accountMetric.displayValue }
+              : row
+          )
+        } else {
+          // Create new row
+          return [{
+            period: 'Total',
+            [metricColumn.id]: result.accountMetric.displayValue
+          }]
+        }
+      })
+
+      // Update columns for table display
+      setAccountMetricsColumns(prev => {
+        const hasColumn = prev.some(col => (col as any).accessorKey === metricColumn.id)
+        if (hasColumn) return prev
+
+        const newColumn: ColumnDef<AccountMetric> = {
+          accessorKey: metricColumn.id,
+          header: ({ column }) => (
+            <div className="flex items-center gap-2">
+              <span>{metricColumn.displayName}</span>
+              {onRemoveColumn && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onRemoveColumn(metricColumn.id)}
+                  className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              )}
+            </div>
+          ),
+          cell: ({ getValue }) => {
+            const value = getValue()
+            return <span className="font-medium">{value || '0'}</span>
+          },
+        }
+
+        return [...prev, newColumn]
+      })
+
+    } catch (error) {
+      console.error('❌ Error loading account metric:', error)
+      toast({
+        title: "Error",
+        description: `Failed to load ${metricColumn.displayName}`,
+        variant: "destructive",
+      })
     }
   }
 
@@ -825,7 +917,14 @@ export default function DataViewPage() {
               ) : tableConfig?.table_type === 'account_metrics' ? (
                 <AccountMetricsTable
                   data={accountMetrics}
-                  columns={[]} // Account metrics use different column structure
+                  columns={[
+                    {
+                      accessorKey: "period",
+                      header: "Period",
+                      cell: ({ getValue }) => <span className="font-medium">{getValue()}</span>,
+                    },
+                    ...accountMetricsColumns
+                  ]}
                   onAddColumn={handleAddColumn}
                   onRemoveColumn={handleRemoveColumn}
                   loading={metricsLoading}
