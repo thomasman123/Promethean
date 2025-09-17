@@ -140,63 +140,40 @@ export class AccountMetricsEngine {
     request: AccountMetricRequest
   ): Promise<AccountMetricResult> {
     
-    const { table } = metric.query
-    const { accountId, startDate, endDate } = request
-
-    // Build query based on metric definition
-    let query = supabaseService.from(table)
-
-    // Apply metric-specific select and where clauses
-    if (metric.query.select && metric.query.select.length > 0) {
-      query = query.select(metric.query.select[0]) // Use first select for account totals
-    }
-
-    // Add account filter
-    query = query.eq('account_id', accountId)
-
-    // Add date filtering based on table type
-    if (table === 'appointments' || table === 'discoveries') {
-      query = query.gte('created_at', startDate).lte('created_at', endDate)
-    } else if (table === 'dials') {
-      query = query.gte('created_at', startDate).lte('created_at', endDate)
-    } else if (table === 'work_timeframes') {
-      query = query.gte('work_date', startDate).lte('work_date', endDate)
-    }
-
-    // Add metric-specific where conditions
-    if (metric.query.where) {
-      for (const condition of metric.query.where) {
-        // Parse simple conditions like "show_outcome = 'won'"
-        const parts = condition.split(' = ')
-        if (parts.length === 2) {
-          const field = parts[0].trim()
-          const value = parts[1].trim().replace(/'/g, '')
-          query = query.eq(field, value)
-        } else if (condition.includes('IS NOT NULL')) {
-          const field = condition.replace(' IS NOT NULL', '').trim()
-          query = query.not(field, 'is', null)
-        } else if (condition.includes(' > ')) {
-          const parts = condition.split(' > ')
-          const field = parts[0].trim()
-          const value = parseInt(parts[1].trim())
-          query = query.gt(field, value)
+    // Use the existing metrics engine for account-level calculations
+    const { MetricsEngine } = await import('./engine')
+    const metricsEngine = new MetricsEngine()
+    
+    const metricsRequest = {
+      metricName: request.metricName,
+      filters: {
+        accountId: request.accountId,
+        dateRange: {
+          start: request.startDate,
+          end: request.endDate
         }
       }
     }
 
-    const { data, error } = await query.single()
-
-    if (error) {
-      console.error('❌ Account metric query error:', error)
-      throw new Error(`Database query failed: ${error.message}`)
-    }
-
-    const value = data?.value || 0
+    console.log('📊 Using MetricsEngine for account metric:', request.metricName)
     
+    const response = await metricsEngine.execute(metricsRequest)
+    
+    if (response.result.type === 'total' && response.result.data?.value !== undefined) {
+      const value = response.result.data.value
+      return {
+        metricName: metric.name,
+        value,
+        displayValue: this.formatValue(value, metric, request.options),
+        unit: metric.unit || 'count'
+      }
+    }
+    
+    // Fallback
     return {
       metricName: metric.name,
-      value,
-      displayValue: this.formatValue(value, metric, request.options),
+      value: 0,
+      displayValue: '0',
       unit: metric.unit || 'count'
     }
   }
