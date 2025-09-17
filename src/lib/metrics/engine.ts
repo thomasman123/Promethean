@@ -582,17 +582,22 @@ WHERE speed_to_lead_seconds IS NOT NULL
       appliedFiltersParams: appliedFilters.params
     })
     
-    // > 90 days → monthly aggregation
-    if (diffInDays > 90) {
+    // For single month periods (like Sep 1-30), use monthly aggregation
+    if (diffInDays >= 28 && diffInDays <= 31) {
       return 'month'
     }
     
-    // 15-90 days → weekly aggregation  
-    if (diffInDays > 14) {
+    // > 60 days → monthly aggregation
+    if (diffInDays >= 60) {
+      return 'month'
+    }
+    
+    // 14+ days → weekly aggregation  
+    if (diffInDays >= 14) {
       return 'week'
     }
     
-    // ≤ 2 weeks (1-13 days) → daily aggregation
+    // < 14 days → daily aggregation
     return 'day'
   }
 

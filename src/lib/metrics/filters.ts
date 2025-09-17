@@ -23,8 +23,14 @@ function pickLocalDateColumn(baseTable: string, startStr: string, endStr: string
 	const start = new Date(startStr)
 	const end = new Date(endStr)
 	const diffDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
+	
+	// For single month periods (like Sep 1-30), use monthly aggregation
+	if (diffDays >= 28 && diffDays <= 31) return 'local_month'
+	// For longer periods, use monthly aggregation
 	if (diffDays >= 60) return 'local_month'
+	// For 2+ weeks, use weekly aggregation
 	if (diffDays >= 14) return 'local_week'
+	// For short periods, use daily aggregation
 	return 'local_date'
 }
 
