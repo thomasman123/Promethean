@@ -37,15 +37,18 @@ export async function POST(req: NextRequest) {
 
       if (hasAccess) {
         // Grant or update access
-        const { data: existingAccess } = await supabase
+        const { data: existingAccess, error: queryError } = await supabase
           .from('account_access')
           .select('id, role')
           .eq('user_id', userId)
           .eq('account_id', accountId)
           .single();
 
+        console.log(`🔍 Existing access check for ${accountId}:`, { existingAccess, queryError });
+
         if (existingAccess) {
           // Update existing access
+          console.log(`🔄 User already has access, checking if role needs update: ${existingAccess.role} -> ${role}`);
           if (existingAccess.role !== role) {
             const { error } = await supabase
               .from('account_access')
@@ -62,9 +65,12 @@ export async function POST(req: NextRequest) {
               console.log(`✅ Updated role for user ${userId} on account ${accountId}: ${role}`);
               updatedCount++;
             }
+          } else {
+            console.log(`ℹ️ Role unchanged for user ${userId} on account ${accountId}: ${role}`);
           }
         } else {
           // Grant new access
+          console.log(`🆕 Granting new access for user ${userId} on account ${accountId}: ${role}`);
           const { error } = await supabase
             .from('account_access')
             .insert({
@@ -77,6 +83,7 @@ export async function POST(req: NextRequest) {
 
           if (error) {
             console.error('❌ Error granting access:', error);
+            console.error('❌ Insert error details:', error);
           } else {
             console.log(`✅ Granted access for user ${userId} on account ${accountId}: ${role}`);
             addedCount++;
