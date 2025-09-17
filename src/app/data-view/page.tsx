@@ -3,14 +3,13 @@
 import { useState, useEffect, useMemo } from "react"
 import { TopBar } from "@/components/layout/topbar"
 import { UserMetricsTable, type UserMetric, type MetricColumn } from "@/components/data-view/user-metrics-table"
-import { AccountMetricsTable, type AccountMetric, type AccountMetricColumn } from "@/components/data-view/account-metrics-table"
 import { UnifiedMetricSelector } from "@/components/shared/unified-metric-selector"
 import { TableTypeSelector } from "@/components/data-view/table-type-selector"
 import { useDashboard } from "@/lib/dashboard-context"
 import { createBrowserClient } from "@supabase/ssr"
 import { ColumnDef } from "@tanstack/react-table"
 import { ArrowUpDown, Trash2, Building, TrendingUp } from "lucide-react"
-import { addDays, addWeeks, addMonths, format, differenceInDays, eachDayOfInterval, eachWeekOfInterval, eachMonthOfInterval, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns"
+import { format, eachDayOfInterval, eachWeekOfInterval, eachMonthOfInterval } from "date-fns"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -31,8 +30,7 @@ export default function DataViewPage() {
   const [isMetricModalOpen, setIsMetricModalOpen] = useState(false)
   const [isTableTypeSelectorOpen, setIsTableTypeSelectorOpen] = useState(false)
   const [metricColumns, setMetricColumns] = useState<MetricColumn[]>([])
-  const [accountMetrics, setAccountMetrics] = useState<AccountMetric[]>([])
-  const [accountMetricsColumns, setAccountMetricsColumns] = useState<ColumnDef<AccountMetric>[]>([])
+  const [periods, setPeriods] = useState<UserMetric[]>([])
   const [periodView, setPeriodView] = useState<'daily' | 'weekly' | 'monthly'>('weekly')
   const { toast } = useToast()
   const supabase = createBrowserClient(
@@ -106,20 +104,30 @@ export default function DataViewPage() {
     loadTableConfig()
   }, [currentTableId])
 
-  // Load account metrics when period view or date range changes
+  // Load account periods when period view or date range changes
   useEffect(() => {
-    if (metricColumns.length > 0 && tableConfig?.table_type === 'account_metrics' && dateRange.from && dateRange.to) {
-      console.log('🔄 Reloading account metrics due to period/date change:', { 
+    if (tableConfig?.table_type === 'account_metrics' && dateRange.from && dateRange.to) {
+      console.log('🔄 Reloading periods due to period/date change:', { 
         periodView, 
-        metricColumns: metricColumns.length,
         dateRange: {
           from: dateRange.from.toISOString(),
           to: dateRange.to.toISOString()
         }
       })
-      loadAllAccountMetrics(metricColumns)
+      loadPeriods()
     }
-  }, [periodView, dateRange.from, dateRange.to, metricColumns.length, tableConfig?.table_type])
+  }, [periodView, dateRange.from, dateRange.to, tableConfig?.table_type])
+
+  // Load period metrics when periods are loaded and we have metric columns
+  useEffect(() => {
+    if (periods.length > 0 && metricColumns.length > 0 && tableConfig?.table_type === 'account_metrics') {
+      console.log('🔄 Loading period metrics:', { 
+        periods: periods.length,
+        metricColumns: metricColumns.length
+      })
+      loadAllPeriodMetricData(metricColumns)
+    }
+  }, [periods.length, metricColumns.length, tableConfig?.table_type])
 
   async function loadUsers() {
     setLoading(true)
@@ -292,57 +300,19 @@ export default function DataViewPage() {
     if (!selectedAccountId) return
 
     setMetricsLoading(true)
-    console.log('🔄 Loading account metrics with period view:', { 
-      metricColumns: metricCols.length, 
+    console.log('🔄 Loading account periods:', { 
       dateRange,
       periodView
     })
 
     try {
-      // Get raw daily data from metrics API (same as dashboard)
-      const metricsData = await Promise.all(
-        metricCols.map(async (col) => {
-          try {
-            const response = await fetch('/api/metrics', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                metricName: col.metricName,
-                filters: {
-                  accountId: selectedAccountId,
-                  dateRange: {
-                    start: format(dateRange.from, 'yyyy-MM-dd'),
-                    end: format(dateRange.to, 'yyyy-MM-dd')
-                  }
-                },
-                options: {
-                  vizType: 'line', // Get time series data
-                  widgetSettings: col.options
-                }
-              })
-            })
-
-            if (response.ok) {
-              const result = await response.json()
-              if (result.result?.type === 'time' && result.result.data) {
-                return { metric: col.displayName, data: result.result.data, metricId: col.id }
-              }
-            }
-            
-            console.error('Failed to load time series for:', col.metricName)
-            return { metric: col.displayName, data: [], metricId: col.id }
-            
-          } catch (error) {
-            console.error('Error loading metric time series:', col.metricName, error)
-            return { metric: col.displayName, data: [], metricId: col.id }
-          }
-        })
-      )
-
-      // Aggregate raw data based on selected period view
-      const aggregatedData = aggregateMetricsData(metricsData, periodView)
-      setAccountMetrics(aggregatedData)
-      console.log('✅ Account metrics loaded and aggregated:', aggregatedData.length, 'periods')
+      // Generate periods first (like loading users)
+      await loadPeriods()
+      
+      // Then load metrics for each period (like loading user metrics)
+      if (metricCols.length > 0) {
+        await loadAllPeriodMetricData(metricCols)
+      }
 
     } catch (error) {
       console.error('Error loading account metrics:', error)
@@ -356,125 +326,93 @@ export default function DataViewPage() {
     }
   }
 
-  // Aggregate raw daily data into the selected period view
-  const aggregateMetricsData = (metricsData: any[], periodView: 'daily' | 'weekly' | 'monthly') => {
-    if (metricsData.length === 0) return []
+  const loadPeriods = async () => {
+    if (!dateRange.from || !dateRange.to) return
 
-    // Get all unique dates from all metrics
-    const allDates = new Set<string>()
-    metricsData.forEach(({ data }) => {
-      data.forEach((d: any) => allDates.add(d.date))
-    })
-    
-    const sortedDates = Array.from(allDates).sort()
-    if (sortedDates.length === 0) return []
-
-    // Create date periods based on view
-    const periods: Array<{ key: string; label: string; dates: string[] }> = []
+    // Generate periods based on date range and period view (like UserMetric structure)
+    const periods: UserMetric[] = []
     
     if (periodView === 'daily') {
-      // Each date is its own period
-      sortedDates.forEach(date => {
+      const days = eachDayOfInterval({ start: dateRange.from, end: dateRange.to })
+      days.forEach(day => {
         periods.push({
-          key: date,
-          label: format(new Date(date), 'MMM d'),
-          dates: [date]
+          id: format(day, 'yyyy-MM-dd'),
+          name: format(day, 'MMM d'),
+          email: '', // Not used for periods
+          role: 'admin', // Not used for periods
+          startDate: format(day, 'yyyy-MM-dd'),
+          endDate: format(day, 'yyyy-MM-dd')
         })
       })
     } else if (periodView === 'weekly') {
-      // Group dates by week (Monday start to match database)
-      const weekGroups = new Map<string, string[]>()
-      
-      sortedDates.forEach(date => {
-        const dateObj = new Date(date)
-        // Use Monday as week start to match PostgreSQL's DATE_TRUNC('week')
-        const weekStart = startOfWeek(dateObj, { weekStartsOn: 1 })
-        const weekKey = format(weekStart, 'yyyy-MM-dd')
-        
-        if (!weekGroups.has(weekKey)) {
-          weekGroups.set(weekKey, [])
-        }
-        weekGroups.get(weekKey)!.push(date)
-      })
-      
-      Array.from(weekGroups.entries())
-        .sort(([a], [b]) => a.localeCompare(b))
-        .forEach(([weekKey, dates]) => {
-          periods.push({
-            key: weekKey,
-            label: `Week of ${format(new Date(weekKey), 'MMM d')}`,
-            dates
-          })
+      const weeks = eachWeekOfInterval({ start: dateRange.from, end: dateRange.to }, { weekStartsOn: 1 })
+      weeks.forEach(weekStart => {
+        const weekEnd = new Date(weekStart)
+        weekEnd.setDate(weekStart.getDate() + 6)
+        periods.push({
+          id: format(weekStart, 'yyyy-MM-dd'),
+          name: `Week of ${format(weekStart, 'MMM d')}`,
+          email: '', // Not used for periods
+          role: 'admin', // Not used for periods
+          startDate: format(weekStart, 'yyyy-MM-dd'),
+          endDate: format(weekEnd > dateRange.to ? dateRange.to : weekEnd, 'yyyy-MM-dd')
         })
-    } else {
-      // Group dates by month
-      const monthGroups = new Map<string, string[]>()
-      
-      sortedDates.forEach(date => {
-        const dateObj = new Date(date)
-        const monthStart = startOfMonth(dateObj)
-        const monthKey = format(monthStart, 'yyyy-MM-dd')
-        
-        if (!monthGroups.has(monthKey)) {
-          monthGroups.set(monthKey, [])
-        }
-        monthGroups.get(monthKey)!.push(date)
       })
-      
-      Array.from(monthGroups.entries())
-        .sort(([a], [b]) => a.localeCompare(b))
-        .forEach(([monthKey, dates]) => {
-          periods.push({
-            key: monthKey,
-            label: format(new Date(monthKey), 'MMM yyyy'),
-            dates
-          })
+    } else if (periodView === 'monthly') {
+      const months = eachMonthOfInterval({ start: dateRange.from, end: dateRange.to })
+      months.forEach(monthStart => {
+        const monthEnd = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0)
+        periods.push({
+          id: format(monthStart, 'yyyy-MM-dd'),
+          name: format(monthStart, 'MMM yyyy'),
+          email: '', // Not used for periods
+          role: 'admin', // Not used for periods
+          startDate: format(monthStart, 'yyyy-MM-dd'),
+          endDate: format(monthEnd > dateRange.to ? dateRange.to : monthEnd, 'yyyy-MM-dd')
         })
+      })
     }
 
-    // Aggregate data for each period
-    return periods.map(period => {
-      const dataPoint: AccountMetric = {
-        period: period.label
-      }
-
-      metricsData.forEach(({ metricId, data }) => {
-        // Sum values for all dates in this period
-        const totalValue = period.dates.reduce((sum, date) => {
-          const dayData = data.find((d: any) => d.date === date)
-          return sum + (dayData?.value || 0)
-        }, 0)
-        
-        dataPoint[metricId] = totalValue
-      })
-
-      return dataPoint
-    })
+    setPeriods(periods)
+    console.log('✅ Generated periods:', periods.length)
   }
 
-  const loadAccountMetricData = async (metricColumn: MetricColumn) => {
-    if (!selectedAccountId) return
+  const loadAllPeriodMetricData = async (metricCols: MetricColumn[]) => {
+    if (!selectedAccountId || periods.length === 0) return
 
-    console.log('🔄 Loading single account metric:', metricColumn.metricName)
+    setMetricsLoading(true)
+    try {
+      // Load each metric one by one (like user metrics)
+      for (const col of metricCols) {
+        await loadPeriodMetricData(col)
+      }
+    } catch (error) {
+      console.error('Error loading period metrics:', error)
+    } finally {
+      setMetricsLoading(false)
+    }
+  }
+
+
+
+  const loadPeriodMetricData = async (metricColumn: MetricColumn) => {
+    if (!selectedAccountId || periods.length === 0) return
+
+    console.log('🔄 Loading period metric:', metricColumn.metricName, 'for', periods.length, 'periods')
     
     try {
-      // Get raw time series data
-      const response = await fetch('/api/metrics', {
+      const response = await fetch('/api/data-view/account-metrics-time-series', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          accountId: selectedAccountId,
           metricName: metricColumn.metricName,
-          filters: {
-            accountId: selectedAccountId,
-            dateRange: {
-              start: format(dateRange.from, 'yyyy-MM-dd'),
-              end: format(dateRange.to, 'yyyy-MM-dd')
-            }
+          dateRange: {
+            start: format(dateRange.from, 'yyyy-MM-dd'),
+            end: format(dateRange.to, 'yyyy-MM-dd')
           },
-          options: {
-            vizType: 'line', // Get time series data
-            widgetSettings: metricColumn.options
-          }
+          periodType: periodView,
+          options: metricColumn.options
         })
       })
 
@@ -483,61 +421,27 @@ export default function DataViewPage() {
       }
 
       const result = await response.json()
-      console.log('✅ Account metric time series loaded:', result)
+      console.log('✅ Period metric loaded:', result)
 
-      if (result.result?.type === 'time' && result.result.data) {
-        // Aggregate this single metric with existing data
-        const metricsData = [{ metricId: metricColumn.id, data: result.result.data }]
-        const aggregatedData = aggregateMetricsData(metricsData, periodView)
-        
-        // Merge with existing account metrics
-        setAccountMetrics(prev => {
-          if (prev.length === 0) {
-            return aggregatedData
-          }
-          
-          // Update existing periods with new metric data
-          return prev.map(row => {
-            const newData = aggregatedData.find(d => d.period === row.period)
-            return {
-              ...row,
-              [metricColumn.id]: newData?.[metricColumn.id] || 0
-            }
-          })
-        })
-      }
-
-      // Update columns for table display
-      setAccountMetricsColumns(prev => {
-        const hasColumn = prev.some(col => (col as any).accessorKey === metricColumn.id)
-        if (hasColumn) return prev
-
-        const newColumn: ColumnDef<AccountMetric> = {
-          accessorKey: metricColumn.id,
-          header: ({ column }) => (
-            <div className="flex items-center gap-2">
-              <span>{metricColumn.displayName}</span>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleRemoveColumn(metricColumn.id)}
-                className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
-              >
-                <Trash2 className="h-3 w-3" />
-              </Button>
-            </div>
-          ),
-          cell: ({ getValue }) => {
-            const value = getValue() as string | number
-            return <span className="font-medium">{value || '0'}</span>
-          },
+      // Update periods with metric data (like updating users with metric data)
+      setPeriods(prev => prev.map(period => {
+        const periodMetric = result.periodMetrics.find((pm: any) => pm.periodKey === period.id)
+        const value = periodMetric?.value || 0
+        const displayValue = periodMetric?.displayValue || value
+        console.log(`Setting ${metricColumn.id} = ${displayValue} for period ${period.name}`)
+        return {
+          ...period,
+          [metricColumn.id]: displayValue
         }
+      }))
 
-        return [...prev, newColumn]
+      toast({
+        title: "Column added",
+        description: `${metricColumn.displayName} has been added to the table`,
       })
 
     } catch (error) {
-      console.error('❌ Error loading account metric:', error)
+      console.error('❌ Error loading period metric:', error)
       toast({
         title: "Error",
         description: `Failed to load ${metricColumn.displayName}`,
@@ -769,7 +673,7 @@ export default function DataViewPage() {
       
       // Load metric data based on table type
       if (tableConfig?.table_type === 'account_metrics') {
-        await loadAccountMetricData(newColumn)
+        await loadPeriodMetricData(newColumn)
       } else {
         // Default to user metrics
         await loadMetricData(newColumn)
@@ -1010,7 +914,7 @@ export default function DataViewPage() {
                     </>
                   ) : (
                     <>
-                      <span>{tableConfig?.table_type === 'account_metrics' ? 'Account Level' : 'Time Series'}</span>
+                      <span>{periods.length} periods</span>
                       {metricColumns.length > 0 && (
                         <span>• {metricColumns.length} metrics</span>
                       )}
@@ -1076,16 +980,9 @@ export default function DataViewPage() {
                     </div>
                   </div>
 
-                  <AccountMetricsTable
-                    data={accountMetrics}
-                    columns={[
-                      {
-                        accessorKey: "period",
-                        header: "Period",
-                        cell: ({ getValue }) => <span className="font-medium">{getValue() as string}</span>,
-                      },
-                      ...accountMetricsColumns
-                    ]}
+                  <UserMetricsTable
+                    data={periods}
+                    columns={columns}
                     onAddColumn={handleAddColumn}
                     onRemoveColumn={handleRemoveColumn}
                     loading={metricsLoading}
