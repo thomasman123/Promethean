@@ -561,8 +561,13 @@ export default function DataViewPage() {
 
       setTableConfig((prev: any) => ({ ...prev, columns: updatedColumns }))
       
-      // Load metric data for users
-      await loadMetricData(newColumn)
+      // Load metric data based on table type
+      if (tableConfig?.table_type === 'account_metrics') {
+        await loadAccountMetricData(newColumn)
+      } else {
+        // Default to user metrics
+        await loadMetricData(newColumn)
+      }
 
       toast({
         title: "Column added",

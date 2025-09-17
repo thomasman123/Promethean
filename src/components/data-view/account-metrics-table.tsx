@@ -27,10 +27,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Plus, Trash2, Building, TrendingUp } from "lucide-react"
 
 export interface AccountMetric {
-  metricName: string
-  value: number
-  displayValue: string
-  unit: string
+  period: string // Date period or "Total"
+  [key: string]: any // Dynamic metric columns
 }
 
 export interface AccountMetricColumn {
@@ -75,85 +73,84 @@ export function AccountMetricsTable({ data, columns, onAddColumn, onRemoveColumn
   })
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Building className="h-5 w-5" />
-            <CardTitle>Account Performance Metrics</CardTitle>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button onClick={onAddColumn} size="sm" className="h-8">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Column
-            </Button>
-          </div>
+    <div className="space-y-4">
+      {/* Header with Add Column button */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">
+            {data.length} periods • {columns.length - 1} metrics
+          </span>
         </div>
-      </CardHeader>
-      <CardContent>
-        {loading ? (
-          <div className="flex items-center justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            <span className="ml-2">Loading metrics...</span>
-          </div>
-        ) : data.length === 0 ? (
-          <div className="text-center py-8">
-            <Building className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-            <h3 className="text-lg font-medium mb-2">No metrics added yet</h3>
-            <p className="text-muted-foreground mb-4">
-              Add account-level metrics to track overall business performance.
-            </p>
-            <Button onClick={onAddColumn} variant="outline">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Your First Metric
-            </Button>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {/* Account Metrics Display */}
-            <div className="grid gap-4">
-              {data.map((metric, index) => (
-                <div key={metric.metricName} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <div className="w-2 h-2 bg-primary rounded-full"></div>
-                    <div>
-                      <h4 className="font-medium">{metric.metricName}</h4>
-                      <div className="flex items-center gap-2">
-                        <span className="text-2xl font-bold">{metric.displayValue}</span>
-                        <Badge variant="outline" className="text-xs">
-                          {metric.unit === 'currency' ? '$' :
-                           metric.unit === 'percent' ? '%' :
-                           metric.unit === 'seconds' ? 's' :
-                           metric.unit === 'days' ? 'd' : '#'}
-                        </Badge>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {onRemoveColumn && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => onRemoveColumn(`metric_${metric.metricName}_${index}`)}
-                      className="text-muted-foreground hover:text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-              ))}
-            </div>
+        <Button onClick={onAddColumn} size="sm">
+          <Plus className="h-4 w-4 mr-2" />
+          Add Column
+        </Button>
+      </div>
 
-            {/* Add More Metrics */}
-            <div className="border-t pt-4">
-              <Button onClick={onAddColumn} variant="outline" className="w-full">
-                <Plus className="h-4 w-4 mr-2" />
-                Add Another Metric
-              </Button>
-            </div>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+      {/* Table */}
+      {loading ? (
+        <div className="flex items-center justify-center py-8 border rounded-lg">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          <span className="ml-2">Loading metrics...</span>
+        </div>
+      ) : data.length === 0 ? (
+        <div className="text-center py-8 border rounded-lg">
+          <Building className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+          <h3 className="text-lg font-medium mb-2">No metrics added yet</h3>
+          <p className="text-muted-foreground mb-4">
+            Add account-level metrics to track overall business performance.
+          </p>
+          <Button onClick={onAddColumn} variant="outline">
+            <Plus className="h-4 w-4 mr-2" />
+            Add Your First Metric
+          </Button>
+        </div>
+      ) : (
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => {
+                    return (
+                      <TableHead key={header.id}>
+                        {header.isPlaceholder
+                          ? null
+                          : flexRender(
+                              header.column.columnDef.header,
+                              header.getContext()
+                            )}
+                      </TableHead>
+                    )
+                  })}
+                </TableRow>
+              ))}
+            </TableHeader>
+            <TableBody>
+              {table.getRowModel().rows?.length ? (
+                table.getRowModel().rows.map((row) => (
+                  <TableRow
+                    key={row.id}
+                    data-state={row.getIsSelected() && "selected"}
+                  >
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell key={cell.id}>
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={columns.length} className="h-24 text-center">
+                    No data available for the selected date range.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+    </div>
   )
 } 
