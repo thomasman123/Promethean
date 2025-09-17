@@ -227,25 +227,48 @@ export function UserPeriodMatrixTable({
         {metricColumns.length > 0 && (
           <div className="border rounded-lg">
             <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[200px]"></TableHead>
-                    {periods.map(period => (
-                      <TableHead key={period.key} className="text-center min-w-[80px]">
-                        <div className="text-xs">{period.label}</div>
+                              <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[200px]"></TableHead>
+                      {periods.map(period => (
+                        <TableHead key={period.key} className="text-center min-w-[80px]">
+                          <div className="text-xs">{period.label}</div>
+                        </TableHead>
+                      ))}
+                      <TableHead className="text-center font-medium min-w-[80px]">TOTAL</TableHead>
+                      {data.map(user => 
+                        periods.map(period => (
+                          <TableHead key={`${user.userId}-${period.key}`} className="text-center min-w-[60px]">
+                            <div className="text-xs">{user.userName}</div>
+                            <div className="text-xs text-muted-foreground">{period.label}</div>
+                          </TableHead>
+                        ))
+                      ).flat()}
+                      <TableHead className="w-[50px]"></TableHead>
+                    </TableRow>
+                    
+                    {/* Second header row for user period breakdown */}
+                    <TableRow className="bg-muted/30">
+                      <TableHead></TableHead>
+                      {periods.map(period => (
+                        <TableHead key={`${period.key}-periods`} className="text-center">
+                          <div className="text-xs text-muted-foreground">Team Total</div>
+                        </TableHead>
+                      ))}
+                      <TableHead className="text-center">
+                        <div className="text-xs text-muted-foreground">Team Total</div>
                       </TableHead>
-                    ))}
-                    <TableHead className="text-center font-medium min-w-[80px]">TOTAL</TableHead>
-                    {data.map(user => (
-                      <TableHead key={user.userId} className="text-center min-w-[100px]">
-                        <div className="text-xs">{user.userName}</div>
-                        <div className="text-xs text-muted-foreground">{user.userRole}</div>
-                      </TableHead>
-                    ))}
-                    <TableHead className="w-[50px]"></TableHead>
-                  </TableRow>
-                </TableHeader>
+                      {data.map(user => 
+                        periods.map(period => (
+                          <TableHead key={`${user.userId}-${period.key}`} className="text-center min-w-[60px]">
+                            <div className="text-xs text-muted-foreground">{period.label}</div>
+                          </TableHead>
+                        ))
+                      )}
+                      <TableHead></TableHead>
+                    </TableRow>
+                  </TableHeader>
                 <TableBody>
                   {/* CLOSERS section header */}
                   {closerMetrics.length > 0 && (
@@ -281,22 +304,25 @@ export function UserPeriodMatrixTable({
                       <TableCell className="text-center font-medium">
                         {closerUsers.reduce((sum, user) => sum + user.total.value, 0)}
                       </TableCell>
-                      {data.map(user => {
-                        // Show data only for closer users, empty for setters
-                        if (user.userRole === 'sales_rep' || user.userRole === 'rep') {
-                          return (
-                            <TableCell key={user.userId} className="text-center">
-                              {user.total.displayValue}
-                            </TableCell>
-                          )
-                        } else {
-                          return (
-                            <TableCell key={user.userId} className="text-center text-muted-foreground">
-                              -
-                            </TableCell>
-                          )
-                        }
-                      })}
+                      {data.map(user => 
+                        periods.map(period => {
+                          // Show data only for closer users, empty for setters
+                          if (user.userRole === 'sales_rep' || user.userRole === 'rep') {
+                            const userPeriodData = user.periods.find(p => p.periodKey === period.key)
+                            return (
+                              <TableCell key={`${user.userId}-${period.key}`} className="text-center">
+                                {userPeriodData?.displayValue || '0'}
+                              </TableCell>
+                            )
+                          } else {
+                            return (
+                              <TableCell key={`${user.userId}-${period.key}`} className="text-center text-muted-foreground">
+                                -
+                              </TableCell>
+                            )
+                          }
+                        })
+                      ).flat()}
                       <TableCell>
                         {onRemoveColumn && (
                           <Button
@@ -345,22 +371,25 @@ export function UserPeriodMatrixTable({
                       <TableCell className="text-center font-medium">
                         {setterUsers.reduce((sum, user) => sum + user.total.value, 0)}
                       </TableCell>
-                      {data.map(user => {
-                        // Show data only for setter users, empty for closers
-                        if (user.userRole === 'setter') {
-                          return (
-                            <TableCell key={user.userId} className="text-center">
-                              {user.total.displayValue}
-                            </TableCell>
-                          )
-                        } else {
-                          return (
-                            <TableCell key={user.userId} className="text-center text-muted-foreground">
-                              -
-                            </TableCell>
-                          )
-                        }
-                      })}
+                      {data.map(user => 
+                        periods.map(period => {
+                          // Show data only for setter users, empty for closers
+                          if (user.userRole === 'setter') {
+                            const userPeriodData = user.periods.find(p => p.periodKey === period.key)
+                            return (
+                              <TableCell key={`${user.userId}-${period.key}`} className="text-center">
+                                {userPeriodData?.displayValue || '0'}
+                              </TableCell>
+                            )
+                          } else {
+                            return (
+                              <TableCell key={`${user.userId}-${period.key}`} className="text-center text-muted-foreground">
+                                -
+                              </TableCell>
+                            )
+                          }
+                        })
+                      ).flat()}
                       <TableCell>
                         {onRemoveColumn && (
                           <Button
