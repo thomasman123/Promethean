@@ -10,7 +10,7 @@ import { useDashboard } from "@/lib/dashboard-context"
 import { createBrowserClient } from "@supabase/ssr"
 import { ColumnDef } from "@tanstack/react-table"
 import { ArrowUpDown, Trash2, Building, TrendingUp } from "lucide-react"
-import { format } from "date-fns"
+import { format, differenceInDays, eachDayOfInterval, eachWeekOfInterval, eachMonthOfInterval, startOfWeek, startOfMonth } from "date-fns"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -396,28 +396,26 @@ export default function DataViewPage() {
         const hasColumn = prev.some(col => (col as any).accessorKey === metricColumn.id)
         if (hasColumn) return prev
 
-        const newColumn: ColumnDef<AccountMetric> = {
-          accessorKey: metricColumn.id,
-          header: ({ column }) => (
-            <div className="flex items-center gap-2">
-              <span>{metricColumn.displayName}</span>
-              {onRemoveColumn && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => onRemoveColumn(metricColumn.id)}
-                  className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
-                >
-                  <Trash2 className="h-3 w-3" />
-                </Button>
-              )}
-            </div>
-          ),
-          cell: ({ getValue }) => {
-            const value = getValue()
-            return <span className="font-medium">{value || '0'}</span>
-          },
-        }
+                 const newColumn: ColumnDef<AccountMetric> = {
+           accessorKey: metricColumn.id,
+           header: ({ column }) => (
+             <div className="flex items-center gap-2">
+               <span>{metricColumn.displayName}</span>
+               <Button
+                 variant="ghost"
+                 size="sm"
+                 onClick={() => handleRemoveColumn(metricColumn.id)}
+                 className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+               >
+                 <Trash2 className="h-3 w-3" />
+               </Button>
+             </div>
+           ),
+           cell: ({ getValue }) => {
+             const value = getValue()
+             return <span className="font-medium">{value || '0'}</span>
+           },
+         }
 
         return [...prev, newColumn]
       })
