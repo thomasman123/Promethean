@@ -229,6 +229,7 @@ export function UserPeriodMatrixTable({
             <div className="overflow-x-auto">
                               <Table>
                   <TableHeader>
+                    {/* Main header row */}
                     <TableRow>
                       <TableHead className="w-[200px]"></TableHead>
                       {periods.map(period => (
@@ -237,27 +238,25 @@ export function UserPeriodMatrixTable({
                         </TableHead>
                       ))}
                       <TableHead className="text-center font-medium min-w-[80px]">TOTAL</TableHead>
-                      {data.map(user => 
-                        periods.map(period => (
-                          <TableHead key={`${user.userId}-${period.key}`} className="text-center min-w-[60px]">
-                            <div className="text-xs">{user.userName}</div>
-                            <div className="text-xs text-muted-foreground">{period.label}</div>
-                          </TableHead>
-                        ))
-                      ).flat()}
+                      {data.map(user => (
+                        <TableHead key={user.userId} className="text-center min-w-[100px]" colSpan={periods.length}>
+                          <div className="text-xs">{user.userName}</div>
+                          <div className="text-xs text-muted-foreground">{user.userRole}</div>
+                        </TableHead>
+                      ))}
                       <TableHead className="w-[50px]"></TableHead>
                     </TableRow>
                     
-                    {/* Second header row for user period breakdown */}
+                    {/* Sub-header row for user periods */}
                     <TableRow className="bg-muted/30">
                       <TableHead></TableHead>
                       {periods.map(period => (
-                        <TableHead key={`${period.key}-periods`} className="text-center">
-                          <div className="text-xs text-muted-foreground">Team Total</div>
+                        <TableHead key={`team-${period.key}`} className="text-center">
+                          <div className="text-xs text-muted-foreground">Team</div>
                         </TableHead>
                       ))}
                       <TableHead className="text-center">
-                        <div className="text-xs text-muted-foreground">Team Total</div>
+                        <div className="text-xs text-muted-foreground">Team</div>
                       </TableHead>
                       {data.map(user => 
                         periods.map(period => (
@@ -265,7 +264,7 @@ export function UserPeriodMatrixTable({
                             <div className="text-xs text-muted-foreground">{period.label}</div>
                           </TableHead>
                         ))
-                      )}
+                      ).flat()}
                       <TableHead></TableHead>
                     </TableRow>
                   </TableHeader>
