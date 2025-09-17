@@ -93,7 +93,7 @@ export function TablesManager({ accountId, currentTableId, onTableChange }: Tabl
   const handleCreateTable = async (tableConfig: {
     name: string
     description: string
-    tableType: 'user_metrics' | 'account_metrics' | 'time_series'
+    tableType: 'user_metrics' | 'account_metrics' | 'time_series' | 'user_period_matrix'
   }) => {
     setLoading(true)
     
