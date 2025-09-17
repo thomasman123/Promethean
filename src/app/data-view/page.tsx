@@ -32,6 +32,7 @@ export default function DataViewPage() {
   const [metricColumns, setMetricColumns] = useState<MetricColumn[]>([])
   const [periods, setPeriods] = useState<UserMetric[]>([])
   const [periodView, setPeriodView] = useState<'daily' | 'weekly' | 'monthly'>('weekly')
+  const [periodsLoading, setPeriodsLoading] = useState(false)
   const { toast } = useToast()
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -121,7 +122,7 @@ export default function DataViewPage() {
 
   // Load account periods when period view or date range changes
   useEffect(() => {
-    if (tableConfig?.table_type === 'account_metrics' && dateRange.from && dateRange.to) {
+    if (tableConfig?.table_type === 'account_metrics' && dateRange.from && dateRange.to && !periodsLoading) {
       console.log('🔄 Reloading periods due to period/date change:', { 
         periodView, 
         dateRange: {
@@ -129,20 +130,20 @@ export default function DataViewPage() {
           to: dateRange.to.toISOString()
         }
       })
-      loadPeriods()
+      loadPeriodsAndMetrics()
     }
   }, [periodView, dateRange.from, dateRange.to, tableConfig?.table_type])
 
-  // Load period metrics when periods are loaded and we have metric columns
+  // Load period metrics when metric columns change (but periods stay the same)
   useEffect(() => {
-    if (periods.length > 0 && metricColumns.length > 0 && tableConfig?.table_type === 'account_metrics') {
-      console.log('🔄 Loading period metrics:', { 
+    if (periods.length > 0 && metricColumns.length > 0 && tableConfig?.table_type === 'account_metrics' && !periodsLoading) {
+      console.log('🔄 Loading period metrics for existing periods:', { 
         periods: periods.length,
         metricColumns: metricColumns.length
       })
       loadAllPeriodMetricData(metricColumns)
     }
-  }, [periods.length, metricColumns.length, tableConfig?.table_type])
+  }, [metricColumns.length, tableConfig?.table_type])
 
   async function loadUsers() {
     setLoading(true)
@@ -314,20 +315,14 @@ export default function DataViewPage() {
   const loadAllAccountMetrics = async (metricCols: MetricColumn[]) => {
     if (!selectedAccountId) return
 
-    setMetricsLoading(true)
-    console.log('🔄 Loading account periods:', { 
+    console.log('🔄 Loading account periods and metrics:', { 
       dateRange,
       periodView
     })
 
     try {
-      // Generate periods first (like loading users)
-      await loadPeriods()
-      
-      // Then load metrics for each period (like loading user metrics)
-      if (metricCols.length > 0) {
-        await loadAllPeriodMetricData(metricCols)
-      }
+      // Use the new combined function to avoid race conditions
+      await loadPeriodsAndMetrics()
 
     } catch (error) {
       console.error('Error loading account metrics:', error)
@@ -336,7 +331,75 @@ export default function DataViewPage() {
         description: "Failed to load account metrics",
         variant: "destructive",
       })
+    }
+  }
+
+  const loadPeriodsAndMetrics = async () => {
+    if (!dateRange.from || !dateRange.to || periodsLoading) return
+
+    setPeriodsLoading(true)
+    setMetricsLoading(true)
+    
+    try {
+      // Generate periods based on date range and period view (like UserMetric structure)
+      const periods: UserMetric[] = []
+      
+      if (periodView === 'daily') {
+        const days = eachDayOfInterval({ start: dateRange.from, end: dateRange.to })
+        days.forEach(day => {
+          periods.push({
+            id: format(day, 'yyyy-MM-dd'),
+            name: format(day, 'MMM d'),
+            email: '', // Not used for periods
+            role: 'admin', // Not used for periods
+            startDate: format(day, 'yyyy-MM-dd'),
+            endDate: format(day, 'yyyy-MM-dd')
+          })
+        })
+      } else if (periodView === 'weekly') {
+        const weeks = eachWeekOfInterval({ start: dateRange.from, end: dateRange.to }, { weekStartsOn: 1 })
+        weeks.forEach(weekStart => {
+          const weekEnd = new Date(weekStart)
+          weekEnd.setDate(weekStart.getDate() + 6)
+          periods.push({
+            id: format(weekStart, 'yyyy-MM-dd'),
+            name: `Week of ${format(weekStart, 'MMM d')}`,
+            email: '', // Not used for periods
+            role: 'admin', // Not used for periods
+            startDate: format(weekStart, 'yyyy-MM-dd'),
+            endDate: format(weekEnd > dateRange.to ? dateRange.to : weekEnd, 'yyyy-MM-dd')
+          })
+        })
+      } else if (periodView === 'monthly') {
+        const months = eachMonthOfInterval({ start: dateRange.from, end: dateRange.to })
+        months.forEach(monthStart => {
+          const monthEnd = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0)
+          periods.push({
+            id: format(monthStart, 'yyyy-MM-dd'),
+            name: format(monthStart, 'MMM yyyy'),
+            email: '', // Not used for periods
+            role: 'admin', // Not used for periods
+            startDate: format(monthStart, 'yyyy-MM-dd'),
+            endDate: format(monthEnd > dateRange.to ? dateRange.to : monthEnd, 'yyyy-MM-dd')
+          })
+        })
+      }
+
+      setPeriods(periods)
+      console.log('✅ Generated periods:', periods.length)
+      
+      // Load metrics for the new periods if we have metric columns
+      if (metricColumns.length > 0) {
+        // Load each metric one by one (like user metrics)
+        for (const col of metricColumns) {
+          await loadPeriodMetricData(col)
+        }
+      }
+      
+    } catch (error) {
+      console.error('Error loading periods and metrics:', error)
     } finally {
+      setPeriodsLoading(false)
       setMetricsLoading(false)
     }
   }
@@ -411,7 +474,10 @@ export default function DataViewPage() {
 
 
   const loadPeriodMetricData = async (metricColumn: MetricColumn) => {
-    if (!selectedAccountId || periods.length === 0) return
+    if (!selectedAccountId || periods.length === 0) {
+      console.log('⚠️ Skipping metric load - no periods available')
+      return
+    }
 
     console.log('🔄 Loading period metric:', metricColumn.metricName, 'for', periods.length, 'periods')
     
