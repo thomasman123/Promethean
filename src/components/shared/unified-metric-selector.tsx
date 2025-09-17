@@ -24,7 +24,7 @@ interface UnifiedMetricSelectorProps {
   onMetricSelect: (metricName: string, metricDefinition: MetricDefinition, options?: any) => void
   mode: 'dashboard' | 'data-view'
   title?: string
-  tableType?: 'user_metrics' | 'account_metrics' | 'time_series' | 'user_period_matrix'
+  tableType?: 'user_metrics' | 'account_metrics' | 'time_series'
 }
 
 // Use the same categorization as both dashboard and data view

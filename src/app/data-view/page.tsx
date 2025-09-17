@@ -3,7 +3,6 @@
 import { useState, useEffect, useMemo } from "react"
 import { TopBar } from "@/components/layout/topbar"
 import { UserMetricsTable, type UserMetric, type MetricColumn } from "@/components/data-view/user-metrics-table"
-import { UserPeriodMatrixTable, type UserPeriodMetric } from "@/components/data-view/user-period-matrix-table"
 import { UnifiedMetricSelector } from "@/components/shared/unified-metric-selector"
 import { TableTypeSelector } from "@/components/data-view/table-type-selector"
 import { useDashboard } from "@/lib/dashboard-context"
@@ -34,8 +33,7 @@ export default function DataViewPage() {
   const [periods, setPeriods] = useState<UserMetric[]>([])
   const [periodView, setPeriodView] = useState<'daily' | 'weekly' | 'monthly'>('weekly')
   const [periodsLoading, setPeriodsLoading] = useState(false)
-  const [userPeriodData, setUserPeriodData] = useState<UserPeriodMetric[]>([])
-  const [userPeriodPeriods, setUserPeriodPeriods] = useState<Array<{key: string, label: string}>>([])
+
   const { toast } = useToast()
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -113,14 +111,7 @@ export default function DataViewPage() {
     }
   }, [dateRange.from, dateRange.to])
 
-  // Reload matrix data when period view changes
-  useEffect(() => {
-    if (tableConfig?.table_type === 'user_period_matrix' && metricColumns.length > 0 && users.length > 0) {
-      console.log('📊 Period view changed, reloading matrix data:', periodView)
-      // Reload all matrix metrics when period view changes
-      metricColumns.forEach(col => loadUserPeriodMetricData(col))
-    }
-  }, [periodView])
+
 
   // Load table configuration and metric columns
   useEffect(() => {
@@ -543,57 +534,7 @@ export default function DataViewPage() {
     }
   }
 
-  const loadUserPeriodMetricData = async (metricColumn: MetricColumn) => {
-    if (!selectedAccountId || users.length === 0) {
-      console.log('⚠️ Skipping user period metric load - no users available')
-      return
-    }
 
-    console.log('🔄 Loading user period metric:', metricColumn.metricName, 'for', users.length, 'users')
-    
-    try {
-      const response = await fetch('/api/data-view/user-period-metrics', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          accountId: selectedAccountId,
-          userIds: users.map(u => u.id),
-          metricName: metricColumn.metricName,
-          dateRange: {
-            start: format(dateRange.from, 'yyyy-MM-dd'),
-            end: format(dateRange.to, 'yyyy-MM-dd')
-          },
-          periodType: periodView,
-          roleFilter,
-          options: metricColumn.options
-        })
-      })
-
-      if (!response.ok) {
-        throw new Error(`Failed to load ${metricColumn.displayName}`)
-      }
-
-      const result = await response.json()
-      console.log('✅ User period metric loaded:', result)
-
-      // Update user period data and periods
-      setUserPeriodData(result.userPeriodMetrics || [])
-      setUserPeriodPeriods(result.periods || [])
-
-      toast({
-        title: "Column added",
-        description: `${metricColumn.displayName} has been added to the matrix.`
-      })
-
-    } catch (error) {
-      console.error('Error loading user period metric:', error)
-      toast({
-        title: "Error",
-        description: `Failed to load ${metricColumn.displayName}`,
-        variant: "destructive"
-      })
-    }
-  }
 
   // Define base columns for user metrics
   const baseUserColumns: ColumnDef<UserMetric>[] = [
@@ -842,8 +783,6 @@ export default function DataViewPage() {
       // Load metric data based on table type
       if (tableConfig?.table_type === 'account_metrics') {
         await loadPeriodMetricData(newColumn)
-      } else if (tableConfig?.table_type === 'user_period_matrix') {
-        await loadUserPeriodMetricData(newColumn)
       } else {
         // Default to user metrics
         await loadMetricData(newColumn)
@@ -1000,7 +939,7 @@ export default function DataViewPage() {
   const handleCreateTable = async (tableConfig: {
     name: string
     description: string
-    tableType: 'user_metrics' | 'account_metrics' | 'time_series' | 'user_period_matrix'
+    tableType: 'user_metrics' | 'account_metrics' | 'time_series'
   }) => {
     if (!selectedAccountId) return
 
@@ -1101,16 +1040,6 @@ export default function DataViewPage() {
                   onAddColumn={handleAddColumn}
                   onRemoveColumn={handleRemoveColumn}
                   loading={metricsLoading}
-                />
-              ) : tableConfig?.table_type === 'user_period_matrix' ? (
-                <UserPeriodMatrixTable
-                  data={userPeriodData}
-                  periods={userPeriodPeriods}
-                  metricColumns={metricColumns}
-                  onAddColumn={handleAddColumn}
-                  onRemoveColumn={handleRemoveColumn}
-                  loading={metricsLoading}
-                  periodView={periodView}
                 />
               ) : tableConfig?.table_type === 'account_metrics' ? (
                 <UserMetricsTable
