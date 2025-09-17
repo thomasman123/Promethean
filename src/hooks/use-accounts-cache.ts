@@ -72,15 +72,17 @@ export function useAccountsCache(effectiveUserId?: string) {
     console.log('🔍 [useAccountsCache] Loading accounts from API for user:', effectiveUserId)
     loadingRef.current = true
     
-    const newState: AccountsCacheState = {
-      accounts: state.accounts, // Keep existing accounts during loading
-      loading: true,
-      error: null,
-      lastFetched: state.lastFetched
-    }
-    
-    setState(newState)
-    globalAccountsCache[effectiveUserId] = newState
+    // Set loading state while preserving current state
+    setState(prevState => {
+      const newState = {
+        accounts: prevState.accounts, // Keep existing accounts during loading
+        loading: true,
+        error: null,
+        lastFetched: prevState.lastFetched
+      }
+      globalAccountsCache[effectiveUserId] = newState
+      return newState
+    })
 
     try {
       const response = await fetch('/api/accounts-simple', {
@@ -116,21 +118,22 @@ export function useAccountsCache(effectiveUserId?: string) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
       console.error('❌ [useAccountsCache] Failed to load accounts:', errorMessage)
       
-      const errorState: AccountsCacheState = {
-        accounts: state.accounts, // Keep existing accounts on error
-        loading: false,
-        error: errorMessage,
-        lastFetched: state.lastFetched
-      }
-      
-      setState(errorState)
-      globalAccountsCache[effectiveUserId] = errorState
+      setState(prevState => {
+        const errorState = {
+          accounts: prevState.accounts, // Keep existing accounts on error
+          loading: false,
+          error: errorMessage,
+          lastFetched: prevState.lastFetched
+        }
+        globalAccountsCache[effectiveUserId] = errorState
+        return errorState
+      })
       
       return []
     } finally {
       loadingRef.current = false
     }
-  }, [effectiveUserId, state.accounts, state.lastFetched])
+  }, [effectiveUserId])
 
   const clearCache = useCallback(() => {
     if (effectiveUserId && globalAccountsCache[effectiveUserId]) {
