@@ -42,6 +42,7 @@ import { format, isAfter, isBefore, addDays } from "date-fns"
 import { PaymentPlan } from "@/components/payment-plan"
 import { createBrowserClient } from "@supabase/ssr"
 import { Database } from "@/lib/database.types"
+import { Loading } from "@/components/ui/loading"
 
 interface PaymentPlanData {
   appointment: {
@@ -397,11 +398,7 @@ export default function PaymentPlansPage() {
       <div className="min-h-screen bg-background">
         <TopBar />
         <main className={`pt-16 h-screen overflow-y-auto ${isImpersonating ? "pt-[104px]" : "pt-16"}`}>
-          <div className="p-6 flex items-center justify-center h-64">
-            <div className="text-center">
-              <div className="text-lg text-muted-foreground">Loading user data...</div>
-            </div>
-          </div>
+          <Loading text="Loading user data..." />
         </main>
       </div>
     )
@@ -412,11 +409,7 @@ export default function PaymentPlansPage() {
       <div className="min-h-screen bg-background">
         <TopBar />
         <main className={`pt-16 h-screen overflow-y-auto ${isImpersonating ? "pt-[104px]" : "pt-16"}`}>
-          <div className="p-6 flex items-center justify-center h-64">
-            <div className="text-center">
-              <div className="text-lg text-muted-foreground">Loading payment plans...</div>
-            </div>
-          </div>
+          <Loading text="Loading payment plans..." />
         </main>
       </div>
     )

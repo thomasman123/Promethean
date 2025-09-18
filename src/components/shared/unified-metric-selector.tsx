@@ -73,7 +73,9 @@ const METRIC_CATEGORIES = {
   "Performance": [
     "bookings_per_hour",
     "dials_per_hour",
-    "hours_worked"
+    "hours_worked",
+    "overdue_items",
+    "overdue_percentage"
   ],
   "Discovery": [
     "total_discoveries",
@@ -104,7 +106,10 @@ const INTERCHANGEABLE_METRICS = [
   'total_discoveries', 'show_ups_discoveries', 'discovery_lead_quality',
   
   // From work_timeframes table (derived from dials)
-  'bookings_per_hour', 'dials_per_hour', 'hours_worked'
+  'bookings_per_hour', 'dials_per_hour', 'hours_worked',
+  
+  // Special metrics (cross-table)
+  'overdue_items', 'overdue_percentage'
 ]
 
 const ACCOUNT_ONLY_METRICS = [

@@ -14,6 +14,7 @@ import { useDashboard } from "@/lib/dashboard-context"
 import { useEffectiveUser } from "@/hooks/use-effective-user"
 import { Settings, AlertCircle, Loader2, Globe, Save, RefreshCw } from "lucide-react"
 import { ContactSyncTools } from "@/components/account/contact-sync-tools"
+import { Loading } from "@/components/ui/loading"
 
 // Simple timezone list
 const TIMEZONES = [
@@ -131,9 +132,7 @@ export default function AccountSettingsPage() {
       <div className="min-h-screen bg-background">
         <TopBar />
         <main className="pt-16 p-6">
-          <div className="flex items-center justify-center h-[calc(100vh-8rem)]">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          </div>
+          <Loading text="Loading account settings..." />
         </main>
       </div>
     )

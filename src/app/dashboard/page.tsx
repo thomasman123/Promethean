@@ -10,6 +10,7 @@ import { useDashboard } from "@/lib/dashboard-context"
 import { METRICS_REGISTRY } from "@/lib/metrics/registry"
 import "react-grid-layout/css/styles.css"
 import "react-resizable/css/styles.css"
+import { Loading } from "@/components/ui/loading"
 
 const ResponsiveGridLayout = WidthProvider(Responsive)
 
@@ -322,9 +323,7 @@ export default function DashboardPage() {
       <div className="min-h-screen bg-background">
         <TopBar onAddWidget={handleAddWidget} />
         <main className="pt-16 h-screen overflow-y-auto">
-          <div className="flex items-center justify-center h-full">
-            <span className="text-muted-foreground">Loading dashboard...</span>
-          </div>
+          <Loading text="Loading dashboard..." />
         </main>
       </div>
     )

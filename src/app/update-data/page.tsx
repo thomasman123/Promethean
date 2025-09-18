@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast"
 import { useImpersonation } from "@/hooks/use-impersonation"
 import { useEffectiveUser } from "@/hooks/use-effective-user"
 import { OrderedDataFlow } from "@/components/update-data/ordered-data-flow"
+import { Loading } from "@/components/ui/loading"
 
 interface TaskAppointment {
   id: string
@@ -359,11 +360,7 @@ export default function UpdateDataPage() {
       <main className={`pt-16 h-screen overflow-y-auto ${isImpersonating ? "pt-[104px]" : "pt-16"}`}>
         <div className="p-6">
           {userLoading ? (
-            <div className="flex items-center justify-center h-64">
-              <div className="text-center">
-                <div className="text-lg text-muted-foreground">Loading...</div>
-              </div>
-            </div>
+            <Loading text="Loading user data..." />
           ) : (
             <>
               {/* Stats Overview */}

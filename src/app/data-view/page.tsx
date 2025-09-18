@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/tooltip"
 import { MetricDefinition } from "@/lib/metrics/types"
 import { useToast } from "@/hooks/use-toast"
+import { Loading } from "@/components/ui/loading"
 
 export default function DataViewPage() {
   const { selectedAccountId, dateRange } = useDashboard()
