@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { createBrowserClient } from "@supabase/ssr"
+import { Loading } from "@/components/ui/loading"
 
 export default function HomePage() {
   const router = useRouter()
@@ -28,10 +29,8 @@ export default function HomePage() {
 
   if (checking) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-muted-foreground">Loading...</p>
-        </div>
+      <div className="min-h-screen bg-background">
+        <Loading text="Loading..." />
       </div>
     )
   }

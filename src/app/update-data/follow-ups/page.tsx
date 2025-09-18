@@ -21,6 +21,7 @@ import { useDashboard } from '@/lib/dashboard-context';
 import { CalendarIcon, CheckCircle2, XCircle, Clock, AlertCircle, Phone, Mail, User, RefreshCw } from 'lucide-react';
 import { format, formatDistanceToNow, isPast, isToday, isTomorrow } from 'date-fns';
 import { useAccountTimezone } from '@/hooks/use-account-timezone';
+import { Loading } from '@/components/ui/loading';
 
 interface FollowUp {
   id: string;
@@ -390,9 +391,7 @@ export default function FollowUpsPage() {
           <Card>
             <CardContent className="p-0">
               {loading ? (
-                <div className="p-8 text-center">
-                  <p className="text-muted-foreground">Loading follow-ups...</p>
-                </div>
+                <Loading variant="card" text="Loading follow-ups..." />
               ) : filteredFollowUps.length === 0 ? (
                 <div className="p-8 text-center">
                   <p className="text-muted-foreground">No follow-ups found</p>

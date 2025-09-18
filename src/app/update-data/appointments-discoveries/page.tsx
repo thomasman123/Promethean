@@ -47,6 +47,7 @@ import { Calendar as CalendarComponent } from "@/components/ui/calendar"
 import { CalendarIcon } from "lucide-react"
 import { format } from "date-fns"
 import { PaymentPlan } from "@/components/payment-plan"
+import { Loading } from "@/components/ui/loading"
 
 interface AppointmentData {
   id: string
@@ -404,11 +405,7 @@ export default function AppointmentsDiscoveriesPage() {
       <main className={`pt-16 h-screen overflow-y-auto ${isImpersonating ? "pt-[104px]" : "pt-16"}`}>
         <div className="p-6">
           {userLoading ? (
-            <div className="flex items-center justify-center h-64">
-              <div className="text-center">
-                <div className="text-lg text-muted-foreground">Loading...</div>
-              </div>
-            </div>
+            <Loading text="Loading user data..." />
           ) : (
             <>
               {/* Filters and Search */}
@@ -549,9 +546,7 @@ export default function AppointmentsDiscoveriesPage() {
                   </CardHeader>
                   <CardContent className="p-0">
                     {loading ? (
-                      <div className="p-8 text-center text-muted-foreground">
-                        Loading appointments...
-                      </div>
+                      <Loading variant="card" text="Loading appointments..." />
                     ) : processedAppointments.length === 0 ? (
                       <div className="p-8 text-center text-muted-foreground">
                         No appointments found matching your filters.
@@ -625,9 +620,7 @@ export default function AppointmentsDiscoveriesPage() {
                   </CardHeader>
                   <CardContent className="p-0">
                     {loading ? (
-                      <div className="p-8 text-center text-muted-foreground">
-                        Loading discoveries...
-                      </div>
+                      <Loading variant="card" text="Loading discoveries..." />
                     ) : processedDiscoveries.length === 0 ? (
                       <div className="p-8 text-center text-muted-foreground">
                         No discoveries found matching your filters.

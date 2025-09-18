@@ -49,6 +49,7 @@ import {
   UserX
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { Loading } from "@/components/ui/loading"
 
 interface TeamMember {
   user_id: string
@@ -359,9 +360,7 @@ export default function TeamPage() {
       <div className="min-h-screen bg-background">
         <TopBar />
         <main className="pt-16 p-6">
-          <div className="flex items-center justify-center h-[calc(100vh-8rem)]">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          </div>
+          <Loading text="Loading team data..." />
         </main>
       </div>
     )

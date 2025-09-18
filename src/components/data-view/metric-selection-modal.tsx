@@ -56,7 +56,9 @@ const METRIC_CATEGORIES = {
   "Performance": [
     "bookings_per_hour",
     "dials_per_hour",
-    "hours_worked"
+    "hours_worked",
+    "overdue_items",
+    "overdue_percentage"
   ],
   "Discovery": [
     "total_discoveries",
