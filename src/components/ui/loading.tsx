@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils"
+import { Loader2 } from "lucide-react"
 
 interface LoadingProps {
   className?: string
@@ -19,15 +20,22 @@ export function Loading({
     card: "p-8 text-center"
   }
 
+  const spinnerSizes = {
+    sm: "h-4 w-4",
+    md: "h-6 w-6", 
+    lg: "h-8 w-8"
+  }
+
   const textClasses = {
     sm: "text-sm",
-    md: "text-lg", 
-    lg: "text-xl"
+    md: "text-base", 
+    lg: "text-lg"
   }
 
   return (
     <div className={cn(baseClasses[variant], className)}>
-      <div className="text-center">
+      <div className="flex flex-col items-center justify-center space-y-3">
+        <Loader2 className={cn("animate-spin text-muted-foreground", spinnerSizes[size])} />
         <div className={cn("text-muted-foreground", textClasses[size])}>
           {text}
         </div>
