@@ -205,6 +205,43 @@ export async function middleware(req: NextRequest) {
     }
   }
 
+  // Check moderator/admin access for playground
+  if (session && req.nextUrl.pathname.startsWith('/playground')) {
+    try {
+      // Check if user is impersonating someone
+      const impersonatedUserId = req.cookies.get('impersonate_user_id')?.value
+      let effectiveUserId = session.user.id
+
+      // If impersonating, check if the actual user is admin first
+      if (impersonatedUserId) {
+        const { data: actualProfile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', session.user.id)
+          .single()
+        
+        if (actualProfile?.role === 'admin') {
+          effectiveUserId = impersonatedUserId
+        }
+      }
+
+      // Get effective user profile to check role
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', effectiveUserId)
+        .single()
+
+      if (error || !profile || (profile.role !== 'admin' && profile.role !== 'moderator')) {
+        console.log('Middleware - Playground access denied for user:', effectiveUserId, 'role:', profile?.role)
+        return NextResponse.redirect(new URL('/dashboard', req.url))
+      }
+    } catch (error) {
+      console.log('Middleware - Error checking playground access:', error)
+      return NextResponse.redirect(new URL('/dashboard', req.url))
+    }
+  }
+
   // Redirect to dashboard if user is authenticated and trying to access auth pages
   if (session && (req.nextUrl.pathname === '/login' || req.nextUrl.pathname === '/signup')) {
     return NextResponse.redirect(new URL('/dashboard', req.url))

@@ -396,8 +396,8 @@ export default function PaymentPlansPage() {
     return (
       <div className="min-h-screen bg-background">
         <TopBar />
-        <main className={cn("h-screen", isImpersonating ? "pt-[104px]" : "pt-16")}>
-          <div className="h-full p-6 flex items-center justify-center">
+        <main className={`pt-16 h-screen overflow-y-auto ${isImpersonating ? "pt-[104px]" : "pt-16"}`}>
+          <div className="p-6 flex items-center justify-center h-64">
             <div className="text-center">
               <div className="text-lg text-muted-foreground">Loading user data...</div>
             </div>
@@ -411,8 +411,8 @@ export default function PaymentPlansPage() {
     return (
       <div className="min-h-screen bg-background">
         <TopBar />
-        <main className={cn("h-screen", isImpersonating ? "pt-[104px]" : "pt-16")}>
-          <div className="h-full p-6 flex items-center justify-center">
+        <main className={`pt-16 h-screen overflow-y-auto ${isImpersonating ? "pt-[104px]" : "pt-16"}`}>
+          <div className="p-6 flex items-center justify-center h-64">
             <div className="text-center">
               <div className="text-lg text-muted-foreground">Loading payment plans...</div>
             </div>
@@ -426,8 +426,8 @@ export default function PaymentPlansPage() {
     <div className="min-h-screen bg-background">
       <TopBar />
       
-      <main className={cn("h-screen", isImpersonating ? "pt-[104px]" : "pt-16")}>
-        <div className="h-full p-6">
+      <main className={`pt-16 h-screen overflow-y-auto ${isImpersonating ? "pt-[104px]" : "pt-16"}`}>
+        <div className="p-6">
           {/* Header */}
           <div className="mb-6">
             <h1 className="text-2xl font-bold tracking-tight">Payment Plans</h1>

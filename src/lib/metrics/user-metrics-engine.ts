@@ -146,6 +146,11 @@ export class UserMetricsEngine {
       return this.calculateOverdueItems(metric, accountId, startDate, endDate, userIds, options)
     }
 
+    // Handle Overdue Percentage calculation
+    if (metric.name === 'Overdue Percentage') {
+      return this.calculateOverduePercentage(metric, accountId, startDate, endDate, userIds, options)
+    }
+
     switch (table) {
       case 'appointments':
         return this.calculateAppointmentMetrics(metric, accountId, startDate, endDate, userIds, options)
@@ -1168,6 +1173,70 @@ export class UserMetricsEngine {
           userId,
           value: 0,
           displayValue: '0',
+          role: 'none'
+        })
+      }
+    }
+
+    return results
+  }
+
+  /**
+   * Calculate Overdue Percentage for users
+   * Percentage of appointments and discoveries that are 24+ hours overdue
+   */
+  private async calculateOverduePercentage(
+    metric: MetricDefinition,
+    accountId: string,
+    startDate: string,
+    endDate: string,
+    userIds: string[],
+    options?: any
+  ): Promise<UserMetricResult[]> {
+    
+    const results: UserMetricResult[] = []
+    const overdueThreshold = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+
+    for (const userId of userIds) {
+      try {
+        // Get appointments where user is sales rep
+        const { data: appointments } = await supabaseService
+          .from('appointments')
+          .select('id, date_booked_for')
+          .eq('account_id', accountId)
+          .eq('sales_rep_user_id', userId)
+          .gte('local_date', startDate)
+          .lte('local_date', endDate)
+          .lt('date_booked_for', overdueThreshold)
+
+        // Get discoveries where user is setter
+        const { data: discoveries } = await supabaseService
+          .from('discoveries')
+          .select('id, date_booked_for')
+          .eq('account_id', accountId)
+          .eq('setter_user_id', userId)
+          .gte('local_date', startDate)
+          .lte('local_date', endDate)
+          .lt('date_booked_for', overdueThreshold)
+
+        const totalItems = (appointments?.length || 0) + (discoveries?.length || 0)
+        const overdueItems = (appointments?.length || 0) + (discoveries?.length || 0)
+        
+        const overduePercentage = totalItems > 0 ? (overdueItems / totalItems) * 100 : 0
+
+        results.push({
+          userId,
+          value: overduePercentage,
+          displayValue: this.formatValue(overduePercentage, metric, options),
+          role: 'both' // Can be both setter and rep
+        })
+
+      } catch (error) {
+        console.error(`Error calculating overdue percentage for user ${userId}:`, error)
+        results.push({
+          userId,
+          value: 0,
+          displayValue: '0%',
           role: 'none'
         })
       }

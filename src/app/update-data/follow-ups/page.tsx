@@ -20,7 +20,6 @@ import { supabase } from '@/lib/supabase';
 import { useDashboard } from '@/lib/dashboard-context';
 import { CalendarIcon, CheckCircle2, XCircle, Clock, AlertCircle, Phone, Mail, User, RefreshCw } from 'lucide-react';
 import { format, formatDistanceToNow, isPast, isToday, isTomorrow } from 'date-fns';
-import { cn } from '@/lib/utils';
 import { useAccountTimezone } from '@/hooks/use-account-timezone';
 
 interface FollowUp {
@@ -310,8 +309,8 @@ export default function FollowUpsPage() {
     <div className="min-h-screen bg-background">
       <TopBar />
       
-      <main className={cn("h-screen", isImpersonating ? "pt-[104px]" : "pt-16")}>
-        <div className="h-full p-6 space-y-6">
+      <main className={`pt-16 h-screen overflow-y-auto ${isImpersonating ? "pt-[104px]" : "pt-16"}`}>
+        <div className="p-6 space-y-6">
           <div className="flex justify-between items-center">
             <h1 className="text-3xl font-bold">Follow-ups</h1>
             <Button onClick={() => loadFollowUps()} variant="outline">
