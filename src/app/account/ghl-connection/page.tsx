@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Loading } from "@/components/ui/loading"
 
 interface GhlConnectionStatus {
   isConnected: boolean
@@ -693,9 +694,7 @@ function GHLConnectionContent() {
       <div className="min-h-screen bg-background">
         <TopBar />
         <main className="pt-16 p-6">
-          <div className="flex items-center justify-center h-[calc(100vh-8rem)]">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          </div>
+          <Loading text="Loading GHL connection..." />
         </main>
       </div>
     )
@@ -1135,9 +1134,7 @@ export default function GHLConnectionPage() {
       <div className="min-h-screen bg-background">
         <TopBar />
         <main className="pt-16 p-6">
-          <div className="flex items-center justify-center h-[calc(100vh-8rem)]">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          </div>
+          <Loading text="Loading..." />
         </main>
       </div>
     }>
