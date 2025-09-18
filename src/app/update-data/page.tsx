@@ -14,7 +14,6 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { useToast } from "@/hooks/use-toast"
 import { useImpersonation } from "@/hooks/use-impersonation"
 import { useEffectiveUser } from "@/hooks/use-effective-user"
-import { cn } from "@/lib/utils"
 import { OrderedDataFlow } from "@/components/update-data/ordered-data-flow"
 
 interface TaskAppointment {
@@ -357,10 +356,10 @@ export default function UpdateDataPage() {
     <div className="min-h-screen bg-background">
       <TopBar />
       
-      <main className={cn("h-screen", isImpersonating ? "pt-[104px]" : "pt-16")}>
-        <div className="h-full p-6">
+      <main className={`pt-16 h-screen overflow-y-auto ${isImpersonating ? "pt-[104px]" : "pt-16"}`}>
+        <div className="p-6">
           {userLoading ? (
-            <div className="flex items-center justify-center h-full">
+            <div className="flex items-center justify-center h-64">
               <div className="text-center">
                 <div className="text-lg text-muted-foreground">Loading...</div>
               </div>

@@ -179,6 +179,11 @@ export class MetricsEngine {
     if (metric.name === 'Overdue Items') {
       return this.buildOverdueItemsSQL(appliedFilters, metric, options)
     }
+
+    // Handle Overdue Percentage calculation
+    if (metric.name === 'Overdue Percentage') {
+      return this.buildOverduePercentageSQL(appliedFilters, metric, options)
+    }
     
     // Build SELECT clause
     const selectClause = `SELECT ${selectFields.join(', ')}`
@@ -717,6 +722,74 @@ WHERE speed_to_lead_seconds IS NOT NULL
     `
     
     return sql.trim()
+  }
+
+  /**
+   * Build SQL for Overdue Percentage metric
+   * Calculates percentage of appointments and discoveries that are overdue
+   */
+  private buildOverduePercentageSQL(appliedFilters: any, metric: MetricDefinition, options?: any): string {
+    const whereClauseWithMetric = buildWhereClause(appliedFilters, [])
+    const totalItemsSql = `
+      WITH total_items AS (
+        -- Total appointments and discoveries
+        SELECT 
+          COUNT(*) as total_count
+        FROM appointments 
+        ${whereClauseWithMetric.replace(/(?<!\$)\baccount_id\b/g, 'appointments.account_id')}
+          AND date_booked_for < '${new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()}'
+          AND data_filled = false
+        
+        UNION ALL
+        
+        -- Total discoveries
+        SELECT 
+          COUNT(*) as total_count
+        FROM discoveries 
+        ${whereClauseWithMetric.replace(/(?<!\$)\baccount_id\b/g, 'discoveries.account_id')}
+          AND date_booked_for < '${new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()}'
+          AND data_filled = false
+      )
+      SELECT COALESCE(SUM(total_count), 0) as total_count
+      FROM total_items
+    `
+
+    const overdueItemsSql = `
+      WITH overdue_items AS (
+        -- Overdue appointments and discoveries
+        SELECT 
+          COUNT(*) as overdue_count
+        FROM appointments 
+        ${whereClauseWithMetric.replace(/(?<!\$)\baccount_id\b/g, 'appointments.account_id')}
+          AND date_booked_for < '${new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()}'
+          AND data_filled = false
+        
+        UNION ALL
+        
+        -- Overdue discoveries
+        SELECT 
+          COUNT(*) as overdue_count
+        FROM discoveries 
+        ${whereClauseWithMetric.replace(/(?<!\$)\baccount_id\b/g, 'discoveries.account_id')}
+          AND date_booked_for < '${new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()}'
+          AND data_filled = false
+      )
+      SELECT COALESCE(SUM(overdue_count), 0) as overdue_count
+      FROM overdue_items
+    `
+
+    return `
+      WITH total_count AS (${totalItemsSql}),
+           overdue_count AS (${overdueItemsSql})
+      SELECT 
+        CASE 
+          WHEN total_count.total_count > 0 
+          THEN ROUND((overdue_count.overdue_count::DECIMAL / total_count.total_count) * 100, 2)
+          ELSE 0 
+        END as value
+      FROM total_count
+      FULL OUTER JOIN overdue_count ON total_count.total_count = overdue_count.total_count
+    `.trim()
   }
 
   private createErrorResult(breakdownType: string, error: Error): MetricResult {

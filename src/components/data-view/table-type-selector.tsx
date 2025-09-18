@@ -23,7 +23,7 @@ interface TableTypeSelectorProps {
   onCreateTable: (tableConfig: {
     name: string
     description: string
-    tableType: 'user_metrics' | 'account_metrics' | 'time_series'
+    tableType: 'user_metrics' | 'account_metrics'
   }) => void
 }
 
@@ -43,19 +43,11 @@ const TABLE_TYPES = [
     description: 'Track overall account performance and totals',
     details: 'Account-level metrics without user attribution. Shows business performance.',
     examples: ['Total leads generated', 'Ad spend totals', 'Overall conversion rates']
-  },
-  {
-    id: 'time_series',
-    name: 'Time Series Table',
-    icon: TrendingUp, 
-    description: 'Track metrics over time periods (daily, weekly, monthly)',
-    details: 'Time periods as rows, metrics as columns. Perfect for trend analysis.',
-    examples: ['Daily lead generation', 'Weekly revenue trends', 'Monthly performance']
   }
 ] as const
 
 export function TableTypeSelector({ open, onOpenChange, onCreateTable }: TableTypeSelectorProps) {
-  const [selectedType, setSelectedType] = useState<'user_metrics' | 'account_metrics' | 'time_series'>('user_metrics')
+  const [selectedType, setSelectedType] = useState<'user_metrics' | 'account_metrics'>('user_metrics')
   const [tableName, setTableName] = useState('')
   const [tableDescription, setTableDescription] = useState('')
 
@@ -90,7 +82,7 @@ export function TableTypeSelector({ open, onOpenChange, onCreateTable }: TableTy
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 space-y-6">
+        <div className="flex-1 space-y-6 overflow-y-auto">
           {/* Table Type Selection */}
           <div className="space-y-4">
             <h3 className="font-medium">Table Type</h3>

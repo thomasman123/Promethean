@@ -677,6 +677,22 @@ const BASE_METRICS = {
 			attribution: ['all', 'assigned', 'booked'],
 			breakdown: ['total', 'reps', 'setters', 'link']
 		}
+	},
+
+	'overdue_percentage': {
+		name: 'Overdue Percentage',
+		description: 'Percentage of appointments and discoveries that are overdue (24+ hours past date_booked_for without data entry)',
+		breakdownType: 'total' as const,
+		query: {
+			table: 'appointments', // Will be handled specially to include both appointments and discoveries
+			select: ['0 as value'] // This will be calculated via special SQL in engine
+		},
+		unit: 'percent' as const,
+		isSpecialMetric: true,
+		options: {
+			attribution: ['all', 'assigned', 'booked'],
+			breakdown: ['total', 'reps', 'setters', 'link']
+		}
 	}
 }
 

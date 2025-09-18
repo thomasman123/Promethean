@@ -401,10 +401,10 @@ export default function AppointmentsDiscoveriesPage() {
     <div className="min-h-screen bg-background">
       <TopBar />
       
-      <main className={cn("h-screen", isImpersonating ? "pt-[104px]" : "pt-16")}>
-        <div className="h-full p-6">
+      <main className={`pt-16 h-screen overflow-y-auto ${isImpersonating ? "pt-[104px]" : "pt-16"}`}>
+        <div className="p-6">
           {userLoading ? (
-            <div className="flex items-center justify-center h-full">
+            <div className="flex items-center justify-center h-64">
               <div className="text-center">
                 <div className="text-lg text-muted-foreground">Loading...</div>
               </div>
@@ -962,7 +962,7 @@ export default function AppointmentsDiscoveriesPage() {
                           <div className="space-y-2">
                             <p className="text-sm text-muted-foreground">Selected objections (in order):</p>
                             <div className="flex flex-wrap gap-2">
-                                                             {editForm.objections.map((objection: string, index: number) => (
+                              {editForm.objections.map((objection: string, index: number) => (
                                 <Badge key={`${objection}-${index}`} variant="secondary" className="flex items-center gap-1">
                                   <span className="bg-primary text-primary-foreground rounded-full w-4 h-4 flex items-center justify-center text-xs">
                                     {index + 1}
