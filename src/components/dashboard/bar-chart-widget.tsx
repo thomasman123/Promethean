@@ -215,6 +215,7 @@ export function BarChartWidget({ metrics }: BarChartWidgetProps) {
   const chartConfig: ChartConfig = {}
   const percentageMetrics: string[] = []
   const numberMetrics: string[] = []
+  const currencyMetrics: string[] = []
   
   metrics.forEach((metric, index) => {
     const metricInfo = METRICS_REGISTRY[metric]
@@ -225,6 +226,8 @@ export function BarChartWidget({ metrics }: BarChartWidgetProps) {
     
     if (metricInfo?.unit === 'percent') {
       percentageMetrics.push(metric)
+    } else if (metricInfo?.unit === 'currency') {
+      currencyMetrics.push(metric)
     } else {
       numberMetrics.push(metric)
     }
@@ -232,7 +235,8 @@ export function BarChartWidget({ metrics }: BarChartWidgetProps) {
   
   const hasPercentages = percentageMetrics.length > 0
   const hasNumbers = numberMetrics.length > 0
-  const hasBothTypes = hasPercentages && hasNumbers
+  const hasCurrency = currencyMetrics.length > 0
+  const hasMultipleAxisTypes = [hasPercentages, hasNumbers, hasCurrency].filter(Boolean).length > 1
 
   if (loading) {
     return (
@@ -249,8 +253,8 @@ export function BarChartWidget({ metrics }: BarChartWidgetProps) {
         data={data}
         margin={{
           top: 25,
-          right: hasPercentages ? 40 : 5,
-          left: hasNumbers ? -5 : 5,
+          right: hasPercentages ? 50 : (hasCurrency && hasNumbers ? 50 : 5),
+          left: (hasNumbers || hasCurrency) && !hasPercentages ? -5 : 5,
           bottom: metrics.length > 1 ? 40 : 25,
         }}
       >
@@ -265,7 +269,7 @@ export function BarChartWidget({ metrics }: BarChartWidgetProps) {
           textAnchor={data.length > 10 ? "end" : "middle"}
           height={data.length > 10 ? 50 : 25}
         />
-        {/* Primary Y-axis for numbers */}
+        {/* Primary Y-axis for count numbers */}
         {hasNumbers && (
           <YAxis
             yAxisId="numbers"
@@ -273,18 +277,22 @@ export function BarChartWidget({ metrics }: BarChartWidgetProps) {
             axisLine={false}
             width={45}
             tick={{ fontSize: 11 }}
-            tickFormatter={(value) => {
-              // Format based on the first number metric
-              const firstNumberMetric = numberMetrics[0]
-              const metricInfo = METRICS_REGISTRY[firstNumberMetric]
-              if (metricInfo?.unit === 'currency') {
-                return `$${value.toLocaleString('en-US', { notation: 'compact' })}`
-              }
-              return value.toLocaleString('en-US', { notation: 'compact' })
-            }}
+            tickFormatter={(value) => value.toLocaleString('en-US', { notation: 'compact' })}
           />
         )}
-        {/* Secondary Y-axis for percentages */}
+        {/* Secondary Y-axis for currency */}
+        {hasCurrency && (
+          <YAxis
+            yAxisId="currency"
+            orientation={hasNumbers ? "right" : "left"}
+            tickLine={false}
+            axisLine={false}
+            width={45}
+            tick={{ fontSize: 11 }}
+            tickFormatter={(value) => `$${value.toLocaleString('en-US', { notation: 'compact' })}`}
+          />
+        )}
+        {/* Tertiary Y-axis for percentages */}
         {hasPercentages && (
           <YAxis
             yAxisId="percentages"
@@ -301,23 +309,39 @@ export function BarChartWidget({ metrics }: BarChartWidgetProps) {
           cursor={false}
           content={
             <ChartTooltipContent 
-              formatter={(value, name) => [
-                formatValue(value as number, name as string), 
-                METRICS_REGISTRY[name as string]?.name || name
-              ]}
+              formatter={(value, name) => {
+                const metricInfo = METRICS_REGISTRY[name as string]
+                const axisIndicator = hasMultipleAxisTypes ? 
+                  (metricInfo?.unit === 'currency' ? ' 💰' : 
+                   metricInfo?.unit === 'percent' ? ' 📊' : ' 📈') : ''
+                return [
+                  formatValue(value as number, name as string), 
+                  (metricInfo?.name || name) + axisIndicator
+                ]
+              }}
             />
           }
         />
         {metrics.map((metric, index) => {
           const metricInfo = METRICS_REGISTRY[metric]
-          const isPercentage = metricInfo?.unit === 'percent'
+          const unit = metricInfo?.unit
+          let yAxisId = "numbers" // default
+          
+          if (unit === 'percent') {
+            yAxisId = "percentages"
+          } else if (unit === 'currency') {
+            yAxisId = "currency"
+          } else {
+            yAxisId = "numbers" // count, seconds, days, etc.
+          }
+          
           return (
             <Bar 
               key={metric}
               dataKey={metric} 
               fill={`var(--color-${metric})`} 
               radius={[4, 4, 0, 0]}
-              yAxisId={isPercentage ? "percentages" : "numbers"}
+              yAxisId={yAxisId}
             />
           )
         })}
