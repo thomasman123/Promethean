@@ -16,6 +16,7 @@ import {
 import { METRICS_REGISTRY } from "@/lib/metrics/registry"
 import { useDashboard } from "@/lib/dashboard-context"
 import { TimeResult } from "@/lib/metrics/types"
+import { groupMetricsByAxis, getYAxisId, getAxisIndicator, calculateChartMargins, formatTimeValue } from "@/lib/chart-axis-utils"
 
 interface AreaChartWidgetProps {
   metrics: string[]

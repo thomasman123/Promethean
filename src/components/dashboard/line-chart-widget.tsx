@@ -16,6 +16,7 @@ import {
 import { METRICS_REGISTRY } from "@/lib/metrics/registry"
 import { useDashboard } from "@/lib/dashboard-context"
 import { TimeResult } from "@/lib/metrics/types"
+import { groupMetricsByAxis, getYAxisId, getAxisIndicator, calculateChartMargins, formatTimeValue } from "@/lib/chart-axis-utils"
 
 interface LineChartWidgetProps {
   metrics: string[]
@@ -211,36 +212,18 @@ export function LineChartWidget({ metrics }: LineChartWidgetProps) {
     }
   }
 
-  // Build chart config for all metrics and determine axis groupings
-  const chartConfig: ChartConfig = {}
-  const percentageMetrics: string[] = []
-  const numberMetrics: string[] = [] // count metrics
-  const currencyMetrics: string[] = []
-  const timeMetrics: string[] = [] // seconds, days
+  // Build chart config and group metrics by axis types
+  const axisGrouping = groupMetricsByAxis(metrics)
+  const { percentageMetrics, numberMetrics, currencyMetrics, timeMetrics, hasPercentages, hasNumbers, hasCurrency, hasTime, hasMultipleAxisTypes } = axisGrouping
   
+  const chartConfig: ChartConfig = {}
   metrics.forEach((metric, index) => {
     const metricInfo = METRICS_REGISTRY[metric]
     chartConfig[metric] = {
       label: metricInfo?.name || metric,
       color: CHART_COLORS[index % CHART_COLORS.length],
     }
-    
-    if (metricInfo?.unit === 'percent') {
-      percentageMetrics.push(metric)
-    } else if (metricInfo?.unit === 'currency') {
-      currencyMetrics.push(metric)
-    } else if (metricInfo?.unit === 'seconds' || metricInfo?.unit === 'days') {
-      timeMetrics.push(metric)
-    } else {
-      numberMetrics.push(metric) // count and other numeric types
-    }
   })
-  
-  const hasPercentages = percentageMetrics.length > 0
-  const hasNumbers = numberMetrics.length > 0
-  const hasCurrency = currencyMetrics.length > 0
-  const hasTime = timeMetrics.length > 0
-  const hasMultipleAxisTypes = [hasPercentages, hasNumbers, hasCurrency, hasTime].filter(Boolean).length > 1
 
   if (loading) {
     return (
