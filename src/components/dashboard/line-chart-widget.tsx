@@ -211,10 +211,12 @@ export function LineChartWidget({ metrics }: LineChartWidgetProps) {
     }
   }
 
-  // Build chart config for all metrics and determine which use percentage
+  // Build chart config for all metrics and determine axis groupings
   const chartConfig: ChartConfig = {}
   const percentageMetrics: string[] = []
-  const numberMetrics: string[] = []
+  const numberMetrics: string[] = [] // count metrics
+  const currencyMetrics: string[] = []
+  const timeMetrics: string[] = [] // seconds, days
   
   metrics.forEach((metric, index) => {
     const metricInfo = METRICS_REGISTRY[metric]
@@ -225,14 +227,20 @@ export function LineChartWidget({ metrics }: LineChartWidgetProps) {
     
     if (metricInfo?.unit === 'percent') {
       percentageMetrics.push(metric)
+    } else if (metricInfo?.unit === 'currency') {
+      currencyMetrics.push(metric)
+    } else if (metricInfo?.unit === 'seconds' || metricInfo?.unit === 'days') {
+      timeMetrics.push(metric)
     } else {
-      numberMetrics.push(metric)
+      numberMetrics.push(metric) // count and other numeric types
     }
   })
   
   const hasPercentages = percentageMetrics.length > 0
   const hasNumbers = numberMetrics.length > 0
-  const hasBothTypes = hasPercentages && hasNumbers
+  const hasCurrency = currencyMetrics.length > 0
+  const hasTime = timeMetrics.length > 0
+  const hasMultipleAxisTypes = [hasPercentages, hasNumbers, hasCurrency, hasTime].filter(Boolean).length > 1
 
   if (loading) {
     return (
@@ -249,8 +257,8 @@ export function LineChartWidget({ metrics }: LineChartWidgetProps) {
         data={data}
         margin={{
           top: 10,
-          right: hasPercentages ? 40 : 5,
-          left: hasNumbers ? -5 : 5,
+          right: hasPercentages ? 50 : (hasCurrency && hasNumbers ? 50 : 5),
+          left: (hasNumbers || hasCurrency) && !hasPercentages ? -5 : 5,
           bottom: metrics.length > 1 ? 40 : 25,
         }}
       >
@@ -265,7 +273,7 @@ export function LineChartWidget({ metrics }: LineChartWidgetProps) {
           textAnchor={data.length > 10 ? "end" : "middle"}
           height={data.length > 10 ? 50 : 25}
         />
-        {/* Primary Y-axis for numbers */}
+        {/* Primary Y-axis for count numbers */}
         {hasNumbers && (
           <YAxis
             yAxisId="numbers"
@@ -273,18 +281,22 @@ export function LineChartWidget({ metrics }: LineChartWidgetProps) {
             axisLine={false}
             width={45}
             tick={{ fontSize: 11 }}
-            tickFormatter={(value) => {
-              // Format based on the first number metric
-              const firstNumberMetric = numberMetrics[0]
-              const metricInfo = METRICS_REGISTRY[firstNumberMetric]
-              if (metricInfo?.unit === 'currency') {
-                return `$${value.toLocaleString('en-US', { notation: 'compact' })}`
-              }
-              return value.toLocaleString('en-US', { notation: 'compact' })
-            }}
+            tickFormatter={(value) => value.toLocaleString('en-US', { notation: 'compact' })}
           />
         )}
-        {/* Secondary Y-axis for percentages */}
+        {/* Secondary Y-axis for currency */}
+        {hasCurrency && (
+          <YAxis
+            yAxisId="currency"
+            orientation={hasNumbers ? "right" : "left"}
+            tickLine={false}
+            axisLine={false}
+            width={45}
+            tick={{ fontSize: 11 }}
+            tickFormatter={(value) => `$${value.toLocaleString('en-US', { notation: 'compact' })}`}
+          />
+        )}
+        {/* Tertiary Y-axis for percentages */}
         {hasPercentages && (
           <YAxis
             yAxisId="percentages"
@@ -301,16 +313,32 @@ export function LineChartWidget({ metrics }: LineChartWidgetProps) {
           cursor={false}
           content={
             <ChartTooltipContent 
-              formatter={(value, name) => [
-                formatValue(value as number, name as string), 
-                METRICS_REGISTRY[name as string]?.name || name
-              ]}
+              formatter={(value, name) => {
+                const metricInfo = METRICS_REGISTRY[name as string]
+                const axisIndicator = hasMultipleAxisTypes ? 
+                  (metricInfo?.unit === 'currency' ? ' 💰' : 
+                   metricInfo?.unit === 'percent' ? ' 📊' : ' 📈') : ''
+                return [
+                  formatValue(value as number, name as string), 
+                  (metricInfo?.name || name) + axisIndicator
+                ]
+              }}
             />
           }
         />
         {metrics.map((metric, index) => {
           const metricInfo = METRICS_REGISTRY[metric]
-          const isPercentage = metricInfo?.unit === 'percent'
+          const unit = metricInfo?.unit
+          let yAxisId = "numbers" // default
+          
+          if (unit === 'percent') {
+            yAxisId = "percentages"
+          } else if (unit === 'currency') {
+            yAxisId = "currency"
+          } else {
+            yAxisId = "numbers" // count, seconds, days, etc.
+          }
+          
           return (
             <Line
               key={metric}
@@ -319,7 +347,7 @@ export function LineChartWidget({ metrics }: LineChartWidgetProps) {
               stroke={`var(--color-${metric})`}
               strokeWidth={2}
               dot={false}
-              yAxisId={isPercentage ? "percentages" : "numbers"}
+              yAxisId={yAxisId}
             />
           )
         })}
