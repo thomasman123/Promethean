@@ -211,11 +211,12 @@ export function BarChartWidget({ metrics }: BarChartWidgetProps) {
     }
   }
 
-  // Build chart config for all metrics and determine which use percentage
+  // Build chart config for all metrics and determine axis groupings
   const chartConfig: ChartConfig = {}
   const percentageMetrics: string[] = []
-  const numberMetrics: string[] = []
+  const numberMetrics: string[] = [] // count metrics
   const currencyMetrics: string[] = []
+  const timeMetrics: string[] = [] // seconds, days
   
   metrics.forEach((metric, index) => {
     const metricInfo = METRICS_REGISTRY[metric]
@@ -228,15 +229,18 @@ export function BarChartWidget({ metrics }: BarChartWidgetProps) {
       percentageMetrics.push(metric)
     } else if (metricInfo?.unit === 'currency') {
       currencyMetrics.push(metric)
+    } else if (metricInfo?.unit === 'seconds' || metricInfo?.unit === 'days') {
+      timeMetrics.push(metric)
     } else {
-      numberMetrics.push(metric)
+      numberMetrics.push(metric) // count and other numeric types
     }
   })
   
   const hasPercentages = percentageMetrics.length > 0
   const hasNumbers = numberMetrics.length > 0
   const hasCurrency = currencyMetrics.length > 0
-  const hasMultipleAxisTypes = [hasPercentages, hasNumbers, hasCurrency].filter(Boolean).length > 1
+  const hasTime = timeMetrics.length > 0
+  const hasMultipleAxisTypes = [hasPercentages, hasNumbers, hasCurrency, hasTime].filter(Boolean).length > 1
 
   if (loading) {
     return (
@@ -253,8 +257,8 @@ export function BarChartWidget({ metrics }: BarChartWidgetProps) {
         data={data}
         margin={{
           top: 25,
-          right: hasPercentages ? 50 : (hasCurrency && hasNumbers ? 50 : 5),
-          left: (hasNumbers || hasCurrency) && !hasPercentages ? -5 : 5,
+          right: hasPercentages ? 50 : ((hasCurrency || hasTime) && hasNumbers ? 50 : 5),
+          left: (hasNumbers || hasCurrency || hasTime) && !hasPercentages ? -5 : 5,
           bottom: metrics.length > 1 ? 40 : 25,
         }}
       >
@@ -292,6 +296,30 @@ export function BarChartWidget({ metrics }: BarChartWidgetProps) {
             tickFormatter={(value) => `$${value.toLocaleString('en-US', { notation: 'compact' })}`}
           />
         )}
+        {/* Time Y-axis for seconds/days */}
+        {hasTime && (
+          <YAxis
+            yAxisId="time"
+            orientation={(hasNumbers || hasCurrency) ? "right" : "left"}
+            tickLine={false}
+            axisLine={false}
+            width={45}
+            tick={{ fontSize: 11 }}
+            tickFormatter={(value) => {
+              // Format based on the first time metric
+              const firstTimeMetric = timeMetrics[0]
+              const metricInfo = METRICS_REGISTRY[firstTimeMetric]
+              if (metricInfo?.unit === 'seconds') {
+                if (value < 60) return `${value.toFixed(0)}s`
+                if (value < 3600) return `${(value / 60).toFixed(0)}m`
+                return `${(value / 3600).toFixed(1)}h`
+              } else if (metricInfo?.unit === 'days') {
+                return `${value.toFixed(1)}d`
+              }
+              return value.toLocaleString('en-US', { notation: 'compact' })
+            }}
+          />
+        )}
         {/* Tertiary Y-axis for percentages */}
         {hasPercentages && (
           <YAxis
@@ -313,7 +341,8 @@ export function BarChartWidget({ metrics }: BarChartWidgetProps) {
                 const metricInfo = METRICS_REGISTRY[name as string]
                 const axisIndicator = hasMultipleAxisTypes ? 
                   (metricInfo?.unit === 'currency' ? ' 💰' : 
-                   metricInfo?.unit === 'percent' ? ' 📊' : ' 📈') : ''
+                   metricInfo?.unit === 'percent' ? ' 📊' : 
+                   (metricInfo?.unit === 'seconds' || metricInfo?.unit === 'days') ? ' ⏱️' : ' 📈') : ''
                 return [
                   formatValue(value as number, name as string), 
                   (metricInfo?.name || name) + axisIndicator
@@ -331,8 +360,10 @@ export function BarChartWidget({ metrics }: BarChartWidgetProps) {
             yAxisId = "percentages"
           } else if (unit === 'currency') {
             yAxisId = "currency"
+          } else if (unit === 'seconds' || unit === 'days') {
+            yAxisId = "time"
           } else {
-            yAxisId = "numbers" // count, seconds, days, etc.
+            yAxisId = "numbers" // count and other numeric types
           }
           
           return (
