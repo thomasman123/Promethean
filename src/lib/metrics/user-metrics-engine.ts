@@ -1199,28 +1199,50 @@ export class UserMetricsEngine {
 
     for (const userId of userIds) {
       try {
-        // Get appointments where user is sales rep
-        const { data: appointments } = await supabaseService
+        // Get ALL appointments where user is sales rep (with data not filled)
+        const { data: allAppointments } = await supabaseService
           .from('appointments')
-          .select('id, date_booked_for')
+          .select('id, date_booked_for, data_filled')
+          .eq('account_id', accountId)
+          .eq('sales_rep_user_id', userId)
+          .gte('local_date', startDate)
+          .lte('local_date', endDate)
+          .eq('data_filled', false)
+
+        // Get ALL discoveries where user is setter (with data not filled)
+        const { data: allDiscoveries } = await supabaseService
+          .from('discoveries')
+          .select('id, date_booked_for, data_filled')
+          .eq('account_id', accountId)
+          .eq('setter_user_id', userId)
+          .gte('local_date', startDate)
+          .lte('local_date', endDate)
+          .eq('data_filled', false)
+
+        // Get OVERDUE appointments where user is sales rep
+        const { data: overdueAppointments } = await supabaseService
+          .from('appointments')
+          .select('id, date_booked_for, data_filled')
           .eq('account_id', accountId)
           .eq('sales_rep_user_id', userId)
           .gte('local_date', startDate)
           .lte('local_date', endDate)
           .lt('date_booked_for', overdueThreshold)
+          .eq('data_filled', false)
 
-        // Get discoveries where user is setter
-        const { data: discoveries } = await supabaseService
+        // Get OVERDUE discoveries where user is setter
+        const { data: overdueDiscoveries } = await supabaseService
           .from('discoveries')
-          .select('id, date_booked_for')
+          .select('id, date_booked_for, data_filled')
           .eq('account_id', accountId)
           .eq('setter_user_id', userId)
           .gte('local_date', startDate)
           .lte('local_date', endDate)
           .lt('date_booked_for', overdueThreshold)
+          .eq('data_filled', false)
 
-        const totalItems = (appointments?.length || 0) + (discoveries?.length || 0)
-        const overdueItems = (appointments?.length || 0) + (discoveries?.length || 0)
+        const totalItems = (allAppointments?.length || 0) + (allDiscoveries?.length || 0)
+        const overdueItems = (overdueAppointments?.length || 0) + (overdueDiscoveries?.length || 0)
         
         const overduePercentage = totalItems > 0 ? (overdueItems / totalItems) * 100 : 0
 

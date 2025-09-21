@@ -732,22 +732,20 @@ WHERE speed_to_lead_seconds IS NOT NULL
     const whereClauseWithMetric = buildWhereClause(appliedFilters, [])
     const totalItemsSql = `
       WITH total_items AS (
-        -- Total appointments and discoveries
+        -- Total appointments with data not filled (regardless of date)
         SELECT 
           COUNT(*) as total_count
         FROM appointments 
         ${whereClauseWithMetric.replace(/(?<!\$)\baccount_id\b/g, 'appointments.account_id')}
-          AND date_booked_for < '${new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()}'
           AND data_filled = false
         
         UNION ALL
         
-        -- Total discoveries
+        -- Total discoveries with data not filled (regardless of date)
         SELECT 
           COUNT(*) as total_count
         FROM discoveries 
         ${whereClauseWithMetric.replace(/(?<!\$)\baccount_id\b/g, 'discoveries.account_id')}
-          AND date_booked_for < '${new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()}'
           AND data_filled = false
       )
       SELECT COALESCE(SUM(total_count), 0) as total_count
@@ -756,7 +754,7 @@ WHERE speed_to_lead_seconds IS NOT NULL
 
     const overdueItemsSql = `
       WITH overdue_items AS (
-        -- Overdue appointments and discoveries
+        -- Overdue appointments (24+ hours past date_booked_for with no data)
         SELECT 
           COUNT(*) as overdue_count
         FROM appointments 
@@ -766,7 +764,7 @@ WHERE speed_to_lead_seconds IS NOT NULL
         
         UNION ALL
         
-        -- Overdue discoveries
+        -- Overdue discoveries (24+ hours past date_booked_for with no data)
         SELECT 
           COUNT(*) as overdue_count
         FROM discoveries 
