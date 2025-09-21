@@ -786,7 +786,7 @@ WHERE speed_to_lead_seconds IS NOT NULL
           ELSE 0 
         END as value
       FROM total_count
-      FULL OUTER JOIN overdue_count ON total_count.total_count = overdue_count.total_count
+      CROSS JOIN overdue_count
     `.trim()
   }
 
