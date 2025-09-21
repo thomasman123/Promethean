@@ -1244,7 +1244,7 @@ export class UserMetricsEngine {
         const totalItems = (allAppointments?.length || 0) + (allDiscoveries?.length || 0)
         const overdueItems = (overdueAppointments?.length || 0) + (overdueDiscoveries?.length || 0)
         
-        const overduePercentage = totalItems > 0 ? (overdueItems / totalItems) * 100 : 0
+        const overduePercentage = totalItems > 0 ? (overdueItems / totalItems) : 0
 
         results.push({
           userId,

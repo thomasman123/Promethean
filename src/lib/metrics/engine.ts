@@ -782,7 +782,7 @@ WHERE speed_to_lead_seconds IS NOT NULL
       SELECT 
         CASE 
           WHEN total_count.total_count > 0 
-          THEN ROUND((overdue_count.overdue_count::DECIMAL / total_count.total_count) * 100, 2)
+          THEN ROUND((overdue_count.overdue_count::DECIMAL / total_count.total_count), 4)
           ELSE 0 
         END as value
       FROM total_count
