@@ -1324,7 +1324,7 @@ export async function GET(request: NextRequest) {
             metaAdAccount.meta_ad_account_id, 
             accessToken, 
             supabase, 
-            1 // Only sync yesterday and today for hourly cron jobs
+            2 // Sync today and yesterday (two-day window) for hourly cron jobs to ensure current day is updated
           )
 
           if (insightsResult.success) {
