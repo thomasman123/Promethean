@@ -16,8 +16,8 @@ export default function AdvancedTrackingPage() {
     setTimeout(() => setCopied(""), 1500)
   }
 
-  const pixelSnippet = `<script src="https://app.getpromethean.com/promethean-attribution.js" async></script>`
-  const ghlWebhook = `POST https://app.getpromethean.com/api/attribution/track`
+  const pixelSnippet = `<script src="https://www.getpromethean.com/promethean-attribution.js" async></script>`
+  const ghlWebhook = `POST https://www.getpromethean.com/api/attribution/track`
 
   return (
     <div className="min-h-screen bg-background">
