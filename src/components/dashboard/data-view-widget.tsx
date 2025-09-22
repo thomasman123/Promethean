@@ -65,10 +65,22 @@ export function DataViewWidget({ metrics, selectedUsers, options }: DataViewWidg
               }
             }
             
-            // For appointment metrics, always use repIds since we want appointments
-            // where this user is the sales_rep_user_id (owns/closes the appointment)
-            filters.repIds = [user.id]
-            console.log(`  - Added repIds: [${user.id}] (appointments owned by this user)`)
+            // Use attribution setting from metric options to determine filtering
+            const attribution = options?.[metricName]?.attribution || "assigned"
+            
+            if (attribution === "assigned") {
+              // Sales rep owned - appointments where user is sales_rep_user_id
+              filters.repIds = [user.id]
+              console.log(`  - Added repIds: [${user.id}] (sales rep owned)`);
+            } else if (attribution === "booked") {
+              // Setter contributed - appointments where user is setter_user_id
+              filters.setterIds = [user.id]
+              console.log(`  - Added setterIds: [${user.id}] (setter contributed)`);
+            } else {
+              // "all" or default - use repIds (backward compatibility)
+              filters.repIds = [user.id]
+              console.log(`  - Added repIds: [${user.id}] (default: sales rep owned)`);
+            }
             
             console.log(`  - Final filters:`, filters)
             
