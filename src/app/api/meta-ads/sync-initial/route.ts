@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: `Ultra-fast sync completed! ${syncData.campaignsSynced || 0} campaigns, ${syncData.adSetsSynced || 0} ad sets, ${syncData.adsSynced || 0} ads (${syncData.apiCallsUsed || 'unknown'} API calls)`,
+      message: `Ultra-fast sync completed! ${syncData.campaignsSynced || 0} campaigns, ${syncData.adSetsSynced || 0} ad sets, ${syncData.adsSynced || 0} ads + ${syncData.insightsSynced || 0} metrics (${syncData.apiCallsUsed || 1} API call)`,
       ...syncData
     })
 
