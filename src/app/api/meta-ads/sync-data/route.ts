@@ -272,7 +272,7 @@ async function syncPerformanceData(accountId: string, metaAdAccountId: string, a
     let insightsResponse;
     let insights = [];
 
-    // Approach 1: Try using date_preset for maximum data coverage
+    // Approach 1: Use the working method from debug - specific date range
     try {
       const coreFields = [
         'impressions', 'clicks', 'spend', 'reach', 'frequency',
@@ -280,27 +280,19 @@ async function syncPerformanceData(accountId: string, metaAdAccountId: string, a
         'campaign_id', 'campaign_name', 'adset_id', 'adset_name', 'ad_id', 'ad_name'
       ].join(',');
 
-      // Use date_preset=maximum to get all available data
+      // Use specific date range (this worked in debug with $8,916 spend)
       insightsResponse = await fetch(
-        `https://graph.facebook.com/v21.0/${metaAdAccountId}/insights?fields=${coreFields}&date_preset=maximum&time_increment=1&level=ad&access_token=${accessToken}`
+        `https://graph.facebook.com/v21.0/${metaAdAccountId}/insights?fields=${coreFields}&time_range={'since':'${dateStart}','until':'${dateEnd}'}&time_increment=1&level=campaign&access_token=${accessToken}`
       )
 
       if (insightsResponse.ok) {
-        const maximumData = await insightsResponse.json()
-        insights = maximumData.data || []
-        console.log(`📊 Maximum data insights: Found ${insights.length} records`)
-        
-        // Filter to our desired date range
-        insights = insights.filter((insight: any) => {
-          const insightDate = new Date(insight.date_start)
-          const startFilter = new Date(dateStart)
-          const endFilter = new Date(dateEnd)
-          return insightDate >= startFilter && insightDate <= endFilter
-        })
-        console.log(`📊 Filtered to date range: ${insights.length} records`)
+        const specificRangeData = await insightsResponse.json()
+        insights = specificRangeData.data || []
+        console.log(`📊 Specific date range insights: Found ${insights.length} records`)
+        console.log(`💰 Total spend found: $${insights.reduce((sum: number, record: any) => sum + parseFloat(record.spend || '0'), 0)}`)
       }
     } catch (error) {
-      console.log('Maximum data insights failed, trying specific date range...')
+      console.log('Specific date range insights failed, trying ad-level...')
     }
 
     // Approach 2: Try specific date range if maximum didn't work
