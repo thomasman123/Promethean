@@ -5,13 +5,13 @@ import { MetricDefinition } from './types'
  */
 export const ATTRIBUTION_CONTEXTS = {
   assigned: {
-    label: 'Sales Rep Owned',
+    label: 'Assigned',
     description: 'Attributed to the assigned sales rep (sales_rep_user_id)',
     emoji: '👤',
     suffix: '_assigned'
   },
   booked: {
-    label: 'Setter Contributed',
+    label: 'Booked',
     description: 'Attributed to the person who booked it (setter_user_id)',
     emoji: '📅',
     suffix: '_booked'

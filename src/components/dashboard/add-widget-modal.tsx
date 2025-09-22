@@ -79,6 +79,19 @@ const visualizationTypes = [
     description: "Show metrics by user in a table format"
   }
 ]
+// Helper function to get context-aware attribution labels
+function getAttributionLabel(attribution: string, metricName: string): string {
+  const metricDefinition = METRICS_REGISTRY[metricName]
+  const tableType = metricDefinition?.query?.table || "appointments"
+  
+  if (attribution === "assigned") {
+    return tableType === "discoveries" ? "Assigned to Setter" : "Sales Rep Owned"
+  } else if (attribution === "booked") {
+    return tableType === "discoveries" ? "Booked to Sales Rep" : "Setter Contributed"
+  }
+  return attribution
+}
+
 
 export function AddWidgetModal({ open, onOpenChange, onAddWidget }: AddWidgetModalProps) {
   const { selectedAccountId } = useDashboard()
@@ -195,7 +208,7 @@ export function AddWidgetModal({ open, onOpenChange, onAddWidget }: AddWidgetMod
       const originalMetricName = options?.originalMetricName || metricKey
       const attribution = options?.attribution || "assigned"
       const metricDisplayName = METRICS_REGISTRY[originalMetricName]?.name || originalMetricName
-      const attributionLabel = attribution === "assigned" ? "Sales Rep Owned" : attribution === "booked" ? "Setter Contributed" : attribution
+      const attributionLabel = getAttributionLabel(attribution, originalMetricName)
       return `${metricDisplayName} (${attributionLabel})`
     }).join(" vs ")
 
@@ -393,7 +406,7 @@ export function AddWidgetModal({ open, onOpenChange, onAddWidget }: AddWidgetMod
                           const originalMetricName = options?.originalMetricName || metricKey
                           const attribution = options?.attribution || "assigned"
                           const metricDisplayName = METRICS_REGISTRY[originalMetricName]?.name || originalMetricName
-                          const attributionLabel = attribution === "assigned" ? "Sales Rep Owned" : attribution === "booked" ? "Setter Contributed" : attribution
+                          const attributionLabel = getAttributionLabel(attribution, originalMetricName)
                           return `${metricDisplayName} (${attributionLabel})`
                         }).join(" vs ")
                       : selectedMetric ? METRICS_REGISTRY[selectedMetric]?.name : "Enter title"

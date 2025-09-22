@@ -7,6 +7,19 @@ import { format } from "date-fns"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
+// Helper function to get context-aware attribution labels
+function getAttributionLabel(attribution: string, metricName: string): string {
+  const metricDefinition = METRICS_REGISTRY[metricName]
+  const tableType = metricDefinition?.query?.table || "appointments"
+  
+  if (attribution === "assigned") {
+    return tableType === "discoveries" ? "Assigned to Setter" : "Sales Rep Owned"
+  } else if (attribution === "booked") {
+    return tableType === "discoveries" ? "Booked to Sales Rep" : "Setter Contributed"
+  }
+  return attribution
+}
+
 
 interface DataViewWidgetProps {
   metrics: string[]
@@ -65,14 +78,34 @@ export function DataViewWidget({ metrics, selectedUsers, options }: DataViewWidg
               // Sales rep owned - appointments where user is sales_rep_user_id
               filters.repIds = [user.id]
               console.log(`  - Added repIds: [${user.id}] (sales rep owned)`);
-            } else if (attribution === "booked") {
-              // Setter contributed - appointments where user is setter_user_id
-              filters.setterIds = [user.id]
-              console.log(`  - Added setterIds: [${user.id}] (setter contributed)`);
+            // Determine table type from metric registry
+            const metricDefinition = METRICS_REGISTRY[originalMetricName]
+            const tableType = metricDefinition?.query?.table || "appointments"
+            
+            if (tableType === "discoveries") {
+              // For discoveries: assigned = setter_user_id, booked = sales_rep_user_id (only if discovery was booked)
+              if (attribution === "assigned") {
+                filters.setterIds = [user.id]
+                console.log(`  - Added setterIds: [${user.id}] (discovery assigned to setter)`);
+              } else if (attribution === "booked") {
+                filters.repIds = [user.id]
+                console.log(`  - Added repIds: [${user.id}] (discovery booked to sales rep)`);
+              } else {
+                filters.setterIds = [user.id]
+                console.log(`  - Added setterIds: [${user.id}] (default: discovery assigned)`);
+              }
             } else {
-              // "all" or default - use repIds (backward compatibility)
-              filters.repIds = [user.id]
-              console.log(`  - Added repIds: [${user.id}] (default: sales rep owned)`);
+              // For appointments and other tables: assigned = sales_rep_user_id, booked = setter_user_id
+              if (attribution === "assigned") {
+                filters.repIds = [user.id]
+                console.log(`  - Added repIds: [${user.id}] (sales rep owned)`);
+              } else if (attribution === "booked") {
+                filters.setterIds = [user.id]
+                console.log(`  - Added setterIds: [${user.id}] (setter contributed)`);
+              } else {
+                filters.repIds = [user.id]
+                console.log(`  - Added repIds: [${user.id}] (default: sales rep owned)`);
+              }
             }
             
             console.log(`  - Final filters:`, filters)
@@ -241,7 +274,7 @@ export function DataViewWidget({ metrics, selectedUsers, options }: DataViewWidg
               const originalMetricName = metricOptions.originalMetricName || metricKey
               const attribution = metricOptions.attribution || "assigned"
               const metricDisplayName = METRICS_REGISTRY[originalMetricName]?.name || originalMetricName
-              const attributionLabel = attribution === "assigned" ? "Sales Rep Owned" : attribution === "booked" ? "Setter Contributed" : attribution
+              const attributionLabel = getAttributionLabel(attribution, originalMetricName)
               
               return (
                 <TableHead key={metricKey} className="text-right">
