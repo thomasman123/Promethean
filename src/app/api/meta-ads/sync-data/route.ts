@@ -285,17 +285,23 @@ async function syncCampaignStructureBatched(accountId: string, metaAdAccountId: 
           updated_at: new Date().toISOString()
         }))
 
+        // Filter insights to avoid unique constraint conflicts
+        // Use only ad-level insights since they're most granular and useful
+        const adLevelInsights = insightUpserts.filter((insight: any) => insight.meta_ad_id !== null)
+        
+        console.log(`📊 Storing ${adLevelInsights.length} ad-level insights (filtered from ${insightUpserts.length} total)`)
+
         const { error: insightsError } = await supabase
           .from('meta_ad_performance')
-          .upsert(insightUpserts, { 
-            onConflict: 'account_id,meta_campaign_id,meta_ad_set_id,meta_ad_id,date_start,date_end' 
+          .upsert(adLevelInsights, {
+            onConflict: 'account_id,meta_campaign_id,meta_ad_set_id,meta_ad_id,date_start,date_end'
           })
 
         if (insightsError) {
           console.error('Error batch upserting insights:', insightsError)
         } else {
-          insightsStored = insightUpserts.length
-          console.log(`✅ Batch upserted ${insightUpserts.length} insights (campaign/adset/ad levels)`)
+          insightsStored = adLevelInsights.length
+          console.log(`✅ Batch upserted ${adLevelInsights.length} ad-level insights (most granular data)`)
         }
       } catch (insightError) {
         console.error('Error processing insights:', insightError)
