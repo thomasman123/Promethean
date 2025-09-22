@@ -54,12 +54,7 @@ export function DataViewWidget({ metrics, selectedUsers, options }: DataViewWidg
         
         for (const metricName of metrics) {
           try {
-            // Determine if user is a setter or rep based on their role
-            const isRep = ['sales_rep', 'moderator', 'admin', 'rep'].includes(user.role.toLowerCase())
-            const isSetter = user.role.toLowerCase() === 'setter'
-            
             console.log(`🔍 [DataView] Processing ${metricName} for user ${user.name} (${user.id}):`)
-            console.log(`  - Role: ${user.role} (isRep: ${isRep}, isSetter: ${isSetter})`)
             
             // Build filters based on user role
             const filters: any = {
@@ -70,15 +65,10 @@ export function DataViewWidget({ metrics, selectedUsers, options }: DataViewWidg
               }
             }
             
-            // Add user-specific filtering based on their role
-            if (isRep) {
-              filters.repIds = [user.id]
-              console.log(`  - Added repIds: [${user.id}]`)
-            }
-            if (isSetter) {
-              filters.setterIds = [user.id]
-              console.log(`  - Added setterIds: [${user.id}]`)
-            }
+            // For appointment metrics, always use repIds since we want appointments
+            // where this user is the sales_rep_user_id (owns/closes the appointment)
+            filters.repIds = [user.id]
+            console.log(`  - Added repIds: [${user.id}] (appointments owned by this user)`)
             
             console.log(`  - Final filters:`, filters)
             
