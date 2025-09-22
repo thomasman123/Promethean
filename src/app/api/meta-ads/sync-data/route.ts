@@ -268,48 +268,15 @@ async function syncPerformanceData(accountId: string, metaAdAccountId: string, a
 
     console.log(`📅 Fetching daily insights from ${dateStart} to ${dateEnd}`)
 
-    // Fetch comprehensive daily insights from Meta API with ALL metrics
-    const allFields = [
-      // Core metrics
+    // Fetch core daily insights from Meta API (start with essential metrics)
+    const coreFields = [
       'impressions', 'clicks', 'spend', 'reach', 'frequency',
-      'cpm', 'cpc', 'ctr', 'cpp', 'cost_per_result',
-      
-      // Conversion metrics
-      'conversions', 'conversion_values', 'cost_per_conversion',
-      'purchase_roas', 'return_on_ad_spend',
-      
-      // Video metrics
-      'video_views', 'video_avg_time_watched_actions',
-      'video_p25_watched_actions', 'video_p50_watched_actions',
-      'video_p75_watched_actions', 'video_p100_watched_actions',
-      'cost_per_thruplay', 'cost_per_2_sec_continuous_video_view',
-      
-      // Engagement metrics
-      'post_engagements', 'page_engagements', 'link_clicks',
-      'landing_page_views', 'cost_per_landing_page_view',
-      
-      // Lead metrics
-      'cost_per_lead', 'lead_generation_cost_per_result',
-      
-      // Social metrics
-      'social_spend',
-      
-      // Actions and action values (comprehensive)
-      'actions', 'action_values',
-      
-      // Campaign info
-      'campaign_id', 'campaign_name', 'adset_id', 'adset_name', 'ad_id', 'ad_name',
-      
-      // Quality metrics
-      'quality_score_ectr', 'quality_score_ecvr', 'quality_score_organic',
-      
-      // Attribution windows
-      'conversions_1d_view', 'conversions_7d_click', 'conversions_28d_click',
-      'conversion_values_1d_view', 'conversion_values_7d_click', 'conversion_values_28d_click'
+      'cpm', 'cpc', 'ctr', 'actions', 'action_values',
+      'campaign_id', 'campaign_name', 'adset_id', 'adset_name', 'ad_id', 'ad_name'
     ].join(',');
 
     const insightsResponse = await fetch(
-      `https://graph.facebook.com/v21.0/${metaAdAccountId}/insights?fields=${allFields}&time_range={'since':'${dateStart}','until':'${dateEnd}'}&time_increment=1&level=ad&access_token=${accessToken}`
+      `https://graph.facebook.com/v21.0/${metaAdAccountId}/insights?fields=${coreFields}&time_range={'since':'${dateStart}','until':'${dateEnd}'}&time_increment=1&level=ad&access_token=${accessToken}`
     )
 
     if (!insightsResponse.ok) {
