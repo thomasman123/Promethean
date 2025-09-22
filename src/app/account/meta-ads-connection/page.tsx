@@ -1032,11 +1032,12 @@ function MetaAdsConnectionContent() {
                           </div>
                           
                           <div className="text-xs text-muted-foreground bg-blue-50 p-3 rounded-lg border border-blue-200">
-                            <p className="font-medium text-blue-900 mb-1">💡 Sync Recommendations:</p>
+                            <p className="font-medium text-blue-900 mb-1">⚡ Ultra-Fast Batched Sync:</p>
                             <ul className="list-disc list-inside space-y-1 text-blue-800">
-                              <li><strong>Quick Sync:</strong> Use daily for regular updates (minimal API usage)</li>
-                              <li><strong>7-Day Sync:</strong> Good for weekly reporting needs</li>
-                              <li><strong>30-Day Sync:</strong> Use sparingly for historical analysis</li>
+                              <li><strong>Quick Sync:</strong> Gets ALL campaigns, ad sets & ads in just 1 API call!</li>
+                              <li><strong>7-Day Sync:</strong> Structure + daily insights (2 API calls total)</li>
+                              <li><strong>30-Day Sync:</strong> Use for historical analysis (rate limit friendly)</li>
+                              <li><strong>No Rate Limits:</strong> Batched requests prevent API throttling</li>
                             </ul>
                           </div>
                         </div>

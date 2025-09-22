@@ -47,9 +47,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log(`🚀 Starting initial 1-day Meta Ads sync for account: ${accountId}`)
+    console.log(`🚀 Starting ultra-fast batched Meta Ads sync for account: ${accountId}`)
 
-    // Call the main sync endpoint with minimal data (1 day only)
+    // Call the main sync endpoint with batched approach (campaigns only)
     const syncResponse = await fetch(`${request.nextUrl.origin}/api/meta-ads/sync-data`, {
       method: 'POST',
       headers: {
@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({
         accountId,
         daysBack: 1,
-        syncType: 'campaigns' // Only sync campaigns and structure, not insights initially
+        syncType: 'campaigns' // Ultra-fast batched sync - campaigns, ad sets, ads in 1 API call
       })
     })
 
@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'Initial connection sync completed successfully',
+      message: `Ultra-fast sync completed! ${syncData.campaignsSynced || 0} campaigns, ${syncData.adSetsSynced || 0} ad sets, ${syncData.adsSynced || 0} ads (${syncData.apiCallsUsed || 'unknown'} API calls)`,
       ...syncData
     })
 
