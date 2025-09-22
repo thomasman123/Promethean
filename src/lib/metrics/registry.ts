@@ -678,7 +678,7 @@ const BASE_METRICS = {
 			table: 'meta_ad_performance',
 			select: ['COALESCE(AVG(purchase_roas), 0) as value']
 		},
-		unit: 'ratio' as const,
+		unit: 'count' as const,
 		options: {
 			attribution: ['all'],
 		}
