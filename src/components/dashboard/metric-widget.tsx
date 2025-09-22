@@ -7,12 +7,13 @@ import { format } from "date-fns"
 
 interface MetricWidgetProps {
   metric?: string // For KPI widgets
-  metrics?: string[] // For chart widgets
-  type: "kpi" | "bar" | "line" | "area"
+  metrics?: string[] // For chart widgets and data views
+  type: "kpi" | "bar" | "line" | "area" | "data"
   options?: Record<string, any> // Widget options/settings
+  selectedUsers?: string[] // For data view widgets
 }
 
-export function MetricWidget({ metric, metrics, type, options }: MetricWidgetProps) {
+export function MetricWidget({ metric, metrics, type, options, selectedUsers }: MetricWidgetProps) {
   const [value, setValue] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const { selectedAccountId, dateRange } = useDashboard()
@@ -156,6 +157,11 @@ export function MetricWidget({ metric, metrics, type, options }: MetricWidgetPro
   if (type === "area" && metrics) {
     const AreaChartWidget = require('./area-chart-widget').AreaChartWidget
     return <AreaChartWidget metrics={metrics} options={options} />
+  }
+
+  if (type === "data" && metrics && selectedUsers) {
+    const DataViewWidget = require('./data-view-widget').DataViewWidget
+    return <DataViewWidget metrics={metrics} selectedUsers={selectedUsers} options={options} />
   }
   
   // Other chart types placeholder

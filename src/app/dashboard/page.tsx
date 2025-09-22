@@ -284,17 +284,22 @@ export default function DashboardPage() {
   const renderWidgetContent = (widget: WidgetConfig) => {
     // For KPI widgets with single metric
     if (widget.type === "kpi" && widget.metric) {
-      return <MetricWidget metric={widget.metric} type={widget.type} options={widget.options} />
+      return <MetricWidget metric={widget.metric} type={widget.type} options={widget.metricOptions} />
     }
     
     // For chart widgets with multiple metrics
     if ((widget.type === "bar" || widget.type === "line" || widget.type === "area") && widget.metrics) {
-      return <MetricWidget metrics={widget.metrics} type={widget.type} options={widget.options} />
+      return <MetricWidget metrics={widget.metrics} type={widget.type} options={widget.metricsOptions} />
+    }
+    
+    // For data view widgets with multiple metrics and selected users
+    if (widget.type === "data" && widget.metrics && widget.selectedUsers) {
+      return <MetricWidget metrics={widget.metrics} type={widget.type} options={widget.metricsOptions} selectedUsers={widget.selectedUsers} />
     }
     
     // For backward compatibility - chart with single metric
     if ((widget.type === "bar" || widget.type === "line" || widget.type === "area") && widget.metric) {
-      return <MetricWidget metrics={[widget.metric]} type={widget.type} options={widget.options} />
+      return <MetricWidget metrics={[widget.metric]} type={widget.type} options={widget.metricOptions} />
     }
     
     // Otherwise render placeholder content
@@ -311,6 +316,12 @@ export default function DashboardPage() {
         return (
           <div className="h-full flex items-center justify-center">
             <span className="text-muted-foreground text-sm">Chart visualization</span>
+          </div>
+        )
+      case "data":
+        return (
+          <div className="h-full flex items-center justify-center">
+            <span className="text-muted-foreground text-sm">Data view</span>
           </div>
         )
       default:
