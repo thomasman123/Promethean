@@ -288,7 +288,7 @@ async function syncCampaignStructureBatched(accountId: string, metaAdAccountId: 
         const { error: insightsError } = await supabase
           .from('meta_ad_performance')
           .upsert(insightUpserts, { 
-            onConflict: 'account_id,date_start,meta_campaign_id,meta_ad_set_id,meta_ad_id' 
+            onConflict: 'account_id,meta_campaign_id,meta_ad_set_id,meta_ad_id,date_start,date_end' 
           })
 
         if (insightsError) {
