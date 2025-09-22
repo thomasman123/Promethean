@@ -699,16 +699,8 @@ WHERE speed_to_lead_seconds IS NOT NULL
     }
 
     const whereClause = buildWhereClause(appliedFilters, [])
-    // Create a separate WHERE clause for meta_ad_performance that excludes user-specific filters
-    const filteredConditions = appliedFilters.conditions.filter((condition: any) => 
-      !condition.field.includes('sales_rep_user_id') && 
-      !condition.field.includes('setter_user_id')
-    )
-    const filteredParams = { ...appliedFilters.params }
-    delete filteredParams.rep_user_id
-    delete filteredParams.setter_user_id
-    const metaAppliedFilters = { conditions: filteredConditions, params: filteredParams }
-    const metaWhereClause = buildWhereClause(metaAppliedFilters, []).replace('appointments.', 'meta_ad_performance.')
+    // Build a meta_ad_performance-safe WHERE clause (date + account only)
+    const metaWhereClause = this.buildMetaWhereClause(appliedFilters)
 
     const sql = `
       WITH date_series AS (
@@ -766,16 +758,8 @@ WHERE speed_to_lead_seconds IS NOT NULL
      
      const whereClause = buildWhereClause(appliedFilters, [])
 
-     // Create a separate WHERE clause for meta_ad_performance that excludes user-specific filters
-     const filteredConditions = appliedFilters.conditions.filter((condition: any) => 
-       !condition.field.includes('sales_rep_user_id') && 
-       !condition.field.includes('setter_user_id')
-     )
-     const filteredParams = { ...appliedFilters.params }
-     delete filteredParams.rep_user_id
-     delete filteredParams.setter_user_id
-     const metaAppliedFilters = { conditions: filteredConditions, params: filteredParams }
-     const metaWhereClause = buildWhereClause(metaAppliedFilters, []).replace('appointments.', 'meta_ad_performance.')
+     // Build a meta_ad_performance-safe WHERE clause (date + account only)
+     const metaWhereClause = this.buildMetaWhereClause(appliedFilters)
      
      return `
        WITH cash_data AS (
@@ -812,16 +796,8 @@ WHERE speed_to_lead_seconds IS NOT NULL
     */
    private buildRepROISQL(appliedFilters: any, metric: MetricDefinition, options?: any): string {
      const whereClause = buildWhereClause(appliedFilters, [])
-     // Create a separate WHERE clause for meta_ad_performance that excludes user-specific filters
-     const filteredConditions = appliedFilters.conditions.filter((condition: any) => 
-       !condition.field.includes('sales_rep_user_id') && 
-       !condition.field.includes('setter_user_id')
-     )
-     const filteredParams = { ...appliedFilters.params }
-     delete filteredParams.rep_user_id
-     delete filteredParams.setter_user_id
-     const metaAppliedFilters = { conditions: filteredConditions, params: filteredParams }
-     const metaWhereClause = buildWhereClause(metaAppliedFilters, []).replace('appointments.', 'meta_ad_performance.')
+     // Build a meta_ad_performance-safe WHERE clause (date + account only)
+     const metaWhereClause = this.buildMetaWhereClause(appliedFilters)
      const breakdownType = metric.breakdownType
      const isMultiplier = metric.name?.includes('Multiplier')
      
@@ -945,16 +921,8 @@ WHERE speed_to_lead_seconds IS NOT NULL
      // We need to join appointments and meta_ad_performance tables
      
      const whereClause = buildWhereClause(appliedFilters, [])
-     // Create a separate WHERE clause for meta_ad_performance that excludes user-specific filters
-     const filteredConditions = appliedFilters.conditions.filter((condition: any) => 
-       !condition.field.includes('sales_rep_user_id') && 
-       !condition.field.includes('setter_user_id')
-     )
-     const filteredParams = { ...appliedFilters.params }
-     delete filteredParams.rep_user_id
-     delete filteredParams.setter_user_id
-     const metaAppliedFilters = { conditions: filteredConditions, params: filteredParams }
-     const metaWhereClause = buildWhereClause(metaAppliedFilters, []).replace('appointments.', 'meta_ad_performance.')
+     // Build a meta_ad_performance-safe WHERE clause (date + account only)
+     const metaWhereClause = this.buildMetaWhereClause(appliedFilters)
      const breakdownType = metric.breakdownType
     
     // Handle different breakdown types
@@ -1449,6 +1417,20 @@ WHERE speed_to_lead_seconds IS NOT NULL
     `.trim()
 
     return sql
+  }
+
+  /**
+   * Build a WHERE clause for meta_ad_performance using only safe filters
+   * Safe fields: local_date | local_week | local_month, account_id
+   */
+  private buildMetaWhereClause(appliedFilters: any): string {
+    const safeFields = new Set(['local_date', 'local_week', 'local_month', 'account_id'])
+    const conditions = appliedFilters.conditions.filter((c: any) => safeFields.has(c.field))
+    const params = { ...appliedFilters.params }
+    // Ensure we don't pass user-specific params
+    delete (params as any).rep_user_id
+    delete (params as any).setter_user_id
+    return buildWhereClause({ conditions, params }, []).replace('appointments.', 'meta_ad_performance.')
   }
 
   private createErrorResult(breakdownType: string, error: Error): MetricResult {
