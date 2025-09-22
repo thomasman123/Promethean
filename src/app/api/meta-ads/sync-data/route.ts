@@ -272,7 +272,7 @@ async function syncPerformanceData(accountId: string, metaAdAccountId: string, a
     let insightsResponse;
     let insights = [];
 
-    // Approach 1: Try ad-level insights first
+    // Approach 1: Try using date_preset for maximum data coverage
     try {
       const coreFields = [
         'impressions', 'clicks', 'spend', 'reach', 'frequency',
@@ -280,29 +280,72 @@ async function syncPerformanceData(accountId: string, metaAdAccountId: string, a
         'campaign_id', 'campaign_name', 'adset_id', 'adset_name', 'ad_id', 'ad_name'
       ].join(',');
 
+      // Use date_preset=maximum to get all available data
       insightsResponse = await fetch(
-        `https://graph.facebook.com/v21.0/${metaAdAccountId}/insights?fields=${coreFields}&time_range={'since':'${dateStart}','until':'${dateEnd}'}&time_increment=1&level=ad&access_token=${accessToken}`
+        `https://graph.facebook.com/v21.0/${metaAdAccountId}/insights?fields=${coreFields}&date_preset=maximum&time_increment=1&level=ad&access_token=${accessToken}`
       )
 
       if (insightsResponse.ok) {
-        const adLevelData = await insightsResponse.json()
-        insights = adLevelData.data || []
-        console.log(`📊 Ad-level insights: Found ${insights.length} records`)
+        const maximumData = await insightsResponse.json()
+        insights = maximumData.data || []
+        console.log(`📊 Maximum data insights: Found ${insights.length} records`)
+        
+        // Filter to our desired date range
+        insights = insights.filter((insight: any) => {
+          const insightDate = new Date(insight.date_start)
+          const startFilter = new Date(dateStart)
+          const endFilter = new Date(dateEnd)
+          return insightDate >= startFilter && insightDate <= endFilter
+        })
+        console.log(`📊 Filtered to date range: ${insights.length} records`)
       }
     } catch (error) {
-      console.log('Ad-level insights failed, trying campaign-level...')
+      console.log('Maximum data insights failed, trying specific date range...')
     }
 
-    // Approach 2: Fallback to campaign-level if ad-level fails or returns limited data
+    // Approach 2: Try specific date range if maximum didn't work
+    if (insights.length === 0) {
+      try {
+        const coreFields = [
+          'impressions', 'clicks', 'spend', 'reach', 'frequency',
+          'cpm', 'cpc', 'ctr', 'actions', 'action_values',
+          'campaign_id', 'campaign_name', 'adset_id', 'adset_name', 'ad_id', 'ad_name'
+        ].join(',');
+
+        insightsResponse = await fetch(
+          `https://graph.facebook.com/v21.0/${metaAdAccountId}/insights?fields=${coreFields}&time_range={'since':'${dateStart}','until':'${dateEnd}'}&time_increment=1&level=ad&access_token=${accessToken}`
+        )
+
+        if (insightsResponse.ok) {
+          const adLevelData = await insightsResponse.json()
+          insights = adLevelData.data || []
+          console.log(`📊 Ad-level insights: Found ${insights.length} records`)
+        }
+      } catch (error) {
+        console.log('Ad-level insights failed, trying campaign-level...')
+      }
+    }
+
+    // Approach 3: Fallback to campaign-level if ad-level fails or returns limited data
     if (insights.length === 0) {
       try {
         insightsResponse = await fetch(
-          `https://graph.facebook.com/v21.0/${metaAdAccountId}/insights?fields=impressions,clicks,spend,reach,frequency,cpm,cpc,ctr,actions,action_values,campaign_id,campaign_name&time_range={'since':'${dateStart}','until':'${dateEnd}'}&time_increment=1&level=campaign&access_token=${accessToken}`
+          `https://graph.facebook.com/v21.0/${metaAdAccountId}/insights?fields=impressions,clicks,spend,reach,frequency,cpm,cpc,ctr,actions,action_values,campaign_id,campaign_name&date_preset=maximum&time_increment=1&level=campaign&access_token=${accessToken}`
         )
 
         if (insightsResponse.ok) {
           const campaignLevelData = await insightsResponse.json()
-          insights = campaignLevelData.data || []
+          let campaignInsights = campaignLevelData.data || []
+          
+          // Filter to our desired date range
+          campaignInsights = campaignInsights.filter((insight: any) => {
+            const insightDate = new Date(insight.date_start)
+            const startFilter = new Date(dateStart)
+            const endFilter = new Date(dateEnd)
+            return insightDate >= startFilter && insightDate <= endFilter
+          })
+          
+          insights = campaignInsights
           console.log(`📊 Campaign-level insights: Found ${insights.length} records`)
         }
       } catch (error) {
@@ -310,16 +353,26 @@ async function syncPerformanceData(accountId: string, metaAdAccountId: string, a
       }
     }
 
-    // Approach 3: Try account-level for maximum data coverage
+    // Approach 4: Try account-level for maximum data coverage
     if (insights.length === 0) {
       try {
         insightsResponse = await fetch(
-          `https://graph.facebook.com/v21.0/${metaAdAccountId}/insights?fields=impressions,clicks,spend,reach,frequency,cpm,cpc,ctr,actions,action_values&time_range={'since':'${dateStart}','until':'${dateEnd}'}&time_increment=1&level=account&access_token=${accessToken}`
+          `https://graph.facebook.com/v21.0/${metaAdAccountId}/insights?fields=impressions,clicks,spend,reach,frequency,cpm,cpc,ctr,actions,action_values&date_preset=maximum&time_increment=1&level=account&access_token=${accessToken}`
         )
 
         if (insightsResponse.ok) {
           const accountLevelData = await insightsResponse.json()
-          insights = accountLevelData.data || []
+          let accountInsights = accountLevelData.data || []
+          
+          // Filter to our desired date range
+          accountInsights = accountInsights.filter((insight: any) => {
+            const insightDate = new Date(insight.date_start)
+            const startFilter = new Date(dateStart)
+            const endFilter = new Date(dateEnd)
+            return insightDate >= startFilter && insightDate <= endFilter
+          })
+          
+          insights = accountInsights
           console.log(`📊 Account-level insights: Found ${insights.length} records`)
         }
       } catch (error) {
