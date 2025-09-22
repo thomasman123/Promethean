@@ -753,7 +753,7 @@ WHERE speed_to_lead_seconds IS NOT NULL
     * Special SQL builder for ROI calculation (Cash collected / Ad spend)
     */
    private buildROISQL(appliedFilters: any, metric: MetricDefinition, options?: any): string {
-     // ROI = (Cash Collected / Ad Spend) * 100 for percentage
+     // ROI = (Cash Collected / Ad Spend) for percentage unit we will return a fraction (0..1)
      // We need to join appointments and meta_ad_performance tables
      
      const whereClause = buildWhereClause(appliedFilters, [])
@@ -781,7 +781,7 @@ WHERE speed_to_lead_seconds IS NOT NULL
        SELECT 
          CASE 
            WHEN spend_data.total_spend > 0 
-           THEN ROUND((cash_data.total_cash / spend_data.total_spend) * 100, 2)
+           THEN ROUND((cash_data.total_cash / spend_data.total_spend), 4)
            ELSE 0 
          END as value
        FROM cash_data
@@ -840,8 +840,8 @@ WHERE speed_to_lead_seconds IS NOT NULL
                THEN ROUND(
                  ${isMultiplier 
                    ? 'cash_data.total_cash / spend_data.total_spend'
-                   : '(cash_data.total_cash / spend_data.total_spend - 1) * 100'
-                 }, 2)
+                   : '(cash_data.total_cash / spend_data.total_spend - 1)'
+                 }, 4)
                ELSE 0 
              END as value
            FROM cash_data
@@ -895,10 +895,10 @@ WHERE speed_to_lead_seconds IS NOT NULL
                  CASE 
                    WHEN ${isMultiplier ? 'true' : 'false'}
                    THEN ROUND(
-                     rep_data.rep_cash / ((spend_data.total_spend / total_appointments.total_count) * rep_data.rep_appointments), 2
+                     rep_data.rep_cash / ((spend_data.total_spend / total_appointments.total_count) * rep_data.rep_appointments), 4
                    )
                    ELSE ROUND(
-                     ((rep_data.rep_cash / ((spend_data.total_spend / total_appointments.total_count) * rep_data.rep_appointments)) - 1) * 100, 2
+                     ((rep_data.rep_cash / ((spend_data.total_spend / total_appointments.total_count) * rep_data.rep_appointments)) - 1), 4
                    )
                  END
                ELSE 0 
