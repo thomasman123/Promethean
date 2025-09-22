@@ -16,7 +16,6 @@ const BASE_METRICS = {
 		unit: 'count' as const,
 		options: {
 			attribution: ['all', 'assigned', 'booked'],
-			breakdown: ['total', 'reps', 'setters', 'link']
 		}
 	},
 
@@ -32,7 +31,6 @@ const BASE_METRICS = {
 		unit: 'count' as const,
 		options: {
 			attribution: ['all', 'assigned', 'booked'],
-			breakdown: ['total', 'reps', 'setters', 'link']
 		}
 	},
 
@@ -48,7 +46,6 @@ const BASE_METRICS = {
 		unit: 'count' as const,
 		options: {
 			attribution: ['all', 'assigned', 'booked'],
-			breakdown: ['total', 'reps', 'setters', 'link']
 		}
 	},
 
@@ -66,7 +63,6 @@ const BASE_METRICS = {
 		unit: 'percent' as const,
 		options: {
 			attribution: ['all', 'assigned', 'booked'],
-			breakdown: ['total', 'reps', 'setters', 'link']
 		}
 	},
 
@@ -85,7 +81,6 @@ const BASE_METRICS = {
 		unit: 'percent' as const,
 		options: {
 			attribution: ['all', 'assigned', 'booked'],
-			breakdown: ['total', 'reps', 'setters', 'link']
 		}
 	},
 
@@ -103,7 +98,6 @@ const BASE_METRICS = {
 		unit: 'percent' as const,
 		options: {
 			attribution: ['all', 'assigned', 'booked'],
-			breakdown: ['total', 'reps', 'setters', 'link']
 		}
 	},
 
@@ -121,7 +115,6 @@ const BASE_METRICS = {
 		unit: 'percent' as const,
 		options: {
 			attribution: ['all', 'assigned', 'booked'],
-			breakdown: ['total', 'reps', 'setters', 'link']
 		}
 	},
 
@@ -139,7 +132,6 @@ const BASE_METRICS = {
 		unit: 'percent' as const,
 		options: {
 			attribution: ['all', 'assigned', 'booked'],
-			breakdown: ['total', 'reps', 'setters', 'link']
 		}
 	},
 
@@ -156,7 +148,6 @@ const BASE_METRICS = {
 		unit: 'currency' as const,
 		options: {
 			attribution: ['all', 'assigned', 'booked'],
-			breakdown: ['total', 'reps', 'setters', 'link']
 		}
 	},
 
@@ -172,7 +163,6 @@ const BASE_METRICS = {
 		unit: 'currency' as const,
 		options: {
 			attribution: ['all', 'assigned', 'booked'],
-			breakdown: ['total', 'reps', 'setters', 'link']
 		}
 	},
 
@@ -190,7 +180,6 @@ const BASE_METRICS = {
 		unit: 'currency' as const,
 		options: {
 			attribution: ['all', 'assigned', 'booked'],
-			breakdown: ['total', 'reps', 'setters', 'link']
 		}
 	},
 
@@ -206,7 +195,6 @@ const BASE_METRICS = {
 		unit: 'count' as const,
 		options: {
 			attribution: ['all', 'assigned', 'dialer'],
-			breakdown: ['total', 'reps', 'setters', 'link']
 		}
 	},
 
@@ -222,7 +210,6 @@ const BASE_METRICS = {
 		unit: 'count' as const,
 		options: {
 			attribution: ['all', 'assigned', 'dialer'],
-			breakdown: ['total', 'reps', 'setters', 'link']
 		}
 	},
 
@@ -238,7 +225,6 @@ const BASE_METRICS = {
 		unit: 'count' as const,
 		options: {
 			attribution: ['all', 'assigned', 'dialer'],
-			breakdown: ['total', 'reps', 'setters', 'link']
 		}
 	},
 
@@ -254,7 +240,6 @@ const BASE_METRICS = {
 		unit: 'count' as const,
 		options: {
 			attribution: ['all', 'assigned', 'dialer'],
-			breakdown: ['total', 'reps', 'setters', 'link']
 		}
 	},
 
@@ -270,7 +255,6 @@ const BASE_METRICS = {
 		unit: 'seconds' as const,
 		options: {
 			attribution: ['all', 'assigned', 'dialer'],
-			breakdown: ['total', 'reps', 'setters', 'link'],
 			timeFormat: ['seconds', 'minutes', 'hours', 'human_readable']
 		}
 	},
@@ -288,7 +272,6 @@ const BASE_METRICS = {
 		unit: 'percent' as const,
 		options: {
 			attribution: ['all', 'assigned', 'dialer'],
-			breakdown: ['total', 'reps', 'setters', 'link']
 		}
 	},
 
@@ -305,7 +288,6 @@ const BASE_METRICS = {
 		unit: 'percent' as const,
 		options: {
 			attribution: ['all', 'assigned', 'dialer'],
-			breakdown: ['total', 'reps', 'setters', 'link']
 		}
 	},
 
@@ -324,7 +306,6 @@ const BASE_METRICS = {
 		unit: 'percent' as const,
 		options: {
 			attribution: ['all', 'assigned', 'booked'],
-			breakdown: ['total', 'reps', 'setters', 'link']
 		}
 	},
 
@@ -342,7 +323,6 @@ const BASE_METRICS = {
 		unit: 'percent' as const,
 		options: {
 			attribution: ['all', 'assigned', 'booked'],
-			breakdown: ['total', 'reps', 'setters', 'link']
 		}
 	},
 
@@ -360,7 +340,6 @@ const BASE_METRICS = {
 		unit: 'currency' as const,
 		options: {
 			attribution: ['all', 'assigned', 'booked'],
-			breakdown: ['total', 'reps', 'setters', 'link']
 		}
 	},
 
@@ -378,7 +357,6 @@ const BASE_METRICS = {
 		unit: 'currency' as const,
 		options: {
 			attribution: ['all', 'assigned', 'booked'],
-			breakdown: ['total', 'reps', 'setters', 'link']
 		}
 	},
 
@@ -397,7 +375,6 @@ const BASE_METRICS = {
 		unit: 'count' as const,
 		options: {
 			attribution: ['all', 'assigned', 'booked'],
-			breakdown: ['total', 'reps', 'setters', 'link']
 		}
 	},
 
@@ -415,7 +392,6 @@ const BASE_METRICS = {
 		unit: 'count' as const,
 		options: {
 			attribution: ['all', 'assigned', 'booked'],
-			breakdown: ['total', 'reps', 'setters', 'link']
 		}
 	},
 
@@ -432,7 +408,6 @@ const BASE_METRICS = {
 		unit: 'count' as const,
 		options: {
 			attribution: ['all', 'assigned', 'booked'],
-			breakdown: ['total', 'reps', 'setters', 'link']
 		}
 	},
 
@@ -448,7 +423,6 @@ const BASE_METRICS = {
 		isSpecialMetric: true,
 		options: {
 			attribution: ['all', 'assigned', 'booked'],
-			breakdown: ['total', 'reps', 'setters', 'link']
 		}
 	},
 
@@ -465,7 +439,6 @@ const BASE_METRICS = {
 		unit: 'percent' as const,
 		options: {
 			attribution: ['all', 'assigned', 'dialer'],
-			breakdown: ['total', 'reps', 'setters', 'link']
 		}
 	},
 
@@ -482,7 +455,6 @@ const BASE_METRICS = {
 		unit: 'count' as const,
 		options: {
 			attribution: ['all', 'assigned', 'dialer'],
-			breakdown: ['total', 'reps', 'setters', 'link']
 		}
 	},
 
@@ -498,7 +470,6 @@ const BASE_METRICS = {
 		isSpecialMetric: true,
 		options: {
 			attribution: ['all', 'assigned', 'dialer'],
-			breakdown: ['total', 'reps', 'setters', 'link']
 		}
 	},
 
@@ -514,7 +485,6 @@ const BASE_METRICS = {
 		unit: 'count' as const,
 		isSpecialMetric: true,
 		options: {
-			breakdown: ['total', 'setters']
 		}
 	},
 
@@ -529,7 +499,6 @@ const BASE_METRICS = {
 		unit: 'count' as const,
 		isSpecialMetric: true,
 		options: {
-			breakdown: ['total', 'setters']
 		}
 	},
 
@@ -544,7 +513,6 @@ const BASE_METRICS = {
 		unit: 'count' as const,
 		isSpecialMetric: true,
 		options: {
-			breakdown: ['total', 'setters']
 		}
 	},
 
@@ -560,7 +528,6 @@ const BASE_METRICS = {
 		unit: 'currency' as const,
 		options: {
 			attribution: ['all', 'assigned', 'booked'],
-			breakdown: ['total', 'reps', 'setters', 'link']
 		}
 	},
 
@@ -576,7 +543,6 @@ const BASE_METRICS = {
 		isSpecialMetric: true,
 		options: {
 			attribution: ['all', 'assigned', 'booked'],
-			breakdown: ['total', 'reps', 'setters', 'link']
 		}
 	},
 
@@ -592,7 +558,6 @@ const BASE_METRICS = {
 		isSpecialMetric: true,
 		options: {
 			attribution: ['all', 'assigned', 'booked'],
-			breakdown: ['total', 'reps', 'setters', 'link']
 		}
 	},
 
@@ -609,7 +574,6 @@ const BASE_METRICS = {
 		unit: 'count' as const,
 		options: {
 			attribution: ['all', 'assigned', 'booked'],
-			breakdown: ['total', 'reps', 'setters', 'link']
 		}
 	},
 
@@ -625,7 +589,6 @@ const BASE_METRICS = {
 		unit: 'count' as const,
 		options: {
 			attribution: ['all', 'assigned', 'booked'],
-			breakdown: ['total', 'reps', 'setters', 'link']
 		}
 	},
 
@@ -659,7 +622,6 @@ const BASE_METRICS = {
 		isSpecialMetric: true,
 		options: {
 			attribution: ['all', 'assigned', 'booked'],
-			breakdown: ['total', 'reps', 'setters', 'link']
 		}
 	},
 
@@ -675,7 +637,6 @@ const BASE_METRICS = {
 		isSpecialMetric: true,
 		options: {
 			attribution: ['all', 'assigned', 'booked'],
-			breakdown: ['total', 'reps', 'setters', 'link']
 		}
 	},
 
@@ -691,7 +652,6 @@ const BASE_METRICS = {
 		isSpecialMetric: true,
 		options: {
 			attribution: ['all', 'assigned', 'booked'],
-			breakdown: ['total', 'reps', 'setters', 'link']
 		}
 	}
 }

@@ -249,10 +249,6 @@ export function UnifiedMetricSelector({
         defaultOptions.attribution = metric.options.attribution[0]
       }
       
-      // For dashboard, include breakdown options; for data view, skip breakdown
-      if (mode === 'dashboard' && metric.options.breakdown) {
-        defaultOptions.breakdown = metric.options.breakdown[0]
-      }
       
       if (metric.options.timeFormat) {
         defaultOptions.timeFormat = metric.options.timeFormat[0]
@@ -436,32 +432,6 @@ export function UnifiedMetricSelector({
                 </div>
               )}
 
-              {/* Breakdown Options - Only show for dashboard */}
-              {mode === 'dashboard' && selectedMetricDef?.options?.breakdown && (
-                <div className="space-y-2">
-                  <Label>Breakdown</Label>
-                  <Select 
-                    value={selectedOptions.breakdown || selectedMetricDef.options.breakdown[0]}
-                    onValueChange={(value) => setSelectedOptions((prev: any) => ({ ...prev, breakdown: value }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {selectedMetricDef.options.breakdown.map((option: string) => (
-                        <SelectItem key={option} value={option}>
-                          {option === 'total' ? 'Total (Single Value)' :
-                           option === 'reps' ? 'By Sales Rep' :
-                           option === 'setters' ? 'By Setter' :
-                           option === 'link' ? 'Setter→Rep Links' : option}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground">
-                    Data view automatically breaks down by user, so breakdown options are only available for dashboard widgets.
-                  </p>
-                </div>
               )}
 
               {/* Time Format Options */}

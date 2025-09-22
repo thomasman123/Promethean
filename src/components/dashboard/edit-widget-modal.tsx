@@ -173,10 +173,18 @@ export function EditWidgetModal({ open, onOpenChange, onSaveWidget, widget }: Ed
   const handleMetricSelect = (metricName: string, metricDefinition: MetricDefinition, options?: any) => {
     if (isChartType || isDataView) {
       // For charts and data views, add to metrics array with options and return to widget modal
-      if (!selectedMetrics.includes(metricName)) {
-        setSelectedMetrics(prev => [...prev, metricName])
-        setMetricsWithOptions(prev => ({ ...prev, [metricName]: options || {} }))
-      }
+        // Create a unique key that includes metric name and attribution
+        const attribution = options?.attribution || "assigned"
+        const metricKey = `${metricName}_${attribution}`
+        
+        // Check if this specific metric+attribution combo already exists
+        const existingKeys = Object.keys(metricsWithOptions)
+        const alreadyExists = existingKeys.some(key => key.startsWith(`${metricName}_`) && metricsWithOptions[key]?.attribution === attribution)
+        
+        if (!alreadyExists) {
+          setSelectedMetrics(prev => [...prev, metricKey])
+          setMetricsWithOptions(prev => ({ ...prev, [metricKey]: { ...options, originalMetricName: metricName } || { originalMetricName: metricName } }))
+        }
       setIsMetricSelectorOpen(false)
     } else {
       // For KPI, set single metric

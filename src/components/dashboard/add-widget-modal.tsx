@@ -155,10 +155,18 @@ export function AddWidgetModal({ open, onOpenChange, onAddWidget }: AddWidgetMod
   const handleMetricSelect = (metricName: string, metricDefinition: MetricDefinition, options?: any) => {
     if (isChartType || isDataView) {
       // For charts and data views, add to metrics array with options and return to widget modal
-      if (!selectedMetrics.includes(metricName)) {
-        setSelectedMetrics(prev => [...prev, metricName])
-        setMetricsWithOptions(prev => ({ ...prev, [metricName]: options || {} }))
-      }
+        // Create a unique key that includes metric name and attribution
+        const attribution = options?.attribution || "assigned"
+        const metricKey = `${metricName}_${attribution}`
+        
+        // Check if this specific metric+attribution combo already exists
+        const existingKeys = Object.keys(metricsWithOptions)
+        const alreadyExists = existingKeys.some(key => key.startsWith(`${metricName}_`) && metricsWithOptions[key]?.attribution === attribution)
+        
+        if (!alreadyExists) {
+          setSelectedMetrics(prev => [...prev, metricKey])
+          setMetricsWithOptions(prev => ({ ...prev, [metricKey]: { ...options, originalMetricName: metricName } || { originalMetricName: metricName } }))
+        }
       setIsMetricSelectorOpen(false)
     } else {
       // For KPI, set single metric and create widget immediately
@@ -182,7 +190,14 @@ export function AddWidgetModal({ open, onOpenChange, onAddWidget }: AddWidgetMod
     if ((isChartType || isDataView) && selectedMetrics.length === 0) return
     if (isDataView && selectedUsers.length === 0) return
 
-    const defaultTitle = selectedMetrics.map(m => METRICS_REGISTRY[m]?.name || m).join(' vs ')
+    const defaultTitle = selectedMetrics.map(metricKey => {
+      const options = metricsWithOptions[metricKey]
+      const originalMetricName = options?.originalMetricName || metricKey
+      const attribution = options?.attribution || "assigned"
+      const metricDisplayName = METRICS_REGISTRY[originalMetricName]?.name || originalMetricName
+      const attributionLabel = attribution === "assigned" ? "Sales Rep Owned" : attribution === "booked" ? "Setter Contributed" : attribution
+      return `${metricDisplayName} (${attributionLabel})`
+    }).join(" vs ")
 
     const widget: WidgetConfig = {
       id: `widget-${Date.now()}`,
@@ -314,20 +329,31 @@ export function AddWidgetModal({ open, onOpenChange, onAddWidget }: AddWidgetMod
                   <div className="space-y-2">
                     <Label>Selected Metrics ({selectedMetrics.length})</Label>
                     <div className="space-y-2">
-                      {selectedMetrics.map(metricId => {
-                        const options = metricsWithOptions[metricId]
+                      {selectedMetrics.map(metricKey => {
+                        const options = metricsWithOptions[metricKey]
+                        const originalMetricName = options?.originalMetricName || metricKey
+                        const attribution = options?.attribution || "assigned"
+                        
+                        // Get the display name for the original metric
+                        const metricDisplayName = METRICS_REGISTRY[originalMetricName]?.name || originalMetricName
+                        const attributionLabel = attribution === "assigned" ? "Sales Rep Owned" : 
+                                               attribution === "booked" ? "Setter Contributed" : 
+                                               attribution
+                        
                         const optionsText = options ? Object.entries(options)
-                          .filter(([key, value]) => value !== 'all' && value !== 'total')
+                          .filter(([key, value]) => key !== "originalMetricName" && value !== "all" && value !== "total")
                           .map(([key, value]) => `${key}: ${value}`)
-                          .join(', ') : ''
+                          .join(", ") : ""
                         
                         return (
-                          <div key={metricId} className="flex items-center justify-between p-2 bg-muted rounded-md">
-                            <div className="flex-1 min-w-0">
-                              <div className="font-medium text-sm">{METRICS_REGISTRY[metricId]?.name || metricId}</div>
-                              {optionsText && (
-                                <div className="text-xs text-muted-foreground">{optionsText}</div>
-                              )}
+                          <div key={metricKey} className="flex items-center justify-between p-2 bg-muted rounded-md">
+                              onClick={() => {
+                                setSelectedMetrics(prev => prev.filter(m => m !== metricKey))
+                                setMetricsWithOptions(prev => {
+                                  const { [metricKey]: removed, ...rest } = prev
+                                  return rest
+                                })
+                              }}
                             </div>
                             <Button
                               variant="ghost"
@@ -362,7 +388,14 @@ export function AddWidgetModal({ open, onOpenChange, onAddWidget }: AddWidgetMod
                   <Label>Widget Title (Optional)</Label>
                   <Input
                     placeholder={isChartType || isDataView
-                      ? selectedMetrics.map(m => METRICS_REGISTRY[m]?.name || m).join(' vs ')
+                      ? selectedMetrics.map(metricKey => {
+                          const options = metricsWithOptions[metricKey]
+                          const originalMetricName = options?.originalMetricName || metricKey
+                          const attribution = options?.attribution || "assigned"
+                          const metricDisplayName = METRICS_REGISTRY[originalMetricName]?.name || originalMetricName
+                          const attributionLabel = attribution === "assigned" ? "Sales Rep Owned" : attribution === "booked" ? "Setter Contributed" : attribution
+                          return `${metricDisplayName} (${attributionLabel})`
+                        }).join(" vs ")
                       : selectedMetric ? METRICS_REGISTRY[selectedMetric]?.name : "Enter title"
                     }
                     value={widgetTitle}
