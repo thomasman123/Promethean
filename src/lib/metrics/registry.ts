@@ -874,6 +874,54 @@ const BASE_METRICS = {
 		}
 	},
 
+	// === REP ROI METRICS ===
+	'rep_roi': {
+		name: 'Rep ROI',
+		description: 'Sales rep ROI: Cash collected divided by (cost per appointment × appointments)',
+		breakdownType: 'rep' as const,
+		query: {
+			table: 'appointments',
+			select: ['0 as value'] // This will be calculated via special metric handling
+		},
+		unit: 'percent' as const,
+		isSpecialMetric: true,
+		attributionContext: 'assigned' as const,
+		options: {
+			attribution: ['assigned'],
+		}
+	},
+
+	'rep_roi_multiplier': {
+		name: 'Rep ROI (Multiplier)',
+		description: 'Sales rep ROI as multiplier: Cash collected ÷ (cost per appointment × appointments)',
+		breakdownType: 'rep' as const,
+		query: {
+			table: 'appointments',
+			select: ['0 as value'] // This will be calculated via special metric handling
+		},
+		unit: 'count' as const, // Using count unit for multiplier display (e.g., "40x")
+		isSpecialMetric: true,
+		attributionContext: 'assigned' as const,
+		options: {
+			attribution: ['assigned'],
+		}
+	},
+
+	'rep_roi_total': {
+		name: 'Rep ROI (Total)',
+		description: 'Total ROI across all sales reps',
+		breakdownType: 'total' as const,
+		query: {
+			table: 'appointments',
+			select: ['0 as value'] // This will be calculated via special metric handling
+		},
+		unit: 'percent' as const,
+		isSpecialMetric: true,
+		options: {
+			attribution: ['assigned'],
+		}
+	},
+
 	// === DISCOVERY METRICS ===
 	'total_discoveries': {
 		name: 'Total Discoveries',
