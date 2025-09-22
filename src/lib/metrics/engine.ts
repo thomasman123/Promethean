@@ -706,11 +706,15 @@ WHERE speed_to_lead_seconds IS NOT NULL
    private buildRepROISQL(appliedFilters: any, metric: MetricDefinition, options?: any): string {
      const whereClause = buildWhereClause(appliedFilters, [])
      // Create a separate WHERE clause for meta_ad_performance that excludes user-specific filters
-     const metaWhereClause = buildWhereClause({
-       ...appliedFilters,
-       rep_user_id: undefined,
-       setter_user_id: undefined
-     }, []).replace('appointments.', 'meta_ad_performance.')
+     const filteredConditions = appliedFilters.conditions.filter((condition: any) => 
+       !condition.field.includes('sales_rep_user_id') && 
+       !condition.field.includes('setter_user_id')
+     )
+     const filteredParams = { ...appliedFilters.params }
+     delete filteredParams.rep_user_id
+     delete filteredParams.setter_user_id
+     const metaAppliedFilters = { conditions: filteredConditions, params: filteredParams }
+     const metaWhereClause = buildWhereClause(metaAppliedFilters, []).replace('appointments.', 'meta_ad_performance.')
      const breakdownType = metric.breakdownType
      const isMultiplier = metric.name?.includes('Multiplier')
      
@@ -833,11 +837,15 @@ WHERE speed_to_lead_seconds IS NOT NULL
      
      const whereClause = buildWhereClause(appliedFilters, [])
      // Create a separate WHERE clause for meta_ad_performance that excludes user-specific filters
-     const metaWhereClause = buildWhereClause({
-       ...appliedFilters,
-       rep_user_id: undefined,
-       setter_user_id: undefined
-     }, []).replace('appointments.', 'meta_ad_performance.')
+     const filteredConditions = appliedFilters.conditions.filter((condition: any) => 
+       !condition.field.includes('sales_rep_user_id') && 
+       !condition.field.includes('setter_user_id')
+     )
+     const filteredParams = { ...appliedFilters.params }
+     delete filteredParams.rep_user_id
+     delete filteredParams.setter_user_id
+     const metaAppliedFilters = { conditions: filteredConditions, params: filteredParams }
+     const metaWhereClause = buildWhereClause(metaAppliedFilters, []).replace('appointments.', 'meta_ad_performance.')
      const breakdownType = metric.breakdownType
     
     // Handle different breakdown types
