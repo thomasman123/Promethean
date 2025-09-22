@@ -444,6 +444,11 @@ export class MetricsEngine {
       return this.buildSpeedToLeadTimeSeriesSQL(appliedFilters, metric, options)
     }
     
+    // Special handling for Cost Per Booked Call time series (cross-table calculation)
+    if (metric.name?.startsWith('Cost Per Booked Call')) {
+      return this.buildCostPerBookedCallTimeSeriesSQL(appliedFilters, metric, options)
+    }
+    
     // Build WHERE conditions for the base table including metric-specific conditions
     const whereClauseWithMetric = buildWhereClause(appliedFilters, metric.query.where)
 
@@ -655,6 +660,97 @@ WHERE speed_to_lead_seconds IS NOT NULL
         COALESCE(speed_to_lead_by_date.value, 0) as value
       FROM date_series
       LEFT JOIN speed_to_lead_by_date ON date_series.date = speed_to_lead_by_date.contact_date
+      ORDER BY date_series.date ASC
+    `
+    
+    return sql.trim()
+  }
+
+  /**
+   * Special time-series SQL builder for Cost Per Booked Call metric
+   * Calculates ad spend / appointments for each time period
+   */
+  private buildCostPerBookedCallTimeSeriesSQL(appliedFilters: any, metric: MetricDefinition, options?: { vizType?: string; dynamicBreakdown?: string; widgetSettings?: any }): string {
+    // Determine aggregation level based on date range
+    const aggregationLevel = this.determineTimeAggregation(appliedFilters)
+    console.log('🐛 DEBUG - Cost Per Booked Call using aggregation level:', aggregationLevel)
+    
+    let dateSeriesInterval: string
+    let localColumn: string
+    let dateDisplay: string
+    
+    switch (aggregationLevel) {
+      case 'month':
+        dateSeriesInterval = "'1 month'::interval"
+        localColumn = 'local_month'
+        dateDisplay = "TO_CHAR(date_series.date, 'YYYY-MM-DD') as date"
+        break
+      case 'week':
+        dateSeriesInterval = "'1 week'::interval"
+        localColumn = 'local_week'
+        dateDisplay = "TO_CHAR(date_series.date, 'YYYY-MM-DD') as date"
+        break
+      case 'day':
+      default:
+        dateSeriesInterval = "'1 day'::interval"
+        localColumn = 'local_date'
+        dateDisplay = "TO_CHAR(date_series.date, 'YYYY-MM-DD') as date"
+        break
+    }
+
+    const whereClause = buildWhereClause(appliedFilters, [])
+    // Create a separate WHERE clause for meta_ad_performance that excludes user-specific filters
+    const filteredConditions = appliedFilters.conditions.filter((condition: any) => 
+      !condition.field.includes('sales_rep_user_id') && 
+      !condition.field.includes('setter_user_id')
+    )
+    const filteredParams = { ...appliedFilters.params }
+    delete filteredParams.rep_user_id
+    delete filteredParams.setter_user_id
+    const metaAppliedFilters = { conditions: filteredConditions, params: filteredParams }
+    const metaWhereClause = buildWhereClause(metaAppliedFilters, []).replace('appointments.', 'meta_ad_performance.')
+
+    const sql = `
+      WITH date_series AS (
+        SELECT generate_series(
+          $start_date::date,
+          $range_end::date,
+          ${dateSeriesInterval}
+        ) as date
+      ),
+      appointment_data_by_date AS (
+        SELECT 
+          ${localColumn} as appointment_date,
+          COUNT(*) as daily_appointments
+        FROM appointments
+        ${whereClause}
+        GROUP BY ${localColumn}
+      ),
+      spend_data_by_date AS (
+        SELECT 
+          ${localColumn} as spend_date,
+          COALESCE(SUM(spend), 0) as daily_spend
+        FROM meta_ad_performance
+        ${metaWhereClause}
+        AND spend > 0
+        GROUP BY ${localColumn}
+      ),
+      cost_per_call_by_date AS (
+        SELECT 
+          COALESCE(appointment_data_by_date.appointment_date, spend_data_by_date.spend_date) as period_date,
+          CASE 
+            WHEN appointment_data_by_date.daily_appointments > 0 AND spend_data_by_date.daily_spend > 0
+            THEN ROUND(spend_data_by_date.daily_spend / appointment_data_by_date.daily_appointments, 2)
+            ELSE NULL
+          END as value
+        FROM appointment_data_by_date
+        INNER JOIN spend_data_by_date ON appointment_data_by_date.appointment_date = spend_data_by_date.spend_date
+      )
+      SELECT 
+        ${dateDisplay},
+        COALESCE(cost_per_call_by_date.value, NULL) as value
+      FROM date_series
+      LEFT JOIN cost_per_call_by_date ON date_series.date = cost_per_call_by_date.period_date
       ORDER BY date_series.date ASC
     `
     
