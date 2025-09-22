@@ -6,6 +6,7 @@ import { TopBar } from "@/components/layout/topbar"
 import { Widget } from "@/components/dashboard/widget"
 import { MetricWidget } from "@/components/dashboard/metric-widget"
 import { WidgetConfig } from "@/components/dashboard/add-widget-modal"
+import { EditWidgetModal } from "@/components/dashboard/edit-widget-modal"
 import { useDashboard } from "@/lib/dashboard-context"
 import { METRICS_REGISTRY } from "@/lib/metrics/registry"
 import "react-grid-layout/css/styles.css"
@@ -35,6 +36,8 @@ export default function DashboardPage() {
   const [widgets, setWidgets] = useState<WidgetConfig[]>([])
   const [loading, setLoading] = useState(true)
   const [accountsLoaded, setAccountsLoaded] = useState(false)
+  const [editingWidget, setEditingWidget] = useState<WidgetConfig | null>(null)
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   // Load saved view from localStorage on mount
@@ -281,6 +284,24 @@ export default function DashboardPage() {
     saveViewData(newWidgets, newLayouts)
   }, [widgets, layouts, saveViewData])
 
+  const handleEditWidget = useCallback((widgetId: string) => {
+    const widget = widgets.find(w => w.id === widgetId)
+    if (widget) {
+      console.log('🔧 [Dashboard] Opening edit modal for widget:', widget)
+      setEditingWidget(widget)
+      setIsEditModalOpen(true)
+    }
+  }, [widgets])
+
+  const handleSaveEditedWidget = useCallback((updatedWidget: WidgetConfig) => {
+    console.log('💾 [Dashboard] Saving edited widget:', updatedWidget)
+    const newWidgets = widgets.map(w => w.id === updatedWidget.id ? updatedWidget : w)
+    setWidgets(newWidgets)
+    saveViewData(newWidgets, layouts)
+    setEditingWidget(null)
+    setIsEditModalOpen(false)
+  }, [widgets, layouts, saveViewData])
+
   const renderWidgetContent = (widget: WidgetConfig) => {
     // For KPI widgets with single metric
     if (widget.type === "kpi" && widget.metric) {
@@ -371,6 +392,7 @@ export default function DashboardPage() {
                   <Widget 
                     title={widget.title}
                     onRemove={() => handleRemoveWidget(widget.id)}
+                    onEdit={() => handleEditWidget(widget.id)}
                     reducedPadding={['bar', 'line', 'area'].includes(widget.type)}
                   >
                     {renderWidgetContent(widget)}
@@ -381,6 +403,14 @@ export default function DashboardPage() {
           )}
         </div>
       </main>
+
+      {/* Edit Widget Modal */}
+      <EditWidgetModal
+        open={isEditModalOpen}
+        onOpenChange={setIsEditModalOpen}
+        onSaveWidget={handleSaveEditedWidget}
+        widget={editingWidget}
+      />
     </div>
   )
 } 
