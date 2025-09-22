@@ -66,6 +66,7 @@ const METRIC_CATEGORIES = {
     "answers",
     "meaningful_conversations",
     "booked_calls",
+    "total_talk_time",
     "meaningful_conversation_avg_call_length",
     "answer_per_dial",
     "dials_per_booking"
@@ -99,7 +100,7 @@ const INTERCHANGEABLE_METRICS = [
   'pif_rate', 'cash_collection_rate', 'lead_quality', 'pitch_to_sale_rate', 'answer_to_sale_rate', 'booking_to_close',
   
   // From dials table
-  'total_dials', 'answers', 'meaningful_conversations', 'booked_calls', 'meaningful_conversation_avg_call_length',
+  'total_dials', 'answers', 'meaningful_conversations', 'booked_calls', 'total_talk_time', 'meaningful_conversation_avg_call_length',
   'answer_per_dial', 'dials_per_booking', 'cash_per_dial', 'answer_to_conversation_ratio', 'meaningful_conversation_to_booking_ratio',
   
   // From discoveries table

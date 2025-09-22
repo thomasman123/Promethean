@@ -473,6 +473,21 @@ const BASE_METRICS = {
 		}
 	},
 
+	'total_talk_time': {
+		name: 'Total Talk Time',
+		description: 'Total duration of all dials (sum of duration in human readable format)',
+		breakdownType: 'total' as const,
+		query: {
+			table: 'dials',
+			select: ['COALESCE(SUM(duration), 0) as value']
+		},
+		unit: 'seconds' as const,
+		options: {
+			attribution: ['all', 'assigned', 'dialer'],
+			timeFormat: ['human_readable', 'seconds', 'minutes', 'hours']
+		}
+	},
+
 	// === PERFORMANCE METRICS ===
 	'bookings_per_hour': {
 		name: 'Bookings per Hour',
