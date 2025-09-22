@@ -141,6 +141,15 @@ export function DataViewWidget({ metrics, selectedUsers, options }: DataViewWidg
                 // Standard total response format
                 value = metricData.result.data.value
                 console.log(`  ✅ Got total value: ${value}`)
+              } else if (metricData.result?.type === 'rep' && Array.isArray(metricData.result.data)) {
+                // Rep array: find the current user's entry
+                const entry = metricData.result.data.find((r: any) => r.repId === user.id)
+                if (entry) {
+                  value = entry.value
+                  console.log(`  ✅ Got rep value for ${user.id}: ${value}`)
+                } else {
+                  console.log(`  ❌ No rep entry for ${user.id}`)
+                }
               } else if (metricData.result?.type === 'time' && Array.isArray(metricData.result.data) && metricData.result.data.length > 0) {
                 // Time series response - sum all values or take the first/last value
                 if (metricData.result.data.length === 1) {
