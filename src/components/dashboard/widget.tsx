@@ -2,7 +2,7 @@
 
 import { ReactNode } from "react"
 import { cn } from "@/lib/utils"
-import { MoreVertical, Trash2 } from "lucide-react"
+import { MoreVertical, Trash2, Edit } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -16,10 +16,11 @@ interface WidgetProps {
   children: ReactNode
   className?: string
   onRemove?: () => void
+  onEdit?: () => void
   reducedPadding?: boolean
 }
 
-export function Widget({ title, children, className, onRemove, reducedPadding }: WidgetProps) {
+export function Widget({ title, children, className, onRemove, onEdit, reducedPadding }: WidgetProps) {
   return (
     <div className={cn(
       "h-full w-full rounded-lg bg-card border shadow-sm",
@@ -48,6 +49,17 @@ export function Widget({ title, children, className, onRemove, reducedPadding }:
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-48">
+          {onEdit && (
+            <DropdownMenuItem
+              onClick={(e) => {
+                e.stopPropagation()
+                onEdit()
+              }}
+            >
+              <Edit className="mr-2 h-4 w-4" />
+              Edit
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem
             onClick={(e) => {
               e.stopPropagation()
