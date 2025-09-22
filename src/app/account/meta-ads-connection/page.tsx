@@ -59,6 +59,7 @@ function MetaAdsConnectionContent() {
   const [refreshingToken, setRefreshingToken] = useState(false)
   const [mappings, setMappings] = useState<AdAccountMapping[]>([])
   const [savingMappings, setSavingMappings] = useState(false)
+  const [syncing, setSyncing] = useState(false)
   
   const { toast } = useToast()
   const router = useRouter()
@@ -303,6 +304,39 @@ function MetaAdsConnectionContent() {
       })
     } finally {
       setSavingMappings(false)
+    }
+  }
+
+  const syncMetaAdsData = async () => {
+    if (!selectedAccountId) return
+    
+    setSyncing(true)
+    try {
+      const response = await fetch('/api/meta-ads/sync-initial', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accountId: selectedAccountId })
+      })
+
+      const data = await response.json()
+      
+      if (data.success) {
+        toast({
+          title: "Success",
+          description: `Synced ${data.campaignsSynced} campaigns and ${data.insightsSynced} insights from ${data.totalAdAccounts} ad accounts`,
+        })
+      } else {
+        throw new Error(data.error || 'Failed to sync data')
+      }
+    } catch (error) {
+      console.error('Meta Ads sync error:', error)
+      toast({
+        title: "Error",
+        description: "Failed to sync Meta Ads data. Please try again.",
+        variant: "destructive"
+      })
+    } finally {
+      setSyncing(false)
     }
   }
 
@@ -912,6 +946,31 @@ function MetaAdsConnectionContent() {
                           {adAccounts.filter(a => a.account_status === 1).length} ad account{adAccounts.filter(a => a.account_status === 1).length !== 1 ? 's are' : ' is'} currently active and ready for data sync.
                         </AlertDescription>
                       </Alert>
+                    )}
+
+                    {mappings.filter(m => m.is_active).length > 0 && (
+                      <div className="pt-4 border-t">
+                        <div className="flex items-center justify-between mb-4">
+                          <div>
+                            <h4 className="font-medium">Data Synchronization</h4>
+                            <p className="text-sm text-muted-foreground">
+                              Sync the last 90 days of campaign data and performance metrics from your selected ad accounts.
+                            </p>
+                          </div>
+                          <Button
+                            onClick={syncMetaAdsData}
+                            disabled={syncing}
+                            variant="outline"
+                          >
+                            {syncing ? (
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            ) : (
+                              <RefreshCw className="h-4 w-4 mr-2" />
+                            )}
+                            {syncing ? 'Syncing...' : 'Sync 90-Day History'}
+                          </Button>
+                        </div>
+                      </div>
                     )}
                   </div>
                 )}
