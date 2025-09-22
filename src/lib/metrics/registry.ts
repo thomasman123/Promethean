@@ -796,6 +796,69 @@ const BASE_METRICS = {
 		}
 	},
 
+	// === COST PER BOOKED CALL METRICS ===
+	'cost_per_booked_call': {
+		name: 'Cost Per Booked Call',
+		description: 'Ad spend divided by total appointments (total cost per booked call)',
+		breakdownType: 'total' as const,
+		query: {
+			table: 'appointments',
+			select: ['0 as value'] // This will be calculated via special metric handling
+		},
+		unit: 'currency' as const,
+		isSpecialMetric: true,
+		options: {
+			attribution: ['all', 'assigned', 'booked'],
+		}
+	},
+
+	'cost_per_booked_call_reps': {
+		name: 'Cost Per Booked Call (Reps)',
+		description: 'Ad spend divided by appointments assigned to each sales rep',
+		breakdownType: 'rep' as const,
+		query: {
+			table: 'appointments',
+			select: ['0 as value'] // This will be calculated via special metric handling
+		},
+		unit: 'currency' as const,
+		isSpecialMetric: true,
+		attributionContext: 'assigned' as const,
+		options: {
+			attribution: ['assigned'],
+		}
+	},
+
+	'cost_per_booked_call_setters': {
+		name: 'Cost Per Booked Call (Setters)',
+		description: 'Ad spend divided by appointments booked by each setter',
+		breakdownType: 'setter' as const,
+		query: {
+			table: 'appointments',
+			select: ['0 as value'] // This will be calculated via special metric handling
+		},
+		unit: 'currency' as const,
+		isSpecialMetric: true,
+		attributionContext: 'booked' as const,
+		options: {
+			attribution: ['booked'],
+		}
+	},
+
+	'cost_per_booked_call_link': {
+		name: 'Cost Per Booked Call (Link)',
+		description: 'Ad spend divided by appointments showing setter→rep relationships',
+		breakdownType: 'link' as const,
+		query: {
+			table: 'appointments',
+			select: ['0 as value'] // This will be calculated via special metric handling
+		},
+		unit: 'currency' as const,
+		isSpecialMetric: true,
+		options: {
+			attribution: ['all', 'assigned', 'booked'],
+		}
+	},
+
 	'roi': {
 		name: 'ROI',
 		description: 'Return on Investment: Cash collected divided by ad spend',
