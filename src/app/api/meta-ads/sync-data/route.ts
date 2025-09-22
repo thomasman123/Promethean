@@ -263,46 +263,94 @@ async function syncCampaignStructureBatched(accountId: string, metaAdAccountId: 
           .eq('account_id', accountId)
           .single()
 
-        // Process insights and store in database using existing table structure
-        const insightUpserts = insights.map((insight: any) => ({
-          account_id: accountId,
-          meta_ad_account_id: metaAdAccount?.id || null,
-          date_start: insight.date_start,
-          date_end: insight.date_stop || insight.date_start,
-          meta_campaign_id: campaignIdMap[insight.campaign_id] || null,
-          meta_ad_set_id: adSetIdMap[insight.adset_id] || null,
-          meta_ad_id: adIdMap[insight.ad_id] || null,
-          impressions: parseInt(insight.impressions || '0'),
-          clicks: parseInt(insight.clicks || '0'),
-          spend: parseFloat(insight.spend || '0'),
-          reach: parseInt(insight.reach || '0'),
-          frequency: parseFloat(insight.frequency || '0'),
-          cpm: parseFloat(insight.cpm || '0'),
-          cpc: parseFloat(insight.cpc || '0'),
-          ctr: parseFloat(insight.ctr || '0'),
-          actions: insight.actions || null,
-          action_values: insight.action_values || null,
-          updated_at: new Date().toISOString()
-        }))
+        // Separate insights by level and store in appropriate tables
+        const campaignInsights = []
+        const adSetInsights = []
+        const adInsights = []
 
-        // Filter insights to avoid unique constraint conflicts
-        // Use only ad-level insights since they're most granular and useful
-        const adLevelInsights = insightUpserts.filter((insight: any) => insight.meta_ad_id !== null)
-        
-        console.log(`📊 Storing ${adLevelInsights.length} ad-level insights (filtered from ${insightUpserts.length} total)`)
+        for (const insight of insights) {
+          const baseMetrics = {
+            account_id: accountId,
+            date: insight.date_start,
+            impressions: parseInt(insight.impressions || '0'),
+            clicks: parseInt(insight.clicks || '0'),
+            spend: parseFloat(insight.spend || '0'),
+            reach: parseInt(insight.reach || '0'),
+            frequency: parseFloat(insight.frequency || '0'),
+            cpm: parseFloat(insight.cpm || '0'),
+            cpc: parseFloat(insight.cpc || '0'),
+            ctr: parseFloat(insight.ctr || '0'),
+            actions: insight.actions || null,
+            action_values: insight.action_values || null,
+            updated_at: new Date().toISOString()
+          }
 
-        const { error: insightsError } = await supabase
-          .from('meta_ad_performance')
-          .upsert(adLevelInsights, {
-            onConflict: 'account_id,meta_campaign_id,meta_ad_set_id,meta_ad_id,date_start,date_end'
-          })
-
-        if (insightsError) {
-          console.error('Error batch upserting insights:', insightsError)
-        } else {
-          insightsStored = adLevelInsights.length
-          console.log(`✅ Batch upserted ${adLevelInsights.length} ad-level insights (most granular data)`)
+          if (insight.ad_id && adIdMap[insight.ad_id]) {
+            // Ad level insight
+            adInsights.push({
+              ...baseMetrics,
+              meta_ad_id: adIdMap[insight.ad_id]
+            })
+          } else if (insight.adset_id && adSetIdMap[insight.adset_id]) {
+            // Ad set level insight
+            adSetInsights.push({
+              ...baseMetrics,
+              meta_ad_set_id: adSetIdMap[insight.adset_id]
+            })
+          } else if (insight.campaign_id && campaignIdMap[insight.campaign_id]) {
+            // Campaign level insight
+            campaignInsights.push({
+              ...baseMetrics,
+              meta_campaign_id: campaignIdMap[insight.campaign_id]
+            })
+          }
         }
+
+        console.log(`📊 Storing insights: ${campaignInsights.length} campaign, ${adSetInsights.length} ad set, ${adInsights.length} ad level`)
+
+        // Store in separate tables
+        let totalStored = 0
+
+        if (campaignInsights.length > 0) {
+          const { error: campaignError } = await supabase
+            .from('meta_campaign_performance')
+            .upsert(campaignInsights, { onConflict: 'account_id,meta_campaign_id,date' })
+          
+          if (campaignError) {
+            console.error('Error upserting campaign insights:', campaignError)
+          } else {
+            totalStored += campaignInsights.length
+            console.log(`✅ Stored ${campaignInsights.length} campaign insights`)
+          }
+        }
+
+        if (adSetInsights.length > 0) {
+          const { error: adSetError } = await supabase
+            .from('meta_adset_performance')
+            .upsert(adSetInsights, { onConflict: 'account_id,meta_ad_set_id,date' })
+          
+          if (adSetError) {
+            console.error('Error upserting ad set insights:', adSetError)
+          } else {
+            totalStored += adSetInsights.length
+            console.log(`✅ Stored ${adSetInsights.length} ad set insights`)
+          }
+        }
+
+        if (adInsights.length > 0) {
+          const { error: adError } = await supabase
+            .from('meta_ad_performance_daily')
+            .upsert(adInsights, { onConflict: 'account_id,meta_ad_id,date' })
+          
+          if (adError) {
+            console.error('Error upserting ad insights:', adError)
+          } else {
+            totalStored += adInsights.length
+            console.log(`✅ Stored ${adInsights.length} ad insights`)
+          }
+        }
+
+        insightsStored = totalStored
       } catch (insightError) {
         console.error('Error processing insights:', insightError)
       }
