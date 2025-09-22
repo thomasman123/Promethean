@@ -353,11 +353,6 @@ export function UnifiedMetricSelector({
                                       Attr
                                     </Badge>
                                   )}
-                                  {metric.options?.breakdown && mode === 'dashboard' && (
-                                    <Badge variant="outline" className="text-xs">
-                                      Break
-                                    </Badge>
-                                  )}
                                 </div>
                               </div>
                               <p className="text-xs text-muted-foreground">
@@ -367,9 +362,6 @@ export function UnifiedMetricSelector({
                                 <div className="text-xs text-muted-foreground">
                                   {metric.options.attribution && (
                                     <span>Attribution: {metric.options.attribution.join(', ')} </span>
-                                  )}
-                                  {metric.options.breakdown && mode === 'dashboard' && (
-                                    <span>Breakdown: {metric.options.breakdown.join(', ')}</span>
                                   )}
                                   {metric.options.timeFormat && (
                                     <span>Time Format: {metric.options.timeFormat.join(', ')}</span>
@@ -429,9 +421,11 @@ export function UnifiedMetricSelector({
                            option === 'assigned' ? 'Assigned' :
                            option === 'booked' ? 'Booked' :
                            option === 'dialer' ? 'Dialer' : option}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-              )}
-
               )}
 
               {/* Time Format Options */}
@@ -509,7 +503,7 @@ export function UnifiedMetricSelector({
               <div className="p-3 bg-muted/50 rounded-lg">
                 <p className="text-xs text-muted-foreground">
                   {mode === 'dashboard' 
-                    ? "Dashboard widgets can show totals or breakdowns by rep/setter. Choose your attribution and breakdown preferences."
+                    ? "Dashboard widgets show metrics with configurable attribution and formatting options."
                     : "Data view automatically shows metrics per user. Choose your attribution and formatting preferences."
                   }
                 </p>
