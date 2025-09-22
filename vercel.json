@@ -47,7 +47,7 @@
     },
     {
       "path": "/api/meta-ads/sync-data",
-      "schedule": "*/5 * * * *"
+      "schedule": "0 * * * *"
     },
     {
       "path": "/api/meta-ads/refresh-tokens",
