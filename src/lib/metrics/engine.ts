@@ -705,6 +705,12 @@ WHERE speed_to_lead_seconds IS NOT NULL
     */
    private buildRepROISQL(appliedFilters: any, metric: MetricDefinition, options?: any): string {
      const whereClause = buildWhereClause(appliedFilters, [])
+     // Create a separate WHERE clause for meta_ad_performance that excludes user-specific filters
+     const metaWhereClause = buildWhereClause({
+       ...appliedFilters,
+       rep_user_id: undefined,
+       setter_user_id: undefined
+     }, []).replace('appointments.', 'meta_ad_performance.')
      const breakdownType = metric.breakdownType
      const isMultiplier = metric.name?.includes('Multiplier')
      
@@ -735,7 +741,7 @@ WHERE speed_to_lead_seconds IS NOT NULL
                account_id,
                COALESCE(SUM(spend), 0) as total_spend
              FROM meta_ad_performance
-             ${whereClause.replace('appointments.', 'meta_ad_performance.')}
+             ${metaWhereClause}
              GROUP BY account_id
            )
            SELECT 
@@ -780,7 +786,7 @@ WHERE speed_to_lead_seconds IS NOT NULL
                account_id,
                COALESCE(SUM(spend), 0) as total_spend
              FROM meta_ad_performance
-             ${whereClause.replace('appointments.', 'meta_ad_performance.')}
+             ${metaWhereClause}
              GROUP BY account_id
            ),
            rep_names AS (
@@ -818,15 +824,21 @@ WHERE speed_to_lead_seconds IS NOT NULL
      }
    }
 
-       /**
-   * Special SQL builder for Cost Per Booked Call calculation (Ad spend / Total appointments)
-   */
-  private buildCostPerBookedCallSQL(appliedFilters: any, metric: MetricDefinition, options?: any): string {
-    // Cost Per Booked Call = Total Ad Spend / Total Appointments
-    // We need to join appointments and meta_ad_performance tables
-    
-    const whereClause = buildWhereClause(appliedFilters, [])
-    const breakdownType = metric.breakdownType
+          /**
+    * Special SQL builder for Cost Per Booked Call calculation (Ad spend / Total appointments)
+    */
+   private buildCostPerBookedCallSQL(appliedFilters: any, metric: MetricDefinition, options?: any): string {
+     // Cost Per Booked Call = Total Ad Spend / Total Appointments
+     // We need to join appointments and meta_ad_performance tables
+     
+     const whereClause = buildWhereClause(appliedFilters, [])
+     // Create a separate WHERE clause for meta_ad_performance that excludes user-specific filters
+     const metaWhereClause = buildWhereClause({
+       ...appliedFilters,
+       rep_user_id: undefined,
+       setter_user_id: undefined
+     }, []).replace('appointments.', 'meta_ad_performance.')
+     const breakdownType = metric.breakdownType
     
     // Handle different breakdown types
     switch (breakdownType) {
@@ -845,7 +857,7 @@ WHERE speed_to_lead_seconds IS NOT NULL
               account_id,
               COALESCE(SUM(spend), 0) as total_spend
             FROM meta_ad_performance
-            ${whereClause.replace('appointments.', 'meta_ad_performance.')}
+            ${metaWhereClause}
             GROUP BY account_id
           )
           SELECT 
@@ -884,7 +896,7 @@ WHERE speed_to_lead_seconds IS NOT NULL
                account_id,
                COALESCE(SUM(spend), 0) as total_spend
              FROM meta_ad_performance
-             ${whereClause.replace('appointments.', 'meta_ad_performance.')}
+             ${metaWhereClause}
              GROUP BY account_id
            ),
            rep_names AS (
@@ -934,7 +946,7 @@ WHERE speed_to_lead_seconds IS NOT NULL
                account_id,
                COALESCE(SUM(spend), 0) as total_spend
              FROM meta_ad_performance
-             ${whereClause.replace('appointments.', 'meta_ad_performance.')}
+             ${metaWhereClause}
              GROUP BY account_id
            ),
            setter_names AS (
@@ -986,7 +998,7 @@ WHERE speed_to_lead_seconds IS NOT NULL
                account_id,
                COALESCE(SUM(spend), 0) as total_spend
              FROM meta_ad_performance
-             ${whereClause.replace('appointments.', 'meta_ad_performance.')}
+             ${metaWhereClause}
              GROUP BY account_id
            ),
            user_names AS (
