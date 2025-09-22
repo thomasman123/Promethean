@@ -1,29 +1,31 @@
 "use client"
 
 import { useState } from 'react'
+import { Users, Building, Eye, Users as TeamIcon } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
-import { Users, Building, TrendingUp, Plus, Grid3X3 } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import {
+  RadioGroup,
+  RadioGroupItem,
+} from '@/components/ui/radio-group'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 
 interface TableTypeSelectorProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onCreateTable: (tableConfig: {
+  onCreateTable: (config: {
     name: string
     description: string
     tableType: 'user_metrics' | 'account_metrics'
+    scope: 'private' | 'team'
   }) => void
 }
 
@@ -46,8 +48,26 @@ const TABLE_TYPES = [
   }
 ] as const
 
+const SCOPE_OPTIONS = [
+  {
+    id: 'private',
+    name: 'Personal Table',
+    icon: Eye,
+    description: 'Only visible to you',
+    details: 'Private table that only you can see and modify.'
+  },
+  {
+    id: 'team',
+    name: 'Team Table',
+    icon: TeamIcon,
+    description: 'Visible to all team members',
+    details: 'Shared with all team members in this account.'
+  }
+] as const
+
 export function TableTypeSelector({ open, onOpenChange, onCreateTable }: TableTypeSelectorProps) {
   const [selectedType, setSelectedType] = useState<'user_metrics' | 'account_metrics'>('user_metrics')
+  const [selectedScope, setSelectedScope] = useState<'private' | 'team'>('private')
   const [tableName, setTableName] = useState('')
   const [tableDescription, setTableDescription] = useState('')
 
@@ -57,134 +77,159 @@ export function TableTypeSelector({ open, onOpenChange, onCreateTable }: TableTy
     onCreateTable({
       name: tableName.trim(),
       description: tableDescription.trim(),
-      tableType: selectedType
+      tableType: selectedType,
+      scope: selectedScope
     })
 
     // Reset form
     setTableName('')
     setTableDescription('')
     setSelectedType('user_metrics')
+    setSelectedScope('private')
     onOpenChange(false)
   }
 
   const selectedTypeConfig = TABLE_TYPES.find(t => t.id === selectedType)
+  const selectedScopeConfig = SCOPE_OPTIONS.find(s => s.id === selectedScope)
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Plus className="h-5 w-5" />
-            Create Data Table
-          </DialogTitle>
-          <DialogDescription>
-            Choose the type of data table you want to create, then configure its details.
-          </DialogDescription>
+          <DialogTitle>Create New Data Table</DialogTitle>
         </DialogHeader>
 
-        <div className="flex-1 space-y-6 overflow-y-auto">
-          {/* Table Type Selection */}
+        <div className="space-y-6">
+          {/* Table Name and Description */}
           <div className="space-y-4">
-            <h3 className="font-medium">Table Type</h3>
-            <RadioGroup value={selectedType} onValueChange={(value: any) => setSelectedType(value)}>
-              <div className="grid gap-4">
+            <div>
+              <Label htmlFor="tableName">Table Name *</Label>
+              <Input
+                id="tableName"
+                value={tableName}
+                onChange={(e) => setTableName(e.target.value)}
+                placeholder="Enter table name..."
+                className="mt-1"
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="tableDescription">Description</Label>
+              <Textarea
+                id="tableDescription"
+                value={tableDescription}
+                onChange={(e) => setTableDescription(e.target.value)}
+                placeholder="Optional description..."
+                className="mt-1"
+                rows={2}
+              />
+            </div>
+          </div>
+
+          {/* Table Type Selection */}
+          <div>
+            <Label className="text-base font-medium">Table Type</Label>
+            <RadioGroup
+              value={selectedType}
+              onValueChange={(value) => setSelectedType(value as 'user_metrics' | 'account_metrics')}
+              className="mt-3"
+            >
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {TABLE_TYPES.map((type) => {
                   const Icon = type.icon
                   return (
-                    <div key={type.id}>
-                      <RadioGroupItem value={type.id} id={type.id} className="sr-only" />
-                      <Card 
-                        className={cn(
-                          "cursor-pointer transition-all hover:bg-accent/50",
-                          selectedType === type.id && "ring-2 ring-primary bg-accent"
-                        )}
-                        onClick={() => setSelectedType(type.id as any)}
-                      >
-                        <CardHeader className="pb-3">
-                          <div className="flex items-start gap-3">
-                            <Icon className="h-6 w-6 mt-1 text-primary" />
-                            <div className="flex-1">
-                              <CardTitle className="text-base">{type.name}</CardTitle>
-                              <CardDescription className="text-sm mt-1">
-                                {type.description}
-                              </CardDescription>
-                            </div>
-                          </div>
-                        </CardHeader>
-                        <CardContent className="pt-0">
-                          <p className="text-sm text-muted-foreground mb-3">
-                            {type.details}
-                          </p>
-                          <div className="space-y-1">
-                            <p className="text-xs font-medium text-muted-foreground">Examples:</p>
-                            <ul className="text-xs text-muted-foreground space-y-1">
-                              {type.examples.map((example, i) => (
-                                <li key={i} className="flex items-center gap-1">
-                                  <span className="w-1 h-1 bg-muted-foreground rounded-full" />
-                                  {example}
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </div>
+                    <Card key={type.id} className={`cursor-pointer transition-colors ${
+                      selectedType === type.id 
+                        ? 'ring-2 ring-primary bg-primary/5' 
+                        : 'hover:bg-muted/50'
+                    }`}>
+                      <CardHeader className="pb-3">
+                        <div className="flex items-center space-x-3">
+                          <RadioGroupItem value={type.id} id={type.id} />
+                          <Icon className="h-5 w-5" />
+                          <CardTitle className="text-sm">{type.name}</CardTitle>
+                        </div>
+                        <CardDescription className="text-xs">
+                          {type.description}
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="pt-0">
+                        <p className="text-xs text-muted-foreground mb-2">{type.details}</p>
+                        <div className="space-y-1">
+                          <p className="text-xs font-medium">Examples:</p>
+                          <ul className="text-xs text-muted-foreground space-y-0.5">
+                            {type.examples.map((example, idx) => (
+                              <li key={idx}>• {example}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      </CardContent>
+                    </Card>
                   )
                 })}
               </div>
             </RadioGroup>
           </div>
 
-          {/* Table Configuration */}
-          <div className="space-y-4 border-t pt-6">
-            <h3 className="font-medium">Table Configuration</h3>
-            
-            <div className="grid gap-4">
-              <div>
-                <Label htmlFor="tableName">Table Name</Label>
-                <Input
-                  id="tableName"
-                  placeholder={`My ${selectedTypeConfig?.name || 'Table'}`}
-                  value={tableName}
-                  onChange={(e) => setTableName(e.target.value)}
-                />
+          {/* Scope Selection */}
+          <div>
+            <Label className="text-base font-medium">Visibility</Label>
+            <RadioGroup
+              value={selectedScope}
+              onValueChange={(value) => setSelectedScope(value as 'private' | 'team')}
+              className="mt-3"
+            >
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {SCOPE_OPTIONS.map((scope) => {
+                  const Icon = scope.icon
+                  return (
+                    <Card key={scope.id} className={`cursor-pointer transition-colors ${
+                      selectedScope === scope.id 
+                        ? 'ring-2 ring-primary bg-primary/5' 
+                        : 'hover:bg-muted/50'
+                    }`}>
+                      <CardHeader className="pb-3">
+                        <div className="flex items-center space-x-3">
+                          <RadioGroupItem value={scope.id} id={scope.id} />
+                          <Icon className="h-5 w-5" />
+                          <CardTitle className="text-sm">{scope.name}</CardTitle>
+                        </div>
+                        <CardDescription className="text-xs">
+                          {scope.description}
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="pt-0">
+                        <p className="text-xs text-muted-foreground">{scope.details}</p>
+                      </CardContent>
+                    </Card>
+                  )
+                })}
               </div>
-
-              <div>
-                <Label htmlFor="tableDescription">Description (Optional)</Label>
-                <Textarea
-                  id="tableDescription"
-                  placeholder="Describe what this table will track..."
-                  value={tableDescription}
-                  onChange={(e) => setTableDescription(e.target.value)}
-                  rows={2}
-                />
-              </div>
-            </div>
-
-            {/* Selected Type Summary */}
-            {selectedTypeConfig && (
-              <div className="p-4 bg-muted/50 rounded-lg">
-                <div className="flex items-center gap-2 mb-2">
-                  <selectedTypeConfig.icon className="h-4 w-4" />
-                  <span className="font-medium text-sm">Selected: {selectedTypeConfig.name}</span>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {selectedTypeConfig.details}
-                </p>
-              </div>
-            )}
+            </RadioGroup>
           </div>
-        </div>
 
-        {/* Footer */}
-        <div className="flex justify-end gap-2 pt-4 border-t">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button onClick={handleCreate} disabled={!tableName.trim()}>
-            Create Table
-          </Button>
+          {/* Summary */}
+          <div className="bg-muted/50 p-4 rounded-lg">
+            <h4 className="font-medium mb-2">Summary</h4>
+            <div className="space-y-1 text-sm text-muted-foreground">
+              <p><strong>Type:</strong> {selectedTypeConfig?.name}</p>
+              <p><strong>Visibility:</strong> {selectedScopeConfig?.name}</p>
+              {tableName && <p><strong>Name:</strong> {tableName}</p>}
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="flex justify-end space-x-3">
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleCreate}
+              disabled={!tableName.trim()}
+            >
+              Create Table
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
