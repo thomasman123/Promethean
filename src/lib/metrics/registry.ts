@@ -1023,6 +1023,15 @@ export const METRICS_REGISTRY: Record<string, MetricDefinition> = createMetricFa
 
 // Helper function to get a metric by name with fallback
 export function getMetric(metricName: string): MetricDefinition | undefined {
+  // Direct match first
+  if (METRICS_REGISTRY[metricName]) return METRICS_REGISTRY[metricName]
+
+  // Fallback: allow *_all suffix by mapping to base metric
+  if (metricName.endsWith('_all')) {
+    const base = metricName.slice(0, -'_all'.length)
+    if (METRICS_REGISTRY[base]) return METRICS_REGISTRY[base]
+  }
+
   return METRICS_REGISTRY[metricName]
 }
 
