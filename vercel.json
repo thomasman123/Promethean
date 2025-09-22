@@ -35,15 +35,23 @@
   "crons": [
     {
       "path": "/api/notifications/overdue",
-      "schedule": "0 * * * *"
+      "schedule": "0 */6 * * *"
     },
     {
       "path": "/api/ghl/refresh-tokens",
-      "schedule": "0 0 * * *"
+      "schedule": "0 */6 * * *"
     },
     {
       "path": "/api/ghl/token-health-alerts",
-      "schedule": "0 9 * * *"
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/meta-ads/sync-data",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/meta-ads/refresh-tokens",
+      "schedule": "0 */6 * * *"
     }
   ]
 } 
