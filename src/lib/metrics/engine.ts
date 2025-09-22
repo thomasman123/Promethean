@@ -796,6 +796,8 @@ WHERE speed_to_lead_seconds IS NOT NULL
     */
    private buildRepROISQL(appliedFilters: any, metric: MetricDefinition, options?: any): string {
      const whereClause = buildWhereClause(appliedFilters, [])
+     // Build an appointments WHERE clause without user-specific filters for account-wide totals
+     const apptWhereNoUsers = this.buildAppointmentsWhereClauseWithoutUserFilters(appliedFilters)
      // Build a meta_ad_performance-safe WHERE clause (date + account only)
      const metaWhereClause = this.buildMetaWhereClause(appliedFilters)
      const breakdownType = metric.breakdownType
@@ -811,7 +813,7 @@ WHERE speed_to_lead_seconds IS NOT NULL
                account_id,
                COUNT(*) as total_count
              FROM appointments
-             ${whereClause}
+             ${apptWhereNoUsers}
              GROUP BY account_id
            ),
            cash_data AS (
@@ -855,7 +857,7 @@ WHERE speed_to_lead_seconds IS NOT NULL
                account_id,
                COUNT(*) as total_count
              FROM appointments
-             ${whereClause}
+             ${apptWhereNoUsers}
              GROUP BY account_id
            ),
            rep_data AS (
@@ -921,6 +923,8 @@ WHERE speed_to_lead_seconds IS NOT NULL
      // We need to join appointments and meta_ad_performance tables
      
      const whereClause = buildWhereClause(appliedFilters, [])
+    // Build an appointments WHERE clause without user-specific filters for account-wide totals
+    const apptWhereNoUsers = this.buildAppointmentsWhereClauseWithoutUserFilters(appliedFilters)
      // Build a meta_ad_performance-safe WHERE clause (date + account only)
      const metaWhereClause = this.buildMetaWhereClause(appliedFilters)
      const breakdownType = metric.breakdownType
@@ -934,7 +938,7 @@ WHERE speed_to_lead_seconds IS NOT NULL
               account_id,
               COUNT(*) as total_appointments
             FROM appointments
-            ${whereClause}
+            ${apptWhereNoUsers}
             GROUP BY account_id
           ),
           spend_data AS (
@@ -964,7 +968,7 @@ WHERE speed_to_lead_seconds IS NOT NULL
                account_id,
                COUNT(*) as total_count
              FROM appointments
-             ${whereClause}
+             ${apptWhereNoUsers}
              GROUP BY account_id
            ),
            appointment_data AS (
@@ -993,17 +997,19 @@ WHERE speed_to_lead_seconds IS NOT NULL
              FROM profiles p
            )
            SELECT 
-             appointment_data.sales_rep_user_id as repId,
+             rep_data.sales_rep_user_id as repId,
              rep_names.user_name as repName,
              CASE 
-               WHEN total_appointments.total_count > 0 AND spend_data.total_spend > 0
-               THEN ROUND(spend_data.total_spend / total_appointments.total_count, 2)
+               WHEN total_appointments.total_count > 0 AND spend_data.total_spend > 0 AND rep_data.rep_appointments > 0
+               THEN ROUND(
+                 (spend_data.total_spend / total_appointments.total_count) * rep_data.rep_appointments, 2
+               )
                ELSE NULL 
              END as value
-           FROM appointment_data
-           INNER JOIN total_appointments ON appointment_data.account_id = total_appointments.account_id
-           INNER JOIN spend_data ON appointment_data.account_id = spend_data.account_id
-           LEFT JOIN rep_names ON appointment_data.sales_rep_user_id = rep_names.user_id
+           FROM appointment_data rep_data
+           LEFT JOIN total_appointments ON rep_data.account_id = total_appointments.account_id
+           LEFT JOIN spend_data ON rep_data.account_id = spend_data.account_id
+           LEFT JOIN rep_names ON rep_data.sales_rep_user_id = rep_names.user_id
            ORDER BY rep_names.user_name
          `.trim()
         
@@ -1431,6 +1437,23 @@ WHERE speed_to_lead_seconds IS NOT NULL
     delete (params as any).rep_user_id
     delete (params as any).setter_user_id
     return buildWhereClause({ conditions, params }, []).replace('appointments.', 'meta_ad_performance.')
+  }
+
+  /**
+   * Build a WHERE clause for appointments that strips rep/setter user filters
+   * Used for account-wide totals like total_appointments
+   */
+  private buildAppointmentsWhereClauseWithoutUserFilters(appliedFilters: any): string {
+    const filteredConditions = appliedFilters.conditions.filter((condition: any) => 
+      !condition.field.includes('sales_rep_user_id') && 
+      !condition.field.includes('setter_user_id')
+    )
+    const filteredParams = { ...appliedFilters.params }
+    delete filteredParams.rep_user_id
+    delete filteredParams.rep_user_ids
+    delete filteredParams.setter_user_id
+    delete filteredParams.setter_user_ids
+    return buildWhereClause({ conditions: filteredConditions, params: filteredParams }, [])
   }
 
   private createErrorResult(breakdownType: string, error: Error): MetricResult {
