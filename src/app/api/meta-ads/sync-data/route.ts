@@ -193,9 +193,8 @@ async function syncCampaignStructureBatched(accountId: string, metaAdAccountId: 
       throw new Error(`Meta ad account ${metaAdAccountId} not found in database`)
     }
 
-    // Batch upsert campaigns (limit to 5 for quick sync)
-    const campaignsToSync = campaigns.slice(0, 5)
-    const campaignUpserts = campaignsToSync.map((campaign: any) => ({
+    // Sync all campaigns - no arbitrary limits
+    const campaignUpserts = campaigns.map((campaign: any) => ({
       account_id: accountId,
       meta_ad_account_id: metaAdAccount.id,
       meta_campaign_id: campaign.id,
