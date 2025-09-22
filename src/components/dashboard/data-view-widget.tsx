@@ -106,8 +106,13 @@ export function DataViewWidget({ metrics, selectedUsers, options }: DataViewWidg
             
             console.log(`  - Final filters:`, filters)
             
+            // Map per-user ROI to the rep-specific ROI metric for correct calculation
+            const requestedMetricName = (originalMetricName === 'roi' && attribution === 'assigned')
+              ? 'rep_roi'
+              : originalMetricName
+
             const requestBody = {
-              metricName: originalMetricName,
+              metricName: requestedMetricName,
               filters,
               options: {
                 vizType: 'kpi', // Use KPI viz type to get total values instead of time series
