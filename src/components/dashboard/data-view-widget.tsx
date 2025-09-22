@@ -58,6 +58,9 @@ export function DataViewWidget({ metrics, selectedUsers, options }: DataViewWidg
             const isRep = ['sales_rep', 'moderator', 'admin', 'rep'].includes(user.role.toLowerCase())
             const isSetter = user.role.toLowerCase() === 'setter'
             
+            console.log(`🔍 [DataView] Processing ${metricName} for user ${user.name} (${user.id}):`)
+            console.log(`  - Role: ${user.role} (isRep: ${isRep}, isSetter: ${isSetter})`)
+            
             // Build filters based on user role
             const filters: any = {
               accountId: selectedAccountId,
@@ -70,36 +73,52 @@ export function DataViewWidget({ metrics, selectedUsers, options }: DataViewWidg
             // Add user-specific filtering based on their role
             if (isRep) {
               filters.repIds = [user.id]
+              console.log(`  - Added repIds: [${user.id}]`)
             }
             if (isSetter) {
               filters.setterIds = [user.id]
+              console.log(`  - Added setterIds: [${user.id}]`)
             }
+            
+            console.log(`  - Final filters:`, filters)
+            
+            const requestBody = {
+              metricName,
+              filters,
+              options: {
+                vizType: 'data',
+                widgetSettings: options?.[metricName] || {}
+              }
+            }
+            
+            console.log(`  - Request body:`, requestBody)
             
             const response = await fetch('/api/metrics', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                metricName,
-                filters,
-                options: {
-                  vizType: 'data',
-                  widgetSettings: options?.[metricName] || {}
-                }
-              })
+              body: JSON.stringify(requestBody)
             })
 
+            console.log(`  - Response status: ${response.status}`)
+            
             if (response.ok) {
               const metricData = await response.json()
+              console.log(`  - Response data:`, metricData)
+              
               if (metricData.result?.type === 'total' && metricData.result.data?.value !== undefined) {
                 userMetricValues[metricName] = metricData.result.data.value
+                console.log(`  ✅ Got value: ${metricData.result.data.value}`)
               } else {
                 userMetricValues[metricName] = null
+                console.log(`  ❌ No valid value in response - result:`, metricData.result)
               }
             } else {
+              const errorText = await response.text()
+              console.error(`  ❌ API error: ${response.status} - ${errorText}`)
               userMetricValues[metricName] = null
             }
           } catch (error) {
-            console.error(`Failed to fetch ${metricName} for user ${user.id}:`, error)
+            console.error(`❌ Failed to fetch ${metricName} for user ${user.id}:`, error)
             userMetricValues[metricName] = null
           }
         }
