@@ -234,16 +234,44 @@ async function syncCampaignStructureBatched(accountId: string, metaAdAccountId: 
           return map
         }, {}) || {}
 
-        // Process insights and store in database
+        // Get ad set and ad mappings for proper foreign key relationships
+        const { data: adSetMappings } = await supabase
+          .from('meta_ad_sets')
+          .select('id, meta_ad_set_id')
+          .eq('account_id', accountId)
+
+        const { data: adMappings } = await supabase
+          .from('meta_ads')
+          .select('id, meta_ad_id')
+          .eq('account_id', accountId)
+
+        const adSetIdMap = adSetMappings?.reduce((map: any, adSet: any) => {
+          map[adSet.meta_ad_set_id] = adSet.id
+          return map
+        }, {}) || {}
+
+        const adIdMap = adMappings?.reduce((map: any, ad: any) => {
+          map[ad.meta_ad_id] = ad.id
+          return map
+        }, {}) || {}
+
+        // Get meta ad account ID for foreign key
+        const { data: metaAdAccount } = await supabase
+          .from('meta_ad_accounts')
+          .select('id')
+          .eq('meta_ad_account_id', metaAdAccountId)
+          .eq('account_id', accountId)
+          .single()
+
+        // Process insights and store in database using existing table structure
         const insightUpserts = insights.map((insight: any) => ({
           account_id: accountId,
-          date: insight.date_start,
-          campaign_id: campaignIdMap[insight.campaign_id] || null,
-          campaign_name: insight.campaign_name || null,
-          adset_id: insight.adset_id || null,
-          adset_name: insight.adset_name || null,
-          ad_id: insight.ad_id || null,
-          ad_name: insight.ad_name || null,
+          meta_ad_account_id: metaAdAccount?.id || null,
+          date_start: insight.date_start,
+          date_end: insight.date_stop || insight.date_start,
+          meta_campaign_id: campaignIdMap[insight.campaign_id] || null,
+          meta_ad_set_id: adSetIdMap[insight.adset_id] || null,
+          meta_ad_id: adIdMap[insight.ad_id] || null,
           impressions: parseInt(insight.impressions || '0'),
           clicks: parseInt(insight.clicks || '0'),
           spend: parseFloat(insight.spend || '0'),
@@ -254,14 +282,13 @@ async function syncCampaignStructureBatched(accountId: string, metaAdAccountId: 
           ctr: parseFloat(insight.ctr || '0'),
           actions: insight.actions || null,
           action_values: insight.action_values || null,
-          level: insight.ad_id ? 'ad' : (insight.adset_id ? 'adset' : 'campaign'),
           updated_at: new Date().toISOString()
         }))
 
         const { error: insightsError } = await supabase
-          .from('meta_insights')
+          .from('meta_ad_performance')
           .upsert(insightUpserts, { 
-            onConflict: 'account_id,date,campaign_id,adset_id,ad_id' 
+            onConflict: 'account_id,date_start,meta_campaign_id,meta_ad_set_id,meta_ad_id' 
           })
 
         if (insightsError) {
