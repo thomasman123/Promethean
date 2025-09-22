@@ -17,7 +17,9 @@ export default function AdvancedTrackingPage() {
   }
 
   const pixelSnippet = `<script src="https://www.getpromethean.com/promethean-attribution.js" async></script>`
-  const ghlWebhook = `POST https://www.getpromethean.com/api/attribution/track`
+  const ghlAppointmentsWebhook = `POST https://www.getpromethean.com/api/webhooks/ghl/appointments`
+  const optionalFormWebhook = `POST https://www.getpromethean.com/api/attribution/track`
+  const metaUtmTemplate = `?utm_source=facebook&utm_medium=paid_social&utm_campaign={{campaign.name}}&utm_content={{ad.name}}&utm_term={{adset.name}}&utm_id={{campaign.id}}_{{adset.id}}_{{ad.id}}`
 
   return (
     <div className="min-h-screen bg-background">
@@ -48,36 +50,52 @@ export default function AdvancedTrackingPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>2) Configure GHL/Form Webhooks</CardTitle>
-              <CardDescription>Send form submissions and contact creation events to Promethean for attribution linking.</CardDescription>
+              <CardTitle>2) Configure GHL Appointment Webhook</CardTitle>
+              <CardDescription>Contacts are linked automatically from the appointment webhook. Point your GHL appointment event here.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              <div className="grid gap-3">
-                <div>
-                  <div className="text-sm font-medium">Webhook Endpoint</div>
-                  <div className="p-3 rounded-md bg-muted font-mono text-sm break-all">{ghlWebhook}</div>
-                  <Button variant="outline" size="sm" onClick={() => copy("webhook", ghlWebhook)}>
-                    <Copy className="h-4 w-4 mr-2" /> {copied === "webhook" ? "Copied" : "Copy endpoint"}
-                  </Button>
-                </div>
+              <div>
+                <div className="text-sm font-medium">Primary Webhook Endpoint (Appointments)</div>
+                <div className="p-3 rounded-md bg-muted font-mono text-sm break-all">{ghlAppointmentsWebhook}</div>
+                <Button variant="outline" size="sm" onClick={() => copy("appt", ghlAppointmentsWebhook)}>
+                  <Copy className="h-4 w-4 mr-2" /> {copied === "appt" ? "Copied" : "Copy endpoint"}
+                </Button>
               </div>
               <ul className="list-disc ml-5 text-sm text-muted-foreground space-y-1">
-                <li>Include email and phone if available. We’ll also match by cookies/session for 90%+ accuracy.</li>
-                <li>Send appointment booked and status updates to keep attribution in sync with pipeline changes.</li>
+                <li>We link the appointment → contact → original session automatically (no separate contact‑creation webhook required).</li>
+                <li>Include appointment metadata (times, user IDs) so we can attribute to the correct rep/setter.</li>
               </ul>
+              <div className="pt-2">
+                <div className="text-xs font-medium">Optional: Standalone form submissions</div>
+                <div className="p-3 rounded-md bg-muted font-mono text-xs break-all">{optionalFormWebhook}</div>
+                <div className="flex items-center gap-2">
+                  <Button variant="ghost" size="sm" onClick={() => copy("form", optionalFormWebhook)}>
+                    <Copy className="h-4 w-4 mr-2" /> {copied === "form" ? "Copied" : "Copy optional endpoint"}
+                  </Button>
+                  <span className="text-xs text-muted-foreground">Use only if you capture leads outside the appointment flow.</span>
+                </div>
+              </div>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
               <CardTitle>3) Meta Ads Setup</CardTitle>
-              <CardDescription>Ensure your campaigns propagate all tracking parameters and allow daily insights.</CardDescription>
+              <CardDescription>Append UTM parameters to all ad URLs and enable daily insights.</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-2">
+            <CardContent className="space-y-3">
+              <div>
+                <div className="text-sm font-medium">Recommended UTM Template</div>
+                <div className="p-3 rounded-md bg-muted font-mono text-sm break-all">{metaUtmTemplate}</div>
+                <Button variant="outline" size="sm" onClick={() => copy("utm", metaUtmTemplate)}>
+                  <Copy className="h-4 w-4 mr-2" /> {copied === "utm" ? "Copied" : "Copy template"}
+                </Button>
+              </div>
               <ul className="list-disc ml-5 text-sm text-muted-foreground space-y-1">
-                <li>Append UTM parameters to all ad URLs (utm_source, utm_medium, utm_campaign, utm_content, utm_term, utm_id).</li>
-                <li>Enable click ID collection (fbclid auto) and ensure Pixel is active on all steps.</li>
-                <li>Daily insights are fetched hourly; today’s partial data is updated each hour.</li>
+                <li>Paste the template at the end of each ad’s Destination URL (after your base link, add the template starting with <code className="font-mono">?</code>).</li>
+                <li>Meta supports dynamic macros like <code className="font-mono">{'{{campaign.name}}'}</code>, <code className="font-mono">{'{{adset.name}}'}</code>, <code className="font-mono">{'{{ad.name}}'}</code> and IDs.</li>
+                <li>Keep the Promethean pixel on every page; fbclid/fbc/fbp are captured automatically for stitching.</li>
+                <li>Daily insights are fetched hourly; the current day is refreshed each hour.</li>
               </ul>
             </CardContent>
           </Card>
