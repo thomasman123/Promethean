@@ -54,19 +54,33 @@ export function DataViewWidget({ metrics, selectedUsers, options }: DataViewWidg
         
         for (const metricName of metrics) {
           try {
+            // Determine if user is a setter or rep based on their role
+            const isRep = ['sales_rep', 'moderator', 'admin', 'rep'].includes(user.role.toLowerCase())
+            const isSetter = user.role.toLowerCase() === 'setter'
+            
+            // Build filters based on user role
+            const filters: any = {
+              accountId: selectedAccountId,
+              dateRange: {
+                start: format(dateRange.from, 'yyyy-MM-dd'),
+                end: format(dateRange.to, 'yyyy-MM-dd')
+              }
+            }
+            
+            // Add user-specific filtering based on their role
+            if (isRep) {
+              filters.repIds = [user.id]
+            }
+            if (isSetter) {
+              filters.setterIds = [user.id]
+            }
+            
             const response = await fetch('/api/metrics', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 metricName,
-                filters: {
-                  accountId: selectedAccountId,
-                  dateRange: {
-                    start: format(dateRange.from, 'yyyy-MM-dd'),
-                    end: format(dateRange.to, 'yyyy-MM-dd')
-                  },
-                  userId: user.id // Filter by specific user
-                },
+                filters,
                 options: {
                   vizType: 'data',
                   widgetSettings: options?.[metricName] || {}
