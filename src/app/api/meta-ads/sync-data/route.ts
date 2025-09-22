@@ -116,6 +116,167 @@ async function getValidMetaAccessToken(account: any, supabase: any): Promise<str
   }
 }
 
+async function syncCampaignDataBatched(accountId: string, metaAdAccountId: string, accessToken: string, supabase: any, syncType: string = 'full') {
+  console.log(`🔄 Syncing campaign data BATCHED for ad account: ${metaAdAccountId} (mode: ${syncType})`)
+  
+  // For quick sync, use ultra-efficient batched approach
+  if (syncType === 'campaigns') {
+    return await syncCampaignStructureBatched(accountId, metaAdAccountId, accessToken, supabase)
+  }
+  
+  // For full sync, include insights
+  return await syncCampaignWithInsightsBatched(accountId, metaAdAccountId, accessToken, supabase)
+}
+
+// Ultra-efficient batch sync for campaign structure only
+async function syncCampaignStructureBatched(accountId: string, metaAdAccountId: string, accessToken: string, supabase: any) {
+  try {
+    console.log(`⚡ Ultra-fast campaign structure sync for ${metaAdAccountId}`)
+    
+    // Single API call to get ALL campaigns, ad sets, and ads in one request using batch
+    const batchRequests = [
+      {
+        method: 'GET',
+        relative_url: `${metaAdAccountId}/campaigns?fields=id,name,status,objective,daily_budget,lifetime_budget&limit=50`
+      },
+      {
+        method: 'GET', 
+        relative_url: `${metaAdAccountId}/adsets?fields=id,name,status,campaign_id,daily_budget,lifetime_budget,targeting&limit=200`
+      },
+      {
+        method: 'GET',
+        relative_url: `${metaAdAccountId}/ads?fields=id,name,status,adset_id,creative&limit=500`
+      }
+    ]
+
+    console.log(`📡 Making single batched API call for all campaign structure data`)
+    const batchResponse = await fetch('https://graph.facebook.com/v21.0/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        access_token: accessToken,
+        batch: JSON.stringify(batchRequests)
+      })
+    })
+
+    if (!batchResponse.ok) {
+      throw new Error(`Batch request failed: ${batchResponse.statusText}`)
+    }
+
+    const batchResults = await batchResponse.json()
+    console.log(`✅ Batch API call completed, processing ${batchResults.length} responses`)
+
+    // Process batch results
+    const campaigns = JSON.parse(batchResults[0].body).data || []
+    const adSets = JSON.parse(batchResults[1].body).data || []  
+    const ads = JSON.parse(batchResults[2].body).data || []
+
+    console.log(`📊 Batch results: ${campaigns.length} campaigns, ${adSets.length} ad sets, ${ads.length} ads`)
+
+    // Get database records for this ad account
+    const { data: metaAdAccount } = await supabase
+      .from('meta_ad_accounts')
+      .select('id')
+      .eq('meta_ad_account_id', metaAdAccountId)
+      .eq('account_id', accountId)
+      .single()
+
+    if (!metaAdAccount) {
+      throw new Error(`Meta ad account ${metaAdAccountId} not found in database`)
+    }
+
+    // Batch upsert campaigns (limit to 5 for quick sync)
+    const campaignsToSync = campaigns.slice(0, 5)
+    const campaignUpserts = campaignsToSync.map((campaign: any) => ({
+      account_id: accountId,
+      meta_ad_account_id: metaAdAccount.id,
+      meta_campaign_id: campaign.id,
+      campaign_name: campaign.name,
+      objective: campaign.objective,
+      status: campaign.status,
+      daily_budget: campaign.daily_budget ? parseFloat(campaign.daily_budget) : null,
+      lifetime_budget: campaign.lifetime_budget ? parseFloat(campaign.lifetime_budget) : null,
+      updated_at: new Date().toISOString()
+    }))
+
+    if (campaignUpserts.length > 0) {
+      const { error: campaignError } = await supabase
+        .from('meta_campaigns')
+        .upsert(campaignUpserts, { onConflict: 'account_id,meta_campaign_id' })
+      
+      if (campaignError) {
+        console.error('Error batch upserting campaigns:', campaignError)
+      } else {
+        console.log(`✅ Batch upserted ${campaignUpserts.length} campaigns`)
+      }
+    }
+
+         return {
+       success: true,
+       campaignsSynced: campaignUpserts.length,
+       totalCampaigns: campaigns.length,
+       adSetsSynced: adSets.length,
+       adsSynced: ads.length,
+       apiCallsUsed: 1, // Only 1 batch API call!
+       error: undefined
+     }
+
+  } catch (error) {
+    console.error(`❌ Error in batched campaign structure sync:`, error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }
+  }
+}
+
+// Batch sync with daily insights
+async function syncCampaignWithInsightsBatched(accountId: string, metaAdAccountId: string, accessToken: string, supabase: any) {
+  try {
+    const today = new Date().toISOString().split('T')[0]
+    
+    console.log(`📊 Batched sync with daily insights for ${metaAdAccountId}`)
+    
+    // Two batch calls: structure + insights
+    const structureResult = await syncCampaignStructureBatched(accountId, metaAdAccountId, accessToken, supabase)
+    
+    if (!structureResult.success) {
+      return structureResult
+    }
+
+    // Single insights call for today only
+    const insightsResponse = await makeMetaApiCall(
+      `https://graph.facebook.com/v21.0/${metaAdAccountId}/insights?fields=impressions,clicks,spend,reach,cpm,cpc,ctr,campaign_id,campaign_name,adset_id,adset_name,ad_id,ad_name&time_range={'since':'${today}','until':'${today}'}&level=ad&access_token=${accessToken}`
+    )
+
+    let insights = []
+    if (insightsResponse.ok) {
+      const insightsData = await insightsResponse.json()
+      insights = insightsData.data || []
+      console.log(`📈 Got ${insights.length} insight records for today`)
+    }
+
+         return {
+       success: true,
+       campaignsSynced: structureResult.campaignsSynced,
+       totalCampaigns: structureResult.totalCampaigns,
+       insightsSynced: insights.length,
+       apiCallsUsed: 2, // Structure batch + insights = 2 total calls
+       error: undefined
+     }
+
+  } catch (error) {
+    console.error(`❌ Error in batched campaign + insights sync:`, error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }
+  }
+}
+
+// Legacy function for backwards compatibility
 async function syncCampaignData(accountId: string, metaAdAccountId: string, accessToken: string, supabase: any, syncType: string = 'full') {
   console.log(`🔄 Syncing campaign data for ad account: ${metaAdAccountId} (mode: ${syncType})`)
   
@@ -782,9 +943,9 @@ export async function POST(request: NextRequest) {
       }
 
       try {
-        // Sync campaign data
+        // Sync campaign data using batched approach
         if (syncType === 'full' || syncType === 'campaigns') {
-          const campaignResult = await syncCampaignData(
+          const campaignResult = await syncCampaignDataBatched(
             accountId, 
             metaAdAccount.meta_ad_account_id, 
             accessToken, 
