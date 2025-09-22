@@ -544,6 +544,20 @@ const BASE_METRICS = {
 		}
 	},
 
+	'ad_spend_all': {
+		name: 'Total Ad Spend',
+		description: 'Total amount spent on Meta ads across all campaigns',
+		breakdownType: 'total' as const,
+		query: {
+			table: 'meta_ad_performance',
+			select: ['COALESCE(SUM(spend), 0) as value']
+		},
+		unit: 'currency' as const,
+		options: {
+			attribution: ['all'],
+		}
+	},
+
 	'cost_per_booked_call': {
 		name: 'Cost Per Booked Call',
 		description: 'Total ad spend divided by total appointments for the period',
