@@ -138,31 +138,56 @@ export class MetricsEngine {
       return this.calculateAggregatedWorkTimeframeMetric(metric, accountId, dateRange.start, dateRange.end, options)
     }
     
-    // Handle overdue percentage
-    if (metric.name === 'Overdue Percentage') {
-      const appliedFilters = applyStandardFilters(filters, metric.query.table)
-      const sql = this.buildOverduePercentageSQL(appliedFilters, metric, options)
-      const params = flattenParams(appliedFilters)
-      
-      console.log('Executing Overdue Percentage SQL:', sql)
-      console.log('Parameters:', params)
-      
-      const { data, error } = await supabaseService.rpc('execute_metrics_query_array', {
-        query_sql: sql,
-        query_params: params
-      })
-      
-      if (error) {
-        console.error('Supabase query error:', error)
-        throw new Error(`Database query failed: ${error.message}`)
-      }
-      
-      const results = Array.isArray(data) ? data : (data ? JSON.parse(String(data)) : [])
-      return this.formatResults(metric.breakdownType, results)
+    // Handle other special metrics by delegating to existing build methods
+    const appliedFilters = applyStandardFilters(filters, metric.query.table)
+    let sql: string
+    
+    if (metric.name === 'Speed to Lead') {
+      const calculationType = options?.widgetSettings?.speedToLeadCalculation || 'average'
+      sql = this.buildSpeedToLeadSQL(appliedFilters, calculationType, options)
+    } else if (metric.name?.startsWith('ROI')) {
+      sql = this.buildROISQL(appliedFilters, metric, options)
+    } else if (metric.name?.startsWith('Cost Per Booked Call')) {
+      sql = this.buildCostPerBookedCallSQL(appliedFilters, metric, options)
+    } else if (metric.name === 'Lead to Appointment') {
+      sql = this.buildLeadToAppointmentSQL(appliedFilters, metric, options)
+    } else if (metric.name === 'Data Completion Rate') {
+      sql = this.buildDataCompletionRateSQL(appliedFilters, metric, options)
+    } else if (metric.name === 'Overdue Items') {
+      sql = this.buildOverdueItemsSQL(appliedFilters, metric, options)
+    } else if (metric.name === 'Overdue Percentage') {
+      sql = this.buildOverduePercentageSQL(appliedFilters, metric, options)
+    } else if (metric.name === 'Cash Per Dial') {
+      // Handle Cash Per Dial - needs cross-table calculation between dials and appointments
+      sql = this.buildCashPerDialSQL(appliedFilters, metric, options)
+    } else {
+      // Default fallback for unhandled special metrics
+      console.warn(`Special metric '${metric.name}' not implemented in handleSpecialMetric`)
+      return { type: 'total', data: { value: 0 } }
     }
     
-    // Default fallback for other special metrics
-    return { type: 'total', data: { value: 0 } }
+    const params = flattenParams(appliedFilters)
+    
+    // Add business hours parameter if configured for Speed to Lead
+    if (metric.name === 'Speed to Lead' && options && options.widgetSettings?.speedToLeadBusinessHours?.length > 0) {
+      params.business_hours = JSON.stringify(options.widgetSettings.speedToLeadBusinessHours);
+    }
+    
+    console.log(`Executing ${metric.name} SQL:`, sql)
+    console.log('Parameters:', params)
+    
+    const { data, error } = await supabaseService.rpc('execute_metrics_query_array', {
+      query_sql: sql,
+      query_params: params
+    })
+    
+    if (error) {
+      console.error('Supabase query error:', error)
+      throw new Error(`Database query failed: ${error.message}`)
+    }
+    
+    const results = Array.isArray(data) ? data : (data ? JSON.parse(String(data)) : [])
+    return this.formatResults(metric.breakdownType, results)
   }
 
   /**
@@ -968,6 +993,44 @@ WHERE speed_to_lead_seconds IS NOT NULL
       FROM total_count
       CROSS JOIN overdue_count
     `.trim()
+  }
+
+  /**
+   * Special SQL builder for Cash Per Dial metric
+   * Calculates the average cash collected per dial by joining with appointments.
+   */
+  private buildCashPerDialSQL(appliedFilters: any, metric: MetricDefinition, options?: any): string {
+    const whereClauseWithMetric = buildWhereClause(appliedFilters, [])
+
+    const sql = `
+      WITH all_dials AS (
+        SELECT 
+          dials.id,
+          dials.account_id,
+          dials.setter_user_id,
+          dials.created_at,
+          dials.booked,
+          dials.booked_appointment_id
+        FROM dials
+        ${whereClauseWithMetric.replace(/(?<!\$)\baccount_id\b/g, 'dials.account_id')}
+      ),
+      dials_with_cash AS (
+        SELECT 
+          d.id,
+          d.account_id,
+          COALESCE(a.cash_collected, 0) as cash_collected
+        FROM all_dials d
+        LEFT JOIN appointments a ON d.booked_appointment_id = a.id
+      )
+      SELECT 
+        CASE 
+          WHEN COUNT(*) > 0 THEN COALESCE(ROUND(SUM(cash_collected)::DECIMAL / COUNT(*), 2), 0)
+          ELSE 0 
+        END as value
+      FROM dials_with_cash
+    `.trim()
+
+    return sql
   }
 
   private createErrorResult(breakdownType: string, error: Error): MetricResult {
