@@ -2,6 +2,67 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import type { Database } from '@/lib/database.types'
 
+// Rate limiting utilities for Meta API
+const RATE_LIMIT_DELAY = 2000 // 2 seconds between requests
+const MAX_RETRIES = 3
+const RETRY_DELAY_BASE = 5000 // 5 seconds base delay
+
+// Sync optimization settings
+const MAX_CAMPAIGNS_PER_BATCH = 10 // Limit campaigns processed in a single sync
+const ENABLE_AD_LEVEL_SYNC = false // Disable detailed ad sync to reduce API calls
+
+async function sleep(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+async function makeMetaApiCall(url: string, retryCount = 0): Promise<Response> {
+  try {
+    // Add delay between requests to respect rate limits
+    if (retryCount > 0) {
+      const delay = RETRY_DELAY_BASE * Math.pow(2, retryCount - 1) // Exponential backoff
+      console.log(`⏳ Rate limit hit, waiting ${delay}ms before retry ${retryCount}/${MAX_RETRIES}...`)
+      await sleep(delay)
+    } else {
+      // Always add a small delay between requests
+      await sleep(RATE_LIMIT_DELAY)
+    }
+
+    const response = await fetch(url)
+    
+    // Check if we hit rate limits
+    if (response.status === 400) {
+      const errorText = await response.text()
+      const errorData = JSON.parse(errorText)
+      
+      if (errorData.error?.code === 17 || errorData.error?.message?.includes('request limit')) {
+        console.log(`🚫 Rate limit detected for URL: ${url}`)
+        
+        if (retryCount < MAX_RETRIES) {
+          console.log(`🔄 Retrying request (${retryCount + 1}/${MAX_RETRIES})...`)
+          return makeMetaApiCall(url, retryCount + 1)
+        } else {
+          console.error(`❌ Max retries (${MAX_RETRIES}) exceeded for URL: ${url}`)
+          throw new Error(`Rate limit exceeded after ${MAX_RETRIES} retries: ${errorData.error.message}`)
+        }
+      }
+      
+      // Re-create response for non-rate-limit 400 errors
+      return new Response(errorText, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: response.headers
+      })
+    }
+    
+    return response
+  } catch (error) {
+    if (retryCount < MAX_RETRIES && error instanceof Error && error.message.includes('Rate limit')) {
+      return makeMetaApiCall(url, retryCount + 1)
+    }
+    throw error
+  }
+}
+
 async function getValidMetaAccessToken(account: any, supabase: any): Promise<string | null> {
   try {
     const authType = account.meta_auth_type || 'oauth2'
@@ -58,8 +119,8 @@ async function syncCampaignData(accountId: string, metaAdAccountId: string, acce
   console.log(`🔄 Syncing campaign data for ad account: ${metaAdAccountId}`)
   
   try {
-    // Fetch campaigns from Meta API
-    const campaignsResponse = await fetch(
+    // Fetch campaigns from Meta API with rate limiting
+    const campaignsResponse = await makeMetaApiCall(
       `https://graph.facebook.com/v21.0/${metaAdAccountId}/campaigns?fields=id,name,status,objective,daily_budget,lifetime_budget,created_time,updated_time,start_time,stop_time&access_token=${accessToken}`
     )
 
@@ -68,9 +129,15 @@ async function syncCampaignData(accountId: string, metaAdAccountId: string, acce
     }
 
     const campaignsData = await campaignsResponse.json()
-    const campaigns = campaignsData.data || []
+    const allCampaigns = campaignsData.data || []
+    
+    // Limit campaigns to process in a single batch to reduce API calls
+    const campaigns = allCampaigns.slice(0, MAX_CAMPAIGNS_PER_BATCH)
 
-    console.log(`📊 Found ${campaigns.length} campaigns for ad account ${metaAdAccountId}`)
+    console.log(`📊 Found ${allCampaigns.length} campaigns for ad account ${metaAdAccountId}`)
+    if (allCampaigns.length > MAX_CAMPAIGNS_PER_BATCH) {
+      console.log(`⚡ Processing first ${MAX_CAMPAIGNS_PER_BATCH} campaigns to respect rate limits`)
+    }
 
     // Get the meta_ad_account record
     const { data: metaAdAccount } = await supabase
@@ -141,8 +208,8 @@ async function syncAdSetsForCampaign(accountId: string, metaAdAccountId: string,
   try {
     console.log(`🔄 Syncing ad sets for campaign: ${campaignId}`)
     
-    // Fetch ad sets from Meta API
-    const adSetsResponse = await fetch(
+    // Fetch ad sets from Meta API with rate limiting
+    const adSetsResponse = await makeMetaApiCall(
       `https://graph.facebook.com/v21.0/${campaignId}/adsets?fields=id,name,status,daily_budget,lifetime_budget,targeting&access_token=${accessToken}`
     )
 
@@ -204,9 +271,11 @@ async function syncAdSetsForCampaign(accountId: string, metaAdAccountId: string,
 
         if (error) {
           console.error(`❌ Error syncing ad set ${adSet.id}:`, error)
-        } else {
-          // Sync ads for this ad set
+        } else if (ENABLE_AD_LEVEL_SYNC) {
+          // Sync ads for this ad set (only if enabled to reduce API calls)
           await syncAdsForAdSet(accountId, adSet.id, accessToken, supabase, adSetData[0].id)
+        } else {
+          console.log(`⚡ Skipping ad-level sync for ad set ${adSet.id} to reduce API calls`)
         }
       } catch (error) {
         console.error(`❌ Error processing ad set ${adSet.id}:`, error)
@@ -222,8 +291,8 @@ async function syncAdsForAdSet(accountId: string, adSetId: string, accessToken: 
   try {
     console.log(`🔄 Syncing ads for ad set: ${adSetId}`)
     
-    // Fetch ads from Meta API
-    const adsResponse = await fetch(
+    // Fetch ads from Meta API with rate limiting
+    const adsResponse = await makeMetaApiCall(
       `https://graph.facebook.com/v21.0/${adSetId}/ads?fields=id,name,status,creative&access_token=${accessToken}`
     )
 
@@ -307,7 +376,7 @@ async function syncPerformanceData(accountId: string, metaAdAccountId: string, a
       ].join(',');
 
       // Use specific date range (this worked in debug with $8,916 spend)
-      insightsResponse = await fetch(
+      insightsResponse = await makeMetaApiCall(
         `https://graph.facebook.com/v21.0/${metaAdAccountId}/insights?fields=${coreFields}&time_range={'since':'${dateStart}','until':'${dateEnd}'}&time_increment=1&level=campaign&access_token=${accessToken}`
       )
 
@@ -330,7 +399,7 @@ async function syncPerformanceData(accountId: string, metaAdAccountId: string, a
           'campaign_id', 'campaign_name', 'adset_id', 'adset_name', 'ad_id', 'ad_name'
         ].join(',');
 
-        insightsResponse = await fetch(
+        insightsResponse = await makeMetaApiCall(
           `https://graph.facebook.com/v21.0/${metaAdAccountId}/insights?fields=${coreFields}&time_range={'since':'${dateStart}','until':'${dateEnd}'}&time_increment=1&level=ad&access_token=${accessToken}`
         )
 
@@ -347,7 +416,7 @@ async function syncPerformanceData(accountId: string, metaAdAccountId: string, a
     // Approach 3: Fallback to campaign-level if ad-level fails or returns limited data
     if (insights.length === 0) {
       try {
-        insightsResponse = await fetch(
+        insightsResponse = await makeMetaApiCall(
           `https://graph.facebook.com/v21.0/${metaAdAccountId}/insights?fields=impressions,clicks,spend,reach,frequency,cpm,cpc,ctr,actions,action_values,campaign_id,campaign_name&date_preset=maximum&time_increment=1&level=campaign&access_token=${accessToken}`
         )
 
