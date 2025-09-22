@@ -52,21 +52,14 @@ export function DataViewWidget({ metrics, selectedUsers, options }: DataViewWidg
       for (const user of filteredUsers) {
         const userMetricValues: Record<string, number | null> = {}
         
-        for (const metricName of metrics) {
+        for (const metricKey of metrics) {
           try {
-            console.log(`🔍 [DataView] Processing ${metricName} for user ${user.name} (${user.id}):`)
+            // Extract original metric name and attribution from the key
+            const metricOptions = options?.[metricKey] || {}
+            const originalMetricName = metricOptions.originalMetricName || metricKey
+            const attribution = metricOptions.attribution || "assigned"
             
-            // Build filters based on user role
-            const filters: any = {
-              accountId: selectedAccountId,
-              dateRange: {
-                start: format(dateRange.from, 'yyyy-MM-dd'),
-                end: format(dateRange.to, 'yyyy-MM-dd')
-              }
-            }
-            
-            // Use attribution setting from metric options to determine filtering
-            const attribution = options?.[metricName]?.attribution || "assigned"
+            console.log(`🔍 [DataView] Processing ${originalMetricName} (${attribution}) for user ${user.name} (${user.id}):`)
             
             if (attribution === "assigned") {
               // Sales rep owned - appointments where user is sales_rep_user_id
@@ -88,7 +81,8 @@ export function DataViewWidget({ metrics, selectedUsers, options }: DataViewWidg
               metricName,
               filters,
               options: {
-                vizType: 'kpi', // Use KPI viz type to get total values instead of time series
+            const requestBody = {
+              metricName: originalMetricName,
                 widgetSettings: options?.[metricName] || {}
               }
             }
@@ -129,15 +123,15 @@ export function DataViewWidget({ metrics, selectedUsers, options }: DataViewWidg
                 console.log(`  ❌ No valid value in response - result:`, metricData.result)
               }
               
-              userMetricValues[metricName] = value
+              userMetricValues[metricKey] = value
             } else {
               const errorText = await response.text()
               console.error(`  ❌ API error: ${response.status} - ${errorText}`)
-              userMetricValues[metricName] = null
+              userMetricValues[metricKey] = null
             }
           } catch (error) {
             console.error(`❌ Failed to fetch ${metricName} for user ${user.id}:`, error)
-            userMetricValues[metricName] = null
+            userMetricValues[metricKey] = null
           }
         }
 
@@ -242,16 +236,32 @@ export function DataViewWidget({ metrics, selectedUsers, options }: DataViewWidg
           <TableRow>
             <TableHead className="w-[200px]">User</TableHead>
             <TableHead className="w-[100px]">Role</TableHead>
-            {metrics.map(metricName => (
-              <TableHead key={metricName} className="text-right">
-                {METRICS_REGISTRY[metricName]?.name || metricName}
-              </TableHead>
-            ))}
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {data.map((user) => (
-            <TableRow key={user.userId}>
+            {metrics.map(metricKey => {
+              const metricOptions = options?.[metricKey] || {}
+              const originalMetricName = metricOptions.originalMetricName || metricKey
+              const attribution = metricOptions.attribution || "assigned"
+              const metricDisplayName = METRICS_REGISTRY[originalMetricName]?.name || originalMetricName
+              const attributionLabel = attribution === "assigned" ? "Sales Rep Owned" : attribution === "booked" ? "Setter Contributed" : attribution
+              
+              return (
+                <TableHead key={metricKey} className="text-right">
+                  <div className="text-right">
+                    <div className="font-medium">{metricDisplayName}</div>
+                    <div className="text-xs text-muted-foreground">({attributionLabel})</div>
+                  </div>
+                </TableHead>
+              )
+            })}
+              {metrics.map(metricKey => {
+                const metricOptions = options?.[metricKey] || {}
+                const originalMetricName = metricOptions.originalMetricName || metricKey
+                
+                return (
+                  <TableCell key={metricKey} className="text-right">
+                    {formatValue(user.metricValues[metricKey], originalMetricName)}
+                  </TableCell>
+                )
+              })}
               <TableCell className="font-medium">{user.userName}</TableCell>
               <TableCell>
                 <Badge variant={getRoleColor(user.userRole)} className="text-xs">
