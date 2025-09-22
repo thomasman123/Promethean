@@ -177,6 +177,23 @@ export function DataViewWidget({ metrics, selectedUsers, options }: DataViewWidg
           }
         }
 
+        // Fallback: derive ROI (assigned) if not returned from API
+        const roiKey = metrics.find(k => (options?.[k]?.originalMetricName || k) === 'roi' && (options?.[k]?.attribution || 'assigned') === 'assigned')
+        if (roiKey && (userMetricValues[roiKey] === null || userMetricValues[roiKey] === undefined)) {
+          const revenueKey = metrics.find(k => (options?.[k]?.originalMetricName || k) === 'total_revenue_generated')
+          const apptsKey = metrics.find(k => (options?.[k]?.originalMetricName || k) === 'total_appointments')
+          const cpbcKey = metrics.find(k => (options?.[k]?.originalMetricName || k) === 'cost_per_booked_call')
+          const revenue = revenueKey ? Number(userMetricValues[revenueKey] || 0) : 0
+          const appts = apptsKey ? Number(userMetricValues[apptsKey] || 0) : 0
+          const cpbc = cpbcKey ? Number(userMetricValues[cpbcKey] || 0) : 0
+          if (revenue > 0 && appts > 0 && cpbc > 0) {
+            const multiple = revenue / (appts * cpbc)
+            const fraction = multiple - 1
+            userMetricValues[roiKey] = fraction
+            console.log(`  ✅ Derived ROI for ${user.id}: revenue=${revenue}, appts=${appts}, cpbc=${cpbc}, multiple=${multiple.toFixed(2)}, fraction=${fraction.toFixed(4)}`)
+          }
+        }
+
         userData.push({
           userId: user.id,
           userName: user.name,
