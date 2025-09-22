@@ -714,12 +714,17 @@ async function syncPerformanceData(accountId: string, metaAdAccountId: string, a
     
     const accountTimezone = account?.business_timezone || 'UTC'
     // Calculate date range
-    const endDate = new Date()
-    const startDate = new Date()
-    startDate.setDate(startDate.getDate() - daysBack)
+    const nowUtc = new Date()
+    // Convert "now" to the account's local time to determine the correct local date
+    const nowLocal = new Date(nowUtc.toLocaleString('en-US', { timeZone: accountTimezone }))
+    const endDateLocal = nowLocal
+    const startDateLocal = new Date(endDateLocal)
+    startDateLocal.setDate(startDateLocal.getDate() - daysBack)
 
-    const dateStart = startDate.toISOString().split('T')[0]
-    const dateEnd = endDate.toISOString().split('T')[0]
+    const pad = (n: number) => String(n).padStart(2, '0')
+    const fmt = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+    const dateStart = fmt(startDateLocal)
+    const dateEnd = fmt(endDateLocal)
 
     console.log(`📅 Fetching daily insights from ${dateStart} to ${dateEnd}`)
 
