@@ -7,19 +7,6 @@ import { format } from "date-fns"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
-// Helper function to get context-aware attribution labels
-function getAttributionLabel(attribution: string, metricName: string): string {
-  const metricDefinition = METRICS_REGISTRY[metricName]
-  const tableType = metricDefinition?.query?.table || "appointments"
-  
-  if (attribution === "assigned") {
-    return tableType === "discoveries" ? "Assigned to Setter" : "Sales Rep Owned"
-  } else if (attribution === "booked") {
-    return tableType === "discoveries" ? "Booked to Sales Rep" : "Setter Contributed"
-  }
-  return attribution
-}
-
 
 interface DataViewWidgetProps {
   metrics: string[]
@@ -65,47 +52,32 @@ export function DataViewWidget({ metrics, selectedUsers, options }: DataViewWidg
       for (const user of filteredUsers) {
         const userMetricValues: Record<string, number | null> = {}
         
-        for (const metricKey of metrics) {
+        for (const metricName of metrics) {
           try {
-            // Extract original metric name and attribution from the key
-            const metricOptions = options?.[metricKey] || {}
-            const originalMetricName = metricOptions.originalMetricName || metricKey
-            const attribution = metricOptions.attribution || "assigned"
+            // Determine if user is a setter or rep based on their role
+            const isRep = ['sales_rep', 'moderator', 'admin', 'rep'].includes(user.role.toLowerCase())
+            const isSetter = user.role.toLowerCase() === 'setter'
             
-            console.log(`🔍 [DataView] Processing ${originalMetricName} (${attribution}) for user ${user.name} (${user.id}):`)
+            console.log(`🔍 [DataView] Processing ${metricName} for user ${user.name} (${user.id}):`)
+            console.log(`  - Role: ${user.role} (isRep: ${isRep}, isSetter: ${isSetter})`)
             
-            if (attribution === "assigned") {
-              // Sales rep owned - appointments where user is sales_rep_user_id
+            // Build filters based on user role
+            const filters: any = {
+              accountId: selectedAccountId,
+              dateRange: {
+                start: format(dateRange.from, 'yyyy-MM-dd'),
+                end: format(dateRange.to, 'yyyy-MM-dd')
+              }
+            }
+            
+            // Add user-specific filtering based on their role
+            if (isRep) {
               filters.repIds = [user.id]
-              console.log(`  - Added repIds: [${user.id}] (sales rep owned)`);
-            // Determine table type from metric registry
-            const metricDefinition = METRICS_REGISTRY[originalMetricName]
-            const tableType = metricDefinition?.query?.table || "appointments"
-            
-            if (tableType === "discoveries") {
-              // For discoveries: assigned = setter_user_id, booked = sales_rep_user_id (only if discovery was booked)
-              if (attribution === "assigned") {
-                filters.setterIds = [user.id]
-                console.log(`  - Added setterIds: [${user.id}] (discovery assigned to setter)`);
-              } else if (attribution === "booked") {
-                filters.repIds = [user.id]
-                console.log(`  - Added repIds: [${user.id}] (discovery booked to sales rep)`);
-              } else {
-                filters.setterIds = [user.id]
-                console.log(`  - Added setterIds: [${user.id}] (default: discovery assigned)`);
-              }
-            } else {
-              // For appointments and other tables: assigned = sales_rep_user_id, booked = setter_user_id
-              if (attribution === "assigned") {
-                filters.repIds = [user.id]
-                console.log(`  - Added repIds: [${user.id}] (sales rep owned)`);
-              } else if (attribution === "booked") {
-                filters.setterIds = [user.id]
-                console.log(`  - Added setterIds: [${user.id}] (setter contributed)`);
-              } else {
-                filters.repIds = [user.id]
-                console.log(`  - Added repIds: [${user.id}] (default: sales rep owned)`);
-              }
+              console.log(`  - Added repIds: [${user.id}]`)
+            }
+            if (isSetter) {
+              filters.setterIds = [user.id]
+              console.log(`  - Added setterIds: [${user.id}]`)
             }
             
             console.log(`  - Final filters:`, filters)
@@ -114,8 +86,7 @@ export function DataViewWidget({ metrics, selectedUsers, options }: DataViewWidg
               metricName,
               filters,
               options: {
-            const requestBody = {
-              metricName: originalMetricName,
+                vizType: 'kpi', // Use KPI viz type to get total values instead of time series
                 widgetSettings: options?.[metricName] || {}
               }
             }
@@ -156,15 +127,15 @@ export function DataViewWidget({ metrics, selectedUsers, options }: DataViewWidg
                 console.log(`  ❌ No valid value in response - result:`, metricData.result)
               }
               
-              userMetricValues[metricKey] = value
+              userMetricValues[metricName] = value
             } else {
               const errorText = await response.text()
               console.error(`  ❌ API error: ${response.status} - ${errorText}`)
-              userMetricValues[metricKey] = null
+              userMetricValues[metricName] = null
             }
           } catch (error) {
             console.error(`❌ Failed to fetch ${metricName} for user ${user.id}:`, error)
-            userMetricValues[metricKey] = null
+            userMetricValues[metricName] = null
           }
         }
 
@@ -269,32 +240,16 @@ export function DataViewWidget({ metrics, selectedUsers, options }: DataViewWidg
           <TableRow>
             <TableHead className="w-[200px]">User</TableHead>
             <TableHead className="w-[100px]">Role</TableHead>
-            {metrics.map(metricKey => {
-              const metricOptions = options?.[metricKey] || {}
-              const originalMetricName = metricOptions.originalMetricName || metricKey
-              const attribution = metricOptions.attribution || "assigned"
-              const metricDisplayName = METRICS_REGISTRY[originalMetricName]?.name || originalMetricName
-              const attributionLabel = getAttributionLabel(attribution, originalMetricName)
-              
-              return (
-                <TableHead key={metricKey} className="text-right">
-                  <div className="text-right">
-                    <div className="font-medium">{metricDisplayName}</div>
-                    <div className="text-xs text-muted-foreground">({attributionLabel})</div>
-                  </div>
-                </TableHead>
-              )
-            })}
-              {metrics.map(metricKey => {
-                const metricOptions = options?.[metricKey] || {}
-                const originalMetricName = metricOptions.originalMetricName || metricKey
-                
-                return (
-                  <TableCell key={metricKey} className="text-right">
-                    {formatValue(user.metricValues[metricKey], originalMetricName)}
-                  </TableCell>
-                )
-              })}
+            {metrics.map(metricName => (
+              <TableHead key={metricName} className="text-right">
+                {METRICS_REGISTRY[metricName]?.name || metricName}
+              </TableHead>
+            ))}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {data.map((user) => (
+            <TableRow key={user.userId}>
               <TableCell className="font-medium">{user.userName}</TableCell>
               <TableCell>
                 <Badge variant={getRoleColor(user.userRole)} className="text-xs">
