@@ -111,6 +111,9 @@ async function syncCampaignData(accountId: string, metaAdAccountId: string, acce
           syncResults.push({ campaignId: campaign.id, success: false, error: error.message })
         } else {
           syncResults.push({ campaignId: campaign.id, success: true })
+          
+          // Sync ad sets for this campaign
+          await syncAdSetsForCampaign(accountId, metaAdAccountId, campaign.id, accessToken, supabase, metaAdAccount.id)
         }
       } catch (error) {
         console.error(`❌ Error processing campaign ${campaign.id}:`, error)
@@ -131,6 +134,123 @@ async function syncCampaignData(accountId: string, metaAdAccountId: string, acce
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error'
     }
+  }
+}
+
+async function syncAdSetsForCampaign(accountId: string, metaAdAccountId: string, campaignId: string, accessToken: string, supabase: any, metaAdAccountDbId: string) {
+  try {
+    console.log(`🔄 Syncing ad sets for campaign: ${campaignId}`)
+    
+    // Fetch ad sets from Meta API
+    const adSetsResponse = await fetch(
+      `https://graph.facebook.com/v21.0/${campaignId}/adsets?fields=id,name,status,daily_budget,lifetime_budget,targeting&access_token=${accessToken}`
+    )
+
+    if (!adSetsResponse.ok) {
+      console.error(`Failed to fetch ad sets for campaign ${campaignId}:`, adSetsResponse.statusText)
+      return
+    }
+
+    const adSetsData = await adSetsResponse.json()
+    const adSets = adSetsData.data || []
+
+    console.log(`📊 Found ${adSets.length} ad sets for campaign ${campaignId}`)
+
+    // Get the campaign record
+    const { data: campaign } = await supabase
+      .from('meta_campaigns')
+      .select('id')
+      .eq('meta_campaign_id', campaignId)
+      .eq('account_id', accountId)
+      .single()
+
+    if (!campaign) {
+      console.error(`Campaign ${campaignId} not found in database`)
+      return
+    }
+
+    // Sync each ad set
+    for (const adSet of adSets) {
+      try {
+        const { data: adSetData, error } = await supabase
+          .from('meta_ad_sets')
+          .upsert({
+            account_id: accountId,
+            meta_campaign_id: campaign.id,
+            meta_ad_set_id: adSet.id,
+            ad_set_name: adSet.name,
+            status: adSet.status || null,
+            daily_budget: adSet.daily_budget ? parseFloat(adSet.daily_budget) : null,
+            lifetime_budget: adSet.lifetime_budget ? parseFloat(adSet.lifetime_budget) : null,
+            targeting_data: adSet.targeting ? adSet.targeting : null,
+            updated_at: new Date().toISOString()
+          }, {
+            onConflict: 'account_id,meta_ad_set_id'
+          })
+          .select()
+
+        if (error) {
+          console.error(`❌ Error syncing ad set ${adSet.id}:`, error)
+        } else {
+          // Sync ads for this ad set
+          await syncAdsForAdSet(accountId, adSet.id, accessToken, supabase, adSetData[0].id)
+        }
+      } catch (error) {
+        console.error(`❌ Error processing ad set ${adSet.id}:`, error)
+      }
+    }
+
+  } catch (error) {
+    console.error(`❌ Error syncing ad sets for campaign ${campaignId}:`, error)
+  }
+}
+
+async function syncAdsForAdSet(accountId: string, adSetId: string, accessToken: string, supabase: any, metaAdSetDbId: string) {
+  try {
+    console.log(`🔄 Syncing ads for ad set: ${adSetId}`)
+    
+    // Fetch ads from Meta API
+    const adsResponse = await fetch(
+      `https://graph.facebook.com/v21.0/${adSetId}/ads?fields=id,name,status,creative&access_token=${accessToken}`
+    )
+
+    if (!adsResponse.ok) {
+      console.error(`Failed to fetch ads for ad set ${adSetId}:`, adsResponse.statusText)
+      return
+    }
+
+    const adsData = await adsResponse.json()
+    const ads = adsData.data || []
+
+    console.log(`📊 Found ${ads.length} ads for ad set ${adSetId}`)
+
+    // Sync each ad
+    for (const ad of ads) {
+      try {
+        const { error } = await supabase
+          .from('meta_ads')
+          .upsert({
+            account_id: accountId,
+            meta_ad_set_id: metaAdSetDbId,
+            meta_ad_id: ad.id,
+            ad_name: ad.name,
+            status: ad.status || null,
+            creative_data: ad.creative ? ad.creative : null,
+            updated_at: new Date().toISOString()
+          }, {
+            onConflict: 'account_id,meta_ad_id'
+          })
+
+        if (error) {
+          console.error(`❌ Error syncing ad ${ad.id}:`, error)
+        }
+      } catch (error) {
+        console.error(`❌ Error processing ad ${ad.id}:`, error)
+      }
+    }
+
+  } catch (error) {
+    console.error(`❌ Error syncing ads for ad set ${adSetId}:`, error)
   }
 }
 
