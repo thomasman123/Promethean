@@ -268,9 +268,48 @@ async function syncPerformanceData(accountId: string, metaAdAccountId: string, a
 
     console.log(`📅 Fetching daily insights from ${dateStart} to ${dateEnd}`)
 
-    // Fetch daily insights from Meta API (time_increment=1 for daily data)
+    // Fetch comprehensive daily insights from Meta API with ALL metrics
+    const allFields = [
+      // Core metrics
+      'impressions', 'clicks', 'spend', 'reach', 'frequency',
+      'cpm', 'cpc', 'ctr', 'cpp', 'cost_per_result',
+      
+      // Conversion metrics
+      'conversions', 'conversion_values', 'cost_per_conversion',
+      'purchase_roas', 'return_on_ad_spend',
+      
+      // Video metrics
+      'video_views', 'video_avg_time_watched_actions',
+      'video_p25_watched_actions', 'video_p50_watched_actions',
+      'video_p75_watched_actions', 'video_p100_watched_actions',
+      'cost_per_thruplay', 'cost_per_2_sec_continuous_video_view',
+      
+      // Engagement metrics
+      'post_engagements', 'page_engagements', 'link_clicks',
+      'landing_page_views', 'cost_per_landing_page_view',
+      
+      // Lead metrics
+      'cost_per_lead', 'lead_generation_cost_per_result',
+      
+      // Social metrics
+      'social_spend',
+      
+      // Actions and action values (comprehensive)
+      'actions', 'action_values',
+      
+      // Campaign info
+      'campaign_id', 'campaign_name', 'adset_id', 'adset_name', 'ad_id', 'ad_name',
+      
+      // Quality metrics
+      'quality_score_ectr', 'quality_score_ecvr', 'quality_score_organic',
+      
+      // Attribution windows
+      'conversions_1d_view', 'conversions_7d_click', 'conversions_28d_click',
+      'conversion_values_1d_view', 'conversion_values_7d_click', 'conversion_values_28d_click'
+    ].join(',');
+
     const insightsResponse = await fetch(
-      `https://graph.facebook.com/v21.0/${metaAdAccountId}/insights?fields=impressions,clicks,spend,reach,frequency,actions,action_values,conversions,conversion_values,cpm,cpc,ctr,campaign_id,campaign_name&time_range={'since':'${dateStart}','until':'${dateEnd}'}&time_increment=1&level=campaign&access_token=${accessToken}`
+      `https://graph.facebook.com/v21.0/${metaAdAccountId}/insights?fields=${allFields}&time_range={'since':'${dateStart}','until':'${dateEnd}'}&time_increment=1&level=ad&access_token=${accessToken}`
     )
 
     if (!insightsResponse.ok) {
@@ -310,26 +349,133 @@ async function syncPerformanceData(accountId: string, metaAdAccountId: string, a
         // Use the actual date from the insight (daily data)
         const insightDate = insight.date_start || dateStart
         
+        // Find the corresponding ad and ad set
+        const { data: metaAd } = await supabase
+          .from('meta_ads')
+          .select('id')
+          .eq('meta_ad_id', insight.ad_id)
+          .eq('account_id', accountId)
+          .single()
+
+        const { data: metaAdSet } = await supabase
+          .from('meta_ad_sets')
+          .select('id')
+          .eq('meta_ad_set_id', insight.adset_id)
+          .eq('account_id', accountId)
+          .single()
+
+        // Extract specific metrics from actions array
+        const actions = insight.actions || []
+        const actionValues = insight.action_values || []
+        
+        const getActionValue = (actionType: string) => {
+          const action = actions.find((a: any) => a.action_type === actionType)
+          return action ? parseInt(action.value || '0') : 0
+        }
+
+        const getActionValueCost = (actionType: string) => {
+          const actionValue = actionValues.find((a: any) => a.action_type === actionType)
+          return actionValue ? parseFloat(actionValue.value || '0') : 0
+        }
+        
         const { data, error } = await supabase
           .from('meta_ad_performance')
           .upsert({
             account_id: accountId,
             meta_ad_account_id: metaAdAccount.id,
             meta_campaign_id: campaign?.id || null,
+            meta_ad_set_id: metaAdSet?.id || null,
+            meta_ad_id: metaAd?.id || null,
             date_start: insightDate,
             date_end: insightDate, // Daily data - start and end are the same
+            
+            // Core metrics
             impressions: parseInt(insight.impressions || '0'),
             clicks: parseInt(insight.clicks || '0'),
             spend: parseFloat(insight.spend || '0'),
             reach: parseInt(insight.reach || '0'),
             frequency: parseFloat(insight.frequency || '0'),
-            actions: insight.actions || null,
-            action_values: insight.action_values || null,
-            conversions: parseInt(insight.conversions || '0'),
-            conversion_values: parseFloat(insight.conversion_values || '0'),
             cpm: parseFloat(insight.cpm || '0'),
             cpc: parseFloat(insight.cpc || '0'),
             ctr: parseFloat(insight.ctr || '0'),
+            
+            // Conversion metrics
+            conversions: parseInt(insight.conversions || '0'),
+            conversion_values: parseFloat(insight.conversion_values || '0'),
+            cost_per_result: parseFloat(insight.cost_per_result || '0'),
+            cost_per_conversion: parseFloat(insight.cost_per_conversion || '0'),
+            
+            // Purchase and ROAS metrics
+            purchase_roas: parseFloat(insight.purchase_roas || insight.return_on_ad_spend || '0'),
+            purchase_value: getActionValueCost('purchase'),
+            purchases: getActionValue('purchase'),
+            cost_per_purchase: parseFloat(insight.cost_per_purchase || '0'),
+            
+            // Video metrics
+            video_views: getActionValue('video_view'),
+            video_views_25_percent: getActionValue('video_p25_watched_actions'),
+            video_views_50_percent: getActionValue('video_p50_watched_actions'),
+            video_views_75_percent: getActionValue('video_p75_watched_actions'),
+            video_views_100_percent: getActionValue('video_p100_watched_actions'),
+            cost_per_video_view: parseFloat(insight.cost_per_thruplay || '0'),
+            
+            // Engagement metrics
+            post_engagements: getActionValue('post_engagement'),
+            page_engagements: getActionValue('page_engagement'),
+            link_clicks: getActionValue('link_click'),
+            landing_page_views: getActionValue('landing_page_view'),
+            cost_per_landing_page_view: parseFloat(insight.cost_per_landing_page_view || '0'),
+            
+            // Lead metrics
+            leads: getActionValue('lead'),
+            lead_value: getActionValueCost('lead'),
+            cost_per_lead: parseFloat(insight.cost_per_lead || '0'),
+            cost_per_lead_actual: parseFloat(insight.lead_generation_cost_per_result || '0'),
+            
+            // Social metrics
+            likes: getActionValue('like'),
+            comments: getActionValue('comment'),
+            shares: getActionValue('share'),
+            post_reactions: getActionValue('post_reaction'),
+            
+            // App metrics
+            app_installs: getActionValue('app_install'),
+            cost_per_app_install: parseFloat(insight.cost_per_app_install || '0'),
+            app_store_clicks: getActionValue('app_store_click'),
+            
+            // Advanced conversion metrics
+            add_to_cart: getActionValue('add_to_cart'),
+            initiate_checkout: getActionValue('initiate_checkout'),
+            add_payment_info: getActionValue('add_payment_info'),
+            complete_registration: getActionValue('complete_registration'),
+            
+            // Messaging metrics
+            messaging_conversations_started: getActionValue('onsite_conversion.messaging_conversation_started_7d'),
+            messaging_first_reply: getActionValue('onsite_conversion.messaging_first_reply'),
+            
+            // Quality metrics
+            quality_score: parseFloat(insight.quality_score_ectr || '0'),
+            relevance_score: parseFloat(insight.quality_score_ecvr || '0'),
+            engagement_rate: parseFloat(insight.engagement_rate || '0'),
+            
+            // Raw data preservation
+            actions: insight.actions || null,
+            action_values: insight.action_values || null,
+            
+            // Attribution windows
+            attribution_1d_view: {
+              conversions: parseInt(insight.conversions_1d_view || '0'),
+              conversion_values: parseFloat(insight.conversion_values_1d_view || '0')
+            },
+            attribution_7d_click: {
+              conversions: parseInt(insight.conversions_7d_click || '0'),
+              conversion_values: parseFloat(insight.conversion_values_7d_click || '0')
+            },
+            attribution_28d_click: {
+              conversions: parseInt(insight.conversions_28d_click || '0'),
+              conversion_values: parseFloat(insight.conversion_values_28d_click || '0')
+            },
+            
             updated_at: new Date().toISOString()
           }, {
             onConflict: 'account_id,meta_ad_account_id,date_start,date_end,meta_campaign_id'
