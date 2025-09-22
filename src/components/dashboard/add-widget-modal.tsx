@@ -178,7 +178,7 @@ export function AddWidgetModal({ open, onOpenChange, onAddWidget }: AddWidgetMod
         
         if (!alreadyExists) {
           setSelectedMetrics(prev => [...prev, metricKey])
-          setMetricsWithOptions(prev => ({ ...prev, [metricKey]: { ...options, originalMetricName: metricName } || { originalMetricName: metricName } }))
+          setMetricsWithOptions(prev => ({ ...prev, [metricKey]: { ...(options || {}), originalMetricName: metricName } }))
         }
       setIsMetricSelectorOpen(false)
     } else {
@@ -360,21 +360,19 @@ export function AddWidgetModal({ open, onOpenChange, onAddWidget }: AddWidgetMod
                         
                         return (
                           <div key={metricKey} className="flex items-center justify-between p-2 bg-muted rounded-md">
-                              onClick={() => {
-                                setSelectedMetrics(prev => prev.filter(m => m !== metricKey))
-                                setMetricsWithOptions(prev => {
-                                  const { [metricKey]: removed, ...rest } = prev
-                                  return rest
-                                })
-                              }}
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium text-sm">{metricDisplayName} ({attributionLabel})</div>
+                              {optionsText && (
+                                <div className="text-xs text-muted-foreground">{optionsText}</div>
+                              )}
                             </div>
                             <Button
                               variant="ghost"
                               size="sm"
                               onClick={() => {
-                                setSelectedMetrics(prev => prev.filter(m => m !== metricId))
+                                setSelectedMetrics(prev => prev.filter(m => m !== metricKey))
                                 setMetricsWithOptions(prev => {
-                                  const { [metricId]: removed, ...rest } = prev
+                                  const { [metricKey]: removed, ...rest } = prev
                                   return rest
                                 })
                               }}
