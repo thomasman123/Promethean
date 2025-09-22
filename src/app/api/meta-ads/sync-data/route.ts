@@ -3,13 +3,14 @@ import { createServerClient } from '@supabase/ssr'
 import type { Database } from '@/lib/database.types'
 
 // Rate limiting utilities for Meta API
-const RATE_LIMIT_DELAY = 2000 // 2 seconds between requests
+const RATE_LIMIT_DELAY = 1000 // 1 second between requests (reduced for fewer calls)
 const MAX_RETRIES = 3
-const RETRY_DELAY_BASE = 5000 // 5 seconds base delay
+const RETRY_DELAY_BASE = 3000 // 3 seconds base delay (reduced for faster recovery)
 
 // Sync optimization settings
-const MAX_CAMPAIGNS_PER_BATCH = 10 // Limit campaigns processed in a single sync
+const MAX_CAMPAIGNS_PER_BATCH = 5 // Further limit campaigns processed in a single sync
 const ENABLE_AD_LEVEL_SYNC = false // Disable detailed ad sync to reduce API calls
+const CAMPAIGNS_ONLY_MODE = true // Skip ad sets and ads entirely for minimal API usage
 
 async function sleep(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms))
@@ -115,8 +116,11 @@ async function getValidMetaAccessToken(account: any, supabase: any): Promise<str
   }
 }
 
-async function syncCampaignData(accountId: string, metaAdAccountId: string, accessToken: string, supabase: any) {
-  console.log(`🔄 Syncing campaign data for ad account: ${metaAdAccountId}`)
+async function syncCampaignData(accountId: string, metaAdAccountId: string, accessToken: string, supabase: any, syncType: string = 'full') {
+  console.log(`🔄 Syncing campaign data for ad account: ${metaAdAccountId} (mode: ${syncType})`)
+  
+  // Override campaigns-only mode based on sync type
+  const campaignsOnlyMode = syncType === 'campaigns' || CAMPAIGNS_ONLY_MODE
   
   try {
     // Fetch campaigns from Meta API with rate limiting
@@ -179,8 +183,12 @@ async function syncCampaignData(accountId: string, metaAdAccountId: string, acce
         } else {
           syncResults.push({ campaignId: campaign.id, success: true })
           
-          // Sync ad sets for this campaign
-          await syncAdSetsForCampaign(accountId, metaAdAccountId, campaign.id, accessToken, supabase, metaAdAccount.id)
+          // Sync ad sets for this campaign (only if not in campaigns-only mode)
+          if (!campaignsOnlyMode) {
+            await syncAdSetsForCampaign(accountId, metaAdAccountId, campaign.id, accessToken, supabase, metaAdAccount.id)
+          } else {
+            console.log(`⚡ Skipping ad sets sync for campaign ${campaign.id} (campaigns-only mode)`)
+          }
         }
       } catch (error) {
         console.error(`❌ Error processing campaign ${campaign.id}:`, error)
@@ -780,7 +788,8 @@ export async function POST(request: NextRequest) {
             accountId, 
             metaAdAccount.meta_ad_account_id, 
             accessToken, 
-            supabase
+            supabase,
+            syncType
           )
           
           if (campaignResult.success) {
