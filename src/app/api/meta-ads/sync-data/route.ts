@@ -268,23 +268,75 @@ async function syncPerformanceData(accountId: string, metaAdAccountId: string, a
 
     console.log(`📅 Fetching daily insights from ${dateStart} to ${dateEnd}`)
 
-    // Fetch core daily insights from Meta API (start with essential metrics)
-    const coreFields = [
-      'impressions', 'clicks', 'spend', 'reach', 'frequency',
-      'cpm', 'cpc', 'ctr', 'actions', 'action_values',
-      'campaign_id', 'campaign_name', 'adset_id', 'adset_name', 'ad_id', 'ad_name'
-    ].join(',');
+    // Try multiple approaches to get comprehensive data
+    let insightsResponse;
+    let insights = [];
 
-    const insightsResponse = await fetch(
-      `https://graph.facebook.com/v21.0/${metaAdAccountId}/insights?fields=${coreFields}&time_range={'since':'${dateStart}','until':'${dateEnd}'}&time_increment=1&level=ad&access_token=${accessToken}`
-    )
+    // Approach 1: Try ad-level insights first
+    try {
+      const coreFields = [
+        'impressions', 'clicks', 'spend', 'reach', 'frequency',
+        'cpm', 'cpc', 'ctr', 'actions', 'action_values',
+        'campaign_id', 'campaign_name', 'adset_id', 'adset_name', 'ad_id', 'ad_name'
+      ].join(',');
 
-    if (!insightsResponse.ok) {
-      throw new Error(`Failed to fetch insights: ${insightsResponse.statusText}`)
+      insightsResponse = await fetch(
+        `https://graph.facebook.com/v21.0/${metaAdAccountId}/insights?fields=${coreFields}&time_range={'since':'${dateStart}','until':'${dateEnd}'}&time_increment=1&level=ad&access_token=${accessToken}`
+      )
+
+      if (insightsResponse.ok) {
+        const adLevelData = await insightsResponse.json()
+        insights = adLevelData.data || []
+        console.log(`📊 Ad-level insights: Found ${insights.length} records`)
+      }
+    } catch (error) {
+      console.log('Ad-level insights failed, trying campaign-level...')
     }
 
-    const insightsData = await insightsResponse.json()
-    const insights = insightsData.data || []
+    // Approach 2: Fallback to campaign-level if ad-level fails or returns limited data
+    if (insights.length === 0) {
+      try {
+        insightsResponse = await fetch(
+          `https://graph.facebook.com/v21.0/${metaAdAccountId}/insights?fields=impressions,clicks,spend,reach,frequency,cpm,cpc,ctr,actions,action_values,campaign_id,campaign_name&time_range={'since':'${dateStart}','until':'${dateEnd}'}&time_increment=1&level=campaign&access_token=${accessToken}`
+        )
+
+        if (insightsResponse.ok) {
+          const campaignLevelData = await insightsResponse.json()
+          insights = campaignLevelData.data || []
+          console.log(`📊 Campaign-level insights: Found ${insights.length} records`)
+        }
+      } catch (error) {
+        console.log('Campaign-level insights also failed')
+      }
+    }
+
+    // Approach 3: Try account-level for maximum data coverage
+    if (insights.length === 0) {
+      try {
+        insightsResponse = await fetch(
+          `https://graph.facebook.com/v21.0/${metaAdAccountId}/insights?fields=impressions,clicks,spend,reach,frequency,cpm,cpc,ctr,actions,action_values&time_range={'since':'${dateStart}','until':'${dateEnd}'}&time_increment=1&level=account&access_token=${accessToken}`
+        )
+
+        if (insightsResponse.ok) {
+          const accountLevelData = await insightsResponse.json()
+          insights = accountLevelData.data || []
+          console.log(`📊 Account-level insights: Found ${insights.length} records`)
+        }
+      } catch (error) {
+        console.log('Account-level insights also failed')
+      }
+    }
+
+    if (insights.length === 0) {
+      console.warn(`⚠️ No insights data available for ${metaAdAccountId} from ${dateStart} to ${dateEnd}`)
+      return {
+        success: true,
+        insightsSynced: 0,
+        totalInsights: 0,
+        dateRange: { start: dateStart, end: dateEnd },
+        message: 'No insights data available for this date range'
+      }
+    }
 
     console.log(`📊 Found ${insights.length} insight records for ad account ${metaAdAccountId}`)
 
@@ -757,13 +809,13 @@ export async function GET(request: NextRequest) {
             accountCampaigns += campaignResult.campaignsSynced || 0
           }
 
-          // Sync recent performance data (last 7 days for frequent updates)
+          // Sync recent performance data (last 1 day for hourly updates)
           const insightsResult = await syncPerformanceData(
             account.id, 
             metaAdAccount.meta_ad_account_id, 
             accessToken, 
             supabase, 
-            7 // Only sync last 7 days for cron jobs
+            1 // Only sync yesterday and today for hourly cron jobs
           )
 
           if (insightsResult.success) {
