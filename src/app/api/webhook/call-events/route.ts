@@ -1421,9 +1421,9 @@ async function processAppointmentWebhook(payload: any) {
           setterId: setterId
         });
         
-        if (setterId && account.ghl_location_id) {
+        if (setterId && account.ghl_location_id && accessToken) {
           console.log('👨‍🎯 Fetching setter details for ID:', setterId);
-          setterData = await fetchGhlUserDetails(setterId, accessToken, account.ghl_location_id as string);
+          setterData = await fetchGhlUserDetails(setterId, accessToken, account.ghl_location_id);
           
           if (setterData) {
             console.log('👨‍🎯 Setter data retrieved:', {
@@ -1736,42 +1736,7 @@ async function processAppointmentWebhook(payload: any) {
         }
       }
 
-      // ENHANCE WITH PROMETHEAN INTERNAL ATTRIBUTION
-      let enhancedWithInternal = false;
-      try {
-        console.log('🎯 Attempting to enhance with Promethean internal attribution...');
-        
-        const enhanceResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'https://www.getpromethean.com'}/api/attribution/enhance-webhook`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            contact_id: insertedContact.id,
-            ghl_contact_data: contactData,
-            webhook_type: 'appointment'
-          })
-        });
 
-        if (enhanceResponse.ok) {
-          const enhanceResult = await enhanceResponse.json();
-          if (enhanceResult.enhanced) {
-            enhancedWithInternal = true;
-            console.log('✅ Successfully enhanced attribution with internal tracking:', {
-              session_id: enhanceResult.session_id,
-              attribution_quality: enhanceResult.attribution_quality,
-              meta_ad_data: enhanceResult.meta_ad_data
-            });
-          } else {
-            console.log('ℹ️ No internal attribution session found for enhancement');
-          }
-        } else {
-          console.warn('⚠️ Failed to enhance with internal attribution:', enhanceResponse.status);
-        }
-      } catch (error) {
-        console.error('❌ Error enhancing with internal attribution:', error);
-        // Don't fail the main webhook for this
-      }
 
       // Enhanced attribution processing
       const attributionSource = contactData?.attributionSource;
@@ -1863,6 +1828,45 @@ async function processAppointmentWebhook(payload: any) {
           } catch (finalError) {
             console.error('❌ Final GHL contact sync also failed:', finalError);
           }
+        }
+      }
+
+      // ENHANCE WITH PROMETHEAN INTERNAL ATTRIBUTION
+      let enhancedWithInternal = false;
+      if (appointmentContactId && contactData) {
+        try {
+          console.log('🎯 Attempting to enhance with Promethean internal attribution...');
+          
+          const enhanceResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'https://www.getpromethean.com'}/api/attribution/enhance-webhook`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              contact_id: appointmentContactId,
+              ghl_contact_data: contactData,
+              webhook_type: 'appointment'
+            })
+          });
+
+          if (enhanceResponse.ok) {
+            const enhanceResult = await enhanceResponse.json();
+            if (enhanceResult.enhanced) {
+              enhancedWithInternal = true;
+              console.log('✅ Successfully enhanced attribution with internal tracking:', {
+                session_id: enhanceResult.session_id,
+                attribution_quality: enhanceResult.attribution_quality,
+                meta_ad_data: enhanceResult.meta_ad_data
+              });
+            } else {
+              console.log('ℹ️ No internal attribution session found for enhancement');
+            }
+          } else {
+            console.warn('⚠️ Failed to enhance with internal attribution:', enhanceResponse.status);
+          }
+        } catch (error) {
+          console.error('❌ Error enhancing with internal attribution:', error);
+          // Don't fail the main webhook for this
         }
       }
 

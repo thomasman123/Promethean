@@ -147,8 +147,21 @@ async function syncAdSetsForCampaign(accountId: string, metaAdAccountId: string,
     )
 
     if (!adSetsResponse.ok) {
-      console.error(`Failed to fetch ad sets for campaign ${campaignId}:`, adSetsResponse.statusText)
-      return
+      const errorText = await adSetsResponse.text();
+      console.error(`Failed to fetch ad sets for campaign ${campaignId}:`, adSetsResponse.statusText);
+      console.error(`Error details:`, {
+        status: adSetsResponse.status,
+        statusText: adSetsResponse.statusText,
+        error: errorText,
+        campaignId
+      });
+      
+      // Don't throw error, just log and continue with other campaigns
+      return {
+        success: false,
+        error: `${adSetsResponse.statusText}: ${errorText}`,
+        campaignId
+      };
     }
 
     const adSetsData = await adSetsResponse.json()
@@ -215,8 +228,21 @@ async function syncAdsForAdSet(accountId: string, adSetId: string, accessToken: 
     )
 
     if (!adsResponse.ok) {
-      console.error(`Failed to fetch ads for ad set ${adSetId}:`, adsResponse.statusText)
-      return
+      const errorText = await adsResponse.text();
+      console.error(`Failed to fetch ads for ad set ${adSetId}:`, adsResponse.statusText);
+      console.error(`Error details:`, {
+        status: adsResponse.status,
+        statusText: adsResponse.statusText,
+        error: errorText,
+        adSetId
+      });
+      
+      // Don't throw error, just log and continue
+      return {
+        success: false,
+        error: `${adsResponse.statusText}: ${errorText}`,
+        adSetId
+      };
     }
 
     const adsData = await adsResponse.json()
@@ -675,7 +701,7 @@ export async function POST(request: NextRequest) {
         adAccountName: metaAdAccount.meta_ad_account_name,
         campaigns: { success: false, count: 0 },
         insights: { success: false, count: 0 },
-        error: null
+        error: null as string | null
       }
 
       try {
@@ -695,7 +721,7 @@ export async function POST(request: NextRequest) {
             }
             syncResults.campaignsSynced += campaignResult.campaignsSynced || 0
           } else {
-            adAccountResult.error = campaignResult.error
+            adAccountResult.error = campaignResult.error || 'Campaign sync failed'
             syncResults.errors++
           }
         }
@@ -717,7 +743,7 @@ export async function POST(request: NextRequest) {
             }
             syncResults.insightsSynced += insightsResult.insightsSynced || 0
           } else {
-            adAccountResult.error = insightsResult.error
+            adAccountResult.error = insightsResult.error || 'Insights sync failed'
             syncResults.errors++
           }
         }
