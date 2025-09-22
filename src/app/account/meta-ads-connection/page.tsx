@@ -323,7 +323,7 @@ function MetaAdsConnectionContent() {
       if (data.success) {
         toast({
           title: "Success",
-          description: `Synced ${data.campaignsSynced} campaigns and ${data.insightsSynced} insights from ${data.totalAdAccounts} ad accounts`,
+          description: `Quick sync completed! Synced ${data.campaignsSynced || 0} campaigns from ${data.totalAdAccounts || 0} ad accounts`,
         })
       } else {
         throw new Error(data.error || 'Failed to sync data')
@@ -333,6 +333,43 @@ function MetaAdsConnectionContent() {
       toast({
         title: "Error",
         description: "Failed to sync Meta Ads data. Please try again.",
+        variant: "destructive"
+      })
+    } finally {
+      setSyncing(false)
+    }
+  }
+
+  const syncCustomRange = async (days: number) => {
+    if (!selectedAccountId) return
+    
+    setSyncing(true)
+    try {
+      const response = await fetch('/api/meta-ads/sync-data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          accountId: selectedAccountId,
+          daysBack: days,
+          syncType: 'full'
+        })
+      })
+
+      const data = await response.json()
+      
+      if (data.success) {
+        toast({
+          title: "Success",
+          description: `${days}-day sync completed! Synced ${data.campaignsSynced || 0} campaigns and ${data.insightsSynced || 0} insights`,
+        })
+      } else {
+        throw new Error(data.error || 'Failed to sync data')
+      }
+    } catch (error) {
+      console.error('Meta Ads custom sync error:', error)
+      toast({
+        title: "Error",
+        description: `Failed to sync ${days} days of data. Please try again.`,
         variant: "destructive"
       })
     } finally {
@@ -950,25 +987,58 @@ function MetaAdsConnectionContent() {
 
                     {mappings.filter(m => m.is_active).length > 0 && (
                       <div className="pt-4 border-t">
-                        <div className="flex items-center justify-between mb-4">
+                        <div className="space-y-4">
                           <div>
                             <h4 className="font-medium">Data Synchronization</h4>
                             <p className="text-sm text-muted-foreground">
-                              Sync the last 90 days of campaign data and performance metrics from your selected ad accounts.
+                              Sync campaign data and performance metrics from your selected ad accounts. Use daily sync to minimize API usage.
                             </p>
                           </div>
-                          <Button
-                            onClick={syncMetaAdsData}
-                            disabled={syncing}
-                            variant="outline"
-                          >
-                            {syncing ? (
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            ) : (
-                              <RefreshCw className="h-4 w-4 mr-2" />
-                            )}
-                            {syncing ? 'Syncing...' : 'Sync 90-Day History'}
-                          </Button>
+                          
+                          <div className="flex items-center gap-3">
+                            <Button
+                              onClick={syncMetaAdsData}
+                              disabled={syncing}
+                              variant="outline"
+                              size="sm"
+                            >
+                              {syncing ? (
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              ) : (
+                                <RefreshCw className="h-4 w-4 mr-2" />
+                              )}
+                              {syncing ? 'Syncing...' : 'Quick Sync (Today)'}
+                            </Button>
+                            
+                            <Button
+                              onClick={() => syncCustomRange(7)}
+                              disabled={syncing}
+                              variant="outline"
+                              size="sm"
+                            >
+                              <TrendingUp className="h-4 w-4 mr-2" />
+                              Sync 7 Days
+                            </Button>
+                            
+                            <Button
+                              onClick={() => syncCustomRange(30)}
+                              disabled={syncing}
+                              variant="outline"
+                              size="sm"
+                            >
+                              <TrendingUp className="h-4 w-4 mr-2" />
+                              Sync 30 Days
+                            </Button>
+                          </div>
+                          
+                          <div className="text-xs text-muted-foreground bg-blue-50 p-3 rounded-lg border border-blue-200">
+                            <p className="font-medium text-blue-900 mb-1">💡 Sync Recommendations:</p>
+                            <ul className="list-disc list-inside space-y-1 text-blue-800">
+                              <li><strong>Quick Sync:</strong> Use daily for regular updates (minimal API usage)</li>
+                              <li><strong>7-Day Sync:</strong> Good for weekly reporting needs</li>
+                              <li><strong>30-Day Sync:</strong> Use sparingly for historical analysis</li>
+                            </ul>
+                          </div>
                         </div>
                       </div>
                     )}

@@ -47,9 +47,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log(`🚀 Starting manual 90-day Meta Ads sync for account: ${accountId}`)
+    console.log(`🚀 Starting initial 1-day Meta Ads sync for account: ${accountId}`)
 
-    // Call the main sync endpoint
+    // Call the main sync endpoint with minimal data (1 day only)
     const syncResponse = await fetch(`${request.nextUrl.origin}/api/meta-ads/sync-data`, {
       method: 'POST',
       headers: {
@@ -58,8 +58,8 @@ export async function POST(request: NextRequest) {
       },
       body: JSON.stringify({
         accountId,
-        daysBack: 90,
-        syncType: 'full'
+        daysBack: 1,
+        syncType: 'campaigns' // Only sync campaigns and structure, not insights initially
       })
     })
 
@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'Initial 90-day sync completed successfully',
+      message: 'Initial connection sync completed successfully',
       ...syncData
     })
 
