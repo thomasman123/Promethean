@@ -1,7 +1,7 @@
 "use client"
 
 import { cn } from "@/lib/utils"
-import { Sword, Home, RefreshCw, Settings, Sun, Moon, LogOut, ChevronDown, LayoutDashboard, Database, Calendar, Users, CreditCard, Building2, Palette, Plus, FileText, Shield } from "lucide-react"
+import { Sword, Home, RefreshCw, Settings, Sun, Moon, LogOut, ChevronDown, LayoutDashboard, Database, Calendar, Users, CreditCard, Building2, Palette, Plus, FileText, Shield, TrendingUp } from "lucide-react"
 import { useState, useEffect, useRef } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
@@ -240,6 +240,7 @@ export function TopBar({ onAddWidget }: TopBarProps) {
       dropdownItems: [
         { href: "/account/settings", label: "Settings", icon: Settings },
         { href: "/account/ghl-connection", label: "GHL Connection", icon: Shield },
+        { href: "/account/meta-ads-connection", label: "Meta Ads Connection", icon: TrendingUp },
         { href: "/account/team", label: "Team", icon: Users }
       ]
     },
