@@ -264,6 +264,22 @@ export default function AccountSettingsPage() {
 
           {/* Contact Sync Tools */}
           <ContactSyncTools accountId={selectedAccountId} />
+
+          {/* Advanced Tracking Link */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Advanced Tracking</CardTitle>
+              <CardDescription>Set up high‑accuracy tracking across your funnel and Meta Ads.</CardDescription>
+            </CardHeader>
+            <CardContent className="flex justify-between items-center">
+              <div className="text-sm text-muted-foreground">
+                Learn how to install the pixel, configure webhooks, and verify attribution.
+              </div>
+              <Button asChild>
+                <a href="/account/settings/advanced-tracking">Open Guide</a>
+              </Button>
+            </CardContent>
+          </Card>
         </div>
       </main>
     </div>
