@@ -266,11 +266,11 @@ async function syncPerformanceData(accountId: string, metaAdAccountId: string, a
     const dateStart = startDate.toISOString().split('T')[0]
     const dateEnd = endDate.toISOString().split('T')[0]
 
-    console.log(`📅 Fetching insights from ${dateStart} to ${dateEnd}`)
+    console.log(`📅 Fetching daily insights from ${dateStart} to ${dateEnd}`)
 
-    // Fetch insights from Meta API
+    // Fetch daily insights from Meta API (time_increment=1 for daily data)
     const insightsResponse = await fetch(
-      `https://graph.facebook.com/v21.0/${metaAdAccountId}/insights?fields=impressions,clicks,spend,reach,frequency,actions,action_values,conversions,conversion_values,cpm,cpc,ctr&time_range={'since':'${dateStart}','until':'${dateEnd}'}&level=campaign&access_token=${accessToken}`
+      `https://graph.facebook.com/v21.0/${metaAdAccountId}/insights?fields=impressions,clicks,spend,reach,frequency,actions,action_values,conversions,conversion_values,cpm,cpc,ctr,campaign_id,campaign_name&time_range={'since':'${dateStart}','until':'${dateEnd}'}&time_increment=1&level=campaign&access_token=${accessToken}`
     )
 
     if (!insightsResponse.ok) {
@@ -296,7 +296,7 @@ async function syncPerformanceData(accountId: string, metaAdAccountId: string, a
 
     const syncResults = []
 
-    // Sync each insight record
+    // Sync each daily insight record
     for (const insight of insights) {
       try {
         // Find the corresponding campaign
@@ -307,14 +307,17 @@ async function syncPerformanceData(accountId: string, metaAdAccountId: string, a
           .eq('account_id', accountId)
           .single()
 
+        // Use the actual date from the insight (daily data)
+        const insightDate = insight.date_start || dateStart
+        
         const { data, error } = await supabase
           .from('meta_ad_performance')
           .upsert({
             account_id: accountId,
             meta_ad_account_id: metaAdAccount.id,
             meta_campaign_id: campaign?.id || null,
-            date_start: dateStart,
-            date_end: dateEnd,
+            date_start: insightDate,
+            date_end: insightDate, // Daily data - start and end are the same
             impressions: parseInt(insight.impressions || '0'),
             clicks: parseInt(insight.clicks || '0'),
             spend: parseFloat(insight.spend || '0'),
