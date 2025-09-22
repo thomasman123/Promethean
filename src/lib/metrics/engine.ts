@@ -696,42 +696,178 @@ WHERE speed_to_lead_seconds IS NOT NULL
      `.trim()
    }
 
-     /**
-    * Special SQL builder for Cost Per Booked Call calculation (Ad spend / Total appointments)
-    */
-   private buildCostPerBookedCallSQL(appliedFilters: any, metric: MetricDefinition, options?: any): string {
-     // Cost Per Booked Call = Total Ad Spend / Total Appointments
-     // We need to join appointments and meta_ad_performance tables
-     
-     const whereClause = buildWhereClause(appliedFilters, [])
-     
-     return `
-       WITH appointment_data AS (
-         SELECT 
-           account_id,
-           COUNT(*) as total_appointments
-         FROM appointments
-         ${whereClause}
-         GROUP BY account_id
-       ),
-       spend_data AS (
-         SELECT 
-           account_id,
-           COALESCE(SUM(spend), 0) as total_spend
-         FROM meta_ad_performance
-         ${whereClause.replace('appointments.', 'meta_ad_performance.')}
-         GROUP BY account_id
-       )
-       SELECT 
-         CASE 
-           WHEN appointment_data.total_appointments > 0 
-           THEN ROUND(spend_data.total_spend / appointment_data.total_appointments, 2)
-           ELSE 0 
-         END as value
-       FROM appointment_data
-       FULL OUTER JOIN spend_data ON appointment_data.account_id = spend_data.account_id
-           `.trim()
-   }
+       /**
+   * Special SQL builder for Cost Per Booked Call calculation (Ad spend / Total appointments)
+   */
+  private buildCostPerBookedCallSQL(appliedFilters: any, metric: MetricDefinition, options?: any): string {
+    // Cost Per Booked Call = Total Ad Spend / Total Appointments
+    // We need to join appointments and meta_ad_performance tables
+    
+    const whereClause = buildWhereClause(appliedFilters, [])
+    const breakdownType = metric.breakdownType
+    
+    // Handle different breakdown types
+    switch (breakdownType) {
+      case 'total':
+        return `
+          WITH appointment_data AS (
+            SELECT 
+              account_id,
+              COUNT(*) as total_appointments
+            FROM appointments
+            ${whereClause}
+            GROUP BY account_id
+          ),
+          spend_data AS (
+            SELECT 
+              account_id,
+              COALESCE(SUM(spend), 0) as total_spend
+            FROM meta_ad_performance
+            ${whereClause.replace('appointments.', 'meta_ad_performance.')}
+            GROUP BY account_id
+          )
+          SELECT 
+            CASE 
+              WHEN appointment_data.total_appointments > 0 
+              THEN ROUND(spend_data.total_spend / appointment_data.total_appointments, 2)
+              ELSE 0 
+            END as value
+          FROM appointment_data
+          FULL OUTER JOIN spend_data ON appointment_data.account_id = spend_data.account_id
+        `.trim()
+        
+      case 'rep':
+        // Cost per booked call by sales rep (assigned attribution)
+        return `
+          WITH appointment_data AS (
+            SELECT 
+              account_id,
+              sales_rep_user_id,
+              COUNT(*) as total_appointments
+            FROM appointments
+            ${whereClause}
+            AND sales_rep_user_id IS NOT NULL
+            GROUP BY account_id, sales_rep_user_id
+          ),
+          spend_data AS (
+            SELECT 
+              account_id,
+              COALESCE(SUM(spend), 0) as total_spend
+            FROM meta_ad_performance
+            ${whereClause.replace('appointments.', 'meta_ad_performance.')}
+            GROUP BY account_id
+          ),
+          rep_names AS (
+            SELECT 
+              p.id as user_id,
+              COALESCE(p.full_name, p.email, 'Unknown Rep') as user_name
+            FROM profiles p
+          )
+          SELECT 
+            appointment_data.sales_rep_user_id as repId,
+            rep_names.user_name as repName,
+            CASE 
+              WHEN appointment_data.total_appointments > 0 
+              THEN ROUND(spend_data.total_spend / appointment_data.total_appointments, 2)
+              ELSE 0 
+            END as value
+          FROM appointment_data
+          LEFT JOIN spend_data ON appointment_data.account_id = spend_data.account_id
+          LEFT JOIN rep_names ON appointment_data.sales_rep_user_id = rep_names.user_id
+          ORDER BY rep_names.user_name
+        `.trim()
+        
+      case 'setter':
+        // Cost per booked call by setter (booked attribution)
+        return `
+          WITH appointment_data AS (
+            SELECT 
+              account_id,
+              setter_user_id,
+              COUNT(*) as total_appointments
+            FROM appointments
+            ${whereClause}
+            AND setter_user_id IS NOT NULL
+            GROUP BY account_id, setter_user_id
+          ),
+          spend_data AS (
+            SELECT 
+              account_id,
+              COALESCE(SUM(spend), 0) as total_spend
+            FROM meta_ad_performance
+            ${whereClause.replace('appointments.', 'meta_ad_performance.')}
+            GROUP BY account_id
+          ),
+          setter_names AS (
+            SELECT 
+              p.id as user_id,
+              COALESCE(p.full_name, p.email, 'Unknown Setter') as user_name
+            FROM profiles p
+          )
+          SELECT 
+            appointment_data.setter_user_id as setterId,
+            setter_names.user_name as setterName,
+            CASE 
+              WHEN appointment_data.total_appointments > 0 
+              THEN ROUND(spend_data.total_spend / appointment_data.total_appointments, 2)
+              ELSE 0 
+            END as value
+          FROM appointment_data
+          LEFT JOIN spend_data ON appointment_data.account_id = spend_data.account_id
+          LEFT JOIN setter_names ON appointment_data.setter_user_id = setter_names.user_id
+          ORDER BY setter_names.user_name
+        `.trim()
+        
+      case 'link':
+        // Cost per booked call showing setter→rep relationships
+        return `
+          WITH appointment_data AS (
+            SELECT 
+              account_id,
+              setter_user_id,
+              sales_rep_user_id,
+              COUNT(*) as total_appointments
+            FROM appointments
+            ${whereClause}
+            AND setter_user_id IS NOT NULL 
+            AND sales_rep_user_id IS NOT NULL
+            GROUP BY account_id, setter_user_id, sales_rep_user_id
+          ),
+          spend_data AS (
+            SELECT 
+              account_id,
+              COALESCE(SUM(spend), 0) as total_spend
+            FROM meta_ad_performance
+            ${whereClause.replace('appointments.', 'meta_ad_performance.')}
+            GROUP BY account_id
+          ),
+          user_names AS (
+            SELECT 
+              p.id as user_id,
+              COALESCE(p.full_name, p.email, 'Unknown User') as user_name
+            FROM profiles p
+          )
+          SELECT 
+            appointment_data.setter_user_id as setterId,
+            setter_names.user_name as setterName,
+            appointment_data.sales_rep_user_id as repId,
+            rep_names.user_name as repName,
+            CASE 
+              WHEN appointment_data.total_appointments > 0 
+              THEN ROUND(spend_data.total_spend / appointment_data.total_appointments, 2)
+              ELSE 0 
+            END as value
+          FROM appointment_data
+          LEFT JOIN spend_data ON appointment_data.account_id = spend_data.account_id
+          LEFT JOIN user_names setter_names ON appointment_data.setter_user_id = setter_names.user_id
+          LEFT JOIN user_names rep_names ON appointment_data.sales_rep_user_id = rep_names.user_id
+          ORDER BY setter_names.user_name, rep_names.user_name
+        `.trim()
+        
+      default:
+        throw new Error(`Unsupported breakdown type for Cost Per Booked Call: ${breakdownType}`)
+    }
+  }
 
    /**
     * Special SQL builder for Lead to Appointment calculation (Appointments / Contacts)
