@@ -558,18 +558,241 @@ const BASE_METRICS = {
 		}
 	},
 
-	'cost_per_booked_call': {
-		name: 'Cost Per Booked Call',
-		description: 'Total ad spend divided by total appointments for the period',
+	'meta_impressions': {
+		name: 'Meta Impressions',
+		description: 'Total impressions from Meta ads',
 		breakdownType: 'total' as const,
 		query: {
 			table: 'meta_ad_performance',
-			select: ['0 as value'] // This will be calculated via cross-table calculation in engine
+			select: ['COALESCE(SUM(impressions), 0) as value']
+		},
+		unit: 'count' as const,
+		options: {
+			attribution: ['all'],
+		}
+	},
+
+	'meta_clicks': {
+		name: 'Meta Clicks',
+		description: 'Total clicks from Meta ads',
+		breakdownType: 'total' as const,
+		query: {
+			table: 'meta_ad_performance',
+			select: ['COALESCE(SUM(clicks), 0) as value']
+		},
+		unit: 'count' as const,
+		options: {
+			attribution: ['all'],
+		}
+	},
+
+	'meta_reach': {
+		name: 'Meta Reach',
+		description: 'Total unique people reached by Meta ads',
+		breakdownType: 'total' as const,
+		query: {
+			table: 'meta_ad_performance',
+			select: ['COALESCE(SUM(reach), 0) as value']
+		},
+		unit: 'count' as const,
+		options: {
+			attribution: ['all'],
+		}
+	},
+
+	'meta_cpm': {
+		name: 'Meta CPM',
+		description: 'Average cost per 1,000 impressions',
+		breakdownType: 'total' as const,
+		query: {
+			table: 'meta_ad_performance',
+			select: ['COALESCE(AVG(cpm), 0) as value']
 		},
 		unit: 'currency' as const,
-		isSpecialMetric: true,
 		options: {
-			attribution: ['all', 'assigned', 'booked'],
+			attribution: ['all'],
+		}
+	},
+
+	'meta_cpc': {
+		name: 'Meta CPC',
+		description: 'Average cost per click',
+		breakdownType: 'total' as const,
+		query: {
+			table: 'meta_ad_performance',
+			select: ['COALESCE(AVG(cpc), 0) as value']
+		},
+		unit: 'currency' as const,
+		options: {
+			attribution: ['all'],
+		}
+	},
+
+	'meta_ctr': {
+		name: 'Meta CTR',
+		description: 'Average click-through rate',
+		breakdownType: 'total' as const,
+		query: {
+			table: 'meta_ad_performance',
+			select: ['COALESCE(AVG(ctr), 0) as value']
+		},
+		unit: 'percent' as const,
+		options: {
+			attribution: ['all'],
+		}
+	},
+
+	'meta_leads': {
+		name: 'Meta Leads',
+		description: 'Total leads generated from Meta ads',
+		breakdownType: 'total' as const,
+		query: {
+			table: 'meta_ad_performance',
+			select: ['COALESCE(SUM(leads), 0) as value']
+		},
+		unit: 'count' as const,
+		options: {
+			attribution: ['all'],
+		}
+	},
+
+	'meta_cost_per_lead': {
+		name: 'Meta Cost Per Lead',
+		description: 'Average cost per lead from Meta ads',
+		breakdownType: 'total' as const,
+		query: {
+			table: 'meta_ad_performance',
+			select: ['COALESCE(AVG(cost_per_lead), 0) as value']
+		},
+		unit: 'currency' as const,
+		options: {
+			attribution: ['all'],
+		}
+	},
+
+	'meta_purchase_roas': {
+		name: 'Meta Purchase ROAS',
+		description: 'Return on ad spend for purchases',
+		breakdownType: 'total' as const,
+		query: {
+			table: 'meta_ad_performance',
+			select: ['COALESCE(AVG(purchase_roas), 0) as value']
+		},
+		unit: 'ratio' as const,
+		options: {
+			attribution: ['all'],
+		}
+	},
+
+	'meta_purchase_value': {
+		name: 'Meta Purchase Value',
+		description: 'Total purchase value from Meta ads',
+		breakdownType: 'total' as const,
+		query: {
+			table: 'meta_ad_performance',
+			select: ['COALESCE(SUM(purchase_value), 0) as value']
+		},
+		unit: 'currency' as const,
+		options: {
+			attribution: ['all'],
+		}
+	},
+
+	'meta_video_views': {
+		name: 'Meta Video Views',
+		description: 'Total video views (3+ seconds)',
+		breakdownType: 'total' as const,
+		query: {
+			table: 'meta_ad_performance',
+			select: ['COALESCE(SUM(video_views), 0) as value']
+		},
+		unit: 'count' as const,
+		options: {
+			attribution: ['all'],
+		}
+	},
+
+	'meta_link_clicks': {
+		name: 'Meta Link Clicks',
+		description: 'Total link clicks from Meta ads',
+		breakdownType: 'total' as const,
+		query: {
+			table: 'meta_ad_performance',
+			select: ['COALESCE(SUM(link_clicks), 0) as value']
+		},
+		unit: 'count' as const,
+		options: {
+			attribution: ['all'],
+		}
+	},
+
+	'meta_landing_page_views': {
+		name: 'Meta Landing Page Views',
+		description: 'Total landing page views from Meta ads',
+		breakdownType: 'total' as const,
+		query: {
+			table: 'meta_ad_performance',
+			select: ['COALESCE(SUM(landing_page_views), 0) as value']
+		},
+		unit: 'count' as const,
+		options: {
+			attribution: ['all'],
+		}
+	},
+
+	'meta_cost_per_landing_page_view': {
+		name: 'Meta Cost Per Landing Page View',
+		description: 'Average cost per landing page view',
+		breakdownType: 'total' as const,
+		query: {
+			table: 'meta_ad_performance',
+			select: ['COALESCE(AVG(cost_per_landing_page_view), 0) as value']
+		},
+		unit: 'currency' as const,
+		options: {
+			attribution: ['all'],
+		}
+	},
+
+	'meta_frequency': {
+		name: 'Meta Frequency',
+		description: 'Average frequency (times each person saw ads)',
+		breakdownType: 'total' as const,
+		query: {
+			table: 'meta_ad_performance',
+			select: ['COALESCE(AVG(frequency), 0) as value']
+		},
+		unit: 'count' as const,
+		options: {
+			attribution: ['all'],
+		}
+	},
+
+	'meta_post_engagements': {
+		name: 'Meta Post Engagements',
+		description: 'Total post engagements from Meta ads',
+		breakdownType: 'total' as const,
+		query: {
+			table: 'meta_ad_performance',
+			select: ['COALESCE(SUM(post_engagements), 0) as value']
+		},
+		unit: 'count' as const,
+		options: {
+			attribution: ['all'],
+		}
+	},
+
+	'meta_engagement_rate': {
+		name: 'Meta Engagement Rate',
+		description: 'Average engagement rate across Meta ads',
+		breakdownType: 'total' as const,
+		query: {
+			table: 'meta_ad_performance',
+			select: ['COALESCE(AVG(engagement_rate), 0) as value']
+		},
+		unit: 'percent' as const,
+		options: {
+			attribution: ['all'],
 		}
 	},
 
