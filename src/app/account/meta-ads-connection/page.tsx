@@ -16,6 +16,7 @@ import { useEffectiveUser } from "@/hooks/use-effective-user"
 import { Shield, AlertCircle, CheckCircle2, Loader2, Link, Unlink, RefreshCw, TrendingUp, Settings } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Loading } from "@/components/ui/loading"
 
 interface MetaAdsConnectionStatus {
@@ -33,6 +34,17 @@ interface MetaAdAccount {
   account_status: number
   currency: string
   timezone_name: string
+  is_mapped?: boolean
+}
+
+interface AdAccountMapping {
+  id: string
+  account_id: string
+  meta_ad_account_id: string
+  meta_ad_account_name: string
+  is_active: boolean
+  created_at: string
+  updated_at: string
 }
 
 function MetaAdsConnectionContent() {
@@ -45,6 +57,8 @@ function MetaAdsConnectionContent() {
   const [adAccounts, setAdAccounts] = useState<MetaAdAccount[]>([])
   const [loadingAdAccounts, setLoadingAdAccounts] = useState(false)
   const [refreshingToken, setRefreshingToken] = useState(false)
+  const [mappings, setMappings] = useState<AdAccountMapping[]>([])
+  const [savingMappings, setSavingMappings] = useState(false)
   
   const { toast } = useToast()
   const router = useRouter()
@@ -179,6 +193,27 @@ function MetaAdsConnectionContent() {
     }
   }
 
+  const fetchAdAccountMappings = async () => {
+    if (!selectedAccountId) return
+    
+    try {
+      const { data: mappingsData, error: mappingsError } = await supabase
+        .from('meta_ad_accounts')
+        .select('*')
+        .eq('account_id', selectedAccountId)
+        .order('meta_ad_account_name')
+      
+      if (mappingsError) {
+        console.error('Error fetching ad account mappings:', mappingsError)
+        setMappings([])
+      } else {
+        setMappings(mappingsData || [])
+      }
+    } catch (error) {
+      console.error('Error fetching ad account mappings:', error)
+    }
+  }
+
   const fetchAdAccounts = async () => {
     if (!selectedAccountId) return
     
@@ -190,6 +225,9 @@ function MetaAdsConnectionContent() {
       
       if (adAccountsData.success) {
         setAdAccounts(adAccountsData.adAccounts || [])
+        
+        // Also fetch existing mappings for this account
+        await fetchAdAccountMappings()
       } else {
         console.error('Failed to fetch ad accounts:', adAccountsData.error)
         setAdAccounts([])
@@ -203,6 +241,68 @@ function MetaAdsConnectionContent() {
       })
     } finally {
       setLoadingAdAccounts(false)
+    }
+  }
+
+  const updateAdAccountMapping = async (adAccount: MetaAdAccount, enabled: boolean) => {
+    if (!selectedAccountId) return
+    
+    setSavingMappings(true)
+    try {
+      const existingMapping = mappings.find(m => m.meta_ad_account_id === adAccount.id)
+      
+      if (existingMapping) {
+        // Update existing mapping
+        const { error } = await supabase
+          .from('meta_ad_accounts')
+          .update({
+            is_active: enabled,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', existingMapping.id)
+        
+        if (error) throw error
+        
+        // Update local state
+        setMappings(prev => prev.map(m => 
+          m.id === existingMapping.id 
+            ? { ...m, is_active: enabled, updated_at: new Date().toISOString() }
+            : m
+        ))
+      } else if (enabled) {
+        // Create new mapping
+        const newMapping = {
+          account_id: selectedAccountId,
+          meta_ad_account_id: adAccount.id,
+          meta_ad_account_name: adAccount.name,
+          is_active: enabled
+        }
+        
+        const { data, error } = await supabase
+          .from('meta_ad_accounts')
+          .insert(newMapping)
+          .select()
+          .single()
+        
+        if (error) throw error
+        
+        // Add to local state
+        setMappings(prev => [...prev, data])
+      }
+      
+      toast({
+        title: "Success",
+        description: `Ad account ${enabled ? 'connected' : 'disconnected'} for ${adAccount.name}`,
+      })
+    } catch (error) {
+      console.error('Error updating ad account mapping:', error)
+      toast({
+        title: "Error",
+        description: "Failed to update ad account mapping",
+        variant: "destructive"
+      })
+    } finally {
+      setSavingMappings(false)
     }
   }
 
@@ -760,31 +860,46 @@ function MetaAdsConnectionContent() {
                             <TableHead>Status</TableHead>
                             <TableHead>Currency</TableHead>
                             <TableHead>Timezone</TableHead>
+                            <TableHead>Use for This Client</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {adAccounts.map((account) => (
-                            <TableRow key={account.id}>
-                              <TableCell>
-                                <div className="font-medium">{account.name}</div>
-                              </TableCell>
-                              <TableCell>
-                                <code className="text-sm bg-gray-100 px-2 py-1 rounded">
-                                  {account.id}
-                                </code>
-                              </TableCell>
-                              <TableCell>
-                                <Badge 
-                                  variant={account.account_status === 1 ? "default" : "secondary"}
-                                  className={account.account_status === 1 ? "bg-green-100 text-green-800" : ""}
-                                >
-                                  {account.account_status === 1 ? 'Active' : 'Inactive'}
-                                </Badge>
-                              </TableCell>
-                              <TableCell>{account.currency}</TableCell>
-                              <TableCell>{account.timezone_name}</TableCell>
-                            </TableRow>
-                          ))}
+                          {adAccounts.map((account) => {
+                            const isMapping = mappings.find(m => m.meta_ad_account_id === account.id)
+                            const isMapped = !!isMapping && isMapping.is_active
+                            
+                            return (
+                              <TableRow key={account.id}>
+                                <TableCell>
+                                  <div className="font-medium">{account.name}</div>
+                                </TableCell>
+                                <TableCell>
+                                  <code className="text-sm bg-gray-100 px-2 py-1 rounded">
+                                    {account.id}
+                                  </code>
+                                </TableCell>
+                                <TableCell>
+                                  <Badge 
+                                    variant={account.account_status === 1 ? "default" : "secondary"}
+                                    className={account.account_status === 1 ? "bg-green-100 text-green-800" : ""}
+                                  >
+                                    {account.account_status === 1 ? 'Active' : 'Inactive'}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>{account.currency}</TableCell>
+                                <TableCell>{account.timezone_name}</TableCell>
+                                <TableCell>
+                                  <Checkbox
+                                    checked={isMapped}
+                                    onCheckedChange={(checked: boolean) => 
+                                      updateAdAccountMapping(account, checked)
+                                    }
+                                    disabled={savingMappings || account.account_status !== 1}
+                                  />
+                                </TableCell>
+                              </TableRow>
+                            )
+                          })}
                         </TableBody>
                       </Table>
                     </div>
