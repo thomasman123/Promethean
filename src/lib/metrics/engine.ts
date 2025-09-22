@@ -765,6 +765,17 @@ WHERE speed_to_lead_seconds IS NOT NULL
      // We need to join appointments and meta_ad_performance tables
      
      const whereClause = buildWhereClause(appliedFilters, [])
+
+     // Create a separate WHERE clause for meta_ad_performance that excludes user-specific filters
+     const filteredConditions = appliedFilters.conditions.filter((condition: any) => 
+       !condition.field.includes('sales_rep_user_id') && 
+       !condition.field.includes('setter_user_id')
+     )
+     const filteredParams = { ...appliedFilters.params }
+     delete filteredParams.rep_user_id
+     delete filteredParams.setter_user_id
+     const metaAppliedFilters = { conditions: filteredConditions, params: filteredParams }
+     const metaWhereClause = buildWhereClause(metaAppliedFilters, []).replace('appointments.', 'meta_ad_performance.')
      
      return `
        WITH cash_data AS (
@@ -780,7 +791,7 @@ WHERE speed_to_lead_seconds IS NOT NULL
            account_id,
            COALESCE(SUM(spend), 0) as total_spend
          FROM meta_ad_performance
-         ${whereClause.replace('appointments.', 'meta_ad_performance.')}
+         ${metaWhereClause}
          GROUP BY account_id
        )
        SELECT 
