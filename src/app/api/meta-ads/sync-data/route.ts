@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import type { Database } from '@/lib/database.types'
+import { formatInTimeZone } from 'date-fns-tz'
 
 // Rate limiting utilities for Meta API
 const RATE_LIMIT_DELAY = 1000 // 1 second between requests (reduced for fewer calls)
@@ -11,6 +12,33 @@ const RETRY_DELAY_BASE = 3000 // 3 seconds base delay (reduced for faster recove
 const MAX_CAMPAIGNS_PER_BATCH = 5 // Further limit campaigns processed in a single sync
 const ENABLE_AD_LEVEL_SYNC = false // Disable detailed ad sync to reduce API calls
 const CAMPAIGNS_ONLY_MODE = true // Skip ad sets and ads entirely for minimal API usage
+
+// Helper function to calculate local date columns based on UTC date and timezone
+function calculateLocalDates(utcDate: string, timezone: string) {
+  const date = new Date(utcDate + 'T00:00:00Z') // Ensure UTC interpretation
+  
+  // Calculate local date in the account's timezone
+  const localDate = formatInTimeZone(date, timezone, 'yyyy-MM-dd')
+  
+  // Calculate local week (Monday as start of week)
+  const localWeekDate = new Date(localDate + 'T00:00:00')
+  const dayOfWeek = localWeekDate.getDay()
+  const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek // Sunday = 0, Monday = 1
+  const mondayDate = new Date(localWeekDate)
+  mondayDate.setDate(mondayDate.getDate() + mondayOffset)
+  const localWeek = mondayDate.toISOString().split('T')[0]
+  
+  // Calculate local month (first day of month)
+  const localMonthDate = new Date(localDate + 'T00:00:00')
+  localMonthDate.setDate(1)
+  const localMonth = localMonthDate.toISOString().split('T')[0]
+  
+  return {
+    local_date: localDate,
+    local_week: localWeek,
+    local_month: localMonth
+  }
+}
 
 async function sleep(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms))
@@ -131,6 +159,15 @@ async function syncCampaignDataBatched(accountId: string, metaAdAccountId: strin
 // Ultra-efficient batch sync for campaign structure + TODAY'S METRICS
 async function syncCampaignStructureBatched(accountId: string, metaAdAccountId: string, accessToken: string, supabase: any) {
   try {
+    // Get account timezone for local date calculations
+    const { data: account } = await supabase
+      .from('accounts')
+      .select('business_timezone')
+      .eq('id', accountId)
+      .single()
+    
+    const accountTimezone = account?.business_timezone || 'UTC'
+    
     const today = new Date().toISOString().split('T')[0]
     console.log(`⚡ Ultra-fast campaign structure + metrics sync for ${metaAdAccountId} (${today})`)
     
@@ -268,6 +305,9 @@ async function syncCampaignStructureBatched(accountId: string, metaAdAccountId: 
         const adInsights = []
 
         for (const insight of insights) {
+          // Calculate local date columns based on account timezone
+          const localDates = calculateLocalDates(insight.date_start, accountTimezone)
+          
           const baseMetrics = {
             account_id: accountId,
             date: insight.date_start,
@@ -665,6 +705,14 @@ async function syncPerformanceData(accountId: string, metaAdAccountId: string, a
   console.log(`📈 Syncing performance data for ad account: ${metaAdAccountId} (${daysBack} days)`)
   
   try {
+    // Get account timezone for local date calculations
+    const { data: account } = await supabase
+      .from('accounts')
+      .select('business_timezone')
+      .eq('id', accountId)
+      .single()
+    
+    const accountTimezone = account?.business_timezone || 'UTC'
     // Calculate date range
     const endDate = new Date()
     const startDate = new Date()
@@ -849,6 +897,9 @@ async function syncPerformanceData(accountId: string, metaAdAccountId: string, a
           return actionValue ? parseFloat(actionValue.value || '0') : 0
         }
         
+        // Calculate local date columns based on account timezone
+        const localDates = calculateLocalDates(insightDate, accountTimezone)
+        
         const { data, error } = await supabase
           .from('meta_ad_performance')
           .upsert({
@@ -859,6 +910,11 @@ async function syncPerformanceData(accountId: string, metaAdAccountId: string, a
             meta_ad_id: metaAd?.id || null,
             date_start: insightDate,
             date_end: insightDate, // Daily data - start and end are the same
+            
+            // Local date columns for timezone-aware filtering
+            local_date: localDates.local_date,
+            local_week: localDates.local_week,
+            local_month: localDates.local_month,
             
             // Core metrics
             impressions: parseInt(insight.impressions || '0'),
