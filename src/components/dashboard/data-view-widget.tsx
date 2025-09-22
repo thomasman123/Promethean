@@ -217,6 +217,14 @@ export function DataViewWidget({ metrics, selectedUsers, options }: DataViewWidg
     const metricInfo = METRICS_REGISTRY[metricName]
     if (!metricInfo) return value.toString()
 
+    // Respect display override for ROI metrics
+    // If display is multiplier and unit is percent (fraction), render as X.x×
+    const displayOverride = options?.[metricName]?.display
+    if (displayOverride === 'multiplier' && metricInfo.unit === 'percent') {
+      const multiple = (value ?? 0) + 1
+      return `${multiple.toFixed(2)}x`
+    }
+
     // Handle time-based metrics with special formatting
     if (metricInfo.unit === 'seconds' && metricInfo.name.toLowerCase().includes('speed')) {
       if (value < 60) {
