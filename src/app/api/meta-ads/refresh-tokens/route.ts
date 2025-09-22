@@ -87,9 +87,12 @@ async function refreshMetaToken(account: any, supabase: any): Promise<{
 export async function POST(request: NextRequest) {
   console.log('🔄 Starting Meta token refresh...')
   
-  // Verify cron secret for security (allow manual-refresh for UI calls)
+  // Verify cron secret for security (allow manual-refresh for UI calls and Vercel cron)
   const cronSecret = request.headers.get('x-cron-secret')
-  if (cronSecret !== process.env.CRON_SECRET && cronSecret !== 'manual-refresh') {
+  const isVercelCron = request.headers.get('user-agent')?.includes('vercel-cron') || 
+                      request.headers.get('x-vercel-cron') === '1'
+  
+  if (!isVercelCron && cronSecret !== process.env.CRON_SECRET && cronSecret !== 'manual-refresh') {
     console.error('❌ Invalid cron secret')
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
