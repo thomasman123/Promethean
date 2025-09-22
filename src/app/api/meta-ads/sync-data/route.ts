@@ -545,9 +545,15 @@ export async function POST(request: NextRequest) {
 // Cron job endpoint for automated sync
 export async function GET(request: NextRequest) {
   try {
-    // Verify cron secret for security
+    // Verify cron secret for security (Vercel cron jobs don't send this header automatically)
     const cronSecret = request.headers.get('x-cron-secret')
-    if (cronSecret !== process.env.CRON_SECRET) {
+    const authHeader = request.headers.get('authorization')
+    
+    // Allow Vercel cron jobs (no secret header) or manual calls with secret
+    const isVercelCron = request.headers.get('user-agent')?.includes('vercel-cron') || 
+                        request.headers.get('x-vercel-cron') === '1'
+    
+    if (!isVercelCron && cronSecret !== process.env.CRON_SECRET) {
       console.error('❌ Invalid cron secret')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
