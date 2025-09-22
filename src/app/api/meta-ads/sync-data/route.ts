@@ -128,24 +128,29 @@ async function syncCampaignDataBatched(accountId: string, metaAdAccountId: strin
   return await syncCampaignWithInsightsBatched(accountId, metaAdAccountId, accessToken, supabase)
 }
 
-// Ultra-efficient batch sync for campaign structure only
+// Ultra-efficient batch sync for campaign structure + TODAY'S METRICS
 async function syncCampaignStructureBatched(accountId: string, metaAdAccountId: string, accessToken: string, supabase: any) {
   try {
-    console.log(`⚡ Ultra-fast campaign structure sync for ${metaAdAccountId}`)
+    const today = new Date().toISOString().split('T')[0]
+    console.log(`⚡ Ultra-fast campaign structure + metrics sync for ${metaAdAccountId} (${today})`)
     
-    // Single API call to get ALL campaigns, ad sets, and ads in one request using batch
+    // Single batch API call to get ALL data: structure + today's performance metrics
     const batchRequests = [
       {
         method: 'GET',
-        relative_url: `${metaAdAccountId}/campaigns?fields=id,name,status,objective,daily_budget,lifetime_budget&limit=50`
+        relative_url: `${metaAdAccountId}/campaigns?fields=id,name,status,objective,daily_budget,lifetime_budget,created_time,updated_time&limit=50`
       },
       {
         method: 'GET', 
-        relative_url: `${metaAdAccountId}/adsets?fields=id,name,status,campaign_id,daily_budget,lifetime_budget,targeting&limit=200`
+        relative_url: `${metaAdAccountId}/adsets?fields=id,name,status,campaign_id,daily_budget,lifetime_budget,targeting,created_time,updated_time&limit=200`
       },
       {
         method: 'GET',
-        relative_url: `${metaAdAccountId}/ads?fields=id,name,status,adset_id,creative&limit=500`
+        relative_url: `${metaAdAccountId}/ads?fields=id,name,status,adset_id,creative,created_time,updated_time&limit=500`
+      },
+      {
+        method: 'GET',
+        relative_url: `${metaAdAccountId}/insights?fields=impressions,clicks,spend,reach,frequency,cpm,cpc,ctr,actions,action_values,campaign_id,campaign_name,adset_id,adset_name,ad_id,ad_name,date_start,date_stop&time_range={'since':'${today}','until':'${today}'}&level=ad&limit=1000`
       }
     ]
 
@@ -168,12 +173,13 @@ async function syncCampaignStructureBatched(accountId: string, metaAdAccountId: 
     const batchResults = await batchResponse.json()
     console.log(`✅ Batch API call completed, processing ${batchResults.length} responses`)
 
-    // Process batch results
+    // Process batch results - now includes insights!
     const campaigns = JSON.parse(batchResults[0].body).data || []
     const adSets = JSON.parse(batchResults[1].body).data || []  
     const ads = JSON.parse(batchResults[2].body).data || []
+    const insights = JSON.parse(batchResults[3].body).data || []
 
-    console.log(`📊 Batch results: ${campaigns.length} campaigns, ${adSets.length} ad sets, ${ads.length} ads`)
+    console.log(`📊 Batch results: ${campaigns.length} campaigns, ${adSets.length} ad sets, ${ads.length} ads, ${insights.length} insights`)
 
     // Get database records for this ad account
     const { data: metaAdAccount } = await supabase
@@ -201,7 +207,7 @@ async function syncCampaignStructureBatched(accountId: string, metaAdAccountId: 
       updated_at: new Date().toISOString()
     }))
 
-    if (campaignUpserts.length > 0) {
+        if (campaignUpserts.length > 0) {
       const { error: campaignError } = await supabase
         .from('meta_campaigns')
         .upsert(campaignUpserts, { onConflict: 'account_id,meta_campaign_id' })
@@ -213,15 +219,72 @@ async function syncCampaignStructureBatched(accountId: string, metaAdAccountId: 
       }
     }
 
-         return {
-       success: true,
-       campaignsSynced: campaignUpserts.length,
-       totalCampaigns: campaigns.length,
-       adSetsSynced: adSets.length,
-       adsSynced: ads.length,
-       apiCallsUsed: 1, // Only 1 batch API call!
-       error: undefined
-     }
+    // Process and store insights data (all levels: campaign, ad set, ad)
+    let insightsStored = 0
+    if (insights.length > 0) {
+      try {
+        // Get campaign mappings for insights
+        const { data: campaignMappings } = await supabase
+          .from('meta_campaigns')
+          .select('id, meta_campaign_id')
+          .eq('account_id', accountId)
+
+        const campaignIdMap = campaignMappings?.reduce((map: any, camp: any) => {
+          map[camp.meta_campaign_id] = camp.id
+          return map
+        }, {}) || {}
+
+        // Process insights and store in database
+        const insightUpserts = insights.map((insight: any) => ({
+          account_id: accountId,
+          date: insight.date_start,
+          campaign_id: campaignIdMap[insight.campaign_id] || null,
+          campaign_name: insight.campaign_name || null,
+          adset_id: insight.adset_id || null,
+          adset_name: insight.adset_name || null,
+          ad_id: insight.ad_id || null,
+          ad_name: insight.ad_name || null,
+          impressions: parseInt(insight.impressions || '0'),
+          clicks: parseInt(insight.clicks || '0'),
+          spend: parseFloat(insight.spend || '0'),
+          reach: parseInt(insight.reach || '0'),
+          frequency: parseFloat(insight.frequency || '0'),
+          cpm: parseFloat(insight.cpm || '0'),
+          cpc: parseFloat(insight.cpc || '0'),
+          ctr: parseFloat(insight.ctr || '0'),
+          actions: insight.actions || null,
+          action_values: insight.action_values || null,
+          level: insight.ad_id ? 'ad' : (insight.adset_id ? 'adset' : 'campaign'),
+          updated_at: new Date().toISOString()
+        }))
+
+        const { error: insightsError } = await supabase
+          .from('meta_insights')
+          .upsert(insightUpserts, { 
+            onConflict: 'account_id,date,campaign_id,adset_id,ad_id' 
+          })
+
+        if (insightsError) {
+          console.error('Error batch upserting insights:', insightsError)
+        } else {
+          insightsStored = insightUpserts.length
+          console.log(`✅ Batch upserted ${insightUpserts.length} insights (campaign/adset/ad levels)`)
+        }
+      } catch (insightError) {
+        console.error('Error processing insights:', insightError)
+      }
+    }
+
+    return {
+      success: true,
+      campaignsSynced: campaignUpserts.length,
+      totalCampaigns: campaigns.length,
+      adSetsSynced: adSets.length,
+      adsSynced: ads.length,
+      insightsSynced: insightsStored,
+      apiCallsUsed: 1, // Still only 1 batch API call - now with ALL metrics!
+      error: undefined
+    }
 
   } catch (error) {
     console.error(`❌ Error in batched campaign structure sync:`, error)
