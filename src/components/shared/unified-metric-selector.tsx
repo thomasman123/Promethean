@@ -425,10 +425,10 @@ export function UnifiedMetricSelector({
                            option === 'assigned' ? 'Sales Rep Owned' :
                            option === 'booked' ? 'Setter Contributed' :
                            option === 'dialer' ? 'Dialer' : option}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                          {option === 'all' ? 'All Attribution' : 
+                           option === 'assigned' ? 'Assigned' :
+                           option === 'booked' ? 'Booked' :
+                           option === 'dialer' ? 'Dialer' : option}
                 </div>
               )}
 
