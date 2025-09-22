@@ -1736,6 +1736,43 @@ async function processAppointmentWebhook(payload: any) {
         }
       }
 
+      // ENHANCE WITH PROMETHEAN INTERNAL ATTRIBUTION
+      let enhancedWithInternal = false;
+      try {
+        console.log('🎯 Attempting to enhance with Promethean internal attribution...');
+        
+        const enhanceResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'https://www.getpromethean.com'}/api/attribution/enhance-webhook`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            contact_id: insertedContact.id,
+            ghl_contact_data: contactData,
+            webhook_type: 'appointment'
+          })
+        });
+
+        if (enhanceResponse.ok) {
+          const enhanceResult = await enhanceResponse.json();
+          if (enhanceResult.enhanced) {
+            enhancedWithInternal = true;
+            console.log('✅ Successfully enhanced attribution with internal tracking:', {
+              session_id: enhanceResult.session_id,
+              attribution_quality: enhanceResult.attribution_quality,
+              meta_ad_data: enhanceResult.meta_ad_data
+            });
+          } else {
+            console.log('ℹ️ No internal attribution session found for enhancement');
+          }
+        } else {
+          console.warn('⚠️ Failed to enhance with internal attribution:', enhanceResponse.status);
+        }
+      } catch (error) {
+        console.error('❌ Error enhancing with internal attribution:', error);
+        // Don't fail the main webhook for this
+      }
+
       // Enhanced attribution processing
       const attributionSource = contactData?.attributionSource;
       const lastAttributionSource = contactData?.lastAttributionSource;
@@ -2736,6 +2773,45 @@ async function processContactUpsertWebhook(payload: any) {
     }
   } catch (e) {
     console.warn('Fetch contact by id failed, will fallback to payload mapping')
+  }
+
+  // ENHANCE CONTACT WITH PROMETHEAN INTERNAL ATTRIBUTION
+  let enhancedWithInternal = false;
+  if (contact) {
+    try {
+      console.log('🎯 Attempting to enhance contact with Promethean internal attribution...');
+      
+      const enhanceResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'https://www.getpromethean.com'}/api/attribution/enhance-webhook`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contact_id: contact.id,
+          ghl_contact_data: contact,
+          webhook_type: 'contact_upsert'
+        })
+      });
+
+      if (enhanceResponse.ok) {
+        const enhanceResult = await enhanceResponse.json();
+        if (enhanceResult.enhanced) {
+          enhancedWithInternal = true;
+          console.log('✅ Successfully enhanced contact attribution with internal tracking:', {
+            session_id: enhanceResult.session_id,
+            attribution_quality: enhanceResult.attribution_quality,
+            meta_ad_data: enhanceResult.meta_ad_data
+          });
+        } else {
+          console.log('ℹ️ No internal attribution session found for contact enhancement');
+        }
+      } else {
+        console.warn('⚠️ Failed to enhance contact with internal attribution:', enhanceResponse.status);
+      }
+    } catch (error) {
+      console.error('❌ Error enhancing contact with internal attribution:', error);
+      // Don't fail the main webhook for this
+    }
   }
 
   const c = contact || payload.contact || payload

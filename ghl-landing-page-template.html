@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{page_title}} - Professional Services</title>
+    
+    <!-- Meta Pixel Code -->
+    <script>
+        !function(f,b,e,v,n,t,s)
+        {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+        n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+        if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+        n.queue=[];t=b.createElement(e);t.async=!0;
+        t.src=v;s=b.getElementsByTagName(e)[0];
+        s.parentNode.insertBefore(t,s)}(window, document,'script',
+        'https://connect.facebook.net/en_US/fbevents.js');
+        fbq('init', '{{meta_pixel_id}}');
+        fbq('track', 'PageView');
+    </script>
+    <noscript>
+        <img height="1" width="1" style="display:none"
+             src="https://www.facebook.com/tr?id={{meta_pixel_id}}&ev=PageView&noscript=1"/>
+    </noscript>
+    <!-- End Meta Pixel Code -->
+
+    <!-- Promethean Attribution Tracker -->
+    <script src="https://www.getpromethean.com/promethean-attribution.js"></script>
+    
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .hero {
+            text-align: center;
+            color: white;
+            padding: 60px 20px;
+        }
+        
+        .hero h1 {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .hero p {
+            font-size: 1.2rem;
+            margin-bottom: 40px;
+            opacity: 0.9;
+        }
+        
+        .form-section {
+            background: white;
+            border-radius: 15px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            margin: 40px auto;
+            max-width: 600px;
+        }
+        
+        .form-section h2 {
+            color: #333;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-weight: 500;
+        }
+        
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .submit-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: transform 0.2s;
+        }
+        
+        .submit-btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin: 60px 0;
+        }
+        
+        .feature {
+            background: rgba(255,255,255,0.1);
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            color: white;
+        }
+        
+        .feature h3 {
+            margin-bottom: 15px;
+            font-size: 1.5rem;
+        }
+        
+        .attribution-debug {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            max-width: 300px;
+            display: none;
+        }
+        
+        .attribution-debug.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Hero Section -->
+        <div class="hero">
+            <h1>{{hero_title}}</h1>
+            <p>{{hero_subtitle}}</p>
+        </div>
+
+        <!-- Main Form Section -->
+        <div class="form-section">
+            <h2>{{form_title}}</h2>
+            
+            <!-- GoHighLevel Form -->
+            <form id="ghl-form" action="{{ghl_form_action}}" method="POST">
+                <!-- Standard form fields -->
+                <div class="form-group">
+                    <label for="first_name">First Name *</label>
+                    <input type="text" id="first_name" name="first_name" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="last_name">Last Name *</label>
+                    <input type="text" id="last_name" name="last_name" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="email">Email Address *</label>
+                    <input type="email" id="email" name="email" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="phone">Phone Number *</label>
+                    <input type="tel" id="phone" name="phone" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="business_type">Business Type</label>
+                    <select id="business_type" name="business_type">
+                        <option value="">Select your business type</option>
+                        <option value="electrical">Electrical Services</option>
+                        <option value="plumbing">Plumbing Services</option>
+                        <option value="hvac">HVAC Services</option>
+                        <option value="solar">Solar Installation</option>
+                        <option value="general_contractor">General Contractor</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="message">Tell us about your project</label>
+                    <textarea id="message" name="message" rows="4" placeholder="Describe your project or what you're looking for..."></textarea>
+                </div>
+
+                <!-- Hidden GoHighLevel fields -->
+                <input type="hidden" name="contact[source]" value="{{contact_source}}">
+                <input type="hidden" name="contact[tags]" value="{{contact_tags}}">
+                
+                <!-- Promethean Attribution Fields (will be populated by JavaScript) -->
+                <input type="hidden" name="promethean_session_id" id="promethean_session_id">
+                <input type="hidden" name="promethean_fingerprint_id" id="promethean_fingerprint_id">
+                <input type="hidden" name="promethean_attribution_quality" id="promethean_attribution_quality">
+                <input type="hidden" name="promethean_attribution_method" id="promethean_attribution_method">
+                <input type="hidden" name="promethean_meta_campaign_id" id="promethean_meta_campaign_id">
+                <input type="hidden" name="promethean_meta_ad_id" id="promethean_meta_ad_id">
+                <input type="hidden" name="promethean_fbclid" id="promethean_fbclid">
+                
+                <button type="submit" class="submit-btn">
+                    {{submit_button_text}}
+                </button>
+            </form>
+        </div>
+
+        <!-- Features Section -->
+        <div class="features">
+            <div class="feature">
+                <h3>🎯 Perfect Attribution</h3>
+                <p>Track every lead back to the exact ad that generated it with 100% accuracy.</p>
+            </div>
+            
+            <div class="feature">
+                <h3>📊 Real-Time Analytics</h3>
+                <p>See campaign performance and ROI data updated in real-time.</p>
+            </div>
+            
+            <div class="feature">
+                <h3>🚀 Optimized Results</h3>
+                <p>Use precise attribution data to optimize your best-performing ads.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Attribution Debug Panel (only shows when debug=true in URL) -->
+    <div id="attribution-debug" class="attribution-debug">
+        <strong>Attribution Debug:</strong><br>
+        <span id="debug-content">Loading...</span>
+    </div>
+
+    <script>
+        // Enhanced form submission handling
+        document.getElementById('ghl-form').addEventListener('submit', function(event) {
+            // Track form submission with Meta Pixel
+            if (typeof fbq !== 'undefined') {
+                fbq('track', 'Lead', {
+                    content_name: '{{form_title}}',
+                    content_category: 'lead_generation'
+                });
+            }
+
+            // Track with Promethean Attribution
+            if (window.PrometheanTracker) {
+                window.PrometheanTracker.log('📝 Form submitted with attribution tracking');
+            }
+        });
+
+        // Show debug panel if debug parameter is present
+        if (window.location.search.includes('debug=true')) {
+            const debugPanel = document.getElementById('attribution-debug');
+            const debugContent = document.getElementById('debug-content');
+            
+            // Wait for attribution tracker to initialize
+            setTimeout(() => {
+                if (window.PrometheanTracker) {
+                    const attribution = window.PrometheanTracker.attributionData;
+                    debugContent.innerHTML = `
+                        Session: ${attribution.session_id}<br>
+                        Quality: ${attribution.attribution_quality}<br>
+                        Method: ${attribution.attribution_method}<br>
+                        Campaign: ${attribution.utm_campaign || 'N/A'}<br>
+                        Ad ID: ${attribution.meta_ad_id || attribution.ad_id || 'N/A'}<br>
+                        FBCLID: ${attribution.fbclid ? attribution.fbclid.substring(0, 20) + '...' : 'N/A'}
+                    `;
+                    debugPanel.classList.add('show');
+                }
+            }, 1000);
+        }
+
+        // Enhanced FBCLID lookup on page load
+        window.addEventListener('load', async function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const fbclid = urlParams.get('fbclid');
+            
+            if (fbclid && window.PrometheanTracker) {
+                try {
+                    const response = await fetch('/api/attribution/fbclid-lookup', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            fbclid: fbclid,
+                            session_id: window.PrometheanTracker.sessionId
+                        })
+                    });
+                    
+                    const result = await response.json();
+                    if (result.success) {
+                        console.log('✅ Enhanced attribution with FBCLID lookup:', result.ad_data);
+                    }
+                } catch (error) {
+                    console.log('FBCLID lookup failed:', error);
+                }
+            }
+        });
+    </script>
+</body>
+</html> 

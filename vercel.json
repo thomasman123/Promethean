@@ -52,6 +52,10 @@
     {
       "path": "/api/meta-ads/refresh-tokens",
       "schedule": "0 */6 * * *"
+    },
+    {
+      "path": "/api/attribution/cleanup",
+      "schedule": "0 2 * * *"
     }
   ]
 } 
