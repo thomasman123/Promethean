@@ -429,6 +429,25 @@ export function UnifiedMetricSelector({
                 </div>
               )}
 
+              {/* Display As Options for ROI metrics */}
+              {(selectedMetric === 'roi' || selectedMetric === 'rep_roi' || selectedMetric === 'rep_roi_multiplier') && (
+                <div className="space-y-2">
+                  <Label>Display As</Label>
+                  <Select 
+                    value={selectedOptions.display || 'percent'}
+                    onValueChange={(value) => setSelectedOptions((prev: any) => ({ ...prev, display: value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="percent">Percentage</SelectItem>
+                      <SelectItem value="multiplier">Multiplier</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
               {/* Time Format Options */}
               {selectedMetricDef?.options?.timeFormat && (
                 <div className="space-y-2">
