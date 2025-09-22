@@ -16,9 +16,10 @@ import { usePathname, useRouter } from "next/navigation"
 import { createBrowserClient } from "@supabase/ssr"
 import { DatePicker } from "@/components/ui/date-picker"
 import { ViewsManager } from "@/components/dashboard/views-manager"
-import { TablesManager } from "@/components/data-view/tables-manager"
-import { RoleFilterDropdown, type RoleFilter } from "@/components/data-view/role-filter"
-import { PeriodViewDropdown, type PeriodView } from "@/components/data-view/period-view-filter"
+// Data view imports temporarily disabled
+// import { TablesManager } from "@/components/data-view/tables-manager"
+// import { RoleFilterDropdown, type RoleFilter } from "@/components/data-view/role-filter"
+// import { PeriodViewDropdown, type PeriodView } from "@/components/data-view/period-view-filter"
 import { AddWidgetModal, WidgetConfig } from "@/components/dashboard/add-widget-modal"
 import { AdminSettingsModal } from "./admin-settings-modal"
 import { useDashboard } from "@/lib/dashboard-context"
@@ -45,8 +46,9 @@ export function TopBar({ onAddWidget }: TopBarProps) {
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null)
   const [currentTableId, setCurrentTableId] = useState<string | null>(null)
   const [currentTableType, setCurrentTableType] = useState<string | null>(null)
-  const [roleFilter, setRoleFilter] = useState<RoleFilter>('both')
-  const [periodView, setPeriodView] = useState<PeriodView>('weekly')
+  // Data view state temporarily disabled
+  // const [roleFilter, setRoleFilter] = useState<RoleFilter>('both')
+  // const [periodView, setPeriodView] = useState<PeriodView>('weekly')
   const [showAddWidgetModal, setShowAddWidgetModal] = useState(false)
   const [showAdminSettingsModal, setShowAdminSettingsModal] = useState(false)
   const [isImpersonating, setIsImpersonating] = useState(false)
@@ -62,7 +64,7 @@ export function TopBar({ onAddWidget }: TopBarProps) {
   const { accounts, loading: accountsLoading, refreshAccounts } = useAccountsCache(effectiveUser?.id)
 
   // Show date/view controls only on dashboard and data-view pages
-  const showDashboardControls = pathname === "/dashboard" || pathname === "/data-view"
+  const showDashboardControls = pathname === "/dashboard"
 
   useEffect(() => {
     // Initialize dark mode from localStorage or system preference
@@ -156,17 +158,18 @@ export function TopBar({ onAddWidget }: TopBarProps) {
     setCurrentViewId(viewId)
   }
 
-  const handleRoleFilterChange = (newRoleFilter: RoleFilter) => {
-    setRoleFilter(newRoleFilter)
-    // Dispatch custom event for data view page to listen to
-    window.dispatchEvent(new CustomEvent('roleFilterChanged', { detail: { roleFilter: newRoleFilter } }))
-  }
+  // Data view functions temporarily disabled
+  // const handleRoleFilterChange = (newRoleFilter: RoleFilter) => {
+  //   setRoleFilter(newRoleFilter)
+  //   // Dispatch custom event for data view page to listen to
+  //   window.dispatchEvent(new CustomEvent('roleFilterChanged', { detail: { roleFilter: newRoleFilter } }))
+  // }
 
-  const handlePeriodViewChange = (newPeriodView: PeriodView) => {
-    setPeriodView(newPeriodView)
-    // Dispatch custom event for data view page to listen to
-    window.dispatchEvent(new CustomEvent('periodViewChanged', { detail: { periodView: newPeriodView } }))
-  }
+  // const handlePeriodViewChange = (newPeriodView: PeriodView) => {
+  //   setPeriodView(newPeriodView)
+  //   // Dispatch custom event for data view page to listen to
+  //   window.dispatchEvent(new CustomEvent('periodViewChanged', { detail: { periodView: newPeriodView } }))
+  // }
 
   const handleTableChange = (tableId: string | null) => {
     setCurrentTableId(tableId)
@@ -195,13 +198,13 @@ export function TopBar({ onAddWidget }: TopBarProps) {
     }
   }, [])
 
-  // When table type changes to account_metrics, notify data view about current period view
-  useEffect(() => {
-    if (currentTableType === 'account_metrics') {
-      // Send current period view to data view page
-      window.dispatchEvent(new CustomEvent('periodViewChanged', { detail: { periodView } }))
-    }
-  }, [currentTableType, periodView])
+  // Data view useEffect temporarily disabled
+  // useEffect(() => {
+  //   if (currentTableType === 'account_metrics') {
+  //     // Send current period view to data view page
+  //     window.dispatchEvent(new CustomEvent('periodViewChanged', { detail: { periodView } }))
+  //   }
+  // }, [currentTableType, periodView])
 
   const handleAppointmentsTabChange = (tab: 'appointments' | 'discoveries') => {
     setAppointmentsTab(tab)
@@ -216,7 +219,6 @@ export function TopBar({ onAddWidget }: TopBarProps) {
       icon: Home,
       dropdownItems: [
         { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-        { href: "/data-view", label: "Data View", icon: Database },
         { href: "/playground", label: "Playground", icon: Palette }
       ]
     },
@@ -514,30 +516,18 @@ export function TopBar({ onAddWidget }: TopBarProps) {
               </>
             )}
             
-            {/* Show RoleFilter, PeriodView and TablesManager on data-view page */}
-            {pathname === "/data-view" && selectedAccountId && (
-              <>
-                {/* Only show role filter for user_metrics tables */}
-                {currentTableType !== 'account_metrics' && (
-                  <RoleFilterDropdown
-                    value={roleFilter}
-                    onChange={handleRoleFilterChange}
-                  />
-                )}
-                {/* Only show period view for account_metrics tables */}
-                {currentTableType === 'account_metrics' && (
-                  <PeriodViewDropdown
-                    value={periodView}
-                    onChange={handlePeriodViewChange}
-                  />
-                )}
-                <TablesManager
-                  accountId={selectedAccountId}
-                  currentTableId={currentTableId}
-                  onTableChange={handleTableChange}
-                />
-              </>
-            )}
+                    {/* Data view page temporarily disabled */}
+        {/* Data view section temporarily disabled */}
+        {false && (
+          <div>
+            {/* 
+            Data view components commented out:
+            - RoleFilterDropdown
+            - PeriodViewDropdown  
+            - TablesManager
+            */}
+          </div>
+        )}
           </>
         )}
 
