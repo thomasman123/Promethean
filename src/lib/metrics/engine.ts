@@ -71,6 +71,11 @@ export class MetricsEngine {
    * Execute the SQL query for a specific metric
    */
   private async executeMetricQuery(metric: MetricDefinition, filters: any, options?: { vizType?: string; dynamicBreakdown?: string; widgetSettings?: any }): Promise<MetricResult> {
+    // Handle special metrics that require custom calculation logic
+    if (metric.isSpecialMetric) {
+      return this.handleSpecialMetric(metric, filters, options)
+    }
+    
     // Apply standard filters using the base table to choose correct date/account fields
     const appliedFilters = applyStandardFilters(filters, metric.query.table)
     
@@ -120,6 +125,181 @@ export class MetricsEngine {
     }
     
     return this.formatResults(effectiveBreakdown, results)
+  }
+
+  /**
+   * Handle special metrics that require custom calculation logic
+   */
+  private async handleSpecialMetric(metric: MetricDefinition, filters: any, options?: any): Promise<MetricResult> {
+    const { accountId, dateRange } = filters
+    
+    // Handle per hour metrics (bookings_per_hour, dials_per_hour, hours_worked)
+    if (['Bookings per Hour', 'Dials per Hour', 'Hours Worked'].includes(metric.name)) {
+      return this.calculateAggregatedWorkTimeframeMetric(metric, accountId, dateRange.start, dateRange.end, options)
+    }
+    
+    // Handle overdue percentage
+    if (metric.name === 'Overdue Percentage') {
+      const appliedFilters = applyStandardFilters(filters, metric.query.table)
+      const sql = this.buildOverduePercentageSQL(appliedFilters, metric, options)
+      const params = flattenParams(appliedFilters)
+      
+      console.log('Executing Overdue Percentage SQL:', sql)
+      console.log('Parameters:', params)
+      
+      const { data, error } = await supabaseService.rpc('execute_metrics_query_array', {
+        query_sql: sql,
+        query_params: params
+      })
+      
+      if (error) {
+        console.error('Supabase query error:', error)
+        throw new Error(`Database query failed: ${error.message}`)
+      }
+      
+      const results = Array.isArray(data) ? data : (data ? JSON.parse(String(data)) : [])
+      return this.formatResults(metric.breakdownType, results)
+    }
+    
+    // Default fallback for other special metrics
+    return { type: 'total', data: { value: 0 } }
+  }
+
+  /**
+   * Calculate aggregated work timeframe metrics across all account users
+   */
+  private async calculateAggregatedWorkTimeframeMetric(
+    metric: MetricDefinition,
+    accountId: string,
+    startDate: string,
+    endDate: string,
+    options?: any
+  ): Promise<MetricResult> {
+    try {
+      // Get account timezone
+      const { data: account, error: accountError } = await supabaseService
+        .from('accounts')
+        .select('business_timezone')
+        .eq('id', accountId)
+        .single()
+
+      if (accountError || !account) {
+        console.error('Error fetching account timezone:', accountError)
+        return { type: 'total', data: { value: 0 } }
+      }
+
+      const timezone = account.business_timezone || 'UTC'
+
+      // Get all setter users for this account
+      const { data: accountUsers, error: usersError } = await supabaseService
+        .from('account_access')
+        .select('user_id')
+        .eq('account_id', accountId)
+        .eq('role', 'setter')
+
+      if (usersError) {
+        console.error('Error fetching account users:', usersError)
+        return { type: 'total', data: { value: 0 } }
+      }
+
+      const userIds = accountUsers?.map(u => u.user_id) || []
+      
+      if (userIds.length === 0) {
+        return { type: 'total', data: { value: 0 } }
+      }
+
+      // Query dials data for all users to calculate work hours on-demand
+      const { data: dials, error } = await supabaseService
+        .from('dials')
+        .select('setter_user_id, created_at, booked')
+        .eq('account_id', accountId)
+        .gte('created_at', startDate)
+        .lte('created_at', endDate)
+        .in('setter_user_id', userIds)
+        .not('setter_user_id', 'is', null)
+
+      if (error) {
+        console.error('Error fetching dials for work timeframes:', error)
+        return { type: 'total', data: { value: 0 } }
+      }
+
+      // Calculate aggregated work metrics
+      let totalHours = 0
+      let totalBookings = 0
+      let totalDials = 0
+      
+      // Group dials by user and date (in their timezone)
+      const userDateDials = new Map<string, Map<string, any[]>>()
+      
+      dials?.forEach(dial => {
+        if (!dial.setter_user_id) return
+        
+        // Convert to user's local date
+        const localDate = new Date(dial.created_at).toLocaleDateString('en-CA', { 
+          timeZone: timezone 
+        })
+        
+        if (!userDateDials.has(dial.setter_user_id)) {
+          userDateDials.set(dial.setter_user_id, new Map())
+        }
+        
+        const userDates = userDateDials.get(dial.setter_user_id)!
+        if (!userDates.has(localDate)) {
+          userDates.set(localDate, [])
+        }
+        
+        userDates.get(localDate)!.push(dial)
+      })
+
+      // Calculate work hours for each user and aggregate
+      userIds.forEach(userId => {
+        const userDates = userDateDials.get(userId)
+        if (!userDates) return
+
+        // Calculate for each day
+        userDates.forEach(dayDials => {
+          if (dayDials.length === 0) return
+
+          // Sort by time to get first and last
+          const sortedDials = dayDials.sort((a, b) => 
+            new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+          )
+
+          const firstDial = new Date(sortedDials[0].created_at)
+          const lastDial = new Date(sortedDials[sortedDials.length - 1].created_at)
+          
+          // Calculate work hours for this day (minimum 0.1 to avoid division by zero)
+          const dayHours = Math.max(
+            (lastDial.getTime() - firstDial.getTime()) / (1000 * 60 * 60),
+            0.1
+          )
+          
+          totalHours += dayHours
+          totalDials += dayDials.length
+          totalBookings += dayDials.filter(d => d.booked === true).length
+        })
+      })
+
+      // Calculate final value based on metric type
+      let value = 0
+      if (metric.name === 'Bookings per Hour') {
+        value = totalHours > 0 ? totalBookings / totalHours : 0
+      } else if (metric.name === 'Dials per Hour') {
+        value = totalHours > 0 ? totalDials / totalHours : 0
+      } else if (metric.name === 'Hours Worked') {
+        value = totalHours
+      }
+      
+      const roundedValue = Math.round(value * 100) / 100 // Round to 2 decimal places
+      
+      console.log(`Calculated ${metric.name}: ${roundedValue} (${totalBookings} bookings, ${totalDials} dials, ${totalHours.toFixed(2)} hours)`)
+      
+      return { type: 'total', data: { value: roundedValue } }
+      
+    } catch (error) {
+      console.error(`Error calculating ${metric.name}:`, error)
+      return { type: 'total', data: { value: 0 } }
+    }
   }
 
   /**
