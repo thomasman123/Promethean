@@ -746,6 +746,7 @@ WHERE speed_to_lead_seconds IS NOT NULL
                COALESCE(SUM(spend), 0) as total_spend
              FROM meta_ad_performance
              ${metaWhereClause}
+             AND spend > 0
              GROUP BY account_id
            )
            SELECT 
@@ -791,6 +792,7 @@ WHERE speed_to_lead_seconds IS NOT NULL
                COALESCE(SUM(spend), 0) as total_spend
              FROM meta_ad_performance
              ${metaWhereClause}
+             AND spend > 0
              GROUP BY account_id
            ),
            rep_names AS (
@@ -866,16 +868,17 @@ WHERE speed_to_lead_seconds IS NOT NULL
               COALESCE(SUM(spend), 0) as total_spend
             FROM meta_ad_performance
             ${metaWhereClause}
+            AND spend > 0
             GROUP BY account_id
           )
           SELECT 
             CASE 
-              WHEN appointment_data.total_appointments > 0 
+              WHEN appointment_data.total_appointments > 0 AND spend_data.total_spend > 0
               THEN ROUND(spend_data.total_spend / appointment_data.total_appointments, 2)
-              ELSE 0 
+              ELSE NULL 
             END as value
           FROM appointment_data
-          FULL OUTER JOIN spend_data ON appointment_data.account_id = spend_data.account_id
+          INNER JOIN spend_data ON appointment_data.account_id = spend_data.account_id
         `.trim()
         
              case 'rep':
@@ -905,6 +908,7 @@ WHERE speed_to_lead_seconds IS NOT NULL
                COALESCE(SUM(spend), 0) as total_spend
              FROM meta_ad_performance
              ${metaWhereClause}
+             AND spend > 0
              GROUP BY account_id
            ),
            rep_names AS (
@@ -917,13 +921,13 @@ WHERE speed_to_lead_seconds IS NOT NULL
              appointment_data.sales_rep_user_id as repId,
              rep_names.user_name as repName,
              CASE 
-               WHEN total_appointments.total_count > 0 
+               WHEN total_appointments.total_count > 0 AND spend_data.total_spend > 0
                THEN ROUND(spend_data.total_spend / total_appointments.total_count, 2)
-               ELSE 0 
+               ELSE NULL 
              END as value
            FROM appointment_data
-           LEFT JOIN total_appointments ON appointment_data.account_id = total_appointments.account_id
-           LEFT JOIN spend_data ON appointment_data.account_id = spend_data.account_id
+           INNER JOIN total_appointments ON appointment_data.account_id = total_appointments.account_id
+           INNER JOIN spend_data ON appointment_data.account_id = spend_data.account_id
            LEFT JOIN rep_names ON appointment_data.sales_rep_user_id = rep_names.user_id
            ORDER BY rep_names.user_name
          `.trim()
@@ -955,6 +959,7 @@ WHERE speed_to_lead_seconds IS NOT NULL
                COALESCE(SUM(spend), 0) as total_spend
              FROM meta_ad_performance
              ${metaWhereClause}
+             AND spend > 0
              GROUP BY account_id
            ),
            setter_names AS (
@@ -967,13 +972,13 @@ WHERE speed_to_lead_seconds IS NOT NULL
              appointment_data.setter_user_id as setterId,
              setter_names.user_name as setterName,
              CASE 
-               WHEN total_appointments.total_count > 0 
+               WHEN total_appointments.total_count > 0 AND spend_data.total_spend > 0
                THEN ROUND(spend_data.total_spend / total_appointments.total_count, 2)
-               ELSE 0 
+               ELSE NULL 
              END as value
            FROM appointment_data
-           LEFT JOIN total_appointments ON appointment_data.account_id = total_appointments.account_id
-           LEFT JOIN spend_data ON appointment_data.account_id = spend_data.account_id
+           INNER JOIN total_appointments ON appointment_data.account_id = total_appointments.account_id
+           INNER JOIN spend_data ON appointment_data.account_id = spend_data.account_id
            LEFT JOIN setter_names ON appointment_data.setter_user_id = setter_names.user_id
            ORDER BY setter_names.user_name
          `.trim()
@@ -1007,6 +1012,7 @@ WHERE speed_to_lead_seconds IS NOT NULL
                COALESCE(SUM(spend), 0) as total_spend
              FROM meta_ad_performance
              ${metaWhereClause}
+             AND spend > 0
              GROUP BY account_id
            ),
            user_names AS (
@@ -1021,13 +1027,13 @@ WHERE speed_to_lead_seconds IS NOT NULL
              appointment_data.sales_rep_user_id as repId,
              rep_names.user_name as repName,
              CASE 
-               WHEN total_appointments.total_count > 0 
+               WHEN total_appointments.total_count > 0 AND spend_data.total_spend > 0
                THEN ROUND(spend_data.total_spend / total_appointments.total_count, 2)
-               ELSE 0 
+               ELSE NULL 
              END as value
            FROM appointment_data
-           LEFT JOIN total_appointments ON appointment_data.account_id = total_appointments.account_id
-           LEFT JOIN spend_data ON appointment_data.account_id = spend_data.account_id
+           INNER JOIN total_appointments ON appointment_data.account_id = total_appointments.account_id
+           INNER JOIN spend_data ON appointment_data.account_id = spend_data.account_id
            LEFT JOIN user_names setter_names ON appointment_data.setter_user_id = setter_names.user_id
            LEFT JOIN user_names rep_names ON appointment_data.sales_rep_user_id = rep_names.user_id
            ORDER BY setter_names.user_name, rep_names.user_name
