@@ -87,7 +87,7 @@ export function DataViewWidget({ metrics, selectedUsers, options }: DataViewWidg
                 console.log(`  - Added setterIds: [${user.id}] (default: discovery assigned)`)
               }
             } else if (tableType === "dials") {
-              // For dials: both assigned and dialer use setter_user_id (dials don't have sales_rep_user_id)
+              // For dials: only setter_user_id exists (no attribution options needed)
               filters.setterIds = [user.id]
               console.log(`  - Added setterIds: [${user.id}] (dial made by setter)`)
             } else {
@@ -273,11 +273,20 @@ export function DataViewWidget({ metrics, selectedUsers, options }: DataViewWidg
               // Get attribution label based on table type
               const metricDefinition = METRICS_REGISTRY[originalMetricName]
               const tableType = metricDefinition?.query?.table || "appointments"
-              let attributionLabel = attribution
               
+              // For dials metrics, don't show attribution since there's only setter_user_id
+              if (tableType === "dials") {
+                return (
+                  <TableHead key={metricKey} className="text-right">
+                    {metricDisplayName}
+                  </TableHead>
+                )
+              }
+              
+              // For other metrics, show attribution
+              let attributionLabel = attribution
               if (attribution === "assigned") {
-                attributionLabel = tableType === "discoveries" ? "Assigned to Setter" : 
-                                 tableType === "dials" ? "Dialer" : "Sales Rep Owned"
+                attributionLabel = tableType === "discoveries" ? "Assigned to Setter" : "Sales Rep Owned"
               } else if (attribution === "booked") {
                 attributionLabel = tableType === "discoveries" ? "Booked to Sales Rep" : "Setter Contributed"
               }

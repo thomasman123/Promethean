@@ -194,7 +194,6 @@ const BASE_METRICS = {
 		},
 		unit: 'count' as const,
 		options: {
-			attribution: ['all', 'assigned', 'dialer'],
 		}
 	},
 
@@ -483,7 +482,6 @@ const BASE_METRICS = {
 		},
 		unit: 'seconds' as const,
 		options: {
-			attribution: ['all', 'assigned', 'dialer'],
 			timeFormat: ['human_readable', 'seconds', 'minutes', 'hours']
 		}
 	},
