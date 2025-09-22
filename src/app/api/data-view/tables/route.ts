@@ -27,14 +27,22 @@ export async function POST(request: NextRequest) {
     console.log('API: Authenticated user:', user.id, user.email)
 
     const body = await request.json()
-    const { accountId, name, description, tableType } = body
+    const { accountId, name, description, tableType, scope = 'private' } = body
 
-    console.log('API: Request data:', { accountId, name, description, tableType, userId: user.id })
+    console.log('API: Request data:', { accountId, name, description, tableType, scope, userId: user.id })
 
     // Validate required fields
     if (!accountId || !name?.trim()) {
       return NextResponse.json(
         { error: 'Missing required fields: accountId, name' },
+        { status: 400 }
+      )
+    }
+
+    // Validate scope
+    if (!['private', 'team', 'global'].includes(scope)) {
+      return NextResponse.json(
+        { error: 'Invalid scope. Must be private, team, or global' },
         { status: 400 }
       )
     }
@@ -84,6 +92,20 @@ export async function POST(request: NextRequest) {
       if (!userAccess.is_active) {
         return NextResponse.json({ error: 'Account access is not active' }, { status: 403 })
       }
+
+      // Non-admins can only create private tables or need admin role for team tables
+      if (scope === 'team' && userAccess.role !== 'admin') {
+        return NextResponse.json({ 
+          error: 'Only account admins can create team tables' 
+        }, { status: 403 })
+      }
+
+      // Only global admins can create global tables
+      if (scope === 'global') {
+        return NextResponse.json({ 
+          error: 'Only global admins can create global tables' 
+        }, { status: 403 })
+      }
     } else {
       // Global admins can access any active account
       console.log('API: Global admin - checking account is active')
@@ -109,6 +131,7 @@ export async function POST(request: NextRequest) {
         name: name.trim(),
         description: description?.trim() || null,
         table_type: tableType || 'user_metrics',
+        scope: scope,
         columns: [
           // Base columns (name, email, role) are now handled by baseColumns in the frontend
           // Only store metric/custom columns in the table configuration
@@ -192,12 +215,24 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Get tables for this account
-    const { data: tables, error } = await supabase
+    // Build query to get visible tables based on scope and user permissions
+    let query = supabase
       .from('data_tables')
       .select('*')
       .eq('account_id', accountId)
-      .order('created_at', { ascending: false })
+
+    if (isGlobalAdmin) {
+      // Global admins can see all tables (private, team, global)
+      // No additional filtering needed
+    } else {
+      // Non-global users can see:
+      // 1. Their own private tables
+      // 2. Team tables for this account
+      // 3. Global tables (if any)
+      query = query.or(`and(scope.eq.private,created_by.eq.${user.id}),scope.eq.team,scope.eq.global`)
+    }
+
+    const { data: tables, error } = await query.order('created_at', { ascending: false })
 
     if (error) {
       console.error('Database error loading tables:', error)

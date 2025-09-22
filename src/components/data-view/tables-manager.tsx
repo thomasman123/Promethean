@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
-import { Plus, Table2, ChevronDown, Trash2, Edit } from 'lucide-react'
+import { Plus, Table2, ChevronDown, Trash2, Edit, Eye, Users } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,13 +29,15 @@ interface DataTable {
   name: string
   description: string | null
   is_default: boolean
+  scope: 'private' | 'team' | 'global'
+  created_by: string
   created_at: string
 }
 
 interface TablesManagerProps {
   accountId: string
   currentTableId: string | null
-  onTableChange: (tableId: string | null) => void
+  onTableChange: (tableId: string) => void
 }
 
 export function TablesManager({ accountId, currentTableId, onTableChange }: TablesManagerProps) {
@@ -93,49 +95,51 @@ export function TablesManager({ accountId, currentTableId, onTableChange }: Tabl
   const handleCreateTable = async (tableConfig: {
     name: string
     description: string
-    tableType: 'user_metrics' | 'account_metrics' | 'time_series'
+    tableType: 'user_metrics' | 'account_metrics'
+    scope: 'private' | 'team'
   }) => {
     setLoading(true)
-    
     try {
-      console.log('Creating table via API with type:', tableConfig)
-
       const response = await fetch('/api/data-view/tables', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           accountId,
           name: tableConfig.name,
-          description: tableConfig.description || null,
-          tableType: tableConfig.tableType
-        }),
+          description: tableConfig.description,
+          tableType: tableConfig.tableType,
+          scope: tableConfig.scope
+        })
       })
 
       const result = await response.json()
 
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to create table')
+        toast({
+          title: 'Error',
+          description: result.error || 'Failed to create table',
+          variant: 'destructive'
+        })
+        return
       }
 
-      console.log('Table created successfully via API:', result.table)
-      
-      setTables([result.table, ...tables])
-      setIsCreateOpen(false)
-      onTableChange(result.table.id)
-      
       toast({
-        title: "Success",
-        description: `${tableConfig.name} created successfully`,
+        title: 'Success',
+        description: `Table "${tableConfig.name}" created successfully`
       })
 
-    } catch (error: any) {
+      // Refresh tables list
+      await loadTables()
+      
+      // Switch to the new table
+      onTableChange(result.table.id)
+      
+    } catch (error) {
       console.error('Error creating table:', error)
       toast({
-        title: "Error",
-        description: error.message || "Failed to create table",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to create table',
+        variant: 'destructive'
       })
     } finally {
       setLoading(false)
@@ -198,7 +202,11 @@ export function TablesManager({ accountId, currentTableId, onTableChange }: Tabl
 
     setTables(tables.filter(t => t.id !== tableId))
     if (currentTableId === tableId) {
-      onTableChange(null)
+      // Switch to the first remaining table, or let the parent handle no tables
+      const remainingTables = tables.filter(t => t.id !== tableId)
+      if (remainingTables.length > 0) {
+        onTableChange(remainingTables[0].id)
+      }
     }
     
     toast({
@@ -208,6 +216,32 @@ export function TablesManager({ accountId, currentTableId, onTableChange }: Tabl
   }
 
   const currentTableName = tables.find(t => t.id === currentTableId)?.name || 'Select Table'
+
+  const getScopeIcon = (scope: string) => {
+    switch (scope) {
+      case 'private':
+        return <Eye className="h-3 w-3" />
+      case 'team':
+        return <Users className="h-3 w-3" />
+      case 'global':
+        return <Table2 className="h-3 w-3" />
+      default:
+        return <Eye className="h-3 w-3" />
+    }
+  }
+
+  const getScopeLabel = (scope: string) => {
+    switch (scope) {
+      case 'private':
+        return 'Personal'
+      case 'team':
+        return 'Team'
+      case 'global':
+        return 'Global'
+      default:
+        return 'Personal'
+    }
+  }
 
   return (
     <>
@@ -238,9 +272,15 @@ export function TablesManager({ accountId, currentTableId, onTableChange }: Tabl
               className="flex items-center justify-between group"
               onSelect={() => onTableChange(table.id)}
             >
-              <span className={currentTableId === table.id ? 'font-semibold' : ''}>
-                {table.name}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className={currentTableId === table.id ? 'font-semibold' : ''}>
+                  {table.name}
+                </span>
+                <div className="flex items-center gap-1 text-muted-foreground">
+                  {getScopeIcon(table.scope)}
+                  <span className="text-xs">{getScopeLabel(table.scope)}</span>
+                </div>
+              </div>
               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100">
                 <button
                   onClick={(e: React.MouseEvent) => {
