@@ -86,7 +86,7 @@ export function DataViewWidget({ metrics, selectedUsers, options }: DataViewWidg
               metricName,
               filters,
               options: {
-                vizType: 'data',
+                vizType: 'kpi', // Use KPI viz type to get total values instead of time series
                 widgetSettings: options?.[metricName] || {}
               }
             }
@@ -105,13 +105,29 @@ export function DataViewWidget({ metrics, selectedUsers, options }: DataViewWidg
               const metricData = await response.json()
               console.log(`  - Response data:`, metricData)
               
+              // Handle different response formats
+              let value = null
+              
               if (metricData.result?.type === 'total' && metricData.result.data?.value !== undefined) {
-                userMetricValues[metricName] = metricData.result.data.value
-                console.log(`  ✅ Got value: ${metricData.result.data.value}`)
+                // Standard total response format
+                value = metricData.result.data.value
+                console.log(`  ✅ Got total value: ${value}`)
+              } else if (metricData.result?.type === 'time' && Array.isArray(metricData.result.data) && metricData.result.data.length > 0) {
+                // Time series response - sum all values or take the first/last value
+                if (metricData.result.data.length === 1) {
+                  value = metricData.result.data[0].value || metricData.result.data[0].count || 0
+                } else {
+                  // Sum all time series values for total
+                  value = metricData.result.data.reduce((sum: number, item: any) => {
+                    return sum + (item.value || item.count || 0)
+                  }, 0)
+                }
+                console.log(`  ✅ Got time series value (${metricData.result.data.length} points): ${value}`)
               } else {
-                userMetricValues[metricName] = null
                 console.log(`  ❌ No valid value in response - result:`, metricData.result)
               }
+              
+              userMetricValues[metricName] = value
             } else {
               const errorText = await response.text()
               console.error(`  ❌ API error: ${response.status} - ${errorText}`)
