@@ -37,10 +37,12 @@ export async function GET(request: NextRequest) {
     }
 
     // Get views for the account that the user has access to
+    const orFilter = `and(scope.eq.private,created_by.eq.${user.id}),scope.eq.team,scope.eq.global`
     const { data: views, error } = await supabase
       .from('dashboard_views')
       .select('*')
       .eq('account_id', accountId)
+      .or(orFilter)
       .order('created_at', { ascending: true })
 
     if (error) {
