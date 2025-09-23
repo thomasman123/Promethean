@@ -19,17 +19,22 @@ interface DashboardContextType {
 const DashboardContext = createContext<DashboardContextType | undefined>(undefined)
 
 export function DashboardProvider({ children }: { children: React.ReactNode }) {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
   const [dateRange, setDateRangeState] = useState({
-    from: startOfMonth(new Date()),
-    to: endOfMonth(new Date()),
+    from: startOfMonth(today),
+    to: today,
   })
   const [currentViewId, setCurrentViewId] = useState<string>("")
   const { selectedAccountId, setSelectedAccountId } = usePersistedAccount()
 
   const setDateRange = (range: { from: Date | undefined; to: Date | undefined }) => {
+    const now = new Date()
+    now.setHours(0, 0, 0, 0)
     setDateRangeState({
-      from: range.from || startOfMonth(new Date()),
-      to: range.to || endOfMonth(new Date()),
+      from: range.from || startOfMonth(now),
+      to: (range.to && range.to <= now) ? range.to : now,
     })
   }
 
