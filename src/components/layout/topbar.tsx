@@ -498,7 +498,7 @@ export function TopBar({ onAddWidget }: TopBarProps) {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-8 border-blue-200 text-blue-700 hover:bg-blue-50"
+                  className="h-8"
                   onClick={() => setShowLocationModal(true)}
                 >
                   <MapPin className="h-4 w-4 mr-2" />
