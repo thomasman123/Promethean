@@ -23,6 +23,19 @@ interface DatePickerProps {
   applyMode?: boolean
 }
 
+function clampToTodayRange(range: { from?: Date | undefined; to?: Date | undefined } | undefined): { from?: Date; to?: Date } | undefined {
+  if (!range) return undefined
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const clampedTo = range.to && range.to > today ? today : range.to
+  const clampedFrom = range.from && range.from > today ? today : range.from
+  // Ensure from is not after to
+  if (clampedFrom && clampedTo && clampedFrom > clampedTo) {
+    return { from: clampedTo, to: clampedTo }
+  }
+  return { from: clampedFrom, to: clampedTo }
+}
+
 const datePresets = [
   {
     label: "Today",
@@ -44,7 +57,8 @@ const datePresets = [
     label: "This Week",
     getValue: () => {
       const today = new Date()
-      return { from: startOfWeek(today), to: endOfWeek(today) }
+      today.setHours(0, 0, 0, 0)
+      return { from: startOfWeek(today), to: today }
     }
   },
   {
@@ -58,7 +72,8 @@ const datePresets = [
     label: "This Month",
     getValue: () => {
       const today = new Date()
-      return { from: startOfMonth(today), to: endOfMonth(today) }
+      today.setHours(0, 0, 0, 0)
+      return { from: startOfMonth(today), to: today }
     }
   },
   {
@@ -81,31 +96,40 @@ export function DatePicker({
     value.from && value.to ? { from: value.from, to: value.to } : undefined
   )
 
+  const today = React.useMemo(() => {
+    const d = new Date()
+    d.setHours(0, 0, 0, 0)
+    return d
+  }, [])
+
   React.useEffect(() => {
     setDate(value.from && value.to ? { from: value.from, to: value.to } : undefined)
   }, [value])
 
   const handleSelect = (newDate: DateRange | undefined) => {
-    setDate(newDate)
+    const clamped = clampToTodayRange(newDate)
+    setDate(clamped as DateRange | undefined)
     if (!applyMode) {
       onChange?.({
-        from: newDate?.from,
-        to: newDate?.to
+        from: clamped?.from,
+        to: clamped?.to
       })
     }
   }
 
   const handlePresetClick = (preset: typeof datePresets[0]) => {
     const range = preset.getValue()
-    setDate(range)
+    const clamped = clampToTodayRange(range) as { from?: Date; to?: Date }
+    setDate(clamped as DateRange | undefined)
     if (!applyMode) {
-      onChange?.(range)
+      onChange?.({ from: clamped.from, to: clamped.to })
     }
   }
 
   const handleApply = () => {
     if (applyMode) {
-      onChange?.({ from: date?.from, to: date?.to })
+      const clamped = clampToTodayRange(date)
+      onChange?.({ from: clamped?.from, to: clamped?.to })
       setOpen(false)
     }
   }
@@ -177,12 +201,14 @@ export function DatePicker({
           {/* Calendar */}
           <Calendar
             mode="range"
-            defaultMonth={date?.from}
+            defaultMonth={date?.from && date.from <= today ? date.from : today}
             selected={date}
             onSelect={handleSelect}
             numberOfMonths={2}
             showOutsideDays={false}
             className="rounded-lg border-0"
+            toDate={today}
+            disabled={[{ after: today }]}
           />
         </div>
         {applyMode && (
