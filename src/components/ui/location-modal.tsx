@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "./dialog"
 import { Button } from "./button"
 import { Badge } from "./badge"
 import { Globe, Position } from "./globe"
@@ -26,6 +26,15 @@ export function LocationModal({ isOpen, onClose }: LocationModalProps) {
 
   const handleCountryClick = (country: any) => {
     console.log('Country clicked:', country)
+    const countryName = country.name
+    
+    setSelectedCountries(prev => {
+      if (prev.includes(countryName)) {
+        return prev.filter(c => c !== countryName)
+      } else {
+        return [...prev, countryName]
+      }
+    })
   }
 
   const clearSelections = () => {
@@ -37,9 +46,14 @@ export function LocationModal({ isOpen, onClose }: LocationModalProps) {
       <DialogContent className="max-w-5xl h-[80vh] p-0">
         <DialogHeader className="p-6 pb-0">
           <div className="flex items-center justify-between">
-            <DialogTitle className="text-2xl font-bold">
-              Global Locations
-            </DialogTitle>
+            <div>
+              <DialogTitle className="text-2xl font-bold">
+                Global Locations
+              </DialogTitle>
+              <DialogDescription className="text-muted-foreground mt-1">
+                Select countries and regions by clicking on the interactive globe
+              </DialogDescription>
+            </div>
             <div className="flex items-center gap-2">
               {selectedCountries.length > 0 && (
                 <Button
