@@ -399,7 +399,11 @@ export class MetricsEngine {
     const fromClause = `FROM ${query.table}`
     
     // Build WHERE clause
-    const whereClause = buildWhereClause(appliedFilters, query.where)
+    let whereClause = buildWhereClause(appliedFilters, query.where)
+    // Append geo country filter for appointments-based queries
+    if (query.table === 'appointments') {
+      whereClause = this.appendCountryFilterToAppointments(whereClause, appliedFilters.params)
+    }
     
     // Build GROUP BY clause
     let groupByClause = ''
@@ -715,7 +719,7 @@ WHERE speed_to_lead_seconds IS NOT NULL
           ${localColumn} as appointment_date,
           COUNT(*) as daily_appointments
         FROM appointments
-        ${whereClause}
+        ${this.appendCountryFilterToAppointments(whereClause, appliedFilters.params)}
         GROUP BY ${localColumn}
       ),
       spend_data_by_date AS (
@@ -762,14 +766,14 @@ WHERE speed_to_lead_seconds IS NOT NULL
      const metaWhereClause = this.buildMetaWhereClause(appliedFilters)
      
      return `
-       WITH cash_data AS (
-         SELECT 
-           account_id,
-           COALESCE(SUM(cash_collected), 0) as total_cash
-         FROM appointments
-         ${whereClause}
-         GROUP BY account_id
-       ),
+             WITH cash_data AS (
+        SELECT 
+          account_id,
+          COALESCE(SUM(cash_collected), 0) as total_cash
+        FROM appointments
+        ${this.appendCountryFilterToAppointments(whereClause, appliedFilters.params)}
+        GROUP BY account_id
+      ),
        spend_data AS (
          SELECT 
            account_id,
@@ -938,7 +942,7 @@ WHERE speed_to_lead_seconds IS NOT NULL
               account_id,
               COUNT(*) as total_appointments
             FROM appointments
-            ${apptWhereNoUsers}
+            ${this.appendCountryFilterToAppointments(apptWhereNoUsers, appliedFilters.params)}
             GROUP BY account_id
           ),
           spend_data AS (
@@ -1021,7 +1025,7 @@ WHERE speed_to_lead_seconds IS NOT NULL
                account_id,
                COUNT(*) as total_count
              FROM appointments
-             ${whereClause}
+             ${this.appendCountryFilterToAppointments(whereClause, appliedFilters.params)}
              GROUP BY account_id
            ),
            appointment_data AS (
@@ -1030,7 +1034,7 @@ WHERE speed_to_lead_seconds IS NOT NULL
                setter_user_id,
                COUNT(*) as setter_appointments
              FROM appointments
-             ${whereClause}
+             ${this.appendCountryFilterToAppointments(whereClause, appliedFilters.params)}
              AND setter_user_id IS NOT NULL
              GROUP BY account_id, setter_user_id
            ),
@@ -1072,7 +1076,7 @@ WHERE speed_to_lead_seconds IS NOT NULL
                account_id,
                COUNT(*) as total_count
              FROM appointments
-             ${whereClause}
+             ${this.appendCountryFilterToAppointments(whereClause, appliedFilters.params)}
              GROUP BY account_id
            ),
            appointment_data AS (
@@ -1082,7 +1086,7 @@ WHERE speed_to_lead_seconds IS NOT NULL
                sales_rep_user_id,
                COUNT(*) as link_appointments
              FROM appointments
-             ${whereClause}
+             ${this.appendCountryFilterToAppointments(whereClause, appliedFilters.params)}
              AND setter_user_id IS NOT NULL 
              AND sales_rep_user_id IS NOT NULL
              GROUP BY account_id, setter_user_id, sales_rep_user_id
@@ -1427,16 +1431,22 @@ WHERE speed_to_lead_seconds IS NOT NULL
 
   /**
    * Build a WHERE clause for meta_ad_performance using only safe filters
-   * Safe fields: local_date | local_week | local_month, account_id
+   * Safe fields: local_date | local_week | local_month, account_id, meta dims
    */
   private buildMetaWhereClause(appliedFilters: any): string {
-    const safeFields = new Set(['local_date', 'local_week', 'local_month', 'account_id'])
+    const safeFields = new Set(['local_date', 'local_week', 'local_month', 'account_id', 'meta_campaign_id', 'meta_ad_set_id', 'meta_ad_id'])
     const conditions = appliedFilters.conditions.filter((c: any) => safeFields.has(c.field))
     const params = { ...appliedFilters.params }
     // Ensure we don't pass user-specific params
     delete (params as any).rep_user_id
     delete (params as any).setter_user_id
-    return buildWhereClause({ conditions, params }, []).replace('appointments.', 'meta_ad_performance.')
+    // Build clause and qualify for meta_ad_performance
+    const clause = buildWhereClause({ conditions, params }, [])
+    return clause
+      .replace(/(?<!\$)\baccount_id\b/g, 'meta_ad_performance.account_id')
+      .replace(/(?<!\$)\blocal_date\b/g, 'meta_ad_performance.local_date')
+      .replace(/(?<!\$)\blocal_week\b/g, 'meta_ad_performance.local_week')
+      .replace(/(?<!\$)\blocal_month\b/g, 'meta_ad_performance.local_month')
   }
 
   /**
@@ -1478,6 +1488,34 @@ WHERE speed_to_lead_seconds IS NOT NULL
       default:
         return { type: 'total', data: { value: 0 } }
     }
+  }
+
+  private appendCountryFilterToAppointments(whereClause: string, params: any): string {
+    // If no country filter provided, return original clause
+    if (!params || !Array.isArray(params.country_codes) || params.country_codes.length === 0) return whereClause
+    // Inject EXISTS on contacts linked by contact_id with phone-derived country code
+    const placeholders = params.country_codes.map((_: any, idx: number) => `$country_codes_${idx}`).join(', ')
+    const extra = `EXISTS (
+      SELECT 1 FROM contacts c
+      WHERE c.id = appointments.contact_id
+        AND c.account_id = appointments.account_id
+        AND (
+          CASE 
+            WHEN c.phone ~ '^\\+61[0-9]{9}$' OR c.phone ~ '^0[0-9]{9}$' THEN '+61'
+            WHEN c.phone ~ '^\\+1[0-9]{10}$' OR c.phone ~ '^[2-9][0-9]{9}$' THEN '+1'
+            WHEN c.phone ~ '^\\+44[0-9]{10,11}$' THEN '+44'
+            WHEN c.phone ~ '^\\+49[0-9]{10,12}$' THEN '+49'
+            WHEN c.phone ~ '^\\+33[0-9]{9}$' THEN '+33'
+            WHEN c.phone ~ '^\\+81[0-9]{10,11}$' THEN '+81'
+            WHEN c.phone ~ '^\\+86[0-9]{11}$' THEN '+86'
+            WHEN c.phone ~ '^\\+91[0-9]{10}$' THEN '+91'
+            WHEN c.phone ~ '^\\+55[0-9]{10,11}$' THEN '+55'
+            ELSE NULL
+          END
+        ) IN (${placeholders})
+    )`
+    if (!whereClause || whereClause.trim() === '') return `WHERE ${extra}`
+    return `${whereClause} AND ${extra}`
   }
 }
 

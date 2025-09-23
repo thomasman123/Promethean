@@ -72,7 +72,6 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
     const accountId = searchParams.get('accountId')
-    const adAccountId = searchParams.get('adAccountId')
 
     if (!accountId) {
       return NextResponse.json({ error: 'accountId required' }, { status: 400 })
@@ -84,86 +83,35 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // require admin or moderator on this account
-    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-    const isGlobalAdmin = profile?.role === 'admin'
-    if (!isGlobalAdmin) {
-      const { data: access } = await supabase
-        .from('account_access')
-        .select('role')
-        .eq('user_id', user.id)
-        .eq('account_id', accountId)
-        .eq('is_active', true)
-        .single()
-      if (!access || !['moderator'].includes(access.role)) {
-        return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
-      }
-    }
-
-    // Load account
-    const { data: account } = await supabase
-      .from('accounts')
-      .select('id, name, meta_user_id, meta_access_token, meta_token_expires_at, meta_auth_type')
-      .eq('id', accountId)
+    // Verify access to account
+    const { data: access } = await supabase
+      .from('account_access')
+      .select('role')
+      .eq('user_id', user.id)
+      .eq('account_id', accountId)
+      .eq('is_active', true)
       .single()
-    
-    if (!account) {
-      return NextResponse.json({ error: 'Account not found or not connected to Meta Ads' }, { status: 404 })
+
+    if (!access) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
-    const accessToken = await getValidMetaAccessToken(account, supabase)
-    if (!accessToken) {
-      return NextResponse.json({ error: 'No valid Meta access token available' }, { status: 401 })
+    // Return campaigns from DB for selection
+    const { data: campaigns, error } = await supabase
+      .from('meta_campaigns')
+      .select('id, meta_campaign_id, campaign_name, status, objective')
+      .eq('account_id', accountId)
+      .order('campaign_name', { ascending: true })
+
+    if (error) {
+      console.error('DB error fetching campaigns:', error)
+      return NextResponse.json({ error: 'Failed to fetch campaigns' }, { status: 500 })
     }
 
-    console.log('🔍 Fetching Meta campaigns for account:', accountId)
-
-    let campaignsUrl = ''
-    if (adAccountId) {
-      // Fetch campaigns from a specific ad account
-      campaignsUrl = `https://graph.facebook.com/v21.0/${adAccountId}/campaigns?fields=id,name,status,objective,daily_budget,lifetime_budget,created_time,updated_time,start_time,stop_time&access_token=${accessToken}`
-    } else {
-      // Fetch campaigns from all ad accounts
-      campaignsUrl = `https://graph.facebook.com/v21.0/me/adaccounts?fields=campaigns{id,name,status,objective,daily_budget,lifetime_budget,created_time,updated_time,start_time,stop_time}&access_token=${accessToken}`
-    }
-
-    const response = await fetch(campaignsUrl)
-
-    if (!response.ok) {
-      const errorText = await response.text()
-      console.error('Meta API error:', errorText)
-      return NextResponse.json({ 
-        success: false, 
-        error: 'Failed to fetch campaigns from Meta API',
-        details: errorText
-      }, { status: response.status })
-    }
-
-    const data = await response.json()
-    
-    let campaigns = []
-    if (adAccountId) {
-      campaigns = data.data || []
-    } else {
-      // Flatten campaigns from all ad accounts
-      campaigns = data.data?.reduce((acc: any[], adAccount: any) => {
-        return acc.concat(adAccount.campaigns?.data || [])
-      }, []) || []
-    }
-
-    console.log('✅ Successfully fetched Meta campaigns:', campaigns.length)
-
-    return NextResponse.json({
-      success: true,
-      campaigns: campaigns
-    })
-
+    return NextResponse.json({ success: true, campaigns: campaigns || [] })
   } catch (error) {
     console.error('Error in Meta campaigns API:', error)
-    return NextResponse.json({ 
-      success: false, 
-      error: 'Internal server error' 
-    }, { status: 500 })
+    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 })
   }
 }
 

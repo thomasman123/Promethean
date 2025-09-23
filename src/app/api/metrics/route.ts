@@ -62,12 +62,27 @@ export async function POST(request: NextRequest) {
         fbc: filters.fbc,
         fbp: filters.fbp,
         gclid: filters.gclid,
+        // Geo filters
+        country_codes: filters.country_codes,
+        // Meta dimensions
+        meta_campaign_ids: filters.meta_campaign_ids,
+        meta_ad_set_ids: filters.meta_ad_set_ids,
+        meta_ad_ids: filters.meta_ad_ids,
       }
     }
 
     const requestedVizType = body.vizType || body.options?.vizType;
     const requestedBreakdown = body.breakdown;
     const widgetSettings = body.widgetSettings || body.options?.widgetSettings;
+
+    // Merge widgetSettings-based filters if provided (UI may pass these via options)
+    if (widgetSettings) {
+      const f = metricRequest.filters as any
+      if (Array.isArray(widgetSettings.country_codes)) f.country_codes = widgetSettings.country_codes
+      if (Array.isArray(widgetSettings.meta_campaign_ids)) f.meta_campaign_ids = widgetSettings.meta_campaign_ids
+      if (Array.isArray(widgetSettings.meta_ad_set_ids)) f.meta_ad_set_ids = widgetSettings.meta_ad_set_ids
+      if (Array.isArray(widgetSettings.meta_ad_ids)) f.meta_ad_ids = widgetSettings.meta_ad_ids
+    }
 
     // Debug logging for speed to lead
     if (body.metricName === 'speed_to_lead') {

@@ -130,6 +130,25 @@ export function applyStandardFilters(filters: MetricFilters, baseTable: string):
 		}
 	}
 
+	// Geo filter by country code: carry params only (engine will append contacts-based condition)
+	if (filters.country_codes && filters.country_codes.length > 0) {
+		params.country_codes = filters.country_codes
+	}
+
+	// Meta ads dimension filters (applied when querying meta_* tables)
+	if (filters.meta_campaign_ids && filters.meta_campaign_ids.length > 0) {
+		conditions.push({ field: 'meta_campaign_id', operator: 'IN', value: filters.meta_campaign_ids, paramName: 'meta_campaign_ids' })
+		params.meta_campaign_ids = filters.meta_campaign_ids
+	}
+	if (filters.meta_ad_set_ids && filters.meta_ad_set_ids.length > 0) {
+		conditions.push({ field: 'meta_ad_set_id', operator: 'IN', value: filters.meta_ad_set_ids, paramName: 'meta_ad_set_ids' })
+		params.meta_ad_set_ids = filters.meta_ad_set_ids
+	}
+	if (filters.meta_ad_ids && filters.meta_ad_ids.length > 0) {
+		conditions.push({ field: 'meta_ad_id', operator: 'IN', value: filters.meta_ad_ids, paramName: 'meta_ad_ids' })
+		params.meta_ad_ids = filters.meta_ad_ids
+	}
+
 	return { conditions, params }
 }
 
