@@ -1091,8 +1091,8 @@ async function processPhoneCallWebhook(payload: any) {
         const dialTimeIso = dialData.date_called;
         if (dialTimeIso) {
           const dialTime = new Date(dialTimeIso);
-          // Only look for appointments that happen AFTER the dial, within 30 minutes
-          const windowStart = dialTime; // Dial time (no appointments before dial)
+          // Look for appointments within ±30 minutes of dial (appointment can be booked during call before hangup)
+          const windowStart = new Date(dialTime.getTime() - 30 * 60 * 1000); // 30 minutes before dial
           const windowEnd = new Date(dialTime.getTime() + 30 * 60 * 1000); // 30 minutes after dial
 
           const { data: matchedAppts } = await supabase
@@ -1125,7 +1125,7 @@ async function processPhoneCallWebhook(payload: any) {
               });
             }
           } else {
-            console.log('ℹ️ No appointment found within 30 minutes AFTER dial for linking via contact_id');
+            console.log('ℹ️ No appointment found within ±30 minutes of dial for linking via contact_id');
           }
         }
       }
@@ -2024,9 +2024,9 @@ async function processAppointmentWebhook(payload: any) {
       try {
         if (appointmentContactId && savedAppointment.date_booked) {
           const bookedAt = new Date(savedAppointment.date_booked as string);
-          // FIXED: Only link dials that happened BEFORE the appointment, within 30 minutes
+          // FIXED: Link dials within ±30 minutes of appointment (dial can happen before OR after appointment webhook)
           const dialWindowStart = new Date(bookedAt.getTime() - 30 * 60 * 1000); // 30 minutes before appointment
-          const dialWindowEnd = bookedAt; // Appointment time (no dials after appointment)
+          const dialWindowEnd = new Date(bookedAt.getTime() + 30 * 60 * 1000); // 30 minutes after appointment
 
           const { data: matchingDials, error: dialSearchErr } = await supabase
             .from('dials')
@@ -2062,7 +2062,7 @@ async function processAppointmentWebhook(payload: any) {
               });
             }
           } else {
-            console.log('ℹ️ No matching dials found within 30 minutes BEFORE appointment for linking');
+            console.log('ℹ️ No matching dials found within ±30 minutes of appointment for linking');
           }
         }
       } catch (dialLinkError) {
@@ -2524,17 +2524,17 @@ async function linkAppointmentToDial(
     });
 
     // FIXED: Build query to find the most recent dial that could have led to this appointment
-    // Only look for dials that happened BEFORE the appointment, within 30 minutes
+    // Look for dials within ±30 minutes of appointment (webhook timing can vary)
     const appointmentTime = new Date(appointmentOrDiscovery.date_booked || appointmentOrDiscovery.date_booked_for);
     const searchWindowStart = new Date(appointmentTime.getTime() - (30 * 60 * 1000)); // 30 minutes before appointment
-    const searchWindowEnd = appointmentTime; // Appointment time (no dials after)
+    const searchWindowEnd = new Date(appointmentTime.getTime() + (30 * 60 * 1000)); // 30 minutes after appointment
 
     let dialQuery = supabase
       .from('dials')
       .select('id, date_called, email, phone, setter')
       .eq('account_id', accountId)
-      .gte('date_called', searchWindowStart.toISOString()) // Within 30 minutes before appointment
-      .lte('date_called', searchWindowEnd.toISOString()) // Up to appointment time
+              .gte('date_called', searchWindowStart.toISOString()) // Within 30 minutes before appointment
+        .lte('date_called', searchWindowEnd.toISOString()) // Within 30 minutes after appointment
       .order('date_called', { ascending: false })
       .limit(1); // Get the most recent dial
 
@@ -2556,7 +2556,7 @@ async function linkAppointmentToDial(
     }
 
     if (!recentDials || recentDials.length === 0) {
-      console.log('ℹ️ No recent dials found within 30 minutes BEFORE appointment');
+      console.log('ℹ️ No recent dials found within ±30 minutes of appointment');
       return;
     }
 
