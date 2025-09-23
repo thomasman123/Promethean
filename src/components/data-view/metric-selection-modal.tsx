@@ -82,7 +82,7 @@ export function MetricSelectionModal({
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedMetric, setSelectedMetric] = useState<string | null>(null)
   const [showOptions, setShowOptions] = useState(false)
-  const [selectedOptions, setSelectedOptions] = useState<any>({})
+  const [selectedOptions, setSelectedOptions] = useState<Record<string, any>>({})
 
   // Filter metrics based on search query
   const filteredCategories = useMemo(() => {
@@ -321,7 +321,7 @@ export function MetricSelectionModal({
                   <Label>Attribution</Label>
                   <Select 
                     value={selectedOptions.attribution || selectedMetricDef.options.attribution[0]}
-                    onValueChange={(value) => setSelectedOptions(prev => ({ ...prev, attribution: value }))}
+                    onValueChange={(value) => setSelectedOptions((prev: Record<string, any>) => ({ ...prev, attribution: value }))}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -329,10 +329,10 @@ export function MetricSelectionModal({
                     <SelectContent>
                       {selectedMetricDef.options.attribution.map(option => (
                         <SelectItem key={option} value={option}>
-                                                     {option === 'all' ? 'All Attribution' : 
-                            option === 'assigned' ? 'Assigned Sales Rep' :
-                            option === 'booked' ? 'Setter Who Booked' :
-                            option === 'dialer' ? 'Dialer' : option}
+                          {option === 'all' ? 'All Attribution' : 
+                           option === 'assigned' ? 'Sales Rep Attribution' :
+                           option === 'booked' ? 'Setter Attribution' :
+                           option === 'dialer' ? 'Setter Attribution' : option}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -348,7 +348,7 @@ export function MetricSelectionModal({
                   <Label>Time Format</Label>
                   <Select 
                     value={selectedOptions.timeFormat || selectedMetricDef.options.timeFormat[0]}
-                    onValueChange={(value) => setSelectedOptions(prev => ({ ...prev, timeFormat: value }))}
+                    onValueChange={(value) => setSelectedOptions((prev: Record<string, any>) => ({ ...prev, timeFormat: value }))}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -373,7 +373,7 @@ export function MetricSelectionModal({
                   <Label>Calculation</Label>
                   <Select 
                     value={selectedOptions.calculation || selectedMetricDef.options.calculation[0]}
-                    onValueChange={(value) => setSelectedOptions(prev => ({ ...prev, calculation: value }))}
+                    onValueChange={(value) => setSelectedOptions((prev: Record<string, any>) => ({ ...prev, calculation: value }))}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -396,7 +396,7 @@ export function MetricSelectionModal({
                   <Label>Business Hours</Label>
                   <Select 
                     value={selectedOptions.businessHours || selectedMetricDef.options.businessHours[0]}
-                    onValueChange={(value) => setSelectedOptions(prev => ({ ...prev, businessHours: value }))}
+                    onValueChange={(value) => setSelectedOptions((prev: Record<string, any>) => ({ ...prev, businessHours: value }))}
                   >
                     <SelectTrigger>
                       <SelectValue />

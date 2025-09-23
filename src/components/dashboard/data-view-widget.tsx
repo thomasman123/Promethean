@@ -325,9 +325,11 @@ export function DataViewWidget({ metrics, selectedUsers, options }: DataViewWidg
               // For other metrics, show attribution
               let attributionLabel = attribution
               if (attribution === "assigned") {
-                attributionLabel = tableType === "discoveries" ? "Assigned to Setter" : "Sales Rep Owned"
+                attributionLabel = tableType === "discoveries" ? "Setter Attribution" : "Sales Rep Attribution"
               } else if (attribution === "booked") {
-                attributionLabel = tableType === "discoveries" ? "Booked to Sales Rep" : "Setter Contributed"
+                attributionLabel = tableType === "discoveries" ? "Sales Rep Attribution" : "Setter Attribution"
+              } else if (attribution === "all") {
+                attributionLabel = "All Attribution"
               }
               
               return (

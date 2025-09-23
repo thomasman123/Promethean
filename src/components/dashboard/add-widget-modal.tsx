@@ -85,9 +85,11 @@ function getAttributionLabel(attribution: string, metricName: string): string {
   const tableType = metricDefinition?.query?.table || "appointments"
   
   if (attribution === "assigned") {
-    return tableType === "discoveries" ? "Assigned to Setter" : "Sales Rep Owned"
+    return tableType === "discoveries" ? "Setter Attribution" : "Sales Rep Attribution"
   } else if (attribution === "booked") {
-    return tableType === "discoveries" ? "Booked to Sales Rep" : "Setter Contributed"
+    return tableType === "discoveries" ? "Sales Rep Attribution" : "Setter Attribution"
+  } else if (attribution === "all") {
+    return "All Attribution"
   }
   return attribution
 }
@@ -349,8 +351,9 @@ export function AddWidgetModal({ open, onOpenChange, onAddWidget }: AddWidgetMod
                         
                         // Get the display name for the original metric
                         const metricDisplayName = METRICS_REGISTRY[originalMetricName]?.name || originalMetricName
-                        const attributionLabel = attribution === "assigned" ? "Sales Rep Owned" : 
-                                               attribution === "booked" ? "Setter Contributed" : 
+                        const attributionLabel = attribution === "assigned" ? "Sales Rep Attribution" : 
+                                               attribution === "booked" ? "Setter Attribution" : 
+                                               attribution === "all" ? "All Attribution" :
                                                attribution
                         
                         const optionsText = options ? Object.entries(options)

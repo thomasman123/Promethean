@@ -415,13 +415,9 @@ export function UnifiedMetricSelector({
                       {selectedMetricDef.options.attribution.map((option: string) => (
                         <SelectItem key={option} value={option}>
                           {option === 'all' ? 'All Attribution' : 
-                           option === 'assigned' ? 'Sales Rep Owned' :
-                           option === 'booked' ? 'Setter Contributed' :
-                           option === 'dialer' ? 'Dialer' : option}
-                          {option === 'all' ? 'All Attribution' : 
-                           option === 'assigned' ? 'Assigned' :
-                           option === 'booked' ? 'Booked' :
-                           option === 'dialer' ? 'Dialer' : option}
+                           option === 'assigned' ? 'Sales Rep Attribution' :
+                           option === 'booked' ? 'Setter Attribution' :
+                           option === 'dialer' ? 'Setter Attribution' : option}
                         </SelectItem>
                       ))}
                     </SelectContent>
