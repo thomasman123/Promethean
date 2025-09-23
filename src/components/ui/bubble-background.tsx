@@ -69,10 +69,10 @@ function BubbleBackground({
       ref={containerRef}
       data-slot="bubble-background"
       className={cn(
-        'fixed inset-0 overflow-hidden pointer-events-none bg-red-500/20',
+        'fixed inset-0 overflow-hidden pointer-events-none',
         className,
       )}
-      style={{ zIndex: 999 }}
+      style={{ zIndex: -10 }}
       {...props}
     >
       <style>
@@ -109,11 +109,28 @@ function BubbleBackground({
         </defs>
       </svg>
       <div
-        className="absolute inset-0 opacity-50"
+        className="absolute inset-0 opacity-30 blur-3xl"
       >
-        <div className="absolute rounded-full w-64 h-64 top-[10%] left-[10%] bg-red-500/30" />
-        <div className="absolute rounded-full w-48 h-48 top-[60%] right-[20%] bg-red-400/25" />
-        <div className="absolute rounded-full w-56 h-56 bottom-[20%] left-[50%] bg-red-600/20" />
+        <motion.div 
+          className="absolute rounded-full w-96 h-96 top-[5%] left-[5%] bg-red-500/15"
+          animate={{ y: [-20, 20, -20], x: [-10, 10, -10] }}
+          transition={{ duration: 25, ease: 'easeInOut', repeat: Infinity }}
+        />
+        <motion.div 
+          className="absolute rounded-full w-80 h-80 top-[40%] right-[10%] bg-red-400/12"
+          animate={{ y: [15, -15, 15], x: [8, -8, 8] }}
+          transition={{ duration: 30, ease: 'easeInOut', repeat: Infinity }}
+        />
+        <motion.div 
+          className="absolute rounded-full w-72 h-72 bottom-[15%] left-[30%] bg-red-600/10"
+          animate={{ y: [-25, 25, -25], x: [12, -12, 12] }}
+          transition={{ duration: 35, ease: 'easeInOut', repeat: Infinity }}
+        />
+        <motion.div 
+          className="absolute rounded-full w-64 h-64 top-[70%] left-[70%] bg-red-300/8"
+          animate={{ y: [20, -20, 20], x: [-15, 15, -15] }}
+          transition={{ duration: 28, ease: 'easeInOut', repeat: Infinity }}
+        />
       </div>
       {children}
     </div>
