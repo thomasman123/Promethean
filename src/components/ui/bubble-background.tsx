@@ -72,7 +72,7 @@ function BubbleBackground({
         'fixed inset-0 overflow-hidden pointer-events-none',
         className,
       )}
-      style={{ zIndex: -10 }}
+      style={{ zIndex: 0 }}
       {...props}
     >
       <style>
@@ -109,25 +109,25 @@ function BubbleBackground({
         </defs>
       </svg>
       <div
-        className="absolute inset-0 opacity-30 blur-3xl"
+        className="absolute inset-0 blur-3xl"
       >
         <motion.div 
-          className="absolute rounded-full w-96 h-96 top-[5%] left-[5%] bg-red-500/15"
+          className="absolute rounded-full w-[38rem] h-[38rem] top-[5%] left-[5%] bg-red-500/20"
           animate={{ y: [-20, 20, -20], x: [-10, 10, -10] }}
           transition={{ duration: 25, ease: 'easeInOut', repeat: Infinity }}
         />
         <motion.div 
-          className="absolute rounded-full w-80 h-80 top-[40%] right-[10%] bg-red-400/12"
+          className="absolute rounded-full w-[32rem] h-[32rem] top-[35%] right-[8%] bg-red-400/16"
           animate={{ y: [15, -15, 15], x: [8, -8, 8] }}
           transition={{ duration: 30, ease: 'easeInOut', repeat: Infinity }}
         />
         <motion.div 
-          className="absolute rounded-full w-72 h-72 bottom-[15%] left-[30%] bg-red-600/10"
+          className="absolute rounded-full w-[30rem] h-[30rem] bottom-[12%] left-[28%] bg-red-600/14"
           animate={{ y: [-25, 25, -25], x: [12, -12, 12] }}
           transition={{ duration: 35, ease: 'easeInOut', repeat: Infinity }}
         />
         <motion.div 
-          className="absolute rounded-full w-64 h-64 top-[70%] left-[70%] bg-red-300/8"
+          className="absolute rounded-full w-[26rem] h-[26rem] top-[68%] left-[66%] bg-red-300/12"
           animate={{ y: [20, -20, 20], x: [-15, 15, -15] }}
           transition={{ duration: 28, ease: 'easeInOut', repeat: Infinity }}
         />
