@@ -20,6 +20,7 @@ interface DatePickerProps {
   }
   onChange?: (range: { from: Date | undefined; to: Date | undefined }) => void
   className?: string
+  applyMode?: boolean
 }
 
 const datePresets = [
@@ -73,7 +74,9 @@ export function DatePicker({
   value = { from: undefined, to: undefined },
   onChange,
   className,
+  applyMode = false,
 }: DatePickerProps) {
+  const [open, setOpen] = React.useState(false)
   const [date, setDate] = React.useState<DateRange | undefined>(
     value.from && value.to ? { from: value.from, to: value.to } : undefined
   )
@@ -84,38 +87,59 @@ export function DatePicker({
 
   const handleSelect = (newDate: DateRange | undefined) => {
     setDate(newDate)
-    onChange?.({
-      from: newDate?.from,
-      to: newDate?.to
-    })
+    if (!applyMode) {
+      onChange?.({
+        from: newDate?.from,
+        to: newDate?.to
+      })
+    }
   }
 
   const handlePresetClick = (preset: typeof datePresets[0]) => {
     const range = preset.getValue()
     setDate(range)
-    onChange?.(range)
+    if (!applyMode) {
+      onChange?.(range)
+    }
   }
 
+  const handleApply = () => {
+    if (applyMode) {
+      onChange?.({ from: date?.from, to: date?.to })
+      setOpen(false)
+    }
+  }
+
+  const displayRange = applyMode
+    ? (value.from && value.to ? { from: value.from, to: value.to } : undefined)
+    : date
+
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={(next) => {
+      setOpen(next)
+      if (next) {
+        // Reset pending selection to last applied when opening
+        setDate(value.from && value.to ? { from: value.from, to: value.to } : undefined)
+      }
+    }}>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
           size="sm"
           className={cn(
             "h-8 justify-start text-left font-normal",
-            !date && "text-muted-foreground",
+            !displayRange && "text-muted-foreground",
             className
           )}
         >
           <CalendarIcon className="h-4 w-4 mr-2" />
-          {date?.from ? (
-            date.to ? (
+          {displayRange?.from ? (
+            displayRange.to ? (
               <>
-                {format(date.from, "MMM dd")} - {format(date.to, "MMM dd, y")}
+                {format(displayRange.from, "MMM dd")} - {format(displayRange.to, "MMM dd, y")}
               </>
             ) : (
-              format(date.from, "MMM dd, y")
+              format(displayRange.from, "MMM dd, y")
             )
           ) : (
             <span>Pick a date</span>
@@ -161,6 +185,13 @@ export function DatePicker({
             className="rounded-lg border-0"
           />
         </div>
+        {applyMode && (
+          <div className="flex justify-end gap-2 p-2 border-t">
+            <Button variant="default" size="sm" className="h-8" onClick={handleApply}>
+              Apply
+            </Button>
+          </div>
+        )}
       </PopoverContent>
     </Popover>
   )
