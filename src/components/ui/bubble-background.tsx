@@ -69,10 +69,10 @@ function BubbleBackground({
       ref={containerRef}
       data-slot="bubble-background"
       className={cn(
-        'fixed inset-0 overflow-hidden pointer-events-none',
+        'fixed inset-0 overflow-hidden pointer-events-none bg-red-500/20',
         className,
       )}
-      style={{ zIndex: 1 }}
+      style={{ zIndex: 999 }}
       {...props}
     >
       <style>
@@ -109,42 +109,11 @@ function BubbleBackground({
         </defs>
       </svg>
       <div
-        className="absolute inset-0 opacity-30"
-        style={{ filter: 'url(#goo) blur(30px)' }}
+        className="absolute inset-0 opacity-50"
       >
-        <motion.div
-          className="absolute rounded-full size-[60%] top-[20%] left-[20%] mix-blend-normal bg-[radial-gradient(circle_at_center,rgba(var(--first-color),0.15)_0%,rgba(var(--first-color),0)_70%)]"
-          animate={{ y: [-30, 30, -30] }}
-          transition={{ duration: 25, ease: 'easeInOut', repeat: Infinity }}
-        />
-        <motion.div
-          className="absolute inset-0 flex justify-center items-center origin-[calc(50%-300px)]"
-          animate={{ rotate: 360 }}
-          transition={{
-            duration: 30,
-            ease: 'linear',
-            repeat: Infinity,
-            repeatType: 'loop',
-          }}
-        >
-          <div className="rounded-full size-[50%] mix-blend-normal bg-[radial-gradient(circle_at_center,rgba(var(--second-color),0.12)_0%,rgba(var(--second-color),0)_70%)]" />
-        </motion.div>
-        <motion.div
-          className="absolute inset-0 flex justify-center items-center origin-[calc(50%+300px)]"
-          animate={{ rotate: 360 }}
-          transition={{ duration: 35, ease: 'linear', repeat: Infinity }}
-        >
-          <div className="absolute rounded-full size-[40%] bg-[radial-gradient(circle_at_center,rgba(var(--third-color),0.1)_0%,rgba(var(--third-color),0)_70%)] mix-blend-normal top-[60%] left-[20%]" />
-        </motion.div>
-        {interactive && (
-          <motion.div
-            className="absolute rounded-full size-full mix-blend-normal bg-[radial-gradient(circle_at_center,rgba(var(--sixth-color),0.1)_0%,rgba(var(--sixth-color),0)_50%)]"
-            style={{
-              x: springX,
-              y: springY,
-            }}
-          />
-        )}
+        <div className="absolute rounded-full w-64 h-64 top-[10%] left-[10%] bg-red-500/30" />
+        <div className="absolute rounded-full w-48 h-48 top-[60%] right-[20%] bg-red-400/25" />
+        <div className="absolute rounded-full w-56 h-56 bottom-[20%] left-[50%] bg-red-600/20" />
       </div>
       {children}
     </div>
