@@ -2062,31 +2062,8 @@ async function processAppointmentWebhook(payload: any) {
         // Don't throw - this shouldn't fail the appointment creation
       }
       
-      // Refresh GHL user roles now that the appointment is saved and activity counts should be accurate
-      try {
-        console.log('🔄 Refreshing GHL user roles after appointment save...');
-        
-        if (setterData?.id) {
-          await supabase.rpc('update_ghl_user_roles_with_context' as any, {
-            p_account_id: account.id,
-            p_ghl_user_id: setterData.id,
-            p_current_role: 'setter'
-          });
-          console.log('✅ Refreshed setter role:', setterData.id);
-        }
-        
-        if (salesRepData?.id) {
-          await supabase.rpc('update_ghl_user_roles_with_context' as any, {
-            p_account_id: account.id,
-            p_ghl_user_id: salesRepData.id,
-            p_current_role: 'sales_rep'
-          });
-          console.log('✅ Refreshed sales rep role:', salesRepData.id);
-        }
-      } catch (refreshError) {
-        console.error('⚠️ Failed to refresh GHL user roles (non-critical):', refreshError);
-        // Don't throw - this is not critical to appointment processing
-      }
+      // Note: Removed automatic role refresh to prevent roles from changing randomly
+      // User roles should only be changed manually by admins, not automatically by webhooks
       
       // Link discovery→appointment when discovery was scheduled within 60 minutes before booking
       try {
@@ -2387,23 +2364,8 @@ async function processAppointmentWebhook(payload: any) {
       
       console.log('✅ Discovery saved successfully:', payload.appointment?.id);
       
-      // Refresh GHL user roles now that the discovery is saved
-      try {
-        console.log('🔄 Refreshing GHL user roles after discovery save...');
-
-        // Setter is the appointment owner
-        if (salesRepData?.id) {
-          await supabase.rpc('update_ghl_user_roles_with_context' as any, {
-            p_account_id: account.id,
-            p_ghl_user_id: salesRepData.id,
-            p_current_role: 'setter'
-          });
-          console.log('✅ Refreshed setter role:', salesRepData.id);
-        }
-      } catch (refreshError) {
-        console.error('⚠️ Failed to refresh GHL user roles (non-critical):', refreshError);
-        // Don't throw - this is not critical to discovery processing
-      }
+      // Note: Removed automatic role refresh to prevent roles from changing randomly
+      // User roles should only be changed manually by admins, not automatically by webhooks
       
       // Removed dial linking for discoveries per new rules
     }
