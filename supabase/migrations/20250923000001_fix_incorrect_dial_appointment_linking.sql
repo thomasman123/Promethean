@@ -72,4 +72,4 @@ DROP TABLE incorrect_links;
 COMMIT;
 
 -- Add a comment for future reference
-COMMENT ON TABLE dials IS 'Dial-appointment linking fixed on 2025-09-23: Only appointments within 30 minutes AFTER dial are now linked'; 
+COMMENT ON TABLE dials IS 'Dial-appointment linking fixed on 2025-09-23: Only appointments within 30 minutes AFTER dial are now linked. This naturally filters for quality conversations without requiring specific duration thresholds.'; 
