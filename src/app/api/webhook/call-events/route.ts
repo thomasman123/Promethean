@@ -1085,13 +1085,15 @@ async function processPhoneCallWebhook(payload: any) {
     console.log('✅ Dial saved successfully:', savedDial.id);
     
     // New: If the appointment already exists (dial arrived after appointment), link it here
+    // FIXED: Only link appointments that happen AFTER the dial, within 30 minutes
     try {
       if (dialData.contact_id) {
         const dialTimeIso = dialData.date_called;
         if (dialTimeIso) {
           const dialTime = new Date(dialTimeIso);
-          const windowStart = new Date(dialTime.getTime() - 60 * 60 * 1000);
-          const windowEnd = new Date(dialTime.getTime() + 60 * 60 * 1000);
+          // Only look for appointments that happen AFTER the dial, within 30 minutes
+          const windowStart = dialTime; // Dial time (no appointments before dial)
+          const windowEnd = new Date(dialTime.getTime() + 30 * 60 * 1000); // 30 minutes after dial
 
           const { data: matchedAppts } = await supabase
             .from('appointments')
@@ -1105,6 +1107,7 @@ async function processPhoneCallWebhook(payload: any) {
           const matchedAppt = matchedAppts && matchedAppts.length > 0 ? matchedAppts[0] : null
 
           if (matchedAppt) {
+            const minutesDiff = (new Date(matchedAppt.date_booked).getTime() - dialTime.getTime()) / (1000 * 60);
             const { error: updErr } = await supabase
               .from('dials')
               .update({ 
@@ -1115,10 +1118,14 @@ async function processPhoneCallWebhook(payload: any) {
             if (updErr) {
               console.error('Failed to mark dial as booked/link appointment (dial-first path):', updErr);
             } else {
-              console.log('🔗 Linked dial to existing appointment (dial-first path):', { dialId: savedDial.id, appointmentId: matchedAppt.id });
+              console.log('🔗 Linked dial to existing appointment (dial-first path):', { 
+                dialId: savedDial.id, 
+                appointmentId: matchedAppt.id,
+                minutesAfterDial: Math.round(minutesDiff * 10) / 10
+              });
             }
           } else {
-            console.log('ℹ️ No appointment found within +/- 60 minutes of dial for linking via contact_id');
+            console.log('ℹ️ No appointment found within 30 minutes AFTER dial for linking via contact_id');
           }
         }
       }
@@ -2017,8 +2024,9 @@ async function processAppointmentWebhook(payload: any) {
       try {
         if (appointmentContactId && savedAppointment.date_booked) {
           const bookedAt = new Date(savedAppointment.date_booked as string);
-          const dialWindowStart = new Date(bookedAt.getTime() - 48 * 60 * 60 * 1000); // 48 hours before
-          const dialWindowEnd = new Date(bookedAt.getTime() + 2 * 60 * 60 * 1000); // 2 hours after
+          // FIXED: Only link dials that happened BEFORE the appointment, within 30 minutes
+          const dialWindowStart = new Date(bookedAt.getTime() - 30 * 60 * 1000); // 30 minutes before appointment
+          const dialWindowEnd = bookedAt; // Appointment time (no dials after appointment)
 
           const { data: matchingDials, error: dialSearchErr } = await supabase
             .from('dials')
@@ -2054,7 +2062,7 @@ async function processAppointmentWebhook(payload: any) {
               });
             }
           } else {
-            console.log('ℹ️ No matching dials found within 48-hour window for appointment linking');
+            console.log('ℹ️ No matching dials found within 30 minutes BEFORE appointment for linking');
           }
         }
       } catch (dialLinkError) {
@@ -2515,16 +2523,18 @@ async function linkAppointmentToDial(
       scheduledTime: appointmentOrDiscovery.date_booked_for
     });
 
-    // Build query to find the most recent dial that could have led to this appointment
-    const webhookReceivedTime = new Date(); 
-    const searchWindowStart = new Date(webhookReceivedTime.getTime() - (24 * 60 * 60 * 1000)); // 24 hours before now
+    // FIXED: Build query to find the most recent dial that could have led to this appointment
+    // Only look for dials that happened BEFORE the appointment, within 30 minutes
+    const appointmentTime = new Date(appointmentOrDiscovery.date_booked || appointmentOrDiscovery.date_booked_for);
+    const searchWindowStart = new Date(appointmentTime.getTime() - (30 * 60 * 1000)); // 30 minutes before appointment
+    const searchWindowEnd = appointmentTime; // Appointment time (no dials after)
 
     let dialQuery = supabase
       .from('dials')
       .select('id, date_called, email, phone, setter')
       .eq('account_id', accountId)
-      .gte('date_called', searchWindowStart.toISOString()) // Within last 24 hours
-      .lte('date_called', webhookReceivedTime.toISOString()) // Up to now
+      .gte('date_called', searchWindowStart.toISOString()) // Within 30 minutes before appointment
+      .lte('date_called', searchWindowEnd.toISOString()) // Up to appointment time
       .order('date_called', { ascending: false })
       .limit(1); // Get the most recent dial
 
@@ -2546,7 +2556,7 @@ async function linkAppointmentToDial(
     }
 
     if (!recentDials || recentDials.length === 0) {
-      console.log('ℹ️ No recent dials found within 24 hours of webhook receipt');
+      console.log('ℹ️ No recent dials found within 30 minutes BEFORE appointment');
       return;
     }
 
