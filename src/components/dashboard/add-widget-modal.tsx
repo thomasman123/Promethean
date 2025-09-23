@@ -525,6 +525,7 @@ export function AddWidgetModal({ open, onOpenChange, onAddWidget }: AddWidgetMod
         onMetricSelect={handleMetricSelect}
         mode="dashboard"
         title={isChartType || isDataView ? "Add Chart Metric" : "Select KPI Metric"}
+        vizType={isChartType ? (selectedVisualization as 'bar' | 'line' | 'area') : undefined}
       />
     </>
   )
