@@ -487,6 +487,7 @@ export function TopBar({ onAddWidget }: TopBarProps) {
             <DatePicker
               value={dateRange}
               onChange={setDateRange}
+              applyMode
             />
             
             {/* Show ViewsManager and Add Widget button on dashboard page */}
