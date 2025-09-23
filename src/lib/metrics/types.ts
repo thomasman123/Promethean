@@ -26,14 +26,6 @@ export interface MetricFilters {
   fbc?: string[]
   fbp?: string[]
   gclid?: string[]
-
-  // Geo filters (derived from contacts phone country codes)
-  country_codes?: string[]
-
-  // Meta ads dimension filters
-  meta_campaign_ids?: string[] // UUIDs of rows in meta_campaigns table
-  meta_ad_set_ids?: string[]   // UUIDs of rows in meta_ad_sets table
-  meta_ad_ids?: string[]       // UUIDs of rows in meta_ads table
 }
 
 export interface MetricQuery {
