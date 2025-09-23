@@ -23,22 +23,26 @@ with acc as (
 insert into public.account_access (user_id, account_id, role)
 select u.id, a.id, u.role
 from (
-  -- pick two setters
-  select id, 'setter'::user_role as role
-  from public.profiles
-  where is_active = true and role = 'setter'
-  order by random()
-  limit 2
+  (
+    -- pick two setters
+    select id, 'setter'::user_role as role
+    from public.profiles
+    where is_active = true and role = 'setter'
+    order by random()
+    limit 2
+  )
   union all
-  -- pick two closers (prefer role sales_rep, otherwise fallback to non-setter active users)
-  select id, 'sales_rep'::user_role as role
-  from (
-    select id from public.profiles where is_active = true and role = 'sales_rep'
-    union
-    select id from public.profiles where is_active = true and role in ('admin','moderator')
-  ) x
-  order by random()
-  limit 2
+  (
+    -- pick two closers (prefer role sales_rep, otherwise fallback to non-setter active users)
+    select id, 'sales_rep'::user_role as role
+    from (
+      select id from public.profiles where is_active = true and role = 'sales_rep'
+      union
+      select id from public.profiles where is_active = true and role in ('admin','moderator')
+    ) x
+    order by random()
+    limit 2
+  )
 ) u
 cross join acc a
 on conflict do nothing;
