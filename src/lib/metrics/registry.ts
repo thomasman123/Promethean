@@ -194,6 +194,7 @@ const BASE_METRICS = {
 		},
 		unit: 'count' as const,
 		options: {
+			attribution: ['all', 'assigned', 'dialer'],
 		}
 	},
 

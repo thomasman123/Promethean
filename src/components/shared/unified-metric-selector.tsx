@@ -418,6 +418,10 @@ export function UnifiedMetricSelector({
                            option === 'assigned' ? 'Sales Rep Owned' :
                            option === 'booked' ? 'Setter Contributed' :
                            option === 'dialer' ? 'Dialer' : option}
+                          {option === 'all' ? 'All Attribution' : 
+                           option === 'assigned' ? 'Assigned' :
+                           option === 'booked' ? 'Booked' :
+                           option === 'dialer' ? 'Dialer' : option}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -515,60 +519,13 @@ export function UnifiedMetricSelector({
                 </div>
               )}
 
-              {/* Country filter (optional for geo split) */}
-              <div className="space-y-2">
-                <Label>Country (optional)</Label>
-                <Input
-                  placeholder="e.g., +61 for Australia, +1 for US (comma-separated)"
-                  value={(selectedOptions.country_codes || []).join(',')}
-                  onChange={(e) => {
-                    const parts = e.target.value.split(',').map(v => v.trim()).filter(Boolean)
-                    setSelectedOptions((prev: any) => ({ ...prev, country_codes: parts }))
-                  }}
-                />
-              </div>
-
-              {/* Meta selection (Campaign -> Ad Set -> Ad). Store DB UUIDs. */}
-              <div className="space-y-2">
-                <Label>Meta Campaign ID (optional, DB UUID)</Label>
-                <Input
-                  placeholder="Select or paste meta_campaigns.id"
-                  value={(selectedOptions.meta_campaign_ids && selectedOptions.meta_campaign_ids[0]) || ''}
-                  onChange={(e) => {
-                    const v = e.target.value.trim()
-                    setSelectedOptions((prev: any) => ({ ...prev, meta_campaign_ids: v ? [v] : [] }))
-                  }}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Meta Ad Set ID (optional, DB UUID)</Label>
-                <Input
-                  placeholder="Select or paste meta_ad_sets.id"
-                  value={(selectedOptions.meta_ad_set_ids && selectedOptions.meta_ad_set_ids[0]) || ''}
-                  onChange={(e) => {
-                    const v = e.target.value.trim()
-                    setSelectedOptions((prev: any) => ({ ...prev, meta_ad_set_ids: v ? [v] : [] }))
-                  }}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Meta Ad ID (optional, DB UUID)</Label>
-                <Input
-                  placeholder="Select or paste meta_ads.id"
-                  value={(selectedOptions.meta_ad_ids && selectedOptions.meta_ad_ids[0]) || ''}
-                  onChange={(e) => {
-                    const v = e.target.value.trim()
-                    setSelectedOptions((prev: any) => ({ ...prev, meta_ad_ids: v ? [v] : [] }))
-                  }}
-                />
-              </div>
-
               {/* Mode-specific help text */}
               <div className="p-3 bg-muted/50 rounded-lg">
                 <p className="text-xs text-muted-foreground">
                   {mode === 'dashboard' 
-                    ? "You can optionally filter by country or Meta campaign/ad set/ad."
-                    : "Country and Meta dimension filters also apply per-user in data view."}
+                    ? "Dashboard widgets show metrics with configurable attribution and formatting options."
+                    : "Data view automatically shows metrics per user. Choose your attribution and formatting preferences."
+                  }
                 </p>
               </div>
             </div>
