@@ -41,7 +41,7 @@ export default function RootLayout({
         "min-h-screen bg-background font-sans antialiased relative"
       )}>
         <BubbleBackground />
-        <div className="relative z-10 min-h-screen bg-background/95 backdrop-blur-sm">
+        <div className="relative z-10 min-h-screen">
           <DashboardProvider>
             <ImpersonationBar />
             {children}
