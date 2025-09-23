@@ -20,8 +20,8 @@ JOIN appointments a ON d.booked_appointment_id = a.id
 WHERE d.booked = true
   AND d.booked_appointment_id IS NOT NULL
   AND (
-    -- Appointment booked BEFORE the dial (negative time)
-    a.date_booked < d.date_called
+    -- Appointment booked more than 30 minutes BEFORE the dial  
+    a.date_booked < d.date_called - INTERVAL '30 minutes'
     OR
     -- Appointment booked more than 30 minutes AFTER the dial
     a.date_booked > d.date_called + INTERVAL '30 minutes'
@@ -38,15 +38,15 @@ BEGIN
     
     SELECT COUNT(*) INTO negative_time_count 
     FROM incorrect_links 
-    WHERE minutes_diff < 0;
+    WHERE minutes_diff < -30;
     
     SELECT COUNT(*) INTO too_long_gap_count 
     FROM incorrect_links 
     WHERE minutes_diff > 30;
     
     RAISE NOTICE 'Found % incorrectly linked dials:', incorrect_count;
-    RAISE NOTICE '- % with appointments BEFORE dial (negative time)', negative_time_count;
-    RAISE NOTICE '- % with appointments more than 30 minutes after dial', too_long_gap_count;
+    RAISE NOTICE '- % with appointments more than 30 minutes BEFORE dial', negative_time_count;
+    RAISE NOTICE '- % with appointments more than 30 minutes AFTER dial', too_long_gap_count;
 END $$;
 
 -- Unlink the incorrectly linked dials
@@ -72,4 +72,4 @@ DROP TABLE incorrect_links;
 COMMIT;
 
 -- Add a comment for future reference
-COMMENT ON TABLE dials IS 'Dial-appointment linking fixed on 2025-09-23: Only appointments booked within 30 minutes AFTER the dial time are linked. Flow: Dial → (up to 30 min) → Appointment booking. This naturally filters for quality conversations without requiring specific duration thresholds.'; 
+COMMENT ON TABLE dials IS 'Dial-appointment linking fixed on 2025-09-23: Only appointments within ±30 minutes of dial time are linked. Handles webhook timing: appointment can be booked during call (webhook before hangup) or after call ends. This naturally filters for quality conversations without requiring specific duration thresholds.'; 
