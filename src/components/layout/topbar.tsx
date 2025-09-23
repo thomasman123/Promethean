@@ -1,7 +1,7 @@
 "use client"
 
 import { cn } from "@/lib/utils"
-import { Sword, Home, RefreshCw, Settings, Sun, Moon, LogOut, ChevronDown, LayoutDashboard, Database, Calendar, Users, CreditCard, Building2, Palette, Plus, FileText, Shield, TrendingUp } from "lucide-react"
+import { Sword, Home, RefreshCw, Settings, Sun, Moon, LogOut, ChevronDown, LayoutDashboard, Database, Calendar, Users, CreditCard, Building2, Palette, Plus, FileText, Shield, TrendingUp, MapPin } from "lucide-react"
 import { useState, useEffect, useRef } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
@@ -22,6 +22,7 @@ import { ViewsManager } from "@/components/dashboard/views-manager"
 // import { PeriodViewDropdown, type PeriodView } from "@/components/data-view/period-view-filter"
 import { AddWidgetModal, WidgetConfig } from "@/components/dashboard/add-widget-modal"
 import { AdminSettingsModal } from "./admin-settings-modal"
+import { LocationModal } from "@/components/ui/location-modal"
 import { useDashboard } from "@/lib/dashboard-context"
 import { useEffectiveUser } from "@/hooks/use-effective-user"
 import { useAccountsCache } from "@/hooks/use-accounts-cache"
@@ -51,6 +52,7 @@ export function TopBar({ onAddWidget }: TopBarProps) {
   // const [periodView, setPeriodView] = useState<PeriodView>('weekly')
   const [showAddWidgetModal, setShowAddWidgetModal] = useState(false)
   const [showAdminSettingsModal, setShowAdminSettingsModal] = useState(false)
+  const [showLocationModal, setShowLocationModal] = useState(false)
   const [isImpersonating, setIsImpersonating] = useState(false)
   const [appointmentsTab, setAppointmentsTab] = useState<'appointments' | 'discoveries'>('appointments')
   const pathname = usePathname()
@@ -490,9 +492,18 @@ export function TopBar({ onAddWidget }: TopBarProps) {
               applyMode
             />
             
-            {/* Show ViewsManager and Add Widget button on dashboard page */}
+            {/* Show Location, ViewsManager and Add Widget button on dashboard page */}
             {pathname === "/dashboard" && (
               <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 border-blue-200 text-blue-700 hover:bg-blue-50"
+                  onClick={() => setShowLocationModal(true)}
+                >
+                  <MapPin className="h-4 w-4 mr-2" />
+                  Location
+                </Button>
                 {selectedAccountId ? (
                 <ViewsManager
                   accountId={selectedAccountId}
@@ -592,6 +603,12 @@ export function TopBar({ onAddWidget }: TopBarProps) {
       <AdminSettingsModal
         open={showAdminSettingsModal}
         onOpenChange={setShowAdminSettingsModal}
+      />
+
+      {/* Location Modal */}
+      <LocationModal
+        isOpen={showLocationModal}
+        onClose={() => setShowLocationModal(false)}
       />
     </div>
   )
