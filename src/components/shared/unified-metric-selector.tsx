@@ -25,6 +25,7 @@ interface UnifiedMetricSelectorProps {
   mode: 'dashboard' | 'data-view'
   title?: string
   tableType?: 'user_metrics' | 'account_metrics' | 'time_series'
+  vizType?: 'bar' | 'line' | 'area' // new: to conditionally show chart-specific options
 }
 
 // Use the same categorization as both dashboard and data view
@@ -130,7 +131,8 @@ export function UnifiedMetricSelector({
   onMetricSelect,
   mode,
   title,
-  tableType
+  tableType,
+  vizType
 }: UnifiedMetricSelectorProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedMetric, setSelectedMetric] = useState<string | null>(null)
@@ -260,10 +262,18 @@ export function UnifiedMetricSelector({
       if (metric.options.businessHours) {
         defaultOptions.businessHours = metric.options.businessHours[0]
       }
+      // line-chart specific default
+      if (vizType === 'line') {
+        defaultOptions.cumulative = false
+      }
       setSelectedOptions(defaultOptions)
     } else {
       // No options, proceed directly
-      onMetricSelect(metricId, metric)
+      const defaultOptions: any = {}
+      if (vizType === 'line') {
+        defaultOptions.cumulative = false
+      }
+      onMetricSelect(metricId, metric, defaultOptions)
       onOpenChange(false)
       resetState()
     }
@@ -420,6 +430,25 @@ export function UnifiedMetricSelector({
                            option === 'dialer' ? 'Setter Attribution' : option}
                         </SelectItem>
                       ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* Accumulative option for line charts */}
+              {vizType === 'line' && (
+                <div className="space-y-2">
+                  <Label>Accumulative</Label>
+                  <Select 
+                    value={(selectedOptions.cumulative ? 'yes' : 'no')}
+                    onValueChange={(value) => setSelectedOptions((prev: any) => ({ ...prev, cumulative: value === 'yes' }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="no">Point values</SelectItem>
+                      <SelectItem value="yes">Accumulative (running total)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

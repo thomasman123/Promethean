@@ -183,7 +183,7 @@ export function EditWidgetModal({ open, onOpenChange, onSaveWidget, widget }: Ed
         
         if (!alreadyExists) {
           setSelectedMetrics(prev => [...prev, metricKey])
-          setMetricsWithOptions(prev => ({ ...prev, [metricKey]: { ...options, originalMetricName: metricName } || { originalMetricName: metricName } }))
+          setMetricsWithOptions(prev => ({ ...prev, [metricKey]: { ...(options || {}), originalMetricName: metricName } }))
         }
       setIsMetricSelectorOpen(false)
     } else {
@@ -527,6 +527,7 @@ export function EditWidgetModal({ open, onOpenChange, onSaveWidget, widget }: Ed
         onMetricSelect={handleMetricSelect}
         mode="dashboard"
         title={isChartType || isDataView ? "Add Chart Metric" : "Select KPI Metric"}
+        vizType={isChartType ? (selectedVisualization as 'bar' | 'line' | 'area') : undefined}
       />
     </>
   )

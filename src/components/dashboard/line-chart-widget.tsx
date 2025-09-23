@@ -20,6 +20,7 @@ import { groupMetricsByAxis, getYAxisId, getAxisIndicator, calculateChartMargins
 
 interface LineChartWidgetProps {
   metrics: string[]
+  options?: Record<string, any>
 }
 
 type AggregationType = 'daily' | 'weekly' | 'monthly'
@@ -30,7 +31,7 @@ const CHART_COLORS = [
   "hsl(var(--chart-3))",
 ]
 
-export function LineChartWidget({ metrics }: LineChartWidgetProps) {
+export function LineChartWidget({ metrics, options }: LineChartWidgetProps) {
   const [data, setData] = useState<Array<Record<string, any>>>([])
   const [loading, setLoading] = useState(true)
   const { selectedAccountId, dateRange } = useDashboard()
@@ -178,6 +179,30 @@ export function LineChartWidget({ metrics }: LineChartWidgetProps) {
 
         return dataPoint
       })
+
+      // Apply cumulative transform per metric if enabled via options
+      const cumulativeEnabledMetrics: string[] = []
+      if (options && typeof options === 'object') {
+        Object.entries(options).forEach(([key, opt]) => {
+          if ((opt as any)?.cumulative === true) {
+            cumulativeEnabledMetrics.push(key)
+          }
+        })
+      }
+
+      if (cumulativeEnabledMetrics.length > 0) {
+        const runningTotals: Record<string, number> = {}
+        cumulativeEnabledMetrics.forEach(k => { runningTotals[k] = 0 })
+        combinedData.forEach(row => {
+          cumulativeEnabledMetrics.forEach(k => {
+            // Only transform if the metric exists on the row
+            if (typeof row[k] === 'number') {
+              runningTotals[k] += row[k]
+              row[k] = runningTotals[k]
+            }
+          })
+        })
+      }
 
       setData(combinedData)
     } catch (error) {
