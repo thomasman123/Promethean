@@ -13,6 +13,7 @@ import "react-grid-layout/css/styles.css"
 import "react-resizable/css/styles.css"
 import { Loading } from "@/components/ui/loading"
 import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 
 const ResponsiveGridLayout = WidthProvider(Responsive)
 
@@ -369,7 +370,19 @@ export default function DashboardPage() {
       <main className="pt-16 h-screen overflow-y-auto">
         <div className="p-6">
           <div className="mb-4">
-            <Button variant="outline">Location</Button>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="outline">Location</Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-4xl w-[90vw]">
+                <DialogHeader>
+                  <DialogTitle>Location</DialogTitle>
+                </DialogHeader>
+                <div className="h-[480px] w-full flex items-center justify-center text-sm text-muted-foreground">
+                  Globe loading...
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
           {!currentViewId ? (
             <div className="flex items-center justify-center h-64">
