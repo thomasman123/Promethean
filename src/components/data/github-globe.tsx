@@ -87,7 +87,7 @@ export function GithubGlobe({
       // Countries (polygons)
       try {
         const res = await fetch(
-          "https://unpkg.com/three-globe/example/datasets/ne_110m_admin_0_countries.geojson"
+          "https://cdn.jsdelivr.net/npm/three-globe@2.44.0/example/datasets/ne_110m_admin_0_countries.geojson"
         )
         if (!res.ok) throw new Error("Failed to load countries geojson")
         const geojson = await res.json()

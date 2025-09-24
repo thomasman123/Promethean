@@ -432,7 +432,7 @@ export function TopBar({ onAddWidget }: TopBarProps) {
             <DialogTrigger asChild>
               <Button variant="outline" size="sm" className="h-8">Location</Button>
             </DialogTrigger>
-            <DialogContent className="max-w-4xl w-[90vw]">
+            <DialogContent className="max-w-4xl w-[90vw]" onInteractOutside={(e) => e.preventDefault()}>
               <DialogHeader>
                 <DialogTitle>Location</DialogTitle>
                 <DialogDescription>Interactive globe. Drag to rotate. Click to highlight.</DialogDescription>
