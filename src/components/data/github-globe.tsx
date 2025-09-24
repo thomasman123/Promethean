@@ -62,7 +62,6 @@ export function GithubGlobe({
         .atmosphereAltitude(0.15)
         .width(width)
         .height(height)
-        .autoRotate(false)
         .enablePointerInteraction(true)
 
       const material = globe.globeMaterial()
