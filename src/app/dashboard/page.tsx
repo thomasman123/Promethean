@@ -39,22 +39,32 @@ export default function DashboardPage() {
   const [accountsLoaded, setAccountsLoaded] = useState(false)
   const [editingWidget, setEditingWidget] = useState<WidgetConfig | null>(null)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [isClient, setIsClient] = useState(false)
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
-  // Load saved view from localStorage on mount
+  // Fix hydration by ensuring client-side only rendering for localStorage access
   useEffect(() => {
-    const savedViewId = localStorage.getItem('lastSelectedViewId')
-    if (savedViewId && !currentViewId) {
-      setCurrentViewId(savedViewId)
-    }
+    setIsClient(true)
   }, [])
 
-  // Save current view to localStorage when it changes
+  // Load saved view from localStorage on mount (client-side only)
   useEffect(() => {
-    if (currentViewId) {
+    if (isClient) {
+      const savedViewId = localStorage.getItem('lastSelectedViewId')
+      if (savedViewId && !currentViewId) {
+        console.log('🔍 [Dashboard] Loading saved view ID from localStorage:', savedViewId)
+        setCurrentViewId(savedViewId)
+      }
+    }
+  }, [isClient, currentViewId, setCurrentViewId])
+
+  // Save current view to localStorage when it changes (client-side only)
+  useEffect(() => {
+    if (isClient && currentViewId) {
+      console.log('🔍 [Dashboard] Saving view ID to localStorage:', currentViewId)
       localStorage.setItem('lastSelectedViewId', currentViewId)
     }
-  }, [currentViewId])
+  }, [isClient, currentViewId])
 
   // Monitor when accounts are loaded by checking if selectedAccountId is set
   useEffect(() => {
@@ -69,7 +79,7 @@ export default function DashboardPage() {
 
   // Load view data when BOTH account is loaded AND view changes
   useEffect(() => {
-    console.log('🔍 [Dashboard] Dependencies check - accountsLoaded:', accountsLoaded, 'currentViewId:', currentViewId, 'selectedAccountId:', selectedAccountId)
+    console.log('🔍 [Dashboard] Dependencies check - accountsLoaded:', accountsLoaded, 'currentViewId:', currentViewId || '<empty string>', 'selectedAccountId:', selectedAccountId || '<empty string>')
     
     if (accountsLoaded && currentViewId && selectedAccountId) {
       console.log('✅ [Dashboard] All dependencies ready, loading view data')
@@ -94,6 +104,7 @@ export default function DashboardPage() {
           // Load widgets and layouts from the view
           const viewData = currentView.widgets as ViewData
           console.log('🔍 [Dashboard] ViewData structure:', typeof viewData, Array.isArray(viewData) ? 'array' : 'object')
+          console.log('🔍 [Dashboard] Full viewData:', JSON.stringify(viewData, null, 2))
           
           if (Array.isArray(viewData)) {
             // Old format - just widgets array
@@ -328,6 +339,18 @@ export default function DashboardPage() {
       default:
         return null
     }
+  }
+
+  // Prevent hydration mismatch by not rendering until client-side
+  if (!isClient) {
+    return (
+      <div className="min-h-screen bg-background">
+        <TopBar onAddWidget={handleAddWidget} />
+        <main className="pt-16 h-screen overflow-y-auto">
+          <Loading text="Loading..." />
+        </main>
+      </div>
+    )
   }
 
   if (loading) {
