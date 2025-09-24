@@ -28,8 +28,8 @@ export function LocationCountrySelector({ className }: Props) {
     const q = query.trim().toLowerCase()
     return countries
       .slice()
-      .sort((a, b) => a.name.localeCompare(b.name))
-      .filter((c) => (q ? c.name.toLowerCase().includes(q) || c.iso3.toLowerCase().includes(q) : true))
+      .sort((a, b) => (a?.name || "").localeCompare(b?.name || ""))
+      .filter((c) => (q ? (c?.name || "").toLowerCase().includes(q) || (c?.iso3 || "").toLowerCase().includes(q) : true))
   }, [countries, query])
 
   const allSelected = selected === null
