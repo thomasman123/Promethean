@@ -86,9 +86,16 @@ export function GithubGlobe({
 
       // Countries (polygons)
       try {
-        const res = await fetch(
-          "https://cdn.jsdelivr.net/npm/three-globe@2.44.0/example/datasets/ne_110m_admin_0_countries.geojson"
+        // Primary source (CORS-enabled)
+        let res = await fetch(
+          "https://cdn.jsdelivr.net/npm/geojson-world@2.0.0/countries.geo.json"
         )
+        if (!res.ok) {
+          // Fallback source
+          res = await fetch(
+            "https://raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/world.geojson"
+          )
+        }
         if (!res.ok) throw new Error("Failed to load countries geojson")
         const geojson = await res.json()
 
@@ -206,9 +213,13 @@ export function GithubGlobe({
     }
 
     let cleanup: (() => void) | undefined
-    init().then((fn) => {
-      if (typeof fn === "function") cleanup = fn
-    })
+    init()
+      .then((fn) => {
+        if (typeof fn === "function") cleanup = fn
+      })
+      .catch((err) => {
+        console.error(err)
+      })
 
     return () => {
       isCancelled = true
