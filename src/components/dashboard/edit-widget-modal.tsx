@@ -173,13 +173,16 @@ export function EditWidgetModal({ open, onOpenChange, onSaveWidget, widget }: Ed
   const handleMetricSelect = (metricName: string, metricDefinition: MetricDefinition, options?: any) => {
     if (isChartType || isDataView) {
       // For charts and data views, add to metrics array with options and return to widget modal
-        // Create a unique key that includes metric name and attribution
+        // Create a unique key that includes metric name, attribution, and cumulative (for line charts)
         const attribution = options?.attribution || "assigned"
-        const metricKey = `${metricName}_${attribution}`
+        const isLine = selectedVisualization === 'line'
+        const baseKey = `${metricName}_${attribution}`
+        const metricKey = isLine 
+          ? `${baseKey}_${options?.cumulative ? 'cum' : 'raw'}`
+          : baseKey
         
-        // Check if this specific metric+attribution combo already exists
-        const existingKeys = Object.keys(metricsWithOptions)
-        const alreadyExists = existingKeys.some(key => key.startsWith(`${metricName}_`) && metricsWithOptions[key]?.attribution === attribution)
+        // Only block if this exact key exists (allow raw+cum side-by-side)
+        const alreadyExists = !!metricsWithOptions[metricKey]
         
         if (!alreadyExists) {
           setSelectedMetrics(prev => [...prev, metricKey])

@@ -62,9 +62,19 @@ export function LineChartWidget({ metrics, options }: LineChartWidgetProps) {
     try {
       const aggregationType = getAggregationType()
       
-      // Fetch data for all metrics
-      const metricsData = await Promise.all(
-        metrics.map(async (metric) => {
+      // Determine base metric names to fetch (strip any suffixes by reading originalMetricName from options)
+      const seriesKeys = metrics
+      const baseMetricsSet = new Set<string>()
+      seriesKeys.forEach(key => {
+        const opt = options?.[key]
+        const base = opt?.originalMetricName || key
+        baseMetricsSet.add(base)
+      })
+      const baseMetrics = Array.from(baseMetricsSet)
+      
+      // Fetch data for all base metrics
+      const baseMetricsData = await Promise.all(
+        baseMetrics.map(async (metric) => {
           const response = await fetch('/api/metrics', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -94,7 +104,7 @@ export function LineChartWidget({ metrics, options }: LineChartWidgetProps) {
         })
       )
 
-      // Process data similar to bar chart
+      // Build date points
       let datePoints: Array<{ date: string; label: string }> = []
       
       if (aggregationType === 'daily') {
@@ -126,37 +136,31 @@ export function LineChartWidget({ metrics, options }: LineChartWidgetProps) {
         }))
       }
 
-      // Aggregate data for weekly/monthly
-      const aggregatedMetricsData = metricsData.map(({ metric, data }) => {
+      // Aggregate data for weekly/monthly per base metric
+      const aggregatedBaseData = baseMetricsData.map(({ metric, data }) => {
         if (aggregationType === 'daily') {
           return { metric, data }
         }
 
-        // Aggregate data for weekly/monthly
         const aggregatedData = datePoints.map(point => {
           if (aggregationType === 'weekly') {
             const weekStart = parseISO(point.date)
             const weekEnd = endOfWeek(weekStart, { weekStartsOn: 0 })
-            
             const weekData = data.filter(d => {
               const date = parseISO(d.date)
               return date >= weekStart && date <= weekEnd && 
                      date >= dateRange.from && date <= dateRange.to
             })
-            
             const sum = weekData.reduce((acc, d) => acc + d.value, 0)
             return { date: point.date, value: sum }
           } else {
-            // Monthly aggregation
             const monthStart = parseISO(point.date)
             const monthEnd = endOfMonth(monthStart)
-            
             const monthData = data.filter(d => {
               const date = parseISO(d.date)
               return date >= monthStart && date <= monthEnd && 
                      date >= dateRange.from && date <= dateRange.to
             })
-            
             const sum = monthData.reduce((acc, d) => acc + d.value, 0)
             return { date: point.date, value: sum }
           }
@@ -165,40 +169,36 @@ export function LineChartWidget({ metrics, options }: LineChartWidgetProps) {
         return { metric, data: aggregatedData }
       })
 
-      // Combine data from all metrics
+      // Combine into series rows and map each requested series key to base metric value
       const combinedData = datePoints.map(point => {
-        const dataPoint: Record<string, any> = {
-          date: point.date,
-          label: point.label
-        }
+        const row: Record<string, any> = { date: point.date, label: point.label }
 
-        aggregatedMetricsData.forEach(({ metric, data }) => {
-          const metricData = data.find(d => d.date === point.date)
-          dataPoint[metric] = metricData?.value || 0
+        seriesKeys.forEach(key => {
+          const opt = options?.[key]
+          const base = opt?.originalMetricName || key
+          const baseSeries = aggregatedBaseData.find(b => b.metric === base)
+          const baseValue = baseSeries?.data.find(d => d.date === point.date)?.value || 0
+          row[key] = baseValue
         })
 
-        return dataPoint
+        return row
       })
 
-      // Apply cumulative transform per metric if enabled via options
-      const cumulativeEnabledMetrics: string[] = []
+      // Apply cumulative only to series that opted in
+      const cumulativeEnabled: string[] = []
       if (options && typeof options === 'object') {
         Object.entries(options).forEach(([key, opt]) => {
-          if ((opt as any)?.cumulative === true) {
-            cumulativeEnabledMetrics.push(key)
-          }
+          if ((opt as any)?.cumulative === true) cumulativeEnabled.push(key)
         })
       }
-
-      if (cumulativeEnabledMetrics.length > 0) {
-        const runningTotals: Record<string, number> = {}
-        cumulativeEnabledMetrics.forEach(k => { runningTotals[k] = 0 })
+      if (cumulativeEnabled.length > 0) {
+        const totals: Record<string, number> = {}
+        cumulativeEnabled.forEach(k => { totals[k] = 0 })
         combinedData.forEach(row => {
-          cumulativeEnabledMetrics.forEach(k => {
-            // Only transform if the metric exists on the row
+          cumulativeEnabled.forEach(k => {
             if (typeof row[k] === 'number') {
-              runningTotals[k] += row[k]
-              row[k] = runningTotals[k]
+              totals[k] += row[k]
+              row[k] = totals[k]
             }
           })
         })
@@ -243,9 +243,11 @@ export function LineChartWidget({ metrics, options }: LineChartWidgetProps) {
   
   const chartConfig: ChartConfig = {}
   metrics.forEach((metric, index) => {
-    const metricInfo = METRICS_REGISTRY[metric]
+    const opt = options?.[metric]
+    const baseMetricName = opt?.originalMetricName || metric
+    const metricInfo = METRICS_REGISTRY[baseMetricName]
     chartConfig[metric] = {
-      label: metricInfo?.name || metric,
+      label: `${metricInfo?.name || baseMetricName}${opt?.cumulative ? ' (Accumulative)' : ''}`,
       color: CHART_COLORS[index % CHART_COLORS.length],
     }
   })
@@ -335,16 +337,18 @@ export function LineChartWidget({ metrics, options }: LineChartWidgetProps) {
           }
         />
         {metrics.map((metric, index) => {
-          const metricInfo = METRICS_REGISTRY[metric]
+          const opt = options?.[metric]
+          const baseMetricName = opt?.originalMetricName || metric
+          const metricInfo = METRICS_REGISTRY[baseMetricName]
           const unit = metricInfo?.unit
-          let yAxisId = "numbers" // default
+          let yAxisId = "numbers"
           
           if (unit === 'percent') {
             yAxisId = "percentages"
           } else if (unit === 'currency') {
             yAxisId = "currency"
           } else {
-            yAxisId = "numbers" // count, seconds, days, etc.
+            yAxisId = "numbers"
           }
           
           return (
