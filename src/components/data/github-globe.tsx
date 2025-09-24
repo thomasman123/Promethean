@@ -111,10 +111,11 @@ export function GithubGlobe({
 
     const tryLoadGeo = async (): Promise<any[] | null> => {
       const urls = [
-        // Multiple sources for reliability
-        "https://unpkg.com/geojson-world@3.0.0/countries.geo.json",
-        "https://raw.githubusercontent.com/johan/world.geo.json/master/countries.geo.json",
+        // Prefer reliably CORS-enabled sources first
         "https://raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/world.geojson",
+        "https://raw.githubusercontent.com/johan/world.geo.json/master/countries.geo.json",
+        "https://cdn.jsdelivr.net/gh/datasets/geo-countries@master/data/countries.geojson",
+        "https://cdn.jsdelivr.net/npm/geojson-world@3.0.0/countries.geo.json",
         "/data/countries.geo.json",
       ]
       for (const url of urls) {
@@ -265,6 +266,30 @@ export function GithubGlobe({
           if (center) {
             globe.pointOfView({ lat: center.lat, lng: center.lng, altitude: 1.2 }, 700)
           }
+        })
+
+        // Background click -> add point (visual feedback)
+        ;(globe as any).onGlobeClick((lat: number, lng: number) => {
+          const newPt: HighlightPoint = { lat, lng, color: pointColor }
+          setPoints((prev) => {
+            const next = [...prev, newPt]
+            globe.pointsData(next)
+            return next
+          })
+
+          ringsRef.current = [
+            {
+              lat,
+              lng,
+              maxRadius: 5,
+              propagationSpeed: 2,
+              repeatPeriod: 700,
+              color: pointColor,
+            },
+          ]
+          globe.ringsData(ringsRef.current)
+
+          globe.pointOfView({ lat, lng, altitude: 1.2 }, 800)
         })
       } catch (e) {
         console.error(e)
