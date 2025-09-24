@@ -88,19 +88,53 @@ export function GithubGlobe({
       try {
         // Primary source (CORS-enabled)
         let res = await fetch(
-          "https://cdn.jsdelivr.net/npm/geojson-world@2.0.0/countries.geo.json"
+          "https://raw.githubusercontent.com/johan/world.geo.json/master/countries.geo.json"
         )
         if (!res.ok) {
-          // Fallback source
+          // Secondary source
           res = await fetch(
             "https://raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/world.geojson"
           )
+        }
+        if (!res.ok) {
+          // Local fallback (optional): place a file at public/data/countries.geo.json
+          res = await fetch("/data/countries.geo.json")
         }
         if (!res.ok) throw new Error("Failed to load countries geojson")
         const geojson = await res.json()
 
         const getIso = (feat: any) =>
           feat?.properties?.ISO_A3 || feat?.properties?.ADM0_A3 || feat?.properties?.A3 || feat?.properties?.NAME
+
+        const getFeatureCenter = (feat: any) => {
+          try {
+            const geom = feat?.geometry
+            if (!geom) return null
+            const collect = (coords: any[]) => {
+              let sumLat = 0
+              let sumLng = 0
+              let count = 0
+              for (const c of coords) {
+                const [lng, lat] = c
+                if (typeof lat === "number" && typeof lng === "number") {
+                  sumLat += lat
+                  sumLng += lng
+                  count++
+                }
+              }
+              if (count === 0) return null
+              return { lat: sumLat / count, lng: sumLng / count }
+            }
+            if (geom.type === "Polygon") {
+              // use outer ring
+              return collect(geom.coordinates?.[0] || [])
+            } else if (geom.type === "MultiPolygon") {
+              // first polygon outer ring
+              return collect(geom.coordinates?.[0]?.[0] || [])
+            }
+          } catch {}
+          return null
+        }
 
         const applyPolygonStyles = () => {
           const sel = selectionRef.current
@@ -138,33 +172,27 @@ export function GithubGlobe({
           const multi = !!(event?.shiftKey || event?.ctrlKey || (event as any)?.metaKey)
 
           if (!multi) {
-            // Single select: select only this, unless already single-selected -> reset to all
             if (selectionRef.current && selectionRef.current.size === 1 && selectionRef.current.has(iso)) {
               selectionRef.current = null // back to all
             } else {
               selectionRef.current = new Set([iso])
             }
           } else {
-            // Multi-select toggle
             if (!selectionRef.current) selectionRef.current = new Set([iso])
             else if (selectionRef.current.has(iso)) {
               selectionRef.current.delete(iso)
-              if (selectionRef.current.size === 0) selectionRef.current = null // none -> all
+              if (selectionRef.current.size === 0) selectionRef.current = null
             } else selectionRef.current.add(iso)
           }
 
           applyPolygonStyles()
-          // Focus POV to click location
-          try {
-            const lat = (event as any)?.lat || 0
-            const lng = (event as any)?.lng || 0
-            if (typeof lat === "number" && typeof lng === "number") {
-              globe.pointOfView({ lat, lng, altitude: 1.2 }, 700)
-            }
-          } catch {}
+          // Focus POV to polygon centroid
+          const center = getFeatureCenter(poly)
+          if (center) {
+            globe.pointOfView({ lat: center.lat, lng: center.lng, altitude: 1.2 }, 700)
+          }
         })
       } catch (e) {
-        // Countries failed to load; continue without polygons
         console.error(e)
       }
 
