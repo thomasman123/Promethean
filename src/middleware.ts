@@ -7,6 +7,11 @@ export async function middleware(req: NextRequest) {
 
   // Handle marketing site (www.getpromethean.com)
   if (hostname === 'www.getpromethean.com') {
+    // Allow webhook routes to pass through without redirect (for external services like GHL)
+    if (pathname.startsWith('/api/webhook') || pathname.startsWith('/api/webhooks')) {
+      return NextResponse.next()
+    }
+
     // Redirect app routes to app subdomain
     if (pathname.startsWith('/login') || 
         pathname.startsWith('/signup') || 
