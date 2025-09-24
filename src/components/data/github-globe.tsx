@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import Globe from "globe.gl"
 
 interface HighlightPoint {
   lat: number
@@ -33,90 +32,107 @@ export function GithubGlobe({
   >([])
 
   useEffect(() => {
+    if (typeof window === "undefined") return
     if (!containerRef.current) return
 
+    let isCancelled = false
     const container = containerRef.current
     const width = container.clientWidth
     const height = container.clientHeight
 
-    const globe = new (Globe as any)(container, { animateIn: false })
-    globeRef.current = globe
+    const init = async () => {
+      const { default: Globe } = await import("globe.gl")
+      if (isCancelled) return
 
-    globe
-      .backgroundColor("rgba(0,0,0,0)")
-      .globeImageUrl("https://unpkg.com/three-globe/example/img/earth-dark.jpg")
-      .bumpImageUrl("https://unpkg.com/three-globe/example/img/earth-topology.png")
-      .showAtmosphere(true)
-      .atmosphereColor(atmosphereColor)
-      .atmosphereAltitude(0.15)
-      .width(width)
-      .height(height)
-      .autoRotate(false)
-      .enablePointerInteraction(true)
+      const globe = new (Globe as any)(container, { animateIn: false })
+      globeRef.current = globe
 
-    const material = globe.globeMaterial()
-    if (material?.color?.set) material.color.set(globeColor)
+      globe
+        .backgroundColor("rgba(0,0,0,0)")
+        .globeImageUrl("https://unpkg.com/three-globe/example/img/earth-dark.jpg")
+        .bumpImageUrl("https://unpkg.com/three-globe/example/img/earth-topology.png")
+        .showAtmosphere(true)
+        .atmosphereColor(atmosphereColor)
+        .atmosphereAltitude(0.15)
+        .width(width)
+        .height(height)
+        .autoRotate(false)
+        .enablePointerInteraction(true)
 
-    globe
-      .pointsData(points)
-      .pointLat((d: any) => d.lat)
-      .pointLng((d: any) => d.lng)
-      .pointAltitude(() => 0.02)
-      .pointRadius(() => 0.6)
-      .pointColor((d: any) => d.color || pointColor)
+      const material = globe.globeMaterial()
+      if (material?.color?.set) material.color.set(globeColor)
 
-    globe
-      .ringsData(ringsRef.current)
-      .ringLat((d: any) => d.lat)
-      .ringLng((d: any) => d.lng)
-      .ringColor((d: any) => d.color || pointColor)
-      .ringMaxRadius((d: any) => d.maxRadius)
-      .ringPropagationSpeed((d: any) => d.propagationSpeed)
-      .ringRepeatPeriod((d: any) => d.repeatPeriod)
+      globe
+        .pointsData(points)
+        .pointLat((d: any) => d.lat)
+        .pointLng((d: any) => d.lng)
+        .pointAltitude(() => 0.02)
+        .pointRadius(() => 0.6)
+        .pointColor((d: any) => d.color || pointColor)
 
-    // @ts-ignore
-    globe.onGlobeClick((lat: number, lng: number) => {
-      const newPt: HighlightPoint = { lat, lng, color: pointColor }
-      setPoints((prev) => {
-        const next = [...prev, newPt]
-        globe.pointsData(next)
-        return next
+      globe
+        .ringsData(ringsRef.current)
+        .ringLat((d: any) => d.lat)
+        .ringLng((d: any) => d.lng)
+        .ringColor((d: any) => d.color || pointColor)
+        .ringMaxRadius((d: any) => d.maxRadius)
+        .ringPropagationSpeed((d: any) => d.propagationSpeed)
+        .ringRepeatPeriod((d: any) => d.repeatPeriod)
+
+      // @ts-ignore
+      globe.onGlobeClick((lat: number, lng: number) => {
+        const newPt: HighlightPoint = { lat, lng, color: pointColor }
+        setPoints((prev) => {
+          const next = [...prev, newPt]
+          globe.pointsData(next)
+          return next
+        })
+
+        ringsRef.current = [
+          {
+            lat,
+            lng,
+            maxRadius: 5,
+            propagationSpeed: 2,
+            repeatPeriod: 700,
+            color: pointColor,
+          },
+        ]
+        globe.ringsData(ringsRef.current)
+
+        globe.pointOfView({ lat, lng, altitude: 1.2 }, 800)
       })
 
-      ringsRef.current = [
-        {
-          lat,
-          lng,
-          maxRadius: 5,
-          propagationSpeed: 2,
-          repeatPeriod: 700,
-          color: pointColor,
-        },
-      ]
-      globe.ringsData(ringsRef.current)
+      const controls: any = globe.controls()
+      if (controls) {
+        controls.enablePan = false
+        controls.enableZoom = false // only drag rotate
+      }
 
-      globe.pointOfView({ lat, lng, altitude: 1.2 }, 800)
+      const onResize = () => {
+        if (!containerRef.current) return
+        const w = containerRef.current.clientWidth
+        const h = containerRef.current.clientHeight
+        globe.width(w)
+        globe.height(h)
+      }
+      window.addEventListener("resize", onResize)
+
+      return () => {
+        window.removeEventListener("resize", onResize)
+      }
+    }
+
+    let cleanup: (() => void) | undefined
+    init().then((fn) => {
+      if (typeof fn === "function") cleanup = fn
     })
 
-    const controls: any = globe.controls()
-    if (controls) {
-      controls.enablePan = false
-      controls.enableZoom = false // only drag rotate
-    }
-
-    const onResize = () => {
-      if (!containerRef.current) return
-      const w = containerRef.current.clientWidth
-      const h = containerRef.current.clientHeight
-      globe.width(w)
-      globe.height(h)
-    }
-    window.addEventListener("resize", onResize)
-
     return () => {
-      window.removeEventListener("resize", onResize)
+      isCancelled = true
       try {
-        container.innerHTML = ""
+        cleanup?.()
+        if (container) container.innerHTML = ""
       } catch {}
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
