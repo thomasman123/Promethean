@@ -70,7 +70,7 @@ export function LocationCountrySelector({ className }: Props) {
             return (
               <label key={c.iso3} className="flex items-center gap-2 px-2 py-1 rounded hover:bg-accent cursor-pointer">
                 <Checkbox checked={!!isChecked} onCheckedChange={() => toggleIso(c.iso3)} />
-                <span className="text-sm">{c.name}</span>
+                <span className="text-sm">{c.name || c.iso3}</span>
                 <span className="ml-auto text-xs text-muted-foreground">{c.iso3}</span>
               </label>
             )

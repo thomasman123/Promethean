@@ -45,8 +45,13 @@ export function GithubGlobe({
 
   // Helper functions kept stable via refs
   const getIsoRef = useRef<(feat: any) => string>(
-    (feat: any) =>
-      feat?.properties?.ISO_A3 || feat?.properties?.ADM0_A3 || feat?.properties?.A3 || feat?.properties?.NAME
+    (feat: any) => {
+      const p = feat?.properties || {}
+      // Cover common schemas
+      return (
+        p.ISO_A3 || p.iso_a3 || p.ADM0_A3 || p.adm0_a3 || p.A3 || p.ISO3 || feat?.id || p.id || p.NAME || p.name || "UNK"
+      )
+    }
   )
 
   const applyPolygonStyles = () => {
@@ -232,8 +237,9 @@ export function GithubGlobe({
         if (onCountriesLoaded) {
           try {
             const countries = featuresRef.current.map((f: any) => {
-              const iso = getIsoRef.current(f)
-              const name = f?.properties?.ADMIN || f?.properties?.NAME || iso
+              const iso = String(getIsoRef.current(f) || "UNK")
+              const props = f?.properties || {}
+              const name = props.ADMIN || props.admin || props.NAME || props.name || iso
               return { iso3: iso, name }
             })
             onCountriesLoaded(countries)
