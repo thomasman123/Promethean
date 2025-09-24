@@ -14,6 +14,10 @@ export type GithubGlobeProps = {
   globeColor?: string
   atmosphereColor?: string
   pointColor?: string
+  // New: controlled selection and callbacks
+  selectedISOs?: string[] | null
+  onSelectionChange?: (selected: string[] | null) => void
+  onCountriesLoaded?: (countries: { iso3: string; name: string }[]) => void
 }
 
 export function GithubGlobe({
@@ -22,6 +26,9 @@ export function GithubGlobe({
   globeColor = "#1b1b1b",
   atmosphereColor = "#88c0ff",
   pointColor = "#22d3ee",
+  selectedISOs = null,
+  onSelectionChange,
+  onCountriesLoaded,
 }: GithubGlobeProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const globeRef = useRef<any>(null)
@@ -33,7 +40,53 @@ export function GithubGlobe({
 
   // null => all selected; otherwise set of ISO3 codes
   const selectionRef = useRef<Set<string> | null>(null)
+  const featuresRef = useRef<any[]>([])
   const [countriesLoaded, setCountriesLoaded] = useState(false)
+
+  // Helper functions kept stable via refs
+  const getIsoRef = useRef<(feat: any) => string>(
+    (feat: any) =>
+      feat?.properties?.ISO_A3 || feat?.properties?.ADM0_A3 || feat?.properties?.A3 || feat?.properties?.NAME
+  )
+
+  const applyPolygonStyles = () => {
+    if (!globeRef.current) return
+    const globe = globeRef.current
+    const sel = selectionRef.current
+    globe
+      .polygonsData(featuresRef.current)
+      .polygonCapColor((d: any) => {
+        const iso = getIsoRef.current(d)
+        const isSelected = !sel || sel.has(iso)
+        return isSelected ? "rgba(34,211,238,0.45)" : "rgba(120,120,120,0.18)"
+      })
+      .polygonSideColor((d: any) => {
+        const iso = getIsoRef.current(d)
+        const isSelected = !sel || sel.has(iso)
+        return isSelected ? "rgba(34,211,238,0.35)" : "rgba(90,90,90,0.15)"
+      })
+      .polygonStrokeColor((d: any) => {
+        const iso = getIsoRef.current(d)
+        const isSelected = !sel || sel.has(iso)
+        return isSelected ? "#22d3ee" : "#3a3a3a"
+      })
+      .polygonAltitude((d: any) => {
+        const iso = getIsoRef.current(d)
+        const isSelected = !sel || sel.has(iso)
+        return isSelected ? 0.02 : 0.005
+      })
+  }
+
+  // Sync internal selection from external prop
+  useEffect(() => {
+    if (selectedISOs === null) {
+      selectionRef.current = null
+    } else {
+      selectionRef.current = new Set(selectedISOs)
+    }
+    if (countriesLoaded) applyPolygonStyles()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedISOs])
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -103,9 +156,6 @@ export function GithubGlobe({
         if (!res.ok) throw new Error("Failed to load countries geojson")
         const geojson = await res.json()
 
-        const getIso = (feat: any) =>
-          feat?.properties?.ISO_A3 || feat?.properties?.ADM0_A3 || feat?.properties?.A3 || feat?.properties?.NAME
-
         const getFeatureCenter = (feat: any) => {
           try {
             const geom = feat?.geometry
@@ -136,39 +186,35 @@ export function GithubGlobe({
           return null
         }
 
-        const applyPolygonStyles = () => {
-          const sel = selectionRef.current
-          globe
-            .polygonsData(geojson.features)
-            .polygonCapColor((d: any) => {
-              const iso = getIso(d)
-              const isSelected = !sel || sel.has(iso)
-              return isSelected ? "rgba(34,211,238,0.45)" : "rgba(120,120,120,0.18)"
-            })
-            .polygonSideColor((d: any) => {
-              const iso = getIso(d)
-              const isSelected = !sel || sel.has(iso)
-              return isSelected ? "rgba(34,211,238,0.35)" : "rgba(90,90,90,0.15)"
-            })
-            .polygonStrokeColor((d: any) => {
-              const iso = getIso(d)
-              const isSelected = !sel || sel.has(iso)
-              return isSelected ? "#22d3ee" : "#3a3a3a"
-            })
-            .polygonAltitude((d: any) => {
-              const iso = getIso(d)
-              const isSelected = !sel || sel.has(iso)
-              return isSelected ? 0.02 : 0.005
-            })
+        // Cache features and apply initial styles
+        featuresRef.current = geojson.features
+
+        // Initialize selection from prop on first load
+        if (selectedISOs === null) {
+          selectionRef.current = null
+        } else {
+          selectionRef.current = new Set(selectedISOs)
         }
 
         applyPolygonStyles()
         setCountriesLoaded(true)
 
+        // Emit country list to parent
+        if (onCountriesLoaded) {
+          try {
+            const countries = featuresRef.current.map((f: any) => {
+              const iso = getIsoRef.current(f)
+              const name = f?.properties?.ADMIN || f?.properties?.NAME || iso
+              return { iso3: iso, name }
+            })
+            onCountriesLoaded(countries)
+          } catch {}
+        }
+
         // Toggle/select logic
         // Single click selects one; Shift/Ctrl/Cmd toggles multi-select
         ;(globe as any).onPolygonClick((poly: any, event: MouseEvent) => {
-          const iso = getIso(poly)
+          const iso = getIsoRef.current(poly)
           const multi = !!(event?.shiftKey || event?.ctrlKey || (event as any)?.metaKey)
 
           if (!multi) {
@@ -186,6 +232,9 @@ export function GithubGlobe({
           }
 
           applyPolygonStyles()
+          // Notify parent
+          onSelectionChange?.(selectionRef.current ? Array.from(selectionRef.current) : null)
+
           // Focus POV to polygon centroid
           const center = getFeatureCenter(poly)
           if (center) {
