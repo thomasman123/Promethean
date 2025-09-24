@@ -191,6 +191,11 @@ export function BarChartWidget({ metrics }: BarChartWidgetProps) {
     const metricInfo = METRICS_REGISTRY[metric]
     if (!metricInfo) return val.toString()
 
+    // Handle multiplier ROI metrics - show as "1.09x" instead of percentage
+    if (metricInfo.name?.includes('Multiplier') || metricInfo.name?.includes('multiplier')) {
+      return `${val.toFixed(2)}x`
+    }
+
     switch (metricInfo.unit) {
       case 'currency':
         return `$${val.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
@@ -207,6 +212,11 @@ export function BarChartWidget({ metrics }: BarChartWidgetProps) {
       case 'days':
         return `${val.toFixed(1)}d`
       case 'count':
+        // For count unit on ROI multiplier metrics, show as multiplier
+        if (metricInfo.name?.includes('ROI') && metricInfo.name?.includes('Multiplier')) {
+          return `${val.toFixed(2)}x`
+        }
+        return val.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
       default:
         return val.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
     }
