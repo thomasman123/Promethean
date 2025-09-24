@@ -12,20 +12,9 @@ export async function middleware(req: NextRequest) {
       return NextResponse.next()
     }
 
-    // For root path, check if user is logged in and redirect to app if they are
+    // Always serve marketing page for root path (auth-aware buttons handled in component)
     if (pathname === '/') {
-      // Quick check for auth cookies - if they exist, redirect to app
-      const hasAuthCookies = req.cookies.getAll().some(cookie => 
-        cookie.name.includes('sb-') && cookie.name.includes('auth-token')
-      )
-      
-      if (hasAuthCookies) {
-        // User is likely logged in, redirect to app dashboard
-        return NextResponse.redirect(new URL('https://app.getpromethean.com/dashboard'), 301)
-      } else {
-        // No auth cookies, serve marketing page
-        return NextResponse.rewrite(new URL('/marketing', req.url))
-      }
+      return NextResponse.rewrite(new URL('/marketing', req.url))
     }
 
     // Redirect app routes to app subdomain
