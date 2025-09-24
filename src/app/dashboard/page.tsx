@@ -12,6 +12,7 @@ import { METRICS_REGISTRY } from "@/lib/metrics/registry"
 import "react-grid-layout/css/styles.css"
 import "react-resizable/css/styles.css"
 import { Loading } from "@/components/ui/loading"
+import { Button } from "@/components/ui/button"
 
 const ResponsiveGridLayout = WidthProvider(Responsive)
 
@@ -367,6 +368,9 @@ export default function DashboardPage() {
       
       <main className="pt-16 h-screen overflow-y-auto">
         <div className="p-6">
+          <div className="mb-4">
+            <Button variant="outline">Location</Button>
+          </div>
           {!currentViewId ? (
             <div className="flex items-center justify-center h-64">
               <span className="text-muted-foreground">Please select or create a view to get started</span>
