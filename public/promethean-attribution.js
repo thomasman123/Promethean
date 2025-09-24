@@ -17,6 +17,23 @@
     version: '1.0.0'
   };
 
+  // Determine absolute API base from the script tag origin
+  function getApiUrl(path) {
+    try {
+      const currentScript = document.currentScript || (function() {
+        const scripts = document.getElementsByTagName('script');
+        return scripts[scripts.length - 1];
+      })();
+      const scriptSrc = currentScript && currentScript.src ? currentScript.src : window.location.origin;
+      const scriptOrigin = new URL(scriptSrc).origin;
+      // If path is already absolute, return as-is
+      try { return new URL(path).toString(); } catch (_) {}
+      return scriptOrigin + path;
+    } catch (e) {
+      return path; // fallback
+    }
+  }
+
   class PrometheanAttributionTracker {
     constructor() {
       this.sessionId = this.generateSessionId();
@@ -251,7 +268,7 @@
 
     async sendAttributionData() {
       try {
-        const response = await fetch(CONFIG.apiEndpoint, {
+        const response = await fetch(getApiUrl(CONFIG.apiEndpoint), {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -347,7 +364,7 @@
         const formFields = Object.fromEntries(formData.entries());
         
         // Send form submission tracking
-        await fetch(CONFIG.apiEndpoint, {
+        await fetch(getApiUrl(CONFIG.apiEndpoint), {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -416,7 +433,7 @@
         }
 
         // Send update to backend (don't await to avoid blocking)
-        fetch(CONFIG.apiEndpoint, {
+        fetch(getApiUrl(CONFIG.apiEndpoint), {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
