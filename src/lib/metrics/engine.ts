@@ -802,117 +802,120 @@ WHERE speed_to_lead_seconds IS NOT NULL
      const metaWhereClause = this.buildMetaWhereClause(appliedFilters)
      const breakdownType = metric.breakdownType
      const isMultiplier = metric.name?.includes('Multiplier')
-     
-     // Handle different breakdown types
-     switch (breakdownType) {
-       case 'total':
-         // Total ROI across all reps
-         return `
-           WITH total_appointments AS (
-             SELECT 
-               account_id,
-               COUNT(*) as total_count
-             FROM appointments
-             ${apptWhereNoUsers}
-             GROUP BY account_id
-           ),
-           cash_data AS (
-             SELECT 
-               account_id,
-               COALESCE(SUM(cash_collected), 0) as total_cash
-             FROM appointments
-             ${whereClause}
-             AND sales_rep_user_id IS NOT NULL
-             GROUP BY account_id
-           ),
-           spend_data AS (
-             SELECT 
-               account_id,
-               COALESCE(SUM(spend), 0) as total_spend
-             FROM meta_ad_performance
-             ${metaWhereClause}
-             AND spend > 0
-             GROUP BY account_id
-           )
-           SELECT 
-             CASE 
-               WHEN total_appointments.total_count > 0 AND spend_data.total_spend > 0
-               THEN ROUND(
-                 ${isMultiplier 
-                   ? 'cash_data.total_cash / spend_data.total_spend'
-                   : '(cash_data.total_cash / spend_data.total_spend - 1)'
-                 }, 4)
-               ELSE 0 
-             END as value
-           FROM cash_data
-           LEFT JOIN total_appointments ON cash_data.account_id = total_appointments.account_id
-           LEFT JOIN spend_data ON cash_data.account_id = spend_data.account_id
-         `.trim()
+ 
+    // Use date_booked for appointments date filtering to keep ROI coherent with booked cost/appointments
+    const apptWhereWithUsersDateBooked = this.buildAppointmentsWhereClauseUsingDateBooked(appliedFilters)
+
+    // Handle different breakdown types
+    switch (breakdownType) {
+      case 'total':
+        // Total ROI across all reps
+        return `
+          WITH total_appointments AS (
+            SELECT 
+              account_id,
+              COUNT(*) as total_count
+            FROM appointments
+            ${apptWhereNoUsers}
+            GROUP BY account_id
+          ),
+          cash_data AS (
+            SELECT 
+              account_id,
+              COALESCE(SUM(cash_collected), 0) as total_cash
+            FROM appointments
+            ${apptWhereWithUsersDateBooked}
+            AND sales_rep_user_id IS NOT NULL
+            GROUP BY account_id
+          ),
+          spend_data AS (
+            SELECT 
+              account_id,
+              COALESCE(SUM(spend), 0) as total_spend
+            FROM meta_ad_performance
+            ${metaWhereClause}
+            AND spend > 0
+            GROUP BY account_id
+          )
+          SELECT 
+            CASE 
+              WHEN total_appointments.total_count > 0 AND spend_data.total_spend > 0
+              THEN ROUND(
+                ${isMultiplier 
+                  ? 'cash_data.total_cash / spend_data.total_spend'
+                  : '(cash_data.total_cash / spend_data.total_spend - 1)'
+                }, 4)
+              ELSE 0 
+            END as value
+          FROM cash_data
+          LEFT JOIN total_appointments ON cash_data.account_id = total_appointments.account_id
+          LEFT JOIN spend_data ON cash_data.account_id = spend_data.account_id
+        `.trim()
          
-       case 'rep':
-         // ROI per sales rep
-         return `
-           WITH total_appointments AS (
-             SELECT 
-               account_id,
-               COUNT(*) as total_count
-             FROM appointments
-             ${apptWhereNoUsers}
-             GROUP BY account_id
-           ),
-           rep_data AS (
-             SELECT 
-               account_id,
-               sales_rep_user_id,
-               COUNT(*) as rep_appointments,
-               COALESCE(SUM(cash_collected), 0) as rep_cash
-             FROM appointments
-             ${whereClause}
-             AND sales_rep_user_id IS NOT NULL
-             GROUP BY account_id, sales_rep_user_id
-           ),
-           spend_data AS (
-             SELECT 
-               account_id,
-               COALESCE(SUM(spend), 0) as total_spend
-             FROM meta_ad_performance
-             ${metaWhereClause}
-             AND spend > 0
-             GROUP BY account_id
-           ),
-           rep_names AS (
-             SELECT 
-               p.id as user_id,
-               COALESCE(p.full_name, p.email, 'Unknown Rep') as user_name
-             FROM profiles p
-           )
-           SELECT 
-             rep_data.sales_rep_user_id as repId,
-             rep_names.user_name as repName,
-             CASE 
-               WHEN total_appointments.total_count > 0 AND spend_data.total_spend > 0 AND rep_data.rep_appointments > 0
-               THEN 
-                 CASE 
-                   WHEN ${isMultiplier ? 'true' : 'false'}
-                   THEN ROUND(
-                     rep_data.rep_cash / ((spend_data.total_spend / total_appointments.total_count) * rep_data.rep_appointments), 4
-                   )
-                   ELSE ROUND(
-                     ((rep_data.rep_cash / ((spend_data.total_spend / total_appointments.total_count) * rep_data.rep_appointments)) - 1), 4
-                   )
-                 END
-               ELSE 0 
-             END as value
-           FROM rep_data
-           LEFT JOIN total_appointments ON rep_data.account_id = total_appointments.account_id
-           LEFT JOIN spend_data ON rep_data.account_id = spend_data.account_id
-           LEFT JOIN rep_names ON rep_data.sales_rep_user_id = rep_names.user_id
-           ORDER BY rep_names.user_name
-         `.trim()
+      case 'rep':
+        // ROI per sales rep
+        return `
+          WITH total_appointments AS (
+            SELECT 
+              account_id,
+              COUNT(*) as total_count
+            FROM appointments
+            ${apptWhereNoUsers}
+            GROUP BY account_id
+          ),
+          rep_data AS (
+            SELECT 
+              account_id,
+              sales_rep_user_id,
+              COUNT(*) as rep_appointments,
+              COALESCE(SUM(cash_collected), 0) as rep_cash
+            FROM appointments
+            ${apptWhereWithUsersDateBooked}
+            AND sales_rep_user_id IS NOT NULL
+            GROUP BY account_id, sales_rep_user_id
+          ),
+          spend_data AS (
+            SELECT 
+              account_id,
+              COALESCE(SUM(spend), 0) as total_spend
+            FROM meta_ad_performance
+            ${metaWhereClause}
+            AND spend > 0
+            GROUP BY account_id
+          ),
+          rep_names AS (
+            SELECT 
+              p.id as user_id,
+              COALESCE(p.full_name, p.email, 'Unknown Rep') as user_name
+            FROM profiles p
+          )
+          SELECT 
+            rep_data.sales_rep_user_id as repId,
+            rep_names.user_name as repName,
+            CASE 
+              WHEN total_appointments.total_count > 0 AND spend_data.total_spend > 0 AND rep_data.rep_appointments > 0
+              THEN 
+                CASE 
+                  WHEN ${isMultiplier ? 'true' : 'false'}
+                  THEN ROUND(
+                    rep_data.rep_cash / ((spend_data.total_spend / total_appointments.total_count) * rep_data.rep_appointments), 4
+                  )
+                  ELSE ROUND(
+                    ((rep_data.rep_cash / ((spend_data.total_spend / total_appointments.total_count) * rep_data.rep_appointments)) - 1), 4
+                  )
+                END
+              ELSE 0 
+            END as value
+          FROM rep_data
+          LEFT JOIN total_appointments ON rep_data.account_id = total_appointments.account_id
+          LEFT JOIN spend_data ON rep_data.account_id = spend_data.account_id
+          LEFT JOIN rep_names ON rep_data.sales_rep_user_id = rep_names.user_id
+          ORDER BY rep_names.user_name
+        `.trim()
          
-       default:
-         throw new Error(`Unsupported breakdown type for Rep ROI: ${breakdownType}`)
-     }
+      default:
+        throw new Error(`Unsupported breakdown type for Rep ROI: ${breakdownType}`)
+    }
    }
 
           /**
@@ -1455,6 +1458,21 @@ WHERE speed_to_lead_seconds IS NOT NULL
     delete filteredParams.setter_user_ids
     const clause = buildWhereClause({ conditions: filteredConditions, params: filteredParams }, [])
     // Ensure cost-per-booked-call uses date_booked range for appointments
+    return clause
+      .replace(/\bappointments\.local_date\b/g, 'appointments.date_booked')
+      .replace(/\bappointments\.local_week\b/g, 'appointments.date_booked')
+      .replace(/\bappointments\.local_month\b/g, 'appointments.date_booked')
+      .replace(/\blocal_date\b/g, 'date_booked')
+      .replace(/\blocal_week\b/g, 'date_booked')
+      .replace(/\blocal_month\b/g, 'date_booked')
+  }
+
+  /**
+   * Build a WHERE clause for appointments that retains user filters but switches
+   * any local_ date filters to use date_booked for consistency.
+   */
+  private buildAppointmentsWhereClauseUsingDateBooked(appliedFilters: any): string {
+    const clause = buildWhereClause(appliedFilters, [])
     return clause
       .replace(/\bappointments\.local_date\b/g, 'appointments.date_booked')
       .replace(/\bappointments\.local_week\b/g, 'appointments.date_booked')
