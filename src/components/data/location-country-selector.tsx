@@ -6,18 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
-
-function getStore(): {
-  selected: string[] | null
-  countries: { iso3: string; name: string }[]
-  listeners: Set<() => void>
-  setSelected: (next: string[] | null) => void
-  setCountries: (list: { iso3: string; name: string }[]) => void
-  subscribe: (fn: () => void) => () => void
-} | null {
-  if (typeof window === "undefined") return null
-  return (window as any).__locationStore || null
-}
+import locationStore from "@/components/data/location-store"
 
 interface Props {
   className?: string
@@ -25,17 +14,13 @@ interface Props {
 
 export function LocationCountrySelector({ className }: Props) {
   const [query, setQuery] = useState("")
-  const [selected, setSelected] = useState<string[] | null>(null)
-  const [countries, setCountries] = useState<{ iso3: string; name: string }[]>([])
+  const [selected, setSelected] = useState<string[] | null>(locationStore.selected)
+  const [countries, setCountries] = useState(locationStore.countries)
 
   useEffect(() => {
-    const store = getStore()
-    if (!store) return
-    setSelected(store.selected ?? null)
-    setCountries(store.countries ?? [])
-    return store.subscribe(() => {
-      setSelected(store.selected ?? null)
-      setCountries(store.countries ?? [])
+    return locationStore.subscribe(() => {
+      setSelected(locationStore.selected)
+      setCountries(locationStore.countries)
     })
   }, [])
 
@@ -50,24 +35,19 @@ export function LocationCountrySelector({ className }: Props) {
   const allSelected = selected === null
 
   const toggleIso = (iso: string) => {
-    const store = getStore()
-    if (!store) return
     if (allSelected) {
-      // if "all", selecting one turns it into just that one
-      store.setSelected([iso])
+      locationStore.setSelected([iso])
       return
     }
     const set = new Set(selected ?? [])
     if (set.has(iso)) set.delete(iso)
     else set.add(iso)
-    store.setSelected(set.size === 0 ? null : Array.from(set))
+    locationStore.setSelected(set.size === 0 ? null : Array.from(set))
   }
 
   const toggleAll = (checked: boolean) => {
-    const store = getStore()
-    if (!store) return
-    if (checked) store.setSelected(null)
-    else store.setSelected([]) // deselect all -> empty set
+    if (checked) locationStore.setSelected(null)
+    else locationStore.setSelected([])
   }
 
   return (
