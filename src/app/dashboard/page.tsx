@@ -14,6 +14,7 @@ import "react-resizable/css/styles.css"
 import { Loading } from "@/components/ui/loading"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { GithubGlobe } from "@/components/data/github-globe"
 
 const ResponsiveGridLayout = WidthProvider(Responsive)
 
@@ -378,8 +379,8 @@ export default function DashboardPage() {
                 <DialogHeader>
                   <DialogTitle>Location</DialogTitle>
                 </DialogHeader>
-                <div className="h-[480px] w-full flex items-center justify-center text-sm text-muted-foreground">
-                  Globe loading...
+                <div className="h-[480px] w-full">
+                  <GithubGlobe className="h-full w-full" />
                 </div>
               </DialogContent>
             </Dialog>
