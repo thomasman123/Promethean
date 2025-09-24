@@ -14,6 +14,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  TableCaption,
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -22,6 +23,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Search, UserCheck, Users, Settings2, Shield, Building2, Plus, X, Building } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { createBrowserClient } from "@supabase/ssr"
 import { Database } from "@/lib/database.types"
 import { useToast } from "@/hooks/use-toast"
@@ -66,6 +68,12 @@ export function AdminSettingsModal({ open, onOpenChange }: AdminSettingsModalPro
   const [creatingAccount, setCreatingAccount] = useState(false)
   const [newAccountName, setNewAccountName] = useState("")
   const [newAccountDescription, setNewAccountDescription] = useState("")
+
+  // Attribution sessions state
+  const [sessions, setSessions] = useState<any[]>([])
+  const [sessionsLoading, setSessionsLoading] = useState(false)
+  const [sessionSearch, setSessionSearch] = useState("")
+  const [sessionLimit, setSessionLimit] = useState<string>("50")
   
   const { toast } = useToast()
   const router = useRouter()
@@ -79,6 +87,7 @@ export function AdminSettingsModal({ open, onOpenChange }: AdminSettingsModalPro
     if (open) {
       fetchUsers()
       fetchAccounts()
+      fetchSessions()
     }
   }, [open])
 
@@ -230,6 +239,24 @@ export function AdminSettingsModal({ open, onOpenChange }: AdminSettingsModalPro
     account.name.toLowerCase().includes(accountSearchTerm.toLowerCase())
   )
 
+  const fetchSessions = async () => {
+    setSessionsLoading(true)
+    try {
+      const params = new URLSearchParams()
+      if (sessionSearch.trim()) params.set('q', sessionSearch.trim())
+      if (sessionLimit) params.set('limit', sessionLimit)
+      const res = await fetch(`/api/admin/attribution-sessions?${params.toString()}`)
+      if (!res.ok) throw new Error('Failed to load sessions')
+      const json = await res.json()
+      setSessions(json.sessions || [])
+    } catch (e) {
+      console.error('Error fetching sessions', e)
+      toast({ title: 'Error', description: 'Failed to load attribution sessions', variant: 'destructive' })
+    } finally {
+      setSessionsLoading(false)
+    }
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-6xl max-h-[90vh] p-0">
@@ -251,9 +278,9 @@ export function AdminSettingsModal({ open, onOpenChange }: AdminSettingsModalPro
                 <Building2 className="h-4 w-4" />
                 Accounts
               </TabsTrigger>
-              <TabsTrigger value="settings" className="flex items-center gap-2" disabled>
+              <TabsTrigger value="attribution" className="flex items-center gap-2">
                 <Settings2 className="h-4 w-4" />
-                Settings
+                Attribution
               </TabsTrigger>
             </TabsList>
 
@@ -488,10 +515,97 @@ export function AdminSettingsModal({ open, onOpenChange }: AdminSettingsModalPro
               </div>
             </TabsContent>
 
-            {/* Settings Tab */}
-            <TabsContent value="settings" className="h-[calc(100%-60px)] px-6 pb-6">
-              <div className="flex items-center justify-center h-full text-muted-foreground">
-                Settings coming soon...
+            {/* Attribution Tab */}
+            <TabsContent value="attribution" className="h-[calc(100%-60px)] px-6 pb-6">
+              <div className="h-full flex flex-col gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search sessions (utm, fbclid, session id...)"
+                      value={sessionSearch}
+                      onChange={(e) => setSessionSearch(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') fetchSessions() }}
+                      className="pl-10"
+                    />
+                  </div>
+                  <Select value={sessionLimit} onValueChange={(v) => { setSessionLimit(v); setTimeout(fetchSessions, 0) }}>
+                    <SelectTrigger className="w-[120px]"><SelectValue placeholder="Limit" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="25">Last 25</SelectItem>
+                      <SelectItem value="50">Last 50</SelectItem>
+                      <SelectItem value="100">Last 100</SelectItem>
+                      <SelectItem value="200">Last 200</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button variant="outline" onClick={fetchSessions}>Refresh</Button>
+                </div>
+
+                <div className="flex-1 border rounded-lg overflow-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>When</TableHead>
+                        <TableHead>Session</TableHead>
+                        <TableHead>UTM</TableHead>
+                        <TableHead>Meta IDs</TableHead>
+                        <TableHead>fbclid</TableHead>
+                        <TableHead>Landing URL</TableHead>
+                        <TableHead>Contact</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {sessionsLoading ? (
+                        <TableRow>
+                          <TableCell colSpan={7} className="text-center py-8">Loading sessions...</TableCell>
+                        </TableRow>
+                      ) : sessions.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={7} className="text-center py-8">No sessions found</TableCell>
+                        </TableRow>
+                      ) : (
+                        sessions.map((s) => (
+                          <TableRow key={s.id || s.session_id}>
+                            <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
+                              {s.last_activity_at ? new Date(s.last_activity_at).toLocaleString() : new Date(s.created_at).toLocaleString()}
+                              <div>
+                                <Badge variant={s.attribution_quality === 'perfect' ? 'default' : 'secondary'}>{s.attribution_quality || 'n/a'}</Badge>
+                              </div>
+                            </TableCell>
+                            <TableCell className="max-w-[200px] text-xs font-mono break-all">
+                              {s.session_id}
+                              <div className="text-muted-foreground">{s.attribution_method}</div>
+                            </TableCell>
+                            <TableCell className="text-xs">
+                              <div><span className="text-muted-foreground">src</span>: {s.utm_source || '-'}</div>
+                              <div><span className="text-muted-foreground">med</span>: {s.utm_medium || '-'}</div>
+                              <div className="truncate max-w-[220px]"><span className="text-muted-foreground">cmp</span>: {s.utm_campaign || '-'}</div>
+                            </TableCell>
+                            <TableCell className="text-xs">
+                              <div className="font-mono">c: {s.meta_campaign_id || '-'}</div>
+                              <div className="font-mono">as: {s.meta_ad_set_id || '-'}</div>
+                              <div className="font-mono">ad: {s.meta_ad_id || '-'}</div>
+                            </TableCell>
+                            <TableCell className="text-xs font-mono break-all">
+                              {s.fbclid || '-'}
+                            </TableCell>
+                            <TableCell className="text-xs break-all max-w-[360px]">
+                              {s.landing_url || '-'}
+                            </TableCell>
+                            <TableCell className="text-xs">
+                              {s.contact ? (
+                                <div>
+                                  <div className="truncate max-w-[220px]">{s.contact.email || '—'}</div>
+                                  <div className="text-muted-foreground">acct: {s.contact.account_id || '—'}</div>
+                                </div>
+                              ) : '—'}
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
               </div>
             </TabsContent>
           </Tabs>
