@@ -12,6 +12,22 @@ export async function middleware(req: NextRequest) {
       return NextResponse.next()
     }
 
+    // For root path, check if user is logged in and redirect to app if they are
+    if (pathname === '/') {
+      // Quick check for auth cookies - if they exist, redirect to app
+      const hasAuthCookies = req.cookies.getAll().some(cookie => 
+        cookie.name.includes('sb-') && cookie.name.includes('auth-token')
+      )
+      
+      if (hasAuthCookies) {
+        // User is likely logged in, redirect to app dashboard
+        return NextResponse.redirect(new URL('https://app.getpromethean.com/dashboard'), 301)
+      } else {
+        // No auth cookies, serve marketing page
+        return NextResponse.rewrite(new URL('/marketing', req.url))
+      }
+    }
+
     // Redirect app routes to app subdomain
     if (pathname.startsWith('/login') || 
         pathname.startsWith('/signup') || 
@@ -25,12 +41,6 @@ export async function middleware(req: NextRequest) {
       const appUrl = new URL(req.url)
       appUrl.hostname = 'app.getpromethean.com'
       return NextResponse.redirect(appUrl, 301)
-    }
-
-    // Serve marketing content for www
-    // Rewrite to a marketing folder or page
-    if (pathname === '/') {
-      return NextResponse.rewrite(new URL('/marketing', req.url))
     }
     
     // Let other marketing routes pass through normally
