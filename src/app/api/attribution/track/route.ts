@@ -81,6 +81,19 @@ async function enhanceWithMetaLookup(attributionData: any): Promise<any> {
   return enhanced;
 }
 
+// Basic CORS helper and handlers
+function withCors(res: NextResponse) {
+  res.headers.set('Access-Control-Allow-Origin', '*');
+  res.headers.set('Access-Control-Allow-Methods', 'GET,POST,PATCH,OPTIONS');
+  res.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.headers.set('Access-Control-Max-Age', '86400');
+  return res;
+}
+
+export async function OPTIONS() {
+  return withCors(new NextResponse(null, { status: 204 }));
+}
+
 export async function POST(request: NextRequest) {
   try {
     const supabase = createClient<Database>(
@@ -92,7 +105,7 @@ export async function POST(request: NextRequest) {
     const { type, session_id, ...attributionData } = body;
 
     if (!session_id) {
-      return NextResponse.json({ error: 'session_id is required' }, { status: 400 });
+      return withCors(NextResponse.json({ error: 'session_id is required' }, { status: 400 }));
     }
 
     console.log(`🎯 Attribution tracking: ${type} for session ${session_id}`);
@@ -172,24 +185,24 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error('Error storing attribution session:', error);
-      return NextResponse.json({ error: 'Failed to store attribution data' }, { status: 500 });
+      return withCors(NextResponse.json({ error: 'Failed to store attribution data' }, { status: 500 }));
     }
 
     console.log(`✅ Attribution session stored: ${session_id} (${enhancedData.attribution_quality} quality)`);
 
-    return NextResponse.json({
+    return withCors(NextResponse.json({
       success: true,
       session_id: session_id,
       attribution_quality: enhancedData.attribution_quality,
       attribution_method: enhancedData.attribution_method,
       enhanced: !!enhancedData.meta_ad_id
-    });
+    }));
 
   } catch (error) {
     console.error('Error in attribution tracking:', error);
-    return NextResponse.json({ 
+    return withCors(NextResponse.json({ 
       error: 'Internal server error' 
-    }, { status: 500 });
+    }, { status: 500 }));
   }
 }
 
@@ -204,7 +217,7 @@ export async function PATCH(request: NextRequest) {
     const { session_id, updates } = body;
 
     if (!session_id) {
-      return NextResponse.json({ error: 'session_id is required' }, { status: 400 });
+      return withCors(NextResponse.json({ error: 'session_id is required' }, { status: 400 }));
     }
 
     // Update session with new activity data
@@ -219,15 +232,15 @@ export async function PATCH(request: NextRequest) {
 
     if (error) {
       console.error('Error updating attribution session:', error);
-      return NextResponse.json({ error: 'Failed to update session' }, { status: 500 });
+      return withCors(NextResponse.json({ error: 'Failed to update session' }, { status: 500 }));
     }
 
-    return NextResponse.json({ success: true });
+    return withCors(NextResponse.json({ success: true }));
 
   } catch (error) {
     console.error('Error updating attribution session:', error);
-    return NextResponse.json({ 
+    return withCors(NextResponse.json({ 
       error: 'Internal server error' 
-    }, { status: 500 });
+    }, { status: 500 }));
   }
 } 
