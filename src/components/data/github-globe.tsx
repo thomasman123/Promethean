@@ -251,18 +251,26 @@ export function GithubGlobe({
           const iso = getIsoRef.current(poly)
           const multi = !!(event?.shiftKey || event?.ctrlKey || (event as any)?.metaKey)
 
+          const current = selectionRef.current
           if (!multi) {
-            if (selectionRef.current && selectionRef.current.size === 1 && selectionRef.current.has(iso)) {
-              selectionRef.current = null
+            if (current && current.size === 1 && current.has(iso)) {
+              // Deselect the only selected country -> empty selection
+              selectionRef.current = new Set()
             } else {
+              // Select only this country
               selectionRef.current = new Set([iso])
             }
           } else {
-            if (!selectionRef.current) selectionRef.current = new Set([iso])
-            else if (selectionRef.current.has(iso)) {
-              selectionRef.current.delete(iso)
-              if (selectionRef.current.size === 0) selectionRef.current = null
-            } else selectionRef.current.add(iso)
+            if (!current) {
+              // Start from empty set when previously "all"
+              selectionRef.current = new Set([iso])
+            } else if (current.has(iso)) {
+              current.delete(iso)
+              selectionRef.current = current // keep empty set if size becomes 0
+            } else {
+              current.add(iso)
+              selectionRef.current = current
+            }
           }
 
           applyPolygonStyles()
