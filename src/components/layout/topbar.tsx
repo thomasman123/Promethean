@@ -26,6 +26,8 @@ import { useDashboard } from "@/lib/dashboard-context"
 import { useEffectiveUser } from "@/hooks/use-effective-user"
 import { useAccountsCache } from "@/hooks/use-accounts-cache"
 import { FollowUpNotifications } from "./follow-up-notifications"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { GithubGlobe } from "@/components/data/github-globe"
 
 interface Account {
   id: string
@@ -424,6 +426,23 @@ export function TopBar({ onAddWidget }: TopBarProps) {
 
       {/* Right section - Dashboard Controls, Dark mode toggle, Profile */}
       <div className="flex items-center gap-3">
+        {/* Location Globe - only on dashboard */}
+        {pathname === "/dashboard" && (
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm" className="h-8">Location</Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-4xl w-[90vw]">
+              <DialogHeader>
+                <DialogTitle>Location</DialogTitle>
+                <DialogDescription>Interactive globe. Drag to rotate. Click to highlight.</DialogDescription>
+              </DialogHeader>
+              <div className="h-[480px] w-full">
+                <GithubGlobe className="h-full w-full" />
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
         {/* Update Data Navigation Buttons */}
         {pathname.startsWith("/update-data") && (
           <>
