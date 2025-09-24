@@ -82,17 +82,22 @@ export default function DashboardPage() {
   const loadViewData = async () => {
     setLoading(true)
     try {
+      console.log('🔍 [Dashboard] Loading view data for currentViewId:', currentViewId)
       const response = await fetch(`/api/dashboard/views?accountId=${selectedAccountId}`)
       if (response.ok) {
         const data = await response.json()
+        console.log('🔍 [Dashboard] Fetched views data:', data.views?.length, 'views')
         const currentView = data.views?.find((v: any) => v.id === currentViewId)
+        console.log('🔍 [Dashboard] Found current view:', currentView?.name, 'with widgets:', currentView?.widgets ? 'present' : 'missing')
         
         if (currentView && currentView.widgets) {
           // Load widgets and layouts from the view
           const viewData = currentView.widgets as ViewData
+          console.log('🔍 [Dashboard] ViewData structure:', typeof viewData, Array.isArray(viewData) ? 'array' : 'object')
           
           if (Array.isArray(viewData)) {
             // Old format - just widgets array
+            console.log('🔍 [Dashboard] Loading old format widgets:', viewData.length, 'widgets')
             const loadedWidgets = viewData
             let loadedLayouts = JSON.parse(JSON.stringify(defaultLayouts))
             
@@ -115,27 +120,32 @@ export default function DashboardPage() {
             
             setWidgets(loadedWidgets)
             setLayouts(loadedLayouts)
+            console.log('✅ [Dashboard] Loaded old format:', loadedWidgets.length, 'widgets')
           } else if (viewData && viewData.widgets && viewData.layouts) {
             // New format - widgets and layouts object
+            console.log('🔍 [Dashboard] Loading new format widgets:', viewData.widgets.length, 'widgets')
             setWidgets(viewData.widgets)
             setLayouts(viewData.layouts)
+            console.log('✅ [Dashboard] Loaded new format:', viewData.widgets.length, 'widgets')
           } else {
             // No saved data, use defaults
+            console.log('⚠️ [Dashboard] ViewData exists but no widgets/layouts found, using defaults')
             setWidgets(defaultWidgets)
             setLayouts(defaultLayouts)
           }
         } else {
           // No view found or no widgets, use defaults
+          console.log('⚠️ [Dashboard] No view found or no widgets, using defaults')
           setWidgets(defaultWidgets)
           setLayouts(defaultLayouts)
         }
       } else {
-        console.error("Failed to load dashboard views")
+        console.error("❌ [Dashboard] Failed to load dashboard views, status:", response.status)
         setWidgets(defaultWidgets)
         setLayouts(defaultLayouts)
       }
     } catch (error) {
-      console.error("Failed to load dashboard views:", error)
+      console.error("❌ [Dashboard] Error loading dashboard views:", error)
       setWidgets(defaultWidgets)
       setLayouts(defaultLayouts)
     } finally {
