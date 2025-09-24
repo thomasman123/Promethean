@@ -91,82 +91,51 @@ export default function DashboardPage() {
           // Load widgets and layouts from the view
           const viewData = currentView.widgets as ViewData
           
-          // One-time fix: Reset all widget sizes to proper minimums
-          const resetKey = `dashboardReset_${selectedAccountId}_${currentViewId}_v2`
-          const hasReset = localStorage.getItem(resetKey)
-          
-          if (!hasReset) {
-            // Force reset to default layouts with proper sizes
-            localStorage.setItem(resetKey, 'true')
-            const resetLayouts = JSON.parse(JSON.stringify(defaultLayouts))
-            setWidgets(defaultWidgets)
-            setLayouts(resetLayouts)
-            saveViewData(defaultWidgets, resetLayouts)
-            return
-          }
           if (Array.isArray(viewData)) {
             // Old format - just widgets array
             const loadedWidgets = viewData
             let loadedLayouts = JSON.parse(JSON.stringify(defaultLayouts))
             
-            // Apply minimum size constraints to chart widgets
-            Object.keys(loadedLayouts).forEach((breakpoint) => {
-              loadedLayouts[breakpoint] = loadedLayouts[breakpoint].map((item: any) => {
-                const widget = loadedWidgets.find((w: WidgetConfig) => w.id === item.i)
-                if (widget && ['bar', 'line', 'area'].includes(widget.type)) {
-                  // Enforce minimum 2x2 size for charts
-                  return {
-                    ...item,
-                    w: Math.max(item.w, 2),
-                    h: Math.max(item.h, 2),
-                    minW: 2,
-                    minH: 2
-                  }
-                }
-                return item
-              })
-            })
+            // Generate layouts for existing widgets if they don't have layouts
+            const lgLayout = loadedWidgets.map((widget, index) => ({
+              i: widget.id,
+              x: (index % 3) * 4,
+              y: Math.floor(index / 3) * 4,
+              w: 4,
+              h: 4,
+              minW: 3,
+              minH: 3,
+            }))
+            
+            loadedLayouts = {
+              lg: lgLayout,
+              md: lgLayout,
+              sm: lgLayout.map(item => ({ ...item, w: 6, x: (item.x || 0) >= 6 ? 0 : item.x })),
+            }
             
             setWidgets(loadedWidgets)
             setLayouts(loadedLayouts)
-          } else if (viewData.widgets && viewData.layouts) {
-            // New format - widgets and layouts
-            const loadedWidgets = viewData.widgets
-            let loadedLayouts = viewData.layouts
-            
-            // Apply minimum size constraints to chart widgets in loaded layouts
-            Object.keys(loadedLayouts).forEach((breakpoint) => {
-              loadedLayouts[breakpoint] = loadedLayouts[breakpoint].map((item: any) => {
-                const widget = loadedWidgets.find((w: WidgetConfig) => w.id === item.i)
-                if (widget && ['bar', 'line', 'area'].includes(widget.type)) {
-                  // Enforce minimum 2x2 size for charts
-                  return {
-                    ...item,
-                    w: Math.max(item.w, 2),
-                    h: Math.max(item.h, 2),
-                    minW: 2,
-                    minH: 2
-                  }
-                }
-                return item
-              })
-            })
-            
-            setWidgets(loadedWidgets)
-            setLayouts(loadedLayouts)
+          } else if (viewData && viewData.widgets && viewData.layouts) {
+            // New format - widgets and layouts object
+            setWidgets(viewData.widgets)
+            setLayouts(viewData.layouts)
           } else {
-            // No widgets yet
+            // No saved data, use defaults
             setWidgets(defaultWidgets)
             setLayouts(defaultLayouts)
           }
         } else {
-          // New view or no widgets
+          // No view found or no widgets, use defaults
           setWidgets(defaultWidgets)
           setLayouts(defaultLayouts)
         }
+      } else {
+        console.error("Failed to load dashboard views")
+        setWidgets(defaultWidgets)
+        setLayouts(defaultLayouts)
       }
     } catch (error) {
-      console.error("Failed to load view data:", error)
+      console.error("Failed to load dashboard views:", error)
       setWidgets(defaultWidgets)
       setLayouts(defaultLayouts)
     } finally {
