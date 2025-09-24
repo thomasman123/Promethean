@@ -159,23 +159,27 @@ export function GithubGlobe({
       globe
         .backgroundColor("rgba(0,0,0,0)")
         .globeImageUrl("https://unpkg.com/three-globe/example/img/earth-dark.jpg")
-        .bumpImageUrl("https://unpkg.com/three-globe/example/img/earth-topology.png")
+        .bumpImageUrl(undefined as any)
         .showAtmosphere(true)
-        .atmosphereColor(atmosphereColor)
-        .atmosphereAltitude(0.15)
+        .atmosphereColor("#0e7490")
+        .atmosphereAltitude(0.05)
         .width(width)
         .height(height)
         .enablePointerInteraction(true)
 
       const material = globe.globeMaterial()
       if (material?.color?.set) material.color.set(globeColor)
+      if (material) {
+        // flatten shading
+        ;(material as any).flatShading = true
+      }
 
       globe
         .pointsData(points)
         .pointLat((d: any) => d.lat)
         .pointLng((d: any) => d.lng)
-        .pointAltitude(() => 0.02)
-        .pointRadius(() => 0.6)
+        .pointAltitude(() => 0.01)
+        .pointRadius(() => 0.5)
         .pointColor((d: any) => d.color || pointColor)
 
       globe
@@ -278,7 +282,10 @@ export function GithubGlobe({
 
           const center = getFeatureCenter(poly)
           if (center) {
-            globe.pointOfView({ lat: center.lat, lng: center.lng, altitude: 1.2 }, 700)
+            // Gentle recenter without zooming in too far to avoid clipping
+            const current = (globe as any).pointOfView()
+            const altitude = current?.altitude && current.altitude > 1 ? current.altitude : 1.4
+            globe.pointOfView({ lat: center.lat, lng: center.lng, altitude }, 600)
           }
         })
 
@@ -303,7 +310,9 @@ export function GithubGlobe({
           ]
           globe.ringsData(ringsRef.current)
 
-          globe.pointOfView({ lat, lng, altitude: 1.2 }, 800)
+          const current = (globe as any).pointOfView()
+          const altitude = current?.altitude && current.altitude > 1 ? current.altitude : 1.4
+          globe.pointOfView({ lat, lng, altitude }, 600)
         })
       } catch (e) {
         console.error(e)
@@ -315,6 +324,8 @@ export function GithubGlobe({
       if (controls) {
         controls.enablePan = false
         controls.enableZoom = false // only drag rotate
+        controls.minDistance = 200
+        controls.maxDistance = 700
       }
 
       const onResize = () => {

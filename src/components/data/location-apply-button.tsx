@@ -3,9 +3,12 @@
 import { Button } from "@/components/ui/button"
 import locationStore from "@/components/data/location-store"
 import { useEffect, useState } from "react"
+import { useDashboard } from "@/lib/dashboard-context"
 
 export function ApplyLocationButton() {
   const [selected, setSelected] = useState<string[] | null>(locationStore.selected)
+  const { setSelectedCountries } = useDashboard()
+
   useEffect(() => {
     return locationStore.subscribe(() => setSelected(locationStore.selected))
   }, [])
@@ -13,8 +16,7 @@ export function ApplyLocationButton() {
   const isEmpty = Array.isArray(selected) && selected.length === 0
 
   const handleApply = () => {
-    // TODO: Hook this into wherever the selection should be saved
-    // For now just close the dialog
+    setSelectedCountries(selected)
     const closeBtn = document.querySelector(
       '[data-state="open"][role="dialog"] button[aria-label="Close"]'
     ) as HTMLButtonElement | null

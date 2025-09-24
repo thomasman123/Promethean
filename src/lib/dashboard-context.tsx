@@ -14,6 +14,9 @@ interface DashboardContextType {
   setCurrentViewId: (viewId: string) => void
   selectedAccountId: string
   setSelectedAccountId: (accountId: string) => void
+  // New: selected countries filter for dashboard
+  selectedCountries: string[] | null
+  setSelectedCountries: (countries: string[] | null) => void
 }
 
 const DashboardContext = createContext<DashboardContextType | undefined>(undefined)
@@ -28,6 +31,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   })
   const [currentViewId, setCurrentViewId] = useState<string>("")
   const { selectedAccountId, setSelectedAccountId } = usePersistedAccount()
+  const [selectedCountries, setSelectedCountries] = useState<string[] | null>(null)
 
   const setDateRange = (range: { from: Date | undefined; to: Date | undefined }) => {
     const now = new Date()
@@ -46,6 +50,8 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       setCurrentViewId,
       selectedAccountId,
       setSelectedAccountId,
+      selectedCountries,
+      setSelectedCountries,
     }}>
       {children}
     </DashboardContext.Provider>
