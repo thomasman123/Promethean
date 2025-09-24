@@ -46,136 +46,171 @@ export function DataViewWidget({ metrics, selectedUsers, options }: DataViewWidg
       const allUsers = usersResult.users || []
       const filteredUsers = allUsers.filter((user: any) => selectedUsers.includes(user.id))
 
-      // Fetch metric data for each user and metric combination
-      const userData: UserMetricData[] = []
-      
-      for (const user of filteredUsers) {
-        const userMetricValues: Record<string, number | null> = {}
-        
-        for (const metricKey of metrics) {
-          try {
-            // Extract original metric name and attribution from the key
-            const metricOptions = options?.[metricKey] || {}
-            const originalMetricName = metricOptions.originalMetricName || metricKey
-            const attribution = metricOptions.attribution || "assigned"
-            
-            console.log(`🔍 [DataView] Processing ${originalMetricName} (${attribution}) for user ${user.name} (${user.id}):`)
-            
-            // Build filters based on user role
-            const filters: any = {
-              accountId: selectedAccountId,
-              dateRange: {
-                start: format(dateRange.from, 'yyyy-MM-dd'),
-                end: format(dateRange.to, 'yyyy-MM-dd')
-              }
+      // Helper: simple concurrency runner
+      async function runWithConcurrency<T>(tasks: (() => Promise<T>)[], limit: number): Promise<T[]> {
+        const results: T[] = []
+        let index = 0
+        let active = 0
+        return await new Promise<T[]>((resolve, reject) => {
+          const next = () => {
+            if (index >= tasks.length && active === 0) {
+              resolve(results)
+              return
             }
-            
-            // Determine table type from metric registry
-            const metricDefinition = METRICS_REGISTRY[originalMetricName]
-            const tableType = metricDefinition?.query?.table || "appointments"
-            
-            if (tableType === "discoveries") {
-              // For discoveries: assigned = setter_user_id, booked = sales_rep_user_id (only if discovery was booked)
-              if (attribution === "assigned") {
-                filters.setterIds = [user.id]
-                console.log(`  - Added setterIds: [${user.id}] (discovery assigned to setter)`)
-              } else if (attribution === "booked") {
-                filters.repIds = [user.id]
-                console.log(`  - Added repIds: [${user.id}] (discovery booked to sales rep)`)
-              } else {
-                filters.setterIds = [user.id]
-                console.log(`  - Added setterIds: [${user.id}] (default: discovery assigned)`)
-              }
-            } else if (tableType === "dials") {
-              // For dials: only setter_user_id exists (no attribution options needed)
-              filters.setterIds = [user.id]
-              console.log(`  - Added setterIds: [${user.id}] (dial made by setter)`)
-            } else {
-              // For appointments and other tables: assigned = sales_rep_user_id, booked = setter_user_id
-              if (attribution === "assigned") {
-                filters.repIds = [user.id]
-                console.log(`  - Added repIds: [${user.id}] (sales rep owned)`)
-              } else if (attribution === "booked") {
-                filters.setterIds = [user.id]
-                console.log(`  - Added setterIds: [${user.id}] (setter contributed)`)
-              } else {
-                filters.repIds = [user.id]
-                console.log(`  - Added repIds: [${user.id}] (default: sales rep owned)`)
-              }
+            while (active < limit && index < tasks.length) {
+              const current = tasks[index++]()
+              active++
+              current
+                .then((res) => { results.push(res) })
+                .catch((err) => { reject(err) })
+                .finally(() => { active--; next() })
             }
-            
-            console.log(`  - Final filters:`, filters)
-            
-            // Map per-user ROI to the rep-specific ROI metric for correct calculation
-            const requestedMetricName = (originalMetricName === 'roi' && attribution === 'assigned')
-              ? 'rep_roi'
-              : originalMetricName
-
-            const requestBody = {
-              metricName: requestedMetricName,
-              filters,
-              options: {
-                vizType: 'kpi', // Use KPI viz type to get total values instead of time series
-                widgetSettings: options?.[metricKey] || {}
-              }
-            }
-            
-            console.log(`  - Request body:`, requestBody)
-            
-            const response = await fetch('/api/metrics', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(requestBody)
-            })
-
-            console.log(`  - Response status: ${response.status}`)
-            
-            if (response.ok) {
-              const metricData = await response.json()
-              console.log(`  - Response data:`, metricData)
-              
-              // Handle different response formats
-              let value = null
-              
-              if (metricData.result?.type === 'total' && metricData.result.data?.value !== undefined) {
-                // Standard total response format
-                value = metricData.result.data.value
-                console.log(`  ✅ Got total value: ${value}`)
-              } else if (metricData.result?.type === 'rep' && Array.isArray(metricData.result.data)) {
-                // Rep array: find the current user's entry
-                const entry = metricData.result.data.find((r: any) => r.repId === user.id)
-                if (entry) {
-                  value = entry.value
-                  console.log(`  ✅ Got rep value for ${user.id}: ${value}`)
-                } else {
-                  console.log(`  ❌ No rep entry for ${user.id}`)
-                }
-              } else if (metricData.result?.type === 'time' && Array.isArray(metricData.result.data) && metricData.result.data.length > 0) {
-                // Time series response - sum all values or take the first/last value
-                if (metricData.result.data.length === 1) {
-                  value = metricData.result.data[0].value || metricData.result.data[0].count || 0
-                } else {
-                  // Sum all time series values for total
-                  value = metricData.result.data.reduce((sum: number, item: any) => {
-                    return sum + (item.value || item.count || 0)
-                  }, 0)
-                }
-                console.log(`  ✅ Got time series value (${metricData.result.data.length} points): ${value}`)
-              } else {
-                console.log(`  ❌ No valid value in response - result:`, metricData.result)
-              }
-              
-              userMetricValues[metricKey] = value
-            } else {
-              const errorText = await response.text()
-              console.error(`  ❌ API error: ${response.status} - ${errorText}`)
-              userMetricValues[metricKey] = null
-            }
-          } catch (error) {
-            console.error(`❌ Failed to fetch ${metricKey} for user ${user.id}:`, error)
-            userMetricValues[metricKey] = null
           }
+          next()
+        })
+      }
+
+      type JobResult = { userId: string; metricKey: string; value: number | null }
+
+      // Build jobs for all user+metric pairs
+      const jobs: Array<() => Promise<JobResult>> = []
+
+      for (const user of filteredUsers) {
+        for (const metricKey of metrics) {
+          jobs.push(async () => {
+            try {
+              // Extract original metric name and attribution from the key
+              const metricOptions = options?.[metricKey] || {}
+              const originalMetricName = metricOptions.originalMetricName || metricKey
+              const attribution = metricOptions.attribution || "assigned"
+              
+              console.log(`🔍 [DataView] Processing ${originalMetricName} (${attribution}) for user ${user.name} (${user.id}):`)
+              
+              // Build filters based on user role
+              const filters: any = {
+                accountId: selectedAccountId,
+                dateRange: {
+                  start: format(dateRange.from, 'yyyy-MM-dd'),
+                  end: format(dateRange.to, 'yyyy-MM-dd')
+                }
+              }
+              
+              // Determine table type from metric registry
+              const metricDefinition = METRICS_REGISTRY[originalMetricName]
+              const tableType = metricDefinition?.query?.table || "appointments"
+              
+              if (tableType === "discoveries") {
+                if (attribution === "assigned") {
+                  filters.setterIds = [user.id]
+                  console.log(`  - Added setterIds: [${user.id}] (discovery assigned to setter)`)  
+                } else if (attribution === "booked") {
+                  filters.repIds = [user.id]
+                  console.log(`  - Added repIds: [${user.id}] (discovery booked to sales rep)`)
+                } else {
+                  filters.setterIds = [user.id]
+                  console.log(`  - Added setterIds: [${user.id}] (default: discovery assigned)`)
+                }
+              } else if (tableType === "dials") {
+                filters.setterIds = [user.id]
+                console.log(`  - Added setterIds: [${user.id}] (dial made by setter)`)
+              } else {
+                if (attribution === "assigned") {
+                  filters.repIds = [user.id]
+                  console.log(`  - Added repIds: [${user.id}] (sales rep owned)`)
+                } else if (attribution === "booked") {
+                  filters.setterIds = [user.id]
+                  console.log(`  - Added setterIds: [${user.id}] (setter contributed)`)
+                } else {
+                  filters.repIds = [user.id]
+                  console.log(`  - Added repIds: [${user.id}] (default: sales rep owned)`)
+                }
+              }
+              
+              console.log(`  - Final filters:`, filters)
+              
+              // Map per-user ROI to the rep-specific ROI metric for correct calculation
+              const requestedMetricName = (originalMetricName === 'roi' && attribution === 'assigned')
+                ? 'rep_roi'
+                : originalMetricName
+
+              const requestBody = {
+                metricName: requestedMetricName,
+                filters,
+                options: {
+                  vizType: 'kpi',
+                  widgetSettings: options?.[metricKey] || {}
+                }
+              }
+              
+              console.log(`  - Request body:`, requestBody)
+              
+              const response = await fetch('/api/metrics', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestBody)
+              })
+
+              console.log(`  - Response status: ${response.status}`)
+              
+              if (response.ok) {
+                const metricData = await response.json()
+                console.log(`  - Response data:`, metricData)
+                
+                let value: number | null = null
+                
+                if (metricData.result?.type === 'total' && metricData.result.data?.value !== undefined) {
+                  value = metricData.result.data.value
+                  console.log(`  ✅ Got total value: ${value}`)
+                } else if (metricData.result?.type === 'rep' && Array.isArray(metricData.result.data)) {
+                  const entry = metricData.result.data.find((r: any) => r.repId === user.id)
+                  if (entry) {
+                    value = entry.value
+                    console.log(`  ✅ Got rep value for ${user.id}: ${value}`)
+                  } else {
+                    console.log(`  ❌ No rep entry for ${user.id}`)
+                  }
+                } else if (metricData.result?.type === 'time' && Array.isArray(metricData.result.data) && metricData.result.data.length > 0) {
+                  if (metricData.result.data.length === 1) {
+                    value = metricData.result.data[0].value || metricData.result.data[0].count || 0
+                  } else {
+                    value = metricData.result.data.reduce((sum: number, item: any) => {
+                      return sum + (item.value || item.count || 0)
+                    }, 0)
+                  }
+                  console.log(`  ✅ Got time series value (${metricData.result.data.length} points): ${value}`)
+                } else {
+                  console.log(`  ❌ No valid value in response - result:`, metricData.result)
+                }
+                
+                return { userId: user.id, metricKey, value }
+              } else {
+                const errorText = await response.text()
+                console.error(`  ❌ API error: ${response.status} - ${errorText}`)
+                return { userId: user.id, metricKey, value: null }
+              }
+            } catch (error) {
+              console.error(`❌ Failed to fetch ${metricKey} for user ${user.id}:`, error)
+              return { userId: user.id, metricKey, value: null }
+            }
+          })
         }
+      }
+
+      // Execute all jobs with concurrency limit
+      const CONCURRENCY = 10
+      const results = await runWithConcurrency<JobResult>(jobs, CONCURRENCY)
+
+      // Assemble user data
+      const userData: UserMetricData[] = []
+      const byUser = new Map<string, Record<string, number | null>>()
+
+      for (const r of results) {
+        if (!byUser.has(r.userId)) byUser.set(r.userId, {})
+        byUser.get(r.userId)![r.metricKey] = r.value
+      }
+
+      for (const user of filteredUsers) {
+        const userMetricValues = byUser.get(user.id) || {}
 
         // Fallback: derive ROI (assigned) if not returned from API
         const roiKey = metrics.find(k => (options?.[k]?.originalMetricName || k) === 'roi' && (options?.[k]?.attribution || 'assigned') === 'assigned')
