@@ -287,6 +287,11 @@ export function DataViewWidget({ metrics, selectedUsers, options }: DataViewWidg
       case 'days':
         return `${value.toFixed(1)}d`
       case 'count':
+        // For count unit on ROI multiplier metrics, show as multiplier
+        if (metricInfo.name?.includes('ROI') && metricInfo.name?.includes('Multiplier')) {
+          return `${value.toFixed(2)}x`
+        }
+        return value.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
       default:
         return value.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
     }
