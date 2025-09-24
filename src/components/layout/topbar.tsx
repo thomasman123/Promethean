@@ -28,6 +28,8 @@ import { useAccountsCache } from "@/hooks/use-accounts-cache"
 import { FollowUpNotifications } from "./follow-up-notifications"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { GithubGlobe } from "@/components/data/github-globe"
+import { LocationCountrySelector } from "@/components/data/location-country-selector"
+import { ConnectedGithubGlobe } from "@/components/data/connected-github-globe"
 
 interface Account {
   id: string
@@ -432,13 +434,18 @@ export function TopBar({ onAddWidget }: TopBarProps) {
             <DialogTrigger asChild>
               <Button variant="outline" size="sm" className="h-8">Location</Button>
             </DialogTrigger>
-            <DialogContent className="max-w-4xl w-[90vw]" onInteractOutside={(e) => e.preventDefault()}>
+            <DialogContent className="max-w-5xl w-[95vw]" onInteractOutside={(e) => e.preventDefault()}>
               <DialogHeader>
                 <DialogTitle>Location</DialogTitle>
-                <DialogDescription>Interactive globe. Drag to rotate. Click to highlight.</DialogDescription>
+                <DialogDescription>Interactive globe. Drag to rotate. Click to highlight. Use the list to multi-select.</DialogDescription>
               </DialogHeader>
-              <div className="h-[480px] w-full">
-                <GithubGlobe className="h-full w-full" />
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-4 h-[520px] w-full">
+                {/* Side list */}
+                <LocationCountrySelector className="md:col-span-2 h-full" />
+                {/* Globe */}
+                <div className="md:col-span-3 h-full">
+                  <ConnectedGithubGlobe />
+                </div>
               </div>
             </DialogContent>
           </Dialog>
