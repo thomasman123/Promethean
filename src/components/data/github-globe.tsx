@@ -75,6 +75,7 @@ export function GithubGlobe({
         const isSelected = !sel || sel.has(iso)
         return isSelected ? 0.02 : 0.005
       })
+      .polygonsTransitionDuration(0)
   }
 
   // Sync internal selection from external prop
@@ -96,6 +97,49 @@ export function GithubGlobe({
     const container = containerRef.current
     const width = container.clientWidth
     const height = container.clientHeight
+
+    const fetchWithTimeout = async (url: string, ms = 6000) => {
+      const controller = new AbortController()
+      const id = setTimeout(() => controller.abort(), ms)
+      try {
+        const res = await fetch(url, { signal: controller.signal })
+        return res
+      } finally {
+        clearTimeout(id)
+      }
+    }
+
+    const tryLoadGeo = async (): Promise<any[] | null> => {
+      const urls = [
+        // Multiple sources for reliability
+        "https://unpkg.com/geojson-world@3.0.0/countries.geo.json",
+        "https://raw.githubusercontent.com/johan/world.geo.json/master/countries.geo.json",
+        "https://raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/world.geojson",
+        "/data/countries.geo.json",
+      ]
+      for (const url of urls) {
+        try {
+          const res = await fetchWithTimeout(url, 8000)
+          if (!res.ok) continue
+          const geojson = await res.json()
+          const features = geojson?.features
+          if (Array.isArray(features) && features.length) return features
+        } catch (e) {
+          // continue to next url
+        }
+      }
+      return null
+    }
+
+    const tryLoadCountryListOnly = async () => {
+      try {
+        const res = await fetch("https://restcountries.com/v3.1/all?fields=name,cca3")
+        if (!res.ok) return
+        const data = await res.json()
+        const list = (data || []).map((c: any) => ({ iso3: c.cca3, name: c?.name?.common || c.cca3 }))
+        onCountriesLoaded?.(list)
+      } catch {}
+    }
 
     const init = async () => {
       const [{ default: Globe }] = await Promise.all([
@@ -139,22 +183,8 @@ export function GithubGlobe({
 
       // Countries (polygons)
       try {
-        // Primary source (CORS-enabled)
-        let res = await fetch(
-          "https://raw.githubusercontent.com/johan/world.geo.json/master/countries.geo.json"
-        )
-        if (!res.ok) {
-          // Secondary source
-          res = await fetch(
-            "https://raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/world.geojson"
-          )
-        }
-        if (!res.ok) {
-          // Local fallback (optional): place a file at public/data/countries.geo.json
-          res = await fetch("/data/countries.geo.json")
-        }
-        if (!res.ok) throw new Error("Failed to load countries geojson")
-        const geojson = await res.json()
+        const features = await tryLoadGeo()
+        if (!features) throw new Error("Failed to load countries geojson from all sources")
 
         const getFeatureCenter = (feat: any) => {
           try {
@@ -176,10 +206,8 @@ export function GithubGlobe({
               return { lat: sumLat / count, lng: sumLng / count }
             }
             if (geom.type === "Polygon") {
-              // use outer ring
               return collect(geom.coordinates?.[0] || [])
             } else if (geom.type === "MultiPolygon") {
-              // first polygon outer ring
               return collect(geom.coordinates?.[0]?.[0] || [])
             }
           } catch {}
@@ -187,7 +215,7 @@ export function GithubGlobe({
         }
 
         // Cache features and apply initial styles
-        featuresRef.current = geojson.features
+        featuresRef.current = features
 
         // Initialize selection from prop on first load
         if (selectedISOs === null) {
@@ -212,14 +240,13 @@ export function GithubGlobe({
         }
 
         // Toggle/select logic
-        // Single click selects one; Shift/Ctrl/Cmd toggles multi-select
         ;(globe as any).onPolygonClick((poly: any, event: MouseEvent) => {
           const iso = getIsoRef.current(poly)
           const multi = !!(event?.shiftKey || event?.ctrlKey || (event as any)?.metaKey)
 
           if (!multi) {
             if (selectionRef.current && selectionRef.current.size === 1 && selectionRef.current.has(iso)) {
-              selectionRef.current = null // back to all
+              selectionRef.current = null
             } else {
               selectionRef.current = new Set([iso])
             }
@@ -232,10 +259,8 @@ export function GithubGlobe({
           }
 
           applyPolygonStyles()
-          // Notify parent
           onSelectionChange?.(selectionRef.current ? Array.from(selectionRef.current) : null)
 
-          // Focus POV to polygon centroid
           const center = getFeatureCenter(poly)
           if (center) {
             globe.pointOfView({ lat: center.lat, lng: center.lng, altitude: 1.2 }, 700)
@@ -243,31 +268,9 @@ export function GithubGlobe({
         })
       } catch (e) {
         console.error(e)
+        // Populate side list even if polygons failed
+        tryLoadCountryListOnly()
       }
-
-      // Background click -> add point
-      ;(globe as any).onGlobeClick((lat: number, lng: number) => {
-        const newPt: HighlightPoint = { lat, lng, color: pointColor }
-        setPoints((prev) => {
-          const next = [...prev, newPt]
-          globe.pointsData(next)
-          return next
-        })
-
-        ringsRef.current = [
-          {
-            lat,
-            lng,
-            maxRadius: 5,
-            propagationSpeed: 2,
-            repeatPeriod: 700,
-            color: pointColor,
-          },
-        ]
-        globe.ringsData(ringsRef.current)
-
-        globe.pointOfView({ lat, lng, altitude: 1.2 }, 800)
-      })
 
       const controls: any = globe.controls()
       if (controls) {
