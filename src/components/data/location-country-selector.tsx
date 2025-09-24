@@ -32,17 +32,19 @@ export function LocationCountrySelector({ className }: Props) {
       .filter((c) => (q ? (c?.name || "").toLowerCase().includes(q) || (c?.iso3 || "").toLowerCase().includes(q) : true))
   }, [countries, query])
 
-  const allSelected = selected === null
+  const isAllSelected = selected === null
+  const isEmpty = Array.isArray(selected) && selected.length === 0
+  const isPartial = !isAllSelected && !isEmpty
 
   const toggleIso = (iso: string) => {
-    if (allSelected) {
+    if (isAllSelected) {
       locationStore.setSelected([iso])
       return
     }
     const set = new Set(selected ?? [])
     if (set.has(iso)) set.delete(iso)
     else set.add(iso)
-    locationStore.setSelected(set.size === 0 ? null : Array.from(set))
+    locationStore.setSelected(Array.from(set))
   }
 
   const toggleAll = (checked: boolean) => {
@@ -51,7 +53,7 @@ export function LocationCountrySelector({ className }: Props) {
   }
 
   return (
-    <div className={cn("flex flex-col border rounded-md p-3", className)}>
+    <div className={cn("flex flex-col border rounded-md p-3 min-h-0", className)}>
       <div className="mb-2">
         <Input
           placeholder="Search countries..."
@@ -60,26 +62,28 @@ export function LocationCountrySelector({ className }: Props) {
         />
       </div>
       <div className="flex items-center gap-2 mb-2">
-        <Checkbox id="all-countries" checked={allSelected} onCheckedChange={(v) => toggleAll(!!v)} />
+        <Checkbox id="all-countries" checked={isAllSelected} onCheckedChange={(v) => toggleAll(!!v)} data-state={isPartial ? "indeterminate" : undefined} />
         <Label htmlFor="all-countries" className="text-sm">Select all</Label>
       </div>
-      <ScrollArea className="flex-1 rounded-md border bg-background/50">
-        <div className="p-2 space-y-1">
-          {filtered.map((c) => {
-            const isChecked = allSelected || (selected ?? []).includes(c.iso3)
-            return (
-              <label key={c.iso3} className="flex items-center gap-2 px-2 py-1 rounded hover:bg-accent cursor-pointer">
-                <Checkbox checked={!!isChecked} onCheckedChange={() => toggleIso(c.iso3)} />
-                <span className="text-sm">{c.name || c.iso3}</span>
-                <span className="ml-auto text-xs text-muted-foreground">{c.iso3}</span>
-              </label>
-            )
-          })}
-          {filtered.length === 0 && (
-            <div className="text-xs text-muted-foreground px-2 py-4">No countries found</div>
-          )}
-        </div>
-      </ScrollArea>
+      <div className="flex-1 min-h-0">
+        <ScrollArea className="h-full rounded-md border bg-background/50">
+          <div className="p-2 space-y-1">
+            {filtered.map((c) => {
+              const isChecked = isAllSelected || (selected ?? []).includes(c.iso3)
+              return (
+                <label key={c.iso3} className="flex items-center gap-2 px-2 py-1 rounded hover:bg-accent cursor-pointer">
+                  <Checkbox checked={!!isChecked} onCheckedChange={() => toggleIso(c.iso3)} />
+                  <span className="text-sm">{c.name || c.iso3}</span>
+                  <span className="ml-auto text-xs text-muted-foreground">{c.iso3}</span>
+                </label>
+              )
+            })}
+            {filtered.length === 0 && (
+              <div className="text-xs text-muted-foreground px-2 py-4">No countries found</div>
+            )}
+          </div>
+        </ScrollArea>
+      </div>
     </div>
   )
 } 
