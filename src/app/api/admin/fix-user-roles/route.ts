@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
             COUNT(CASE WHEN a.sales_rep_user_id = aa.user_id THEN 1 END) as appointments_as_sales_rep,
             COUNT(CASE WHEN d.setter_user_id = aa.user_id THEN 1 END) as dials_as_setter,
             CASE 
-              WHEN COUNT(CASE WHEN a.sales_rep_user_id = aa.user_id THEN 1 END) > 0 THEN 'sales_rep'
+              WHEN COUNT(CASE WHEN a.sales_rep_user_id = aa.user_id THEN 1 END) > COUNT(CASE WHEN a.setter_user_id = aa.user_id THEN 1 END) THEN 'sales_rep'
               WHEN aa.role IN ('admin', 'moderator') THEN aa.role
               ELSE 'setter'
             END as suggested_role
