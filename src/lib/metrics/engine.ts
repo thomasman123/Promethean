@@ -1456,30 +1456,19 @@ WHERE speed_to_lead_seconds IS NOT NULL
     delete filteredParams.rep_user_ids
     delete filteredParams.setter_user_id
     delete filteredParams.setter_user_ids
+    // Keep local_date/local_week/local_month as-is to align CPA and ROI denominators
     const clause = buildWhereClause({ conditions: filteredConditions, params: filteredParams }, [])
-    // Ensure cost-per-booked-call uses date_booked range for appointments
     return clause
-      .replace(/\bappointments\.local_date\b/g, 'appointments.date_booked')
-      .replace(/\bappointments\.local_week\b/g, 'appointments.date_booked')
-      .replace(/\bappointments\.local_month\b/g, 'appointments.date_booked')
-      .replace(/\blocal_date\b/g, 'date_booked')
-      .replace(/\blocal_week\b/g, 'date_booked')
-      .replace(/\blocal_month\b/g, 'date_booked')
   }
 
   /**
-   * Build a WHERE clause for appointments that retains user filters but switches
-   * any local_ date filters to use date_booked for consistency.
+   * Build a WHERE clause for appointments that retains user filters and uses local_ date columns
+   * This keeps ROI consistent with Cost Per Booked Call (appointments counted by local_date)
    */
   private buildAppointmentsWhereClauseUsingDateBooked(appliedFilters: any): string {
     const clause = buildWhereClause(appliedFilters, [])
+    // Do not replace with date_booked; use local_date columns for consistency
     return clause
-      .replace(/\bappointments\.local_date\b/g, 'appointments.date_booked')
-      .replace(/\bappointments\.local_week\b/g, 'appointments.date_booked')
-      .replace(/\bappointments\.local_month\b/g, 'appointments.date_booked')
-      .replace(/\blocal_date\b/g, 'date_booked')
-      .replace(/\blocal_week\b/g, 'date_booked')
-      .replace(/\blocal_month\b/g, 'date_booked')
   }
 
   private createErrorResult(breakdownType: string, error: Error): MetricResult {
