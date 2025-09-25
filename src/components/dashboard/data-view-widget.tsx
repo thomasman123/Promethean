@@ -36,7 +36,11 @@ export function DataViewWidget({ metrics, selectedUsers, options }: DataViewWidg
     setLoading(true)
     try {
       // First get user information
-      const usersResponse = await fetch(`/api/data-view/users?accountId=${selectedAccountId}`)
+      const usersResponse = await fetch(`/api/data-view/users`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accountId: selectedAccountId })
+      })
       const usersResult = await usersResponse.json()
       
       if (!usersResponse.ok) {
@@ -45,6 +49,34 @@ export function DataViewWidget({ metrics, selectedUsers, options }: DataViewWidg
 
       const allUsers = usersResult.users || []
       const filteredUsers = allUsers.filter((user: any) => selectedUsers.includes(user.id))
+
+      // Fetch CPA once for the period to keep ROI consistent with the CPA tile
+      let cpaValue: number | null = null
+      try {
+        const cpaReq = {
+          metricName: 'cost_per_booked_call',
+          filters: {
+            accountId: selectedAccountId,
+            dateRange: {
+              start: format(dateRange.from, 'yyyy-MM-dd'),
+              end: format(dateRange.to, 'yyyy-MM-dd')
+            }
+          },
+          options: { vizType: 'kpi' }
+        }
+        const cpaRes = await fetch('/api/metrics', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cpaReq)
+        })
+        if (cpaRes.ok) {
+          const json = await cpaRes.json()
+          if (json?.result?.type === 'total' && json?.result?.data?.value != null) {
+            cpaValue = Number(json.result.data.value)
+          }
+        }
+        console.log('  🔢 [DataView] CPA for period:', cpaValue)
+      } catch (e) {
+        console.log('  ⚠️ [DataView] Failed to fetch CPA for ROI. Will fallback to engine rep_roi.', e)
+      }
 
       // Helper: simple concurrency runner
       async function runWithConcurrency<T>(tasks: (() => Promise<T>)[], limit: number): Promise<T[]> {
@@ -128,13 +160,38 @@ export function DataViewWidget({ metrics, selectedUsers, options }: DataViewWidg
               
               console.log(`  - Final filters:`, filters)
               
-              // Map per-user ROI to the rep-specific ROI metric for correct calculation
+              // Map per-user ROI to rep_roi, but if we have CPA fetched, compute ROI locally for perfect consistency
+              const requestId = `${user.id}_${metricKey}_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`
               const requestedMetricName = (originalMetricName === 'roi' && attribution === 'assigned')
                 ? 'rep_roi'
                 : originalMetricName
 
-              // Generate unique request ID to track responses
-              const requestId = `${user.id}_${metricKey}_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`
+              // Local ROI computation path using CPA tile value
+              if (requestedMetricName === 'rep_roi' && cpaValue && cpaValue > 0) {
+                try {
+                  const [cashRes, apptRes] = await Promise.all([
+                    fetch('/api/metrics', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ metricName: 'cash_collected', filters, options: { vizType: 'kpi' } }) }),
+                    fetch('/api/metrics', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ metricName: 'total_appointments', filters, options: { vizType: 'kpi' } }) })
+                  ])
+                  let repCash: number | null = null
+                  let repAppts: number | null = null
+                  if (cashRes.ok) {
+                    const j = await cashRes.json(); repCash = j?.result?.data?.value != null ? Number(j.result.data.value) : null
+                  }
+                  if (apptRes.ok) {
+                    const j2 = await apptRes.json(); repAppts = j2?.result?.data?.value != null ? Number(j2.result.data.value) : null
+                  }
+                  if (repCash != null && repAppts && repAppts > 0) {
+                    const denom = cpaValue * repAppts
+                    const multiplier = denom > 0 ? (repCash / denom) : null
+                    const roiPercent = multiplier != null ? (multiplier - 1) : null
+                    console.log(`  ✅ [DataView] Local ROI using CPA ${cpaValue} → cash ${repCash}, appts ${repAppts}, roi% ${roiPercent}`)
+                    return { userId: user.id, metricKey, value: roiPercent }
+                  }
+                } catch (e) {
+                  console.log('  ⚠️ [DataView] Local ROI compute failed, falling back to engine.', e)
+                }
+              }
 
               const requestBody = {
                 metricName: requestedMetricName,
@@ -226,46 +283,23 @@ export function DataViewWidget({ metrics, selectedUsers, options }: DataViewWidg
       const CONCURRENCY = 10
       const results = await runWithConcurrency<JobResult>(jobs, CONCURRENCY)
 
-      // Assemble user data
-      const userData: UserMetricData[] = []
-      const byUser = new Map<string, Record<string, number | null>>()
-
-      for (const r of results) {
-        if (!byUser.has(r.userId)) byUser.set(r.userId, {})
-        byUser.get(r.userId)![r.metricKey] = r.value
-      }
-
-      for (const user of filteredUsers) {
-        const userMetricValues = byUser.get(user.id) || {}
-
-        // Fallback: derive ROI (assigned) if not returned from API
-        const roiKey = metrics.find(k => (options?.[k]?.originalMetricName || k) === 'roi' && (options?.[k]?.attribution || 'assigned') === 'assigned')
-        if (roiKey && (userMetricValues[roiKey] === null || userMetricValues[roiKey] === undefined)) {
-          const revenueKey = metrics.find(k => (options?.[k]?.originalMetricName || k) === 'total_revenue_generated')
-          const apptsKey = metrics.find(k => (options?.[k]?.originalMetricName || k) === 'total_appointments')
-          const cpbcKey = metrics.find(k => (options?.[k]?.originalMetricName || k) === 'cost_per_booked_call')
-          const revenue = revenueKey ? Number(userMetricValues[revenueKey] || 0) : 0
-          const appts = apptsKey ? Number(userMetricValues[apptsKey] || 0) : 0
-          const cpbc = cpbcKey ? Number(userMetricValues[cpbcKey] || 0) : 0
-          if (revenue > 0 && appts > 0 && cpbc > 0) {
-            const multiple = revenue / (appts * cpbc)
-            const fraction = multiple - 1
-            userMetricValues[roiKey] = fraction
-            console.log(`  ✅ Derived ROI for ${user.id}: revenue=${revenue}, appts=${appts}, cpbc=${cpbc}, multiple=${multiple.toFixed(2)}, fraction=${fraction.toFixed(4)}`)
+      // Aggregate results per user
+      const userDataMap: Record<string, UserMetricData> = {}
+      for (const res of results) {
+        if (!userDataMap[res.userId]) {
+          userDataMap[res.userId] = {
+            userId: res.userId,
+            userName: (filteredUsers.find((u: any) => u.id === res.userId)?.name) || res.userId,
+            userRole: (filteredUsers.find((u: any) => u.id === res.userId)?.role) || 'unknown',
+            metricValues: {}
           }
         }
-
-        userData.push({
-          userId: user.id,
-          userName: user.name,
-          userRole: user.role,
-          metricValues: userMetricValues
-        })
+        userDataMap[res.userId].metricValues[res.metricKey] = res.value
       }
 
-      setData(userData)
-    } catch (error) {
-      console.error('Failed to fetch data view data:', error)
+      setData(Object.values(userDataMap))
+      setError(null)
+
       setData([])
     } finally {
       setLoading(false)
