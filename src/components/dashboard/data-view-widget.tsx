@@ -161,6 +161,9 @@ export function DataViewWidget({ metrics, selectedUsers, options }: DataViewWidg
                 ? 'rep_roi'
                 : originalMetricName
 
+              // Determine display override for this metric (used to decide return shape)
+              const displayOverride = options?.[metricKey]?.display || (metricKey === 'rep_roi' ? options?.roi?.display : undefined)
+
               // Local ROI computation path using CPA tile value
               if (requestedMetricName === 'rep_roi' && cpaValue && cpaValue > 0) {
                 try {
@@ -179,9 +182,10 @@ export function DataViewWidget({ metrics, selectedUsers, options }: DataViewWidg
                   if (repCash != null && repAppts && repAppts > 0) {
                     const denom = cpaValue * repAppts
                     const multiplier = denom > 0 ? (repCash / denom) : null
-                    const roiPercent = multiplier != null ? (multiplier - 1) : null
-                    console.log(`  ✅ [DataView] Local ROI using CPA ${cpaValue} → cash ${repCash}, appts ${repAppts}, roi% ${roiPercent}`)
-                    return { userId: user.id, metricKey, value: roiPercent }
+                    // If display wants multiplier, return multiplier; else return percent fraction (multiplier - 1)
+                    const roiValue = multiplier != null ? (displayOverride === 'multiplier' ? multiplier : (multiplier - 1)) : null
+                    console.log(`  ✅ [DataView] Local ROI using CPA ${cpaValue} → cash ${repCash}, appts ${repAppts}, display=${displayOverride || 'percent'} value=${roiValue}`)
+                    return { userId: user.id, metricKey, value: roiValue }
                   }
                 } catch (e) {
                   console.log('  ⚠️ [DataView] Local ROI compute failed, falling back to engine.', e)
@@ -307,8 +311,9 @@ export function DataViewWidget({ metrics, selectedUsers, options }: DataViewWidg
     // Respect display override for ROI metrics
     // If display is multiplier and unit is percent (fraction), render as X.x×
     const displayOverride = options?.[metricName]?.display || (metricName === 'rep_roi' ? options?.roi?.display : undefined)
-    if (displayOverride === 'multiplier' && metricInfo.unit === 'percent') {
-      const multiple = (value ?? 0) + 1
+    if (displayOverride === 'multiplier') {
+      // If upstream returned multiplier already, just append x; if it returned percent (fraction), convert by adding 1
+      const multiple = metricInfo.unit === 'percent' ? ((value ?? 0) + 1) : (value ?? 0)
       return `${multiple.toFixed(2)}x`
     }
 
