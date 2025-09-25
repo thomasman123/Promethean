@@ -97,6 +97,12 @@ export default function TeamPage() {
     fullName: '',
     role: 'setter'
   })
+
+  // New state for pending GHL users
+  const [pendingUsers, setPendingUsers] = useState<any[]>([])
+  const [loadingPending, setLoadingPending] = useState(false)
+  const [roleSelections, setRoleSelections] = useState<Record<string, string>>({})
+  const [invitingGhlId, setInvitingGhlId] = useState<string | null>(null)
   
   const { toast } = useToast()
   const { selectedAccountId } = useDashboard()
@@ -166,6 +172,7 @@ export default function TeamPage() {
             errorMessage = `Server error: ${response.status} ${response.statusText}`
           }
           
+        
           throw new Error(errorMessage)
         }
         
@@ -192,6 +199,50 @@ export default function TeamPage() {
     }
 
     loadTeamMembers()
+  }, [selectedAccountId, hasAccess])
+
+  // Load pending GHL users
+  useEffect(() => {
+    const loadPendingUsers = async () => {
+      if (!selectedAccountId || !hasAccess) return
+
+      setLoadingPending(true)
+      try {
+        const response = await fetch(`/api/team/pending-ghl-users?accountId=${selectedAccountId}`)
+        if (!response.ok) {
+          const errorText = await response.text()
+          let errorMessage = 'Failed to load GHL users'
+          try {
+            const errorData = JSON.parse(errorText)
+            errorMessage = errorData.error || errorMessage
+          } catch {
+            errorMessage = `Server error: ${response.status} ${response.statusText}`
+          }
+          throw new Error(errorMessage)
+        }
+        const data = await response.json()
+        const users = data.pendingUsers || []
+        setPendingUsers(users)
+        // Initialize role selections
+        const defaults: Record<string, string> = {}
+        users.forEach((u: any) => {
+          const suggested = u.primary_role || (u.sales_rep_activity_count > u.setter_activity_count ? 'sales_rep' : 'setter')
+          defaults[u.ghl_user_id] = suggested || 'setter'
+        })
+        setRoleSelections(defaults)
+      } catch (error) {
+        console.error('Error loading GHL users:', error)
+        toast({
+          title: 'Error',
+          description: error instanceof Error ? error.message : 'Failed to load GHL users',
+          variant: 'destructive'
+        })
+      } finally {
+        setLoadingPending(false)
+      }
+    }
+
+    loadPendingUsers()
   }, [selectedAccountId, hasAccess])
 
   const handleInviteUser = async () => {
@@ -240,6 +291,41 @@ export default function TeamPage() {
       })
     } finally {
       setInviting(false)
+    }
+  }
+
+  // Invite a pending GHL user
+  const handleInviteGhlUser = async (user: any) => {
+    if (!selectedAccountId) return
+    setInvitingGhlId(user.ghl_user_id)
+    try {
+      const response = await fetch('/api/team/pending-users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          accountId: selectedAccountId,
+          ghlUserId: user.ghl_user_id,
+          email: user.email,
+          fullName: user.name,
+          role: roleSelections[user.ghl_user_id] || 'setter'
+        })
+      })
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to invite user')
+      }
+      toast({ title: 'Invitation sent', description: `Invited ${user.email || user.name}` })
+      // Remove invited user from list
+      setPendingUsers(prev => prev.filter(u => u.ghl_user_id !== user.ghl_user_id))
+    } catch (error) {
+      console.error('Error inviting pending GHL user:', error)
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to invite user',
+        variant: 'destructive'
+      })
+    } finally {
+      setInvitingGhlId(null)
     }
   }
 
@@ -590,6 +676,82 @@ export default function TeamPage() {
                               )}
                             </Button>
                           </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Pending GHL Users */}
+          <Card>
+            <CardHeader>
+              <CardTitle>GHL Users Not Yet Invited ({pendingUsers.length})</CardTitle>
+              <CardDescription>
+                Invite users detected from GHL with role selection before inviting
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {loadingPending ? (
+                <div className="flex items-center gap-2 text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading GHL users…</div>
+              ) : pendingUsers.length === 0 ? (
+                <div className="text-muted-foreground">No GHL users pending invitation.</div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>User</TableHead>
+                      <TableHead>Activity</TableHead>
+                      <TableHead>Role</TableHead>
+                      <TableHead className="w-[120px]">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {pendingUsers.map((u: any) => (
+                      <TableRow key={u.ghl_user_id}>
+                        <TableCell>
+                          <div>
+                            <div className="font-medium">{u.name || 'Unnamed'}</div>
+                            <div className="text-sm text-muted-foreground flex items-center gap-1">
+                              <Mail className="h-3 w-3" />
+                              {u.email || 'No email'}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm">
+                            <div>Total: {u.activity_count}</div>
+                            <div className="text-muted-foreground">Setter: {u.setter_activity_count} | Rep: {u.sales_rep_activity_count}</div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Select
+                            value={roleSelections[u.ghl_user_id] || 'setter'}
+                            onValueChange={(value) => setRoleSelections(prev => ({ ...prev, [u.ghl_user_id]: value }))}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="setter">Setter</SelectItem>
+                              <SelectItem value="sales_rep">Sales Rep</SelectItem>
+                              <SelectItem value="moderator">Moderator</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            size="sm"
+                            onClick={() => handleInviteGhlUser(u)}
+                            disabled={!!invitingGhlId}
+                          >
+                            {invitingGhlId === u.ghl_user_id ? (
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            ) : null}
+                            Invite
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))}
