@@ -36,16 +36,11 @@ export function DataViewWidget({ metrics, selectedUsers, options }: DataViewWidg
     setLoading(true)
     try {
       // First get user information
-      const usersResponse = await fetch(`/api/data-view/users`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ accountId: selectedAccountId })
-      })
-      const usersResult = await usersResponse.json()
-      
+      const usersResponse = await fetch(`/api/data-view/users?accountId=${selectedAccountId}`)
       if (!usersResponse.ok) {
-        throw new Error('Failed to fetch users')
+        throw new Error(`Failed to fetch users: ${usersResponse.status} ${usersResponse.statusText}`)
       }
+      const usersResult = await usersResponse.json()
 
       const allUsers = usersResult.users || []
       const filteredUsers = allUsers.filter((user: any) => selectedUsers.includes(user.id))
@@ -298,9 +293,6 @@ export function DataViewWidget({ metrics, selectedUsers, options }: DataViewWidg
       }
 
       setData(Object.values(userDataMap))
-      setError(null)
-
-      setData([])
     } finally {
       setLoading(false)
     }
