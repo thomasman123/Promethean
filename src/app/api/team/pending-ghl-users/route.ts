@@ -97,6 +97,23 @@ export async function GET(request: NextRequest) {
     const existingEmails = new Set<string>((teamAccess || []).map((r: any) => (r.profiles?.email || '').toLowerCase()).filter(Boolean))
     const existingGhlIds = new Set<string>((teamAccess || []).map((r: any) => r.profiles?.ghl_user_id).filter(Boolean))
 
+    // Also exclude GHL IDs that are already linked to any existing team member via activity
+    const [appSet, appRep, discSet, discRep, dialSet, dialRep] = await Promise.all([
+      supabase.from('appointments' as any).select('setter_ghl_id').in('account_id', accountIds).in('setter_user_id', Array.from(existingUserIds)).not('setter_ghl_id', 'is', null),
+      supabase.from('appointments' as any).select('sales_rep_ghl_id').in('account_id', accountIds).in('sales_rep_user_id', Array.from(existingUserIds)).not('sales_rep_ghl_id', 'is', null),
+      supabase.from('discoveries' as any).select('setter_ghl_id').in('account_id', accountIds).in('setter_user_id', Array.from(existingUserIds)).not('setter_ghl_id', 'is', null),
+      supabase.from('discoveries' as any).select('sales_rep_ghl_id').in('account_id', accountIds).in('sales_rep_user_id', Array.from(existingUserIds)).not('sales_rep_ghl_id', 'is', null),
+      supabase.from('dials' as any).select('setter_ghl_id').in('account_id', accountIds).in('setter_user_id', Array.from(existingUserIds)).not('setter_ghl_id', 'is', null),
+      supabase.from('dials' as any).select('sales_rep_ghl_id').in('account_id', accountIds).in('sales_rep_user_id', Array.from(existingUserIds)).not('sales_rep_ghl_id', 'is', null),
+    ])
+    const linkedGhlIds = new Set<string>()
+    ;(appSet?.data || []).forEach((r: any) => r.setter_ghl_id && linkedGhlIds.add(r.setter_ghl_id))
+    ;(appRep?.data || []).forEach((r: any) => r.sales_rep_ghl_id && linkedGhlIds.add(r.sales_rep_ghl_id))
+    ;(discSet?.data || []).forEach((r: any) => r.setter_ghl_id && linkedGhlIds.add(r.setter_ghl_id))
+    ;(discRep?.data || []).forEach((r: any) => r.sales_rep_ghl_id && linkedGhlIds.add(r.sales_rep_ghl_id))
+    ;(dialSet?.data || []).forEach((r: any) => r.setter_ghl_id && linkedGhlIds.add(r.setter_ghl_id))
+    ;(dialRep?.data || []).forEach((r: any) => r.sales_rep_ghl_id && linkedGhlIds.add(r.sales_rep_ghl_id))
+
     // Query pending GHL users for the target accounts
     let { data: ghlUsers, error: ghlError } = await supabase
       .from('ghl_users' as any)
@@ -138,15 +155,15 @@ export async function GET(request: NextRequest) {
       const [{ data: appointments }, { data: discoveries }, { data: dials }] = await Promise.all([
         supabase
           .from('appointments' as any)
-          .select('setter_ghl_id, sales_rep_ghl_id, setter, sales_rep')
+          .select('setter_ghl_id, sales_rep_ghl_id, setter, sales_rep, setter_user_id, sales_rep_user_id')
           .eq('account_id', targetId),
         supabase
           .from('discoveries' as any)
-          .select('setter_ghl_id, sales_rep_ghl_id, setter, sales_rep')
+          .select('setter_ghl_id, sales_rep_ghl_id, setter, sales_rep, setter_user_id, sales_rep_user_id')
           .eq('account_id', targetId),
         supabase
           .from('dials' as any)
-          .select('setter_ghl_id, sales_rep_ghl_id, setter_name')
+          .select('setter_ghl_id, sales_rep_ghl_id, setter_name, setter_user_id, sales_rep_user_id')
           .eq('account_id', targetId),
       ])
 
@@ -154,6 +171,7 @@ export async function GET(request: NextRequest) {
 
       const addId = (ghlId?: string | null, name?: string | null, isRep?: boolean) => {
         if (!ghlId) return
+        if (linkedGhlIds.has(ghlId)) return // already linked to existing team member
         const cur = ids.get(ghlId) || { name: undefined, setterCount: 0, repCount: 0, total: 0 }
         if (name && !cur.name) cur.name = name
         if (isRep) cur.repCount += 1
@@ -176,7 +194,7 @@ export async function GET(request: NextRequest) {
       })
 
       ids.forEach((counts, ghl_user_id) => {
-        if (counts.total > 0 && !existingGhlIds.has(ghl_user_id)) {
+        if (counts.total > 0 && !existingGhlIds.has(ghl_user_id) && !linkedGhlIds.has(ghl_user_id)) {
           const suggested = counts.repCount > counts.setterCount ? 'sales_rep' : 'setter'
           pendingUsers.push({
             ghl_user_id,
@@ -199,12 +217,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ pendingUsers, count: pendingUsers.length, fallback: true })
     }
 
-    // Filter out users already in the team (by app_user_id, email, or ghl_user_id)
+    // Filter out users already in the team (by app_user_id, email, or ghl_user_id) or already linked via activity
     const filtered = (ghlUsers || []).filter((u: any) => {
       const emailLower = (u.email || '').toLowerCase()
       if (u.app_user_id && existingUserIds.has(u.app_user_id)) return false
       if (emailLower && existingEmails.has(emailLower)) return false
-      if (u.ghl_user_id && existingGhlIds.has(u.ghl_user_id)) return false
+      if (u.ghl_user_id && (existingGhlIds.has(u.ghl_user_id) || linkedGhlIds.has(u.ghl_user_id))) return false
       return true
     })
 
