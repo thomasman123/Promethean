@@ -280,7 +280,7 @@ export function DataViewWidget({ metrics, selectedUsers, options }: DataViewWidg
 
     // Respect display override for ROI metrics
     // If display is multiplier and unit is percent (fraction), render as X.x×
-    const displayOverride = options?.[metricName]?.display
+    const displayOverride = options?.[metricName]?.display || (metricName === 'rep_roi' ? options?.roi?.display : undefined)
     if (displayOverride === 'multiplier' && metricInfo.unit === 'percent') {
       const multiple = (value ?? 0) + 1
       return `${multiple.toFixed(2)}x`
