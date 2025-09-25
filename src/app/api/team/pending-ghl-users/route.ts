@@ -86,6 +86,17 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ pendingUsers: [], count: 0 })
     }
 
+    // Build sets of existing team identifiers (emails, user_ids, ghl_user_ids)
+    const { data: teamAccess } = await supabase
+      .from('account_access' as any)
+      .select('user_id, account_id, profiles!inner(email, ghl_user_id)')
+      .in('account_id', accountIds)
+      .eq('is_active', true)
+
+    const existingUserIds = new Set<string>((teamAccess || []).map((r: any) => r.user_id))
+    const existingEmails = new Set<string>((teamAccess || []).map((r: any) => (r.profiles?.email || '').toLowerCase()).filter(Boolean))
+    const existingGhlIds = new Set<string>((teamAccess || []).map((r: any) => r.profiles?.ghl_user_id).filter(Boolean))
+
     // Query pending GHL users for the target accounts
     let { data: ghlUsers, error: ghlError } = await supabase
       .from('ghl_users' as any)
@@ -165,7 +176,7 @@ export async function GET(request: NextRequest) {
       })
 
       ids.forEach((counts, ghl_user_id) => {
-        if (counts.total > 0) {
+        if (counts.total > 0 && !existingGhlIds.has(ghl_user_id)) {
           const suggested = counts.repCount > counts.setterCount ? 'sales_rep' : 'setter'
           pendingUsers.push({
             ghl_user_id,
@@ -188,7 +199,16 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ pendingUsers, count: pendingUsers.length, fallback: true })
     }
 
-    const pendingUsers = (ghlUsers || []).map((user: any) => ({
+    // Filter out users already in the team (by app_user_id, email, or ghl_user_id)
+    const filtered = (ghlUsers || []).filter((u: any) => {
+      const emailLower = (u.email || '').toLowerCase()
+      if (u.app_user_id && existingUserIds.has(u.app_user_id)) return false
+      if (emailLower && existingEmails.has(emailLower)) return false
+      if (u.ghl_user_id && existingGhlIds.has(u.ghl_user_id)) return false
+      return true
+    })
+
+    const pendingUsers = filtered.map((user: any) => ({
       ghl_user_id: user.ghl_user_id,
       name: user.name,
       email: user.email,
