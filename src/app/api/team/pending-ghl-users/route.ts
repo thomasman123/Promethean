@@ -168,10 +168,15 @@ export async function GET(request: NextRequest) {
       ])
 
       const ids = new Map<string, { name?: string, setterCount: number, repCount: number, total: number }>()
-
-      const addId = (ghlId?: string | null, name?: string | null, isRep?: boolean) => {
+      
+      // Track all GHL IDs already linked to ANY user (not just team members)
+      const allLinkedGhlIds = new Set<string>()
+      
+      const addId = (ghlId?: string | null, name?: string | null, isRep?: boolean, hasUserId?: boolean) => {
         if (!ghlId) return
+        if (hasUserId) allLinkedGhlIds.add(ghlId) // Track as already linked
         if (linkedGhlIds.has(ghlId)) return // already linked to existing team member
+        if (hasUserId) return // already linked to any user, don't include in pending
         const cur = ids.get(ghlId) || { name: undefined, setterCount: 0, repCount: 0, total: 0 }
         if (name && !cur.name) cur.name = name
         if (isRep) cur.repCount += 1
@@ -181,20 +186,20 @@ export async function GET(request: NextRequest) {
       }
 
       appointments?.forEach((a: any) => {
-        addId(a.setter_ghl_id, a.setter, false)
-        addId(a.sales_rep_ghl_id, a.sales_rep, true)
+        addId(a.setter_ghl_id, a.setter, false, !!a.setter_user_id)
+        addId(a.sales_rep_ghl_id, a.sales_rep, true, !!a.sales_rep_user_id)
       })
       discoveries?.forEach((d: any) => {
-        addId(d.setter_ghl_id, d.setter, false)
-        addId(d.sales_rep_ghl_id, d.sales_rep, true)
+        addId(d.setter_ghl_id, d.setter, false, !!d.setter_user_id)
+        addId(d.sales_rep_ghl_id, d.sales_rep, true, !!d.sales_rep_user_id)
       })
       dials?.forEach((d: any) => {
-        addId(d.setter_ghl_id, d.setter_name, false)
-        addId(d.sales_rep_ghl_id, undefined, true)
+        addId(d.setter_ghl_id, d.setter_name, false, !!d.setter_user_id)
+        addId(d.sales_rep_ghl_id, undefined, true, !!d.sales_rep_user_id)
       })
 
       ids.forEach((counts, ghl_user_id) => {
-        if (counts.total > 0 && !existingGhlIds.has(ghl_user_id) && !linkedGhlIds.has(ghl_user_id)) {
+        if (counts.total > 0 && !existingGhlIds.has(ghl_user_id) && !linkedGhlIds.has(ghl_user_id) && !allLinkedGhlIds.has(ghl_user_id)) {
           const suggested = counts.repCount > counts.setterCount ? 'sales_rep' : 'setter'
           pendingUsers.push({
             ghl_user_id,
