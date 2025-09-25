@@ -87,7 +87,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Query pending GHL users for the target accounts
-    const { data: ghlUsers, error: ghlError } = await supabase
+    let { data: ghlUsers, error: ghlError } = await supabase
       .from('ghl_users' as any)
       .select('*')
       .in('account_id', accountIds)
@@ -97,6 +97,95 @@ export async function GET(request: NextRequest) {
     if (ghlError) {
       console.error('Error fetching GHL users:', ghlError)
       return NextResponse.json({ error: 'Failed to fetch pending users' }, { status: 500 })
+    }
+
+    // If empty, try to backfill/sync from existing data then re-query
+    if (!ghlUsers || ghlUsers.length === 0) {
+      try {
+        for (const id of accountIds) {
+          // Best-effort sync; ignore errors
+          await supabase.rpc('sync_ghl_users_from_existing_data' as any, { p_account_id: id })
+        }
+        const requery = await supabase
+          .from('ghl_users' as any)
+          .select('*')
+          .in('account_id', accountIds)
+          .eq('is_invited', false)
+          .gt('activity_count', 0)
+        if (!requery.error) ghlUsers = requery.data || []
+      } catch (e) {
+        console.warn('GHL users sync fallback failed:', e)
+      }
+    }
+
+    // If still empty for a single account, compute a DB-only fallback from activity
+    if ((!ghlUsers || ghlUsers.length === 0) && accountIds.length === 1) {
+      const targetId = accountIds[0]
+      const pendingUsers: any[] = []
+
+      // Gather distinct GHL user IDs and rough names from activity tables
+      const [{ data: appointments }, { data: discoveries }, { data: dials }] = await Promise.all([
+        supabase
+          .from('appointments' as any)
+          .select('setter_ghl_id, sales_rep_ghl_id, setter, sales_rep')
+          .eq('account_id', targetId),
+        supabase
+          .from('discoveries' as any)
+          .select('setter_ghl_id, sales_rep_ghl_id, setter, sales_rep')
+          .eq('account_id', targetId),
+        supabase
+          .from('dials' as any)
+          .select('setter_ghl_id, sales_rep_ghl_id, setter_name')
+          .eq('account_id', targetId),
+      ])
+
+      const ids = new Map<string, { name?: string, setterCount: number, repCount: number, total: number }>()
+
+      const addId = (ghlId?: string | null, name?: string | null, isRep?: boolean) => {
+        if (!ghlId) return
+        const cur = ids.get(ghlId) || { name: undefined, setterCount: 0, repCount: 0, total: 0 }
+        if (name && !cur.name) cur.name = name
+        if (isRep) cur.repCount += 1
+        else cur.setterCount += 1
+        cur.total += 1
+        ids.set(ghlId, cur)
+      }
+
+      appointments?.forEach((a: any) => {
+        addId(a.setter_ghl_id, a.setter, false)
+        addId(a.sales_rep_ghl_id, a.sales_rep, true)
+      })
+      discoveries?.forEach((d: any) => {
+        addId(d.setter_ghl_id, d.setter, false)
+        addId(d.sales_rep_ghl_id, d.sales_rep, true)
+      })
+      dials?.forEach((d: any) => {
+        addId(d.setter_ghl_id, d.setter_name, false)
+        addId(d.sales_rep_ghl_id, undefined, true)
+      })
+
+      ids.forEach((counts, ghl_user_id) => {
+        if (counts.total > 0) {
+          const suggested = counts.repCount > counts.setterCount ? 'sales_rep' : 'setter'
+          pendingUsers.push({
+            ghl_user_id,
+            name: counts.name || 'Unknown',
+            email: null,
+            primary_role: suggested,
+            roles: [suggested],
+            activity_count: counts.total,
+            setter_activity_count: counts.setterCount,
+            sales_rep_activity_count: counts.repCount,
+            last_seen_at: null,
+            account_id: targetId,
+          })
+        }
+      })
+
+      console.log(`pending-ghl-users fallback computed ${pendingUsers.length} users for account ${targetId}`)
+      // Sort by activity desc
+      pendingUsers.sort((a, b) => (b.activity_count || 0) - (a.activity_count || 0))
+      return NextResponse.json({ pendingUsers, count: pendingUsers.length, fallback: true })
     }
 
     const pendingUsers = (ghlUsers || []).map((user: any) => ({
@@ -112,6 +201,7 @@ export async function GET(request: NextRequest) {
       account_id: user.account_id,
     }))
 
+    console.log(`pending-ghl-users returning ${pendingUsers.length} users for ${accountIds.length} account(s)`) 
     return NextResponse.json({ pendingUsers, count: pendingUsers.length })
   } catch (e) {
     console.error('pending-ghl-users error', e)
