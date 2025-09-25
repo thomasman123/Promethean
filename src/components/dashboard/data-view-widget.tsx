@@ -133,16 +133,20 @@ export function DataViewWidget({ metrics, selectedUsers, options }: DataViewWidg
                 ? 'rep_roi'
                 : originalMetricName
 
+              // Generate unique request ID to track responses
+              const requestId = `${user.id}_${metricKey}_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`
+
               const requestBody = {
                 metricName: requestedMetricName,
                 filters,
                 options: {
                   vizType: 'kpi',
                   widgetSettings: options?.[metricKey] || {}
-                }
+                },
+                requestId // Include for tracking
               }
               
-              console.log(`  - Request body:`, requestBody)
+              console.log(`  - Request body:`, { ...requestBody, requestId })
               
               const response = await fetch('/api/metrics', {
                 method: 'POST',
@@ -150,24 +154,41 @@ export function DataViewWidget({ metrics, selectedUsers, options }: DataViewWidg
                 body: JSON.stringify(requestBody)
               })
 
-              console.log(`  - Response status: ${response.status}`)
+              console.log(`  - Response status: ${response.status} [${requestId}]`)
               
               if (response.ok) {
                 const metricData = await response.json()
-                console.log(`  - Response data:`, metricData)
+                console.log(`  - Response data [${requestId}]:`, {
+                  requestedMetric: requestedMetricName,
+                  returnedMetric: metricData.metricName,
+                  matches: requestedMetricName === metricData.metricName,
+                  executedAt: metricData.executedAt
+                })
+                
+                // Validate response matches request
+                if (metricData.metricName !== requestedMetricName) {
+                  console.error(`  ❌ METRIC MISMATCH [${requestId}]:`, {
+                    requested: requestedMetricName,
+                    returned: metricData.metricName,
+                    userId: user.id,
+                    metricKey
+                  })
+                  // Don't use mismatched data
+                  return { userId: user.id, metricKey, value: null }
+                }
                 
                 let value: number | null = null
                 
                 if (metricData.result?.type === 'total' && metricData.result.data?.value !== undefined) {
                   value = metricData.result.data.value
-                  console.log(`  ✅ Got total value: ${value}`)
+                  console.log(`  ✅ Got total value: ${value} [${requestId}]`)
                 } else if (metricData.result?.type === 'rep' && Array.isArray(metricData.result.data)) {
                   const entry = metricData.result.data.find((r: any) => r.repId === user.id)
                   if (entry) {
                     value = entry.value
-                    console.log(`  ✅ Got rep value for ${user.id}: ${value}`)
+                    console.log(`  ✅ Got rep value for ${user.id}: ${value} [${requestId}]`)
                   } else {
-                    console.log(`  ❌ No rep entry for ${user.id}`)
+                    console.log(`  ❌ No rep entry for ${user.id} [${requestId}]`)
                   }
                 } else if (metricData.result?.type === 'time' && Array.isArray(metricData.result.data) && metricData.result.data.length > 0) {
                   if (metricData.result.data.length === 1) {
@@ -177,15 +198,15 @@ export function DataViewWidget({ metrics, selectedUsers, options }: DataViewWidg
                       return sum + (item.value || item.count || 0)
                     }, 0)
                   }
-                  console.log(`  ✅ Got time series value (${metricData.result.data.length} points): ${value}`)
+                  console.log(`  ✅ Got time series value (${metricData.result.data.length} points): ${value} [${requestId}]`)
                 } else {
-                  console.log(`  ❌ No valid value in response - result:`, metricData.result)
+                  console.log(`  ❌ No valid value in response [${requestId}] - result:`, metricData.result)
                 }
                 
                 return { userId: user.id, metricKey, value }
               } else {
                 const errorText = await response.text()
-                console.error(`  ❌ API error: ${response.status} - ${errorText}`)
+                console.error(`  ❌ API error: ${response.status} - ${errorText} [${requestId}]`)
                 return { userId: user.id, metricKey, value: null }
               }
             } catch (error) {
