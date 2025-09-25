@@ -183,9 +183,14 @@ export function DataViewWidget({ metrics, selectedUsers, options }: DataViewWidg
                   value = metricData.result.data.value
                   console.log(`  ✅ Got total value: ${value} [${requestId}]`)
                 } else if (metricData.result?.type === 'rep' && Array.isArray(metricData.result.data)) {
-                  const entry = metricData.result.data.find((r: any) => r.repId === user.id)
+                  // Some Postgres JSON keys are lowercased; support common variants
+                  const entry = metricData.result.data.find((r: any) => {
+                    const repId = r.repId ?? r.repid ?? r.sales_rep_user_id ?? r.salesrepuserid
+                    return repId === user.id
+                  })
                   if (entry) {
-                    value = entry.value
+                    const repValue = entry.value ?? entry.Value ?? entry.rep_value ?? entry.repvalue
+                    value = typeof repValue === 'number' ? repValue : Number(repValue ?? 0)
                     console.log(`  ✅ Got rep value for ${user.id}: ${value} [${requestId}]`)
                   } else {
                     console.log(`  ❌ No rep entry for ${user.id} [${requestId}]`)
