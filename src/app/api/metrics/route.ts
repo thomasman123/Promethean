@@ -27,6 +27,13 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
+    console.log('🔍 [Metrics API] Request received:', {
+      metricName: body.metricName,
+      hasFilters: !!body.filters,
+      accountId: body.filters?.accountId,
+      requestId: Math.random().toString(36).substr(2, 9)
+    })
+    
     if (!body.metricName || !body.filters) {
       return NextResponse.json({ 
         error: 'Invalid request. Must include metricName and filters.' 
@@ -77,11 +84,29 @@ export async function POST(request: NextRequest) {
       console.log('- speedToLeadBusinessHours:', widgetSettings?.speedToLeadBusinessHours);
     }
 
+    console.log('🔄 [Metrics API] Executing engine request for:', body.metricName)
     const result = await metricsEngine.execute(metricRequest, {
       vizType: requestedVizType,
       dynamicBreakdown: requestedBreakdown,
       widgetSettings: widgetSettings
     })
+
+    console.log('✅ [Metrics API] Engine returned result for:', {
+      requestedMetric: body.metricName,
+      returnedMetric: result.metricName,
+      matches: body.metricName === result.metricName,
+      resultType: result.result?.type,
+      hasData: !!result.result?.data
+    })
+
+    // Validate that response matches request
+    if (result.metricName !== body.metricName) {
+      console.error('❌ [Metrics API] METRIC MISMATCH:', {
+        requested: body.metricName,
+        returned: result.metricName,
+        executedAt: result.executedAt
+      })
+    }
 
     return NextResponse.json(result)
 

@@ -5,9 +5,17 @@ const STORAGE_KEY = 'selectedAccountId'
 export function usePersistedAccount() {
   const [selectedAccountId, setSelectedAccountIdState] = useState<string>('')
   const [isInitialized, setIsInitialized] = useState(false)
+  const [isClient, setIsClient] = useState(false)
 
-  // Initialize from localStorage on mount
+  // Initialize client state first
   useEffect(() => {
+    setIsClient(true)
+  }, [])
+
+  // Initialize from localStorage on mount (client-side only)
+  useEffect(() => {
+    if (!isClient) return
+    
     try {
       const savedAccountId = localStorage.getItem(STORAGE_KEY)
       if (savedAccountId) {
@@ -19,11 +27,13 @@ export function usePersistedAccount() {
     } finally {
       setIsInitialized(true)
     }
-  }, [])
+  }, [isClient])
 
   const setSelectedAccountId = useCallback((accountId: string) => {
     console.log('🔍 [usePersistedAccount] Setting account ID:', accountId)
     setSelectedAccountIdState(accountId)
+    
+    if (!isClient) return
     
     try {
       if (accountId) {
@@ -37,11 +47,13 @@ export function usePersistedAccount() {
     } catch (error) {
       console.error('❌ [usePersistedAccount] Failed to save to localStorage:', error)
     }
-  }, [])
+  }, [isClient])
 
   const clearSelectedAccount = useCallback(() => {
     console.log('🔍 [usePersistedAccount] Clearing account selection')
     setSelectedAccountIdState('')
+    
+    if (!isClient) return
     
     try {
       localStorage.removeItem(STORAGE_KEY)
@@ -49,12 +61,12 @@ export function usePersistedAccount() {
     } catch (error) {
       console.error('❌ [usePersistedAccount] Failed to clear localStorage:', error)
     }
-  }, [])
+  }, [isClient])
 
   return {
     selectedAccountId,
     setSelectedAccountId,
     clearSelectedAccount,
-    isInitialized
+    isInitialized: isInitialized && isClient
   }
 } 
