@@ -151,6 +151,18 @@ export async function GET(request: NextRequest) {
       const targetId = accountIds[0]
       const pendingUsers: any[] = []
 
+      // Get account GHL API credentials
+      const { data: account } = await supabase
+        .from('accounts')
+        .select('ghl_api_key, ghl_location_id')
+        .eq('id', targetId)
+        .single()
+
+      if (!account?.ghl_api_key) {
+        console.log('No GHL API key for fallback user enrichment')
+        return NextResponse.json({ pendingUsers: [], count: 0, fallback: true })
+      }
+
       // Gather distinct GHL user IDs and rough names from activity tables
       const [{ data: appointments }, { data: discoveries }, { data: dials }] = await Promise.all([
         supabase
@@ -198,23 +210,64 @@ export async function GET(request: NextRequest) {
         addId(d.sales_rep_ghl_id, undefined, true, !!d.sales_rep_user_id)
       })
 
-      ids.forEach((counts, ghl_user_id) => {
+      // Enrich GHL user IDs with API data
+      const headers = {
+        'Authorization': `Bearer ${account.ghl_api_key}`,
+        'Version': '2021-07-28',
+        'Accept': 'application/json',
+      }
+
+      for (const [ghl_user_id, counts] of ids.entries()) {
         if (counts.total > 0 && !existingGhlIds.has(ghl_user_id) && !linkedGhlIds.has(ghl_user_id) && !allLinkedGhlIds.has(ghl_user_id)) {
-          const suggested = counts.repCount > counts.setterCount ? 'sales_rep' : 'setter'
-          pendingUsers.push({
-            ghl_user_id,
-            name: counts.name || 'Unknown',
-            email: null,
-            primary_role: suggested,
-            roles: [suggested],
-            activity_count: counts.total,
-            setter_activity_count: counts.setterCount,
-            sales_rep_activity_count: counts.repCount,
-            last_seen_at: null,
-            account_id: targetId,
-          })
+          try {
+            // Try to fetch complete user profile from GHL API
+            const userResponse = await fetch(`https://services.leadconnectorhq.com/users/${ghl_user_id}`, { headers })
+            let userData = null
+            
+            if (userResponse.ok) {
+              userData = await userResponse.json()
+            } else if (account.ghl_location_id) {
+              // Fallback: get from location users endpoint
+              const locationResponse = await fetch(`https://services.leadconnectorhq.com/locations/${account.ghl_location_id}/users/`, { headers })
+              if (locationResponse.ok) {
+                const locationData = await locationResponse.json()
+                const users = locationData.users || locationData.data || []
+                userData = users.find((u: any) => u.id === ghl_user_id)
+              }
+            }
+
+            const suggested = counts.repCount > counts.setterCount ? 'sales_rep' : 'setter'
+            pendingUsers.push({
+              ghl_user_id,
+              name: userData?.name || [userData?.firstName, userData?.lastName].filter(Boolean).join(' ') || counts.name || 'Unknown',
+              email: userData?.email || userData?.userEmail || null,
+              primary_role: suggested,
+              roles: [suggested],
+              activity_count: counts.total,
+              setter_activity_count: counts.setterCount,
+              sales_rep_activity_count: counts.repCount,
+              last_seen_at: null,
+              account_id: targetId,
+            })
+          } catch (error) {
+            console.warn(`Failed to fetch GHL user ${ghl_user_id}:`, error)
+            // Use basic data without email
+            const suggested = counts.repCount > counts.setterCount ? 'sales_rep' : 'setter'
+            pendingUsers.push({
+              ghl_user_id,
+              name: counts.name || 'Unknown',
+              email: null,
+              primary_role: suggested,
+              roles: [suggested],
+              activity_count: counts.total,
+              setter_activity_count: counts.setterCount,
+              sales_rep_activity_count: counts.repCount,
+              last_seen_at: null,
+              account_id: targetId,
+            })
+          }
         }
-      })
+      }
 
       console.log(`pending-ghl-users fallback computed ${pendingUsers.length} users for account ${targetId}`)
       // Sort by activity desc
