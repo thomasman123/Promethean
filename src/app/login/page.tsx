@@ -23,8 +23,19 @@ export default function LoginPage() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
 
-  // Clear only corrupted auth data on mount
+  // Handle Supabase recovery deep links that land on /login with hash tokens
   useEffect(() => {
+    const hash = window.location.hash
+    if (hash) {
+      const params = new URLSearchParams(hash.substring(1))
+      const type = params.get('type')
+      if (type === 'recovery') {
+        // Forward entire hash to reset-password so it can complete the flow
+        window.location.replace(`/reset-password${hash}`)
+        return
+      }
+    }
+    
     // Only clear localStorage items that are actually corrupted
     const authKeys = Object.keys(localStorage).filter(key => 
       key.startsWith('sb-') || key.includes('supabase')
