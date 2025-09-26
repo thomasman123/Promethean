@@ -76,6 +76,8 @@ function ResetPasswordInner() {
       try {
         if (finalCode || finalAccessToken) {
           console.log('🔍 Password reset link detected, processing...')
+          // Clear any prior error set by an earlier effect run
+          setError('')
           
           if (finalCode) {
             // Handle the newer auth code flow
@@ -86,6 +88,7 @@ function ResetPasswordInner() {
             } else {
               console.log('🔍 Successfully exchanged code for session')
               setHasSession(true)
+              setError('')
             }
           } else if (finalAccessToken && finalRefreshToken) {
             // Handle the older direct token flow (fallback)
@@ -99,6 +102,7 @@ function ResetPasswordInner() {
             } else {
               console.log('🔍 Successfully set session from tokens')
               setHasSession(true)
+              setError('')
             }
           }
         } else {
@@ -107,6 +111,7 @@ function ResetPasswordInner() {
           if (session) {
             console.log('🔍 Existing session found')
             setHasSession(true)
+            setError('')
           } else {
             setError('No valid reset session found. Please request a new password reset link.')
           }
