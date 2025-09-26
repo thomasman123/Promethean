@@ -26,10 +26,17 @@ function ResetPasswordInner() {
   // Track if a valid Supabase session exists (e.g., established by the recovery link)
   const [hasSession, setHasSession] = useState(false)
 
+  // Check both query params and hash fragments for recovery tokens
   const queryAccessToken = searchParams?.get('access_token')
   const queryRefreshToken = searchParams?.get('refresh_token')
   const queryType = searchParams?.get('type')
   const queryCode = searchParams?.get('code')
+  
+  // Also check URL hash for tokens (Supabase often sends them this way)
+  const [hashAccessToken, setHashAccessToken] = useState<string | null>(null)
+  const [hashRefreshToken, setHashRefreshToken] = useState<string | null>(null)
+  const [hashType, setHashType] = useState<string | null>(null)
+  
   const [accessToken, setAccessToken] = useState<string | null>(queryAccessToken)
   const [refreshToken, setRefreshToken] = useState<string | null>(queryRefreshToken)
   const [linkType, setLinkType] = useState<string | null>(queryType)
@@ -42,15 +49,37 @@ function ResetPasswordInner() {
   useEffect(() => {
     if (typeof window === 'undefined') return
 
+    // Extract tokens from URL hash if present (Supabase recovery links often use hash)
+    const hash = window.location.hash
+    if (hash) {
+      const hashParams = new URLSearchParams(hash.substring(1))
+      const hashAccessTokenValue = hashParams.get('access_token')
+      const hashRefreshTokenValue = hashParams.get('refresh_token')
+      const hashTypeValue = hashParams.get('type')
+      
+      if (hashAccessTokenValue) setHashAccessToken(hashAccessTokenValue)
+      if (hashRefreshTokenValue) setHashRefreshToken(hashRefreshTokenValue)
+      if (hashTypeValue) setHashType(hashTypeValue)
+      
+      // Update the main state with hash values if they exist
+      if (hashAccessTokenValue && !accessToken) setAccessToken(hashAccessTokenValue)
+      if (hashRefreshTokenValue && !refreshToken) setRefreshToken(hashRefreshTokenValue)
+      if (hashTypeValue && !linkType) setLinkType(hashTypeValue)
+    }
+
+    // Check if we have parameters indicating a password reset (from either query or hash)
+    const finalAccessToken = accessToken || hashAccessToken
+    const finalRefreshToken = refreshToken || hashRefreshToken
+    const finalCode = queryCode
+
     const initializePasswordReset = async () => {
       try {
-        // Check if we have query parameters indicating a password reset
-        if (queryCode || queryAccessToken) {
+        if (finalCode || finalAccessToken) {
           console.log('🔍 Password reset link detected, processing...')
           
-          if (queryCode) {
+          if (finalCode) {
             // Handle the newer auth code flow
-            const { error } = await supabase.auth.exchangeCodeForSession(queryCode)
+            const { error } = await supabase.auth.exchangeCodeForSession(finalCode)
             if (error) {
               console.error('🔍 Error exchanging code:', error)
               setError('Invalid or expired reset link. Please request a new one.')
@@ -58,11 +87,11 @@ function ResetPasswordInner() {
               console.log('🔍 Successfully exchanged code for session')
               setHasSession(true)
             }
-          } else if (queryAccessToken && queryRefreshToken) {
+          } else if (finalAccessToken && finalRefreshToken) {
             // Handle the older direct token flow (fallback)
             const { error } = await supabase.auth.setSession({
-              access_token: queryAccessToken,
-              refresh_token: queryRefreshToken
+              access_token: finalAccessToken,
+              refresh_token: finalRefreshToken
             })
             if (error) {
               console.error('🔍 Error setting session:', error)
@@ -91,16 +120,21 @@ function ResetPasswordInner() {
 
       // Set debug info
       setDebugInfo({
-        hasQueryCode: !!queryCode,
-        hasAccessToken: !!queryAccessToken,
-        hasRefreshToken: !!queryRefreshToken,
+        hasQueryCode: !!finalCode,
+        hasAccessToken: !!finalAccessToken,
+        hasRefreshToken: !!finalRefreshToken,
+        hasHashAccessToken: !!hashAccessToken,
+        hasHashRefreshToken: !!hashRefreshToken,
         linkType,
-        hasCode: !!queryCode
+        hashType,
+        hasCode: !!finalCode,
+        currentUrl: window.location.href,
+        hash: window.location.hash
       })
     }
 
     initializePasswordReset()
-  }, [queryCode, queryAccessToken, queryRefreshToken, linkType])
+  }, [queryCode, queryAccessToken, queryRefreshToken, linkType, accessToken, refreshToken, hashAccessToken, hashRefreshToken])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

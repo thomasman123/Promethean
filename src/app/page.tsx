@@ -15,6 +15,17 @@ export default function HomePage() {
 
   useEffect(() => {
     const checkAuth = async () => {
+      // Check for password recovery parameters in the URL hash
+      const hash = window.location.hash
+      const searchParams = new URLSearchParams(hash.substring(1))
+      const type = searchParams.get('type')
+      
+      // If this is a password recovery flow, redirect to reset-password page
+      if (type === 'recovery') {
+        window.location.href = `/reset-password${hash}`
+        return
+      }
+      
       const { data: { session } } = await supabase.auth.getSession()
       if (session) {
         window.location.href = "/dashboard"
