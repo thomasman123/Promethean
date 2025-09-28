@@ -1208,7 +1208,7 @@ async function processAppointmentWebhook(payload: any) {
       // If the user fetch failed (possibly due to expired/revoked token), force refresh and retry once
       if (!userData) {
         console.log('🔁 Retrying user fetch after token refresh...');
-        const refreshedToken = await (getValidGhlAccessToken as any)(account, supabase, true);
+        const refreshedToken = await getValidGhlAccessToken(account, supabase, true);
         if (refreshedToken && refreshedToken !== currentAccessToken) {
           currentAccessToken = refreshedToken;
           userData = await fetchGhlUserDetails(payload.userId, currentAccessToken, account.ghl_location_id || '');
@@ -1290,7 +1290,7 @@ async function processAppointmentWebhook(payload: any) {
         
         // If unauthorized, attempt to refresh token once and retry
         if (contactResponse.status === 401 || contactResponse.status === 403) {
-          const refreshedToken = await getValidGhlAccessToken(account, supabase);
+          const refreshedToken = await getValidGhlAccessToken(account, supabase, true);
           if (refreshedToken && refreshedToken !== currentAccessToken) {
             currentAccessToken = refreshedToken;
             contactResponse = await fetch(contactUrl, {
