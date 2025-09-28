@@ -77,7 +77,7 @@ async function fetchGhlUserDetails(userId: string, accessToken: string, location
 }
 
 // Helper to ensure we have a valid GHL access token for API calls
-async function getValidGhlAccessToken(account: any, supabase: any): Promise<string | null> {
+async function getValidGhlAccessToken(account: any, supabase: any, forceRefresh?: boolean): Promise<string | null> {
   try {
     const authType = account.ghl_auth_type || 'oauth2';
     const currentAccessToken = account.ghl_api_key as string | null;
@@ -101,7 +101,7 @@ async function getValidGhlAccessToken(account: any, supabase: any): Promise<stri
     const now = Date.now();
     const expiresAtMs = expiresAtIso ? new Date(expiresAtIso).getTime() : 0;
     const skewMs = 2 * 60 * 1000; // 2 minutes
-    const needsRefresh = !currentAccessToken || !expiresAtMs || now >= (expiresAtMs - skewMs);
+    const needsRefresh = forceRefresh || !currentAccessToken || !expiresAtMs || now >= (expiresAtMs - skewMs);
 
     if (!needsRefresh) {
       return currentAccessToken as string;
@@ -148,10 +148,9 @@ async function getValidGhlAccessToken(account: any, supabase: any): Promise<stri
       })
       .eq('id', account.id);
 
-    console.log('🔐 Refreshed GHL access token for account:', account.id);
     return newAccessToken;
-  } catch (err) {
-    console.error('❌ Error getting valid GHL access token:', err);
+  } catch (e) {
+    console.warn('⚠️ Token helper failed, falling back to stored token');
     return account?.ghl_api_key || null;
   }
 }
@@ -1206,9 +1205,10 @@ async function processAppointmentWebhook(payload: any) {
     if (payload.userId && currentAccessToken) {
       let userData = await fetchGhlUserDetails(payload.userId, currentAccessToken, account.ghl_location_id || '');
       
-      // If the user fetch failed (possibly due to expired token), refresh and retry once
+      // If the user fetch failed (possibly due to expired/revoked token), force refresh and retry once
       if (!userData) {
-        const refreshedToken = await getValidGhlAccessToken(account, supabase);
+        console.log('🔁 Retrying user fetch after token refresh...');
+        const refreshedToken = await (getValidGhlAccessToken as any)(account, supabase, true);
         if (refreshedToken && refreshedToken !== currentAccessToken) {
           currentAccessToken = refreshedToken;
           userData = await fetchGhlUserDetails(payload.userId, currentAccessToken, account.ghl_location_id || '');
