@@ -1194,1192 +1194,377 @@ async function processAppointmentWebhook(payload: any) {
     
     console.log('📍 Found account:', account.name, '(', account.id, ')');
 
-    // Ensure valid access token for GHL API
-    const accessToken = await getValidGhlAccessToken(account, supabase);
+    // Ensure we have a valid access token for GHL API calls
+    const initialAccessToken = await getValidGhlAccessToken(account, supabase);
+    let currentAccessToken = initialAccessToken || account.ghl_api_key;
     
-    // Check if this appointment's calendar is mapped
-    const { data: calendarMapping, error: mappingError } = await supabase
-      .from('calendar_mappings')
-      .select('*')
-      .eq('account_id', account.id)
-      .eq('ghl_calendar_id', payload.appointment?.calendarId)
-      .single();
+    // Try to find the caller user by fetching from GHL API and matching to platform users
+    let callerUserId = null;
+    let setterName = null;
+    let setterEmail = null;
     
-    if (mappingError || !calendarMapping) {
-      console.log('📋 Calendar not mapped for appointment, skipping:', {
-        calendarId: payload.appointment?.calendarId,
-        appointmentId: payload.appointment?.id
-      });
-      return;
-    }
-    
-    console.log('✅ Calendar mapping found:', {
-      calendarId: calendarMapping.ghl_calendar_id,
-      targetTable: calendarMapping.target_table,
-      calendarName: calendarMapping.ghl_calendar_name
-    });
-    
-    // Enhanced API enrichment for appointments table only
-    let fullAppointmentData = null;
-    let contactData = null;
-    let salesRepData = null;
-    let setterData = null;
-    
-    if (calendarMapping.target_table === 'appointments' && payload.appointment?.id && accessToken) {
-      try {
-        // 1. Get full appointment details from API
-        console.log('📅 Fetching full appointment details for ID:', payload.appointment.id);
-        
-        const appointmentResponse = await fetch(`https://services.leadconnectorhq.com/calendars/events/appointments/${payload.appointment.id}`, {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Version': '2021-07-28',
-          },
-        });
-        
-        if (appointmentResponse.ok) {
-          const appointmentApiData = await appointmentResponse.json();
-          console.log('🔍 Raw appointment API response:', JSON.stringify(appointmentApiData, null, 2));
-          
-          fullAppointmentData = appointmentApiData.appointment; // API returns data under 'appointment' key
-          console.log('📅 Full appointment data retrieved:', {
-            id: fullAppointmentData?.id,
-            title: fullAppointmentData?.title,
-            status: fullAppointmentData?.appointmentStatus,
-            startTime: fullAppointmentData?.startTime,
-            contactId: fullAppointmentData?.contactId,
-            assignedUserId: fullAppointmentData?.assignedUserId,
-            createdBy: fullAppointmentData?.createdBy,
-            source: fullAppointmentData?.source,
-            extractedSource: fullAppointmentData?.createdBy?.source || fullAppointmentData?.source || 'unknown'
-          });
-        } else {
-          const errorText = await appointmentResponse.text();
-          console.error('Failed to fetch appointment details:', {
-            status: appointmentResponse.status,
-            statusText: appointmentResponse.statusText,
-            error: errorText,
-            appointmentId: payload.appointment.id
-          });
-        }
-        
-        // 2. Get contact details if contactId exists
-        const contactId = fullAppointmentData?.contactId || payload.appointment?.contactId;
-        if (contactId) {
-          console.log('👤 Fetching contact details for ID:', contactId);
-          
-          const contactResponse = await fetch(`https://services.leadconnectorhq.com/contacts/${contactId}`, {
-            headers: {
-              'Authorization': `Bearer ${accessToken}`,
-              'Version': '2021-07-28',
-            },
-          });
-          
-          if (contactResponse.ok) {
-            const contactApiData = await contactResponse.json();
-            contactData = contactApiData.contact;
-            console.log('👤 Contact data retrieved:', {
-              name: contactData?.name,
-              firstName: contactData?.firstName,
-              lastName: contactData?.lastName,
-              email: contactData?.email,
-              phone: contactData?.phone,
-              companyName: contactData?.companyName,
-              tags: contactData?.tags,
-              source: contactData?.source,
-              attributionSource: contactData?.attributionSource,
-              lastAttributionSource: contactData?.lastAttributionSource
-            });
-          } else {
-            const errorText = await contactResponse.text();
-            console.error('Failed to fetch contact details:', {
-              status: contactResponse.status,
-              statusText: contactResponse.statusText,
-              error: errorText,
-              contactId: contactId
-            });
-          }
-        }
-        
-        // 3. Get setter (createdBy.userId) details
-        const setterId = fullAppointmentData?.createdBy?.userId;
-        console.log('🔍 Setter ID extraction debug:', {
-          fullAppointmentData: !!fullAppointmentData,
-          createdBy: fullAppointmentData?.createdBy,
-          setterId: setterId
-        });
-        
-        if (setterId) {
-          console.log('👨‍🎯 Fetching setter details for ID:', setterId);
-          
-          const setterResponse = await fetch(`https://services.leadconnectorhq.com/users/${setterId}`, {
-            headers: {
-              'Authorization': `Bearer ${accessToken}`,
-              'Version': '2021-07-28',
-            },
-          });
-          
-          if (setterResponse.ok) {
-            setterData = await setterResponse.json();
-            console.log('👨‍🎯 Setter data retrieved:', {
-              name: setterData?.name,
-              email: setterData?.email,
-              firstName: setterData?.firstName,
-              lastName: setterData?.lastName
-            });
-          } else {
-            const errorText = await setterResponse.text();
-            console.error('Failed to fetch setter details:', {
-              status: setterResponse.status,
-              statusText: setterResponse.statusText,
-              error: errorText,
-              userId: setterId
-            });
-          }
-        }
-        
-        // 4. Get sales rep (assignedUserId) details
-        const salesRepId = fullAppointmentData?.assignedUserId || payload.appointment?.assignedUserId;
-        if (salesRepId) {
-          console.log('👨‍💼 Fetching sales rep details for ID:', salesRepId);
-          
-          const salesRepResponse = await fetch(`https://services.leadconnectorhq.com/users/${salesRepId}`, {
-            headers: {
-              'Authorization': `Bearer ${accessToken}`,
-              'Version': '2021-07-28',
-            },
-          });
-          
-          if (salesRepResponse.ok) {
-            salesRepData = await salesRepResponse.json();
-            console.log('👨‍💼 Sales rep data retrieved:', {
-              name: salesRepData?.name,
-              email: salesRepData?.email,
-              firstName: salesRepData?.firstName,
-              lastName: salesRepData?.lastName
-            });
-          } else {
-            const errorText = await salesRepResponse.text();
-            console.error('Failed to fetch sales rep details:', {
-              status: salesRepResponse.status,
-              statusText: salesRepResponse.statusText,
-              error: errorText,
-              userId: salesRepId
-            });
-          }
-        }
-        
-      } catch (error) {
-        console.error('Error during appointment enrichment:', error);
-      }
-    } else if (calendarMapping.target_table !== 'appointments') {
-      // For discoveries and other tables, do full enrichment including setter data
-      try {
-        // 1. Fetch full appointment details to get createdBy info
-        console.log('📅 Fetching full appointment details for ID:', payload.appointment.id);
-        
-        const appointmentResponse = await fetch(`https://services.leadconnectorhq.com/calendars/events/appointments/${payload.appointment.id}`, {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Version': '2021-07-28',
-          },
-        });
-        
-        if (appointmentResponse.ok) {
-          const appointmentApiResponse = await appointmentResponse.json();
-          fullAppointmentData = appointmentApiResponse.appointment;
-          console.log('🔍 Raw appointment API response:', JSON.stringify(appointmentApiResponse, null, 2));
-        }
-        
-        // 2. Enrich with contact data if contactId exists
-        if (payload.appointment?.contactId && accessToken) {
-          console.log('👤 Fetching contact details for ID:', payload.appointment.contactId);
-          
-          const contactResponse = await fetch(`https://services.leadconnectorhq.com/contacts/${payload.appointment.contactId}`, {
-            headers: {
-              'Authorization': `Bearer ${accessToken}`,
-              'Version': '2021-07-28',
-            },
-          });
-          
-          if (contactResponse.ok) {
-            const contactApiData = await contactResponse.json();
-            contactData = contactApiData.contact;
-            console.log('👤 Contact data retrieved:', {
-              name: contactData?.name,
-              firstName: contactData?.firstName,
-              lastName: contactData?.lastName,
-              email: contactData?.email,
-              phone: contactData?.phone,
-              companyName: contactData?.companyName,
-              tags: contactData?.tags,
-              source: contactData?.source,
-              attributionSource: contactData?.attributionSource,
-              lastAttributionSource: contactData?.lastAttributionSource
-            });
-          }
-        }
-        
-        // 3. Get setter (createdBy.userId) details - CRITICAL for discoveries!
-        const setterId = fullAppointmentData?.createdBy?.userId;
-        console.log('🔍 Setter ID extraction debug:', {
-          fullAppointmentData: !!fullAppointmentData,
-          createdBy: fullAppointmentData?.createdBy,
-          setterId: setterId
-        });
-        
-        if (setterId && account.ghl_location_id && accessToken) {
-          console.log('👨‍🎯 Fetching setter details for ID:', setterId);
-          setterData = await fetchGhlUserDetails(setterId, accessToken, account.ghl_location_id);
-          
-          if (setterData) {
-            console.log('👨‍🎯 Setter data retrieved:', {
-              name: setterData?.name,
-              email: setterData?.email,
-              firstName: setterData?.firstName,
-              lastName: setterData?.lastName
-            });
-          } else {
-            console.error('Failed to fetch setter details for userId:', setterId);
-          }
-        }
-        
-        // 4. Get sales rep (assignedUserId) details
-        const salesRepId = fullAppointmentData?.assignedUserId || payload.appointment?.assignedUserId;
-        if (salesRepId) {
-          console.log('👨‍💼 Fetching sales rep details for ID:', salesRepId);
-          
-          const salesRepResponse = await fetch(`https://services.leadconnectorhq.com/users/${salesRepId}`, {
-            headers: {
-              'Authorization': `Bearer ${accessToken}`,
-              'Version': '2021-07-28',
-            },
-          });
-          
-          if (salesRepResponse.ok) {
-            salesRepData = await salesRepResponse.json();
-            console.log('👨‍💼 Sales rep data retrieved:', {
-              name: salesRepData?.name,
-              email: salesRepData?.email,
-              firstName: salesRepData?.firstName,
-              lastName: salesRepData?.lastName
-            });
-          } else {
-            const errorText = await salesRepResponse.text();
-            console.error('Failed to fetch sales rep details:', {
-              status: salesRepResponse.status,
-              statusText: salesRepResponse.statusText,
-              error: errorText,
-              userId: salesRepId
-            });
-          }
-        }
-        
-      } catch (error) {
-        console.error('Error during discovery enrichment:', error);
-      }
-    }
-
-    // Setter is determined directly from API createdBy.userId (setterData)
-    // No need to search dials - API provides the actual setter information
-     
-    // Map sales rep to internal user ID
-    let salesRepId = null;
-    if (salesRepData?.email) {
-      const { data: existingSalesRep } = await supabase
-        .from('users')
-        .select('id')
-        .eq('account_id', account.id)
-        .eq('email', salesRepData.email)
-        .single();
-      salesRepId = existingSalesRep?.id || null;
+    if (payload.userId && currentAccessToken) {
+      let userData = await fetchGhlUserDetails(payload.userId, currentAccessToken, account.ghl_location_id || '');
       
-      if (salesRepId) {
-        console.log('✅ Mapped sales rep to internal user:', salesRepId);
+      // If the user fetch failed (possibly due to expired token), refresh and retry once
+      if (!userData) {
+        const refreshedToken = await getValidGhlAccessToken(account, supabase);
+        if (refreshedToken && refreshedToken !== currentAccessToken) {
+          currentAccessToken = refreshedToken;
+          userData = await fetchGhlUserDetails(payload.userId, currentAccessToken, account.ghl_location_id || '');
+        }
+      }
+      
+      if (userData) {
+        setterName = userData.name || `${userData.firstName || ''} ${userData.lastName || ''}`.trim();
+        setterEmail = userData.email || null;
+        
+        console.log('✅ Successfully fetched user data:', {
+          name: setterName,
+          email: setterEmail,
+          phone: userData.phone
+        });
+        
+        // Try to match to existing platform user by email
+        if (userData.email) {
+          const { data: platformUser } = await supabase
+            .from('users')
+            .select('id')
+            .eq('account_id', account.id)
+            .eq('email', userData.email)
+            .single();
+          
+          callerUserId = platformUser?.id || null;
+          
+          if (callerUserId) {
+            console.log('✅ Matched GHL user to platform user:', callerUserId);
+          } else {
+            console.log('⚠️ GHL user not found in platform users table');
+          }
+        }
       } else {
-        console.log('⚠️ Sales rep not found in internal users - they would need to be manually invited');
+        console.log('⚠️ User not found in GHL API');
       }
     }
     
-    // Helper function to convert time to UTC
-    const convertToUTC = (timeString: string): string => {
-      try {
-        return new Date(timeString).toISOString();
-      } catch (error) {
-        console.error('Failed to convert time to UTC:', timeString, error);
-        return new Date().toISOString(); // Fallback to current time
-      }
-    };
-    
-    // Create base appointment data with enhanced mapping
-    const getContactName = () => {
-      if (contactData?.name) return contactData.name;
-      if (contactData?.firstName || contactData?.lastName) {
-        return `${contactData.firstName || ''} ${contactData.lastName || ''}`.trim();
-      }
-      return fullAppointmentData?.title || payload.appointment?.title || 'Unknown Contact';
-    };
-
-    const getSetterName = () => {
-      console.log('🔍 getSetterName debug:', {
-        setterData: setterData,
-        hasSetterData: !!setterData,
-        setterName: setterData?.name,
-        setterFirstName: setterData?.firstName,
-        setterLastName: setterData?.lastName,
-        setterIdFromAppointment: fullAppointmentData?.createdBy?.userId,
-        targetTable: calendarMapping.target_table,
-        salesRepData: salesRepData,
-        salesRepName: salesRepData?.name
-      });
-      
-      // For discoveries, the "setter" is actually the appointment owner (sales rep from appointments perspective)
-      if (calendarMapping.target_table === 'discoveries') {
-        if (salesRepData?.name) return salesRepData.name;
-        if (salesRepData?.firstName || salesRepData?.lastName) {
-          return `${salesRepData.firstName || ''} ${salesRepData.lastName || ''}`.trim();
-        }
-        
-        // If we have a sales rep ID but couldn't fetch user data, use a fallback name
-        const salesRepId = fullAppointmentData?.assignedUserId || payload.appointment?.assignedUserId;
-        if (salesRepId) {
-          console.log('⚠️ Sales rep ID found but user data fetch failed, using ID-based fallback');
-          return `User ${salesRepId.slice(-8)}`; // Use last 8 chars of ID as identifier
-        }
-        
-        console.log('⚠️ No sales rep data available for discovery setter, falling back to Webhook');
-        return 'Webhook';
-      }
-      
-      // For appointments, use the original setter logic (createdBy)
-      if (setterData?.name) return setterData.name;
-      if (setterData?.firstName || setterData?.lastName) {
-        return `${setterData.firstName || ''} ${setterData.lastName || ''}`.trim();
-      }
-      
-      // If we have a setter ID but couldn't fetch user data, use a fallback name
-      const setterId = fullAppointmentData?.createdBy?.userId;
-      if (setterId) {
-        console.log('⚠️ Setter ID found but user data fetch failed, using ID-based fallback');
-        return `User ${setterId.slice(-8)}`; // Use last 8 chars of ID as identifier
-      }
-      
-      console.log('⚠️ No setter data available, falling back to Webhook');
-      return 'Webhook';
-    };
-
-    const getSalesRepName = () => {
-      // For discoveries, the "sales rep" is actually the setter (createdBy from appointments perspective)
-      if (calendarMapping.target_table === 'discoveries') {
-        if (setterData?.name) return setterData.name;
-        if (setterData?.firstName || setterData?.lastName) {
-          return `${setterData.firstName || ''} ${setterData.lastName || ''}`.trim();
-        }
-        
-        // If we have a setter ID but couldn't fetch user data, use a fallback name
-        const setterId = fullAppointmentData?.createdBy?.userId;
-        if (setterId) {
-          return `User ${setterId.slice(-8)}`; // Use last 8 chars of ID as identifier
-        }
-        
-        return 'Webhook'; // Fallback for discoveries
-      }
-      
-      // For appointments, use the original sales rep logic (assignedUserId)
-      if (salesRepData?.name) return salesRepData.name;
-      if (salesRepData?.firstName || salesRepData?.lastName) {
-        return `${salesRepData.firstName || ''} ${salesRepData.lastName || ''}`.trim();
-      }
-      return null;
-    };
-
-    // Create base data appropriate for the target table
-    const commonData = {
-      account_id: account.id,
-      setter: getSetterName(),
-      sales_rep: getSalesRepName(),
-      call_outcome: null,
-      show_outcome: null,
-      lead_quality: null,
-    };
-
-    // Add appointment-specific fields only for appointments table
-    const baseData = calendarMapping.target_table === 'appointments' ? {
-      ...commonData,
-      pitched: null,
-      watched_assets: null,
-      objections: null,
-    } : commonData;
-    
-    // Save to appropriate table based on mapping
-    if (calendarMapping.target_table === 'appointments') {
-      // Enhanced data mapping for appointments table
-      const appointmentStartTime = fullAppointmentData?.startTime || payload.appointment?.startTime;
-      
-      // Use actual appointment creation time from GHL, fallback to webhook received time
-      const actualBookingTime = fullAppointmentData?.dateAdded || 
-                               payload.timestamp || 
-                               payload.dateAdded || 
-                               new Date().toISOString();
-      const webhookTimestamp = new Date().toISOString(); // When webhook was received
-      
-      // Create comprehensive metadata
-      const metadata = {
-        webhook_received_at: webhookTimestamp,
-        actual_booking_time: actualBookingTime,
-        booking_time_source: fullAppointmentData?.dateAdded ? 'fullAppointmentData.dateAdded' : 
-                            payload.timestamp ? 'payload.timestamp' : 
-                            payload.dateAdded ? 'payload.dateAdded' : 
-                            'webhook_received_fallback',
-        appointment_api_data: fullAppointmentData ? {
-          id: fullAppointmentData.id,
-          title: fullAppointmentData.title,
-          appointmentStatus: fullAppointmentData.appointmentStatus,
-          address: fullAppointmentData.address,
-          notes: fullAppointmentData.notes,
-          groupId: fullAppointmentData.groupId,
-          isRecurring: fullAppointmentData.isRecurring,
-          dateAdded: fullAppointmentData.dateAdded,
-          dateUpdated: fullAppointmentData.dateUpdated,
-          endTime: fullAppointmentData.endTime,
-          source: fullAppointmentData.source,
-          createdBy: fullAppointmentData.createdBy
-        } : null,
-        contact_enriched_data: contactData ? {
-          id: contactData.id,
-          firstName: contactData.firstName,
-          lastName: contactData.lastName,
-          companyName: contactData.companyName,
-          timezone: contactData.timezone,
-          tags: contactData.tags,
-          website: contactData.website,
-          address: {
-            address1: contactData.address1,
-            city: contactData.city,
-            state: contactData.state,
-            country: contactData.country,
-            postalCode: contactData.postalCode
-          },
-          attribution: contactData.attributionSource,
-          lastActivity: contactData.lastActivity,
-          customFields: contactData.customFields
-        } : null,
-        setter_data: setterData ? {
-          id: setterData.id,
-          name: setterData.name,
-          email: setterData.email,
-          firstName: setterData.firstName,
-          lastName: setterData.lastName
-        } : null,
-        sales_rep_data: salesRepData ? {
-          id: salesRepData.id,
-          name: salesRepData.name,
-          email: salesRepData.email,
-          firstName: salesRepData.firstName,
-          lastName: salesRepData.lastName
-        } : null,
-        original_webhook_payload: {
-          type: payload.type,
-          locationId: payload.locationId,
-          appointment: payload.appointment
-        }
-      };
-
-      // Auto-create users for setter and sales rep if they don't exist
-      console.log('👥 Auto-creating users for appointment data:', {
-        setter: baseData.setter,
-        salesRep: baseData.sales_rep,
-        setterGhlId: setterData?.id,
-        salesRepGhlId: salesRepData?.id
-      });
-
+    // Link setter to an existing app user and capture setter_user_id for the dial
+    let linkedSetterUserId: string | null = null;
+    try {
       const { linkExistingUsersToData } = await import('@/lib/auto-user-creation');
       const userIds = await linkExistingUsersToData(
         supabase,
         account.id,
-        baseData.setter,
-        baseData.sales_rep,
-        setterData?.email,
-        salesRepData?.email
+        setterName,
+        null,
+        setterEmail,
+        null
       );
-
-      console.log('✅ User creation results:', {
-        setterUserId: userIds.setterUserId || 'None',
-        salesRepUserId: userIds.salesRepUserId || 'None'
-      });
-
-      // Process contact attribution data
-      const contactAttribution = contactData?.attributionSource || contactData?.lastAttributionSource || {};
-      console.log('🎯 Processing contact attribution:', {
-        contactSource: contactData?.source,
-        attributionSource: contactAttribution,
-        hasAttribution: !!contactAttribution
-      });
-
-      // Call the classification function
-      let classifiedAttribution = null;
-      if (contactData) {
-        try {
-          const { data: attributionResult, error: attributionError } = await supabase
-            .rpc('classify_contact_attribution_enhanced', {
-              p_contact_source: contactData.source || null,
-              p_utm_source: contactAttribution.utmSource || null,
-              p_utm_medium: contactAttribution.utmMedium || null,
-              p_utm_campaign: contactAttribution.campaign || null,
-              p_referrer: contactAttribution.referrer || null,
-              p_gclid: contactAttribution.gclid || null,
-              p_fbclid: contactAttribution.fbclid || null,
-              p_account_id: account.id
-            });
-
-          if (attributionError) {
-            console.error('Error classifying contact attribution:', attributionError);
-          } else {
-            classifiedAttribution = attributionResult;
-            console.log('✅ Contact attribution classified:', classifiedAttribution);
-          }
-        } catch (error) {
-          console.error('Error calling attribution classification:', error);
-        }
-      }
-
-
-
-      // Enhanced attribution processing
-      const attributionSource = contactData?.attributionSource;
-      const lastAttributionSource = contactData?.lastAttributionSource;
-      
-      // Extract custom fields for business intelligence
-      const customFields = contactData?.customField || [];
-      const leadValue = customFields.find((cf: any) => cf.id === '13n0JVzjarD1UTyiDfNN')?.value || null;
-      const leadPath = customFields.find((cf: any) => cf.id === 'vHICYHikZaD4Qjkt7F8K')?.value || null;
-      const businessType = customFields.find((cf: any) => cf.id === 'Y1Kj2lNM1o8Hcs7fI7tq')?.value || null;
-
-      // Classify enhanced attribution
-      let enhancedClassification = null;
-      if (attributionSource) {
-        try {
-          const { data: enhancedResult, error: enhancedError } = await supabase
-            .rpc('classify_enhanced_attribution', {
-              p_utm_source: attributionSource.utmSource || null,
-              p_utm_medium: attributionSource.utmMedium || null,
-              p_utm_campaign: attributionSource.campaign || null,
-              p_session_source: attributionSource.sessionSource || null,
-              p_fbclid: attributionSource.fbclid || null,
-              p_landing_url: attributionSource.url || null
-            });
-
-          if (enhancedError) {
-            console.error('Error classifying enhanced attribution:', enhancedError);
-          } else {
-            enhancedClassification = enhancedResult;
-            console.log('✅ Enhanced attribution classified:', enhancedClassification);
-          }
-        } catch (error) {
-          console.error('Error calling enhanced attribution classification:', error);
-        }
-      }
-
-      // Resolve contact_id EARLY for duplicate detection
-      let appointmentContactId: string | null = null
+      linkedSetterUserId = userIds.setterUserId || null;
+      console.log('✅ User link results for dial:', { setterUserId: linkedSetterUserId || 'None' });
+    } catch (linkErr) {
+      console.warn('⚠️ Failed to link setter user for dial (non-critical):', linkErr);
+    }
+    
+    // Get contact information by fetching from GHL API
+    let contactName = null;
+    let contactEmail = null;
+    let contactPhone = null;
+    // Attribution and contact source from contact
+    let dialAttrSource: any = null;
+    let dialLastAttrSource: any = null;
+    let contactSource: string | null = null;
+    
+    if (payload.contactId && currentAccessToken) {
       try {
-        const up = await supabase
+        console.log('🔍 Fetching contact details from GHL for contactId:', payload.contactId);
+        
+        const contactUrl = `https://services.leadconnectorhq.com/contacts/${payload.contactId}`;
+        const makeContactHeaders = (token: string | null) => ({
+          'Authorization': `Bearer ${token}`,
+          'Version': '2021-07-28',
+        } as Record<string, string>);
+        
+        let contactResponse = await fetch(contactUrl, {
+          headers: makeContactHeaders(currentAccessToken as string),
+        });
+        
+        // If unauthorized, attempt to refresh token once and retry
+        if (contactResponse.status === 401 || contactResponse.status === 403) {
+          const refreshedToken = await getValidGhlAccessToken(account, supabase);
+          if (refreshedToken && refreshedToken !== currentAccessToken) {
+            currentAccessToken = refreshedToken;
+            contactResponse = await fetch(contactUrl, {
+              headers: makeContactHeaders(currentAccessToken as string),
+            });
+          }
+        }
+        
+        if (contactResponse.ok) {
+          const rawContact = await contactResponse.json();
+          const c: any = rawContact?.contact || rawContact;
+          contactName = c?.name || 
+                       (c?.firstName && c?.lastName ? 
+                        `${c.firstName} ${c.lastName}`.trim() : 
+                        c?.firstName || c?.lastName) || null;
+          contactEmail = c?.email || null;
+          contactPhone = c?.phone || null;
+          // capture attribution and source (same as appointments/discoveries)
+          dialAttrSource = c?.attributionSource || null;
+          dialLastAttrSource = c?.lastAttributionSource || null;
+          contactSource = c?.source || null;
+          
+          console.log('✅ Successfully fetched contact data:', {
+            name: contactName,
+            email: contactEmail,
+            phone: contactPhone
+          });
+        } else {
+          console.log('⚠️ Contact not found in GHL API');
+        }
+      } catch (error) {
+        console.error('❌ Error fetching contact from GHL:', error);
+      }
+    }
+    
+    // Prepare dial data (mapped to existing dials schema)
+    const contactAttribution = dialAttrSource || dialLastAttrSource || {};
+    const attributionSource = dialAttrSource || null;
+    const lastAttributionSource = dialLastAttrSource || null;
+
+    let classifiedAttribution: any = null;
+    try {
+      if (contactAttribution && (contactAttribution.utmSource || contactAttribution.utmMedium || contactAttribution.campaign || contactAttribution.referrer || contactAttribution.gclid || contactAttribution.fbclid)) {
+        const { data: attributionResult, error: attributionError } = await supabase
+          .rpc('classify_contact_attribution' as any, {
+            p_utm_source: contactAttribution.utmSource || null,
+            p_utm_medium: contactAttribution.utmMedium || null,
+            p_utm_campaign: contactAttribution.campaign || null,
+            p_referrer: contactAttribution.referrer || null,
+            p_gclid: contactAttribution.gclid || null,
+            p_fbclid: contactAttribution.fbclid || null,
+          });
+        if (!attributionError) {
+          classifiedAttribution = attributionResult;
+        }
+      }
+    } catch {}
+
+    let enhancedClassification: any = null;
+    try {
+      if (attributionSource) {
+        const { data: enhancedResult, error: enhancedError } = await supabase
+          .rpc('classify_enhanced_attribution' as any, {
+            p_utm_source: attributionSource.utmSource || null,
+            p_utm_medium: attributionSource.utmMedium || null,
+            p_utm_campaign: attributionSource.campaign || null,
+            p_session_source: attributionSource.sessionSource || null,
+            p_fbclid: attributionSource.fbclid || null,
+            p_landing_url: attributionSource.url || null
+          });
+        if (!enhancedError) {
+          enhancedClassification = enhancedResult;
+        }
+      }
+    } catch {}
+
+    const dialData = {
+      account_id: account.id,
+      setter: setterName || 'Unknown',
+      setter_user_id: linkedSetterUserId,
+      duration: payload.callDuration || 0,
+      call_recording_link: payload.attachments?.[0] || null,
+      answered: payload.callDuration > 30 && payload.status === 'completed' && payload.callStatus !== 'voicemail',
+      meaningful_conversation: payload.callDuration > 120 && payload.status === 'completed' && payload.callStatus !== 'voicemail',
+      date_called: new Date(payload.timestamp || payload.dateAdded || new Date().toISOString()).toISOString(),
+    } as any;
+
+    // Try to upsert contact first
+    try {
+      const contactUpsert = {
+        account_id: account.id,
+        ghl_contact_id: payload.contactId || null,
+        first_name: contactName?.split(' ')?.[0] || null,
+        last_name: contactName?.split(' ')?.slice(1).join(' ') || null,
+        name: contactName || null,
+        email: contactEmail || null,
+        phone: contactPhone || null,
+        source: contactSource || null,
+        attribution_source: dialAttrSource || null,
+        last_attribution_source: dialLastAttrSource || null,
+        date_added: new Date().toISOString(), // Set current time as fallback
+      }
+      
+      console.log('👤 Contact data for dial:', {
+        hasGhlContactId: !!contactUpsert.ghl_contact_id,
+        hasEmail: !!contactUpsert.email,
+        hasPhone: !!contactUpsert.phone,
+        hasName: !!contactUpsert.name,
+        contactData: contactUpsert
+      });
+      
+      if (contactUpsert.ghl_contact_id || contactUpsert.email || contactUpsert.phone) {
+        console.log('📝 Upserting contact for dial...');
+        const { data: up, error: upsertError } = await supabase
           .from('contacts')
-          .upsert({
-            account_id: account.id,
-            ghl_contact_id: payload.appointment?.contactId || contactData?.id || null,
-            name: (contactData?.name || ((contactData?.firstName || '') || '') || '').toString() || null,
-            email: contactData?.email || null,
-            phone: contactData?.phone || null,
-            date_added: contactData?.dateAdded ? new Date(contactData.dateAdded).toISOString() : new Date().toISOString(),
-          }, { onConflict: 'account_id,ghl_contact_id' })
+          .upsert(contactUpsert, { onConflict: 'account_id,ghl_contact_id' })
           .select('id')
           .maybeSingle()
-        appointmentContactId = up?.data?.id || null
         
-        // FUTURE-PROOF FALLBACK: If contact creation failed, try GHL sync
-        if (!appointmentContactId && (payload.appointment?.contactId || contactData?.id)) {
-          console.log('🔄 Attempting contact sync from GHL API for appointment...');
-          const { syncSingleContactFromGHL } = await import('@/lib/ghl-contact-sync');
-          const ghlContactId = payload.appointment?.contactId || contactData?.id;
+        if (upsertError) {
+          console.error('❌ Contact upsert failed:', upsertError);
           
-          if (ghlContactId && typeof ghlContactId === 'string') {
-            const syncResult = await syncSingleContactFromGHL(account.id, ghlContactId);
+          // FUTURE-PROOF FALLBACK: Use the same API process as Sync Contacts button
+          if (payload.contactId && typeof payload.contactId === 'string') {
+            console.log('🔄 Attempting contact sync from GHL API as fallback...');
+            const { syncSingleContactFromGHL } = await import('@/lib/ghl-contact-sync');
+            const syncResult = await syncSingleContactFromGHL(account.id, payload.contactId);
             
             if (syncResult.success && syncResult.contactId) {
-              appointmentContactId = syncResult.contactId;
-              console.log('✅ Contact synced from GHL and linked to appointment:', syncResult.contactId);
+              dialData.contact_id = syncResult.contactId;
+              console.log('✅ Contact synced from GHL and linked to dial:', syncResult.contactId);
             } else {
-              console.log('⚠️ GHL contact sync failed for appointment:', syncResult.error);
+              console.log('⚠️ GHL contact sync also failed:', syncResult.error);
             }
           }
-        }
-      } catch (contactSyncError) {
-        console.error('❌ Contact sync error for appointment:', contactSyncError);
-        
-        // FINAL FALLBACK: Try GHL sync even after errors
-        if (payload.appointment?.contactId || contactData?.id) {
-          try {
-            console.log('🔄 Final attempt at contact sync from GHL API...');
+        } else if (up?.id) {
+          dialData.contact_id = up.id
+          console.log('✅ Contact linked to dial:', up.id);
+        } else {
+          console.log('⚠️ Contact upsert succeeded but no ID returned');
+          
+          // FUTURE-PROOF FALLBACK: Try GHL sync if we have a contact ID
+          if (payload.contactId && typeof payload.contactId === 'string') {
+            console.log('🔄 Attempting contact sync from GHL API as fallback...');
             const { syncSingleContactFromGHL } = await import('@/lib/ghl-contact-sync');
-            const ghlContactId = payload.appointment?.contactId || contactData?.id;
+            const syncResult = await syncSingleContactFromGHL(account.id, payload.contactId);
             
-            if (ghlContactId && typeof ghlContactId === 'string') {
-              const syncResult = await syncSingleContactFromGHL(account.id, ghlContactId);
-              
-              if (syncResult.success && syncResult.contactId) {
-                appointmentContactId = syncResult.contactId;
-                console.log('✅ Contact synced from GHL after error and linked to appointment:', syncResult.contactId);
-              }
+            if (syncResult.success && syncResult.contactId) {
+              dialData.contact_id = syncResult.contactId;
+              console.log('✅ Contact synced from GHL and linked to dial:', syncResult.contactId);
             }
-          } catch (finalError) {
-            console.error('❌ Final GHL contact sync also failed:', finalError);
           }
         }
+      } else {
+        console.log('⚠️ No contact identifiers available - attempting GHL sync as last resort');
+        
+        // FUTURE-PROOF FALLBACK: Even without basic identifiers, try GHL sync if we have contact ID
+        if (payload.contactId && typeof payload.contactId === 'string') {
+          console.log('🔄 Attempting contact sync from GHL API...');
+          const { syncSingleContactFromGHL } = await import('@/lib/ghl-contact-sync');
+          const syncResult = await syncSingleContactFromGHL(account.id, payload.contactId);
+          
+          if (syncResult.success && syncResult.contactId) {
+            dialData.contact_id = syncResult.contactId;
+            console.log('✅ Contact synced from GHL and linked to dial:', syncResult.contactId);
+          } else {
+            console.log('⚠️ No contact data available for dial - will save without contact linking');
+            console.log('📋 Missing contact data debug:', {
+              rawPayload: {
+                contactId: payload.contactId,
+                userId: payload.userId,
+                messageId: payload.messageId
+              },
+              fetchedData: {
+                contactName,
+                contactEmail, 
+                contactPhone
+              }
+            });
+          }
+        } else {
+          console.log('⚠️ No contact ID available - dial will be saved without contact linking');
+        }
       }
-
-      // ENHANCE WITH PROMETHEAN INTERNAL ATTRIBUTION
-      let enhancedWithInternal = false;
-      if (appointmentContactId && contactData) {
+    } catch (contactError) {
+      console.error('❌ Error in contact upsert process:', contactError);
+      
+      // FUTURE-PROOF FALLBACK: Try GHL sync even after errors
+      if (payload.contactId && typeof payload.contactId === 'string') {
         try {
-          console.log('🎯 Attempting to enhance with Promethean internal attribution...');
+          console.log('🔄 Attempting contact sync from GHL API after error...');
+          const { syncSingleContactFromGHL } = await import('@/lib/ghl-contact-sync');
+          const syncResult = await syncSingleContactFromGHL(account.id, payload.contactId);
           
-          const enhanceResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'https://www.getpromethean.com'}/api/attribution/enhance-webhook`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              contact_id: appointmentContactId,
-              ghl_contact_data: contactData,
-              webhook_type: 'appointment'
-            })
-          });
-
-          if (enhanceResponse.ok) {
-            const enhanceResult = await enhanceResponse.json();
-            if (enhanceResult.enhanced) {
-              enhancedWithInternal = true;
-              console.log('✅ Successfully enhanced attribution with internal tracking:', {
-                session_id: enhanceResult.session_id,
-                attribution_quality: enhanceResult.attribution_quality,
-                meta_ad_data: enhanceResult.meta_ad_data
-              });
-            } else {
-              console.log('ℹ️ No internal attribution session found for enhancement');
-            }
-          } else {
-            console.warn('⚠️ Failed to enhance with internal attribution:', enhanceResponse.status);
+          if (syncResult.success && syncResult.contactId) {
+            dialData.contact_id = syncResult.contactId;
+            console.log('✅ Contact synced from GHL after error and linked to dial:', syncResult.contactId);
           }
-        } catch (error) {
-          console.error('❌ Error enhancing with internal attribution:', error);
-          // Don't fail the main webhook for this
+        } catch (syncError) {
+          console.error('❌ GHL contact sync also failed:', syncError);
         }
       }
+    }
 
-      const appointmentData = {
-        ...baseData,
-        date_booked: actualBookingTime, // When appointment was actually booked in GHL
-        date_booked_for: appointmentStartTime ? 
-          new Date(appointmentStartTime).toISOString() : null, // When appointment is scheduled
-        cash_collected: null,
-        total_sales_value: null,
-        metadata: JSON.stringify(metadata),
-        setter_user_id: userIds.setterUserId || null,
-        sales_rep_user_id: userIds.salesRepUserId || null,
-        setter_ghl_id: setterData?.id || null,
-        sales_rep_ghl_id: salesRepData?.id || null,
-        ghl_appointment_id: payload.appointment?.id || null,
-        ghl_source: fullAppointmentData?.createdBy?.source || fullAppointmentData?.source || 'unknown', // Add GHL source from createdBy.source
-        contact_id: appointmentContactId,
-      };
-      
-      // Check for existing appointment to prevent duplicates
-      // Use GHL appointment ID as primary unique identifier, with fallback to comprehensive matching
-      const ghlAppointmentId = payload.appointment?.id;
-      
-      if (ghlAppointmentId) {
-        // First check: Look for existing appointment with same GHL ID
-        const { data: existingByGhlId } = await supabase
-          .from('appointments')
-          .select('id, ghl_appointment_id, call_outcome, show_outcome, cash_collected, total_sales_value, pitched, watched_assets, objections, lead_quality')
-          .eq('account_id', account.id)
-          .eq('ghl_appointment_id', ghlAppointmentId)
-          .maybeSingle();
-        
-        if (existingByGhlId) {
-          console.log('📋 Existing appointment found, updating linking fields only:', {
-            existingId: existingByGhlId.id,
-            ghlAppointmentId: ghlAppointmentId,
-            contactId: appointmentContactId
-          });
-          
-          // Update only linking fields, preserve outcome data
-          const linkingUpdate = {
-            contact_id: appointmentContactId,
-            setter_user_id: userIds.setterUserId || null,
-            sales_rep_user_id: userIds.salesRepUserId || null,
-            setter_ghl_id: setterData?.id || null,
-            sales_rep_ghl_id: salesRepData?.id || null,
-            setter: getSetterName(),
-            sales_rep: getSalesRepName(),
-            updated_at: new Date().toISOString(),
-          };
-          
-          const { error: updateError } = await supabase
+    console.log('💾 Saving dial data:', {
+      ...dialData,
+      setter_info: setterName ? { name: setterName, email: setterEmail } : null
+    });
+    
+    // Save to dials table
+    const { data: savedDial, error: dialError } = await supabase
+      .from('dials')
+      .insert(sanitizeRecord(dialData))
+      .select()
+      .single();
+    
+    if (dialError) {
+      console.error('Failed to save dial:', dialError);
+      throw dialError;
+    }
+    
+    console.log('✅ Dial saved successfully:', savedDial.id);
+    
+    // New: If the appointment already exists (dial arrived after appointment), link it here
+    // FIXED: Only link appointments that happen AFTER the dial, within 30 minutes
+    try {
+      if (dialData.contact_id) {
+        const dialTimeIso = dialData.date_called;
+        if (dialTimeIso) {
+          const dialTime = new Date(dialTimeIso);
+          // Look for appointments within ±30 minutes of dial (appointment can be booked during call before hangup)
+          const windowStart = new Date(dialTime.getTime() - 30 * 60 * 1000); // 30 minutes before dial
+          const windowEnd = new Date(dialTime.getTime() + 30 * 60 * 1000); // 30 minutes after dial
+
+          const { data: matchedAppts } = await supabase
             .from('appointments')
-            .update(linkingUpdate)
-            .eq('id', existingByGhlId.id);
-            
-          if (updateError) {
-            console.error('Failed to update appointment linking:', updateError);
-          } else {
-            console.log('✅ Updated appointment linking fields:', existingByGhlId.id);
-            
-            // Also update discovery linking if contact_id changed
-            if (appointmentContactId) {
-              try {
-                const bookedAt = new Date(existingByGhlId.id ? new Date() : new Date()); // Use current time for existing
-                const discWindowStart = new Date(bookedAt.getTime() - 60 * 60 * 1000);
-
-                const { data: matchedDisc } = await supabase
-                  .from('discoveries')
-                  .select('id, linked_appointment_id')
-                  .eq('account_id', account.id)
-                  .eq('contact_id', appointmentContactId)
-                  .gte('date_booked_for', discWindowStart.toISOString())
-                  .lte('date_booked_for', bookedAt.toISOString())
-                  .is('linked_appointment_id', null)
-                  .order('date_booked_for', { ascending: false })
-                  .limit(1)
-                  .maybeSingle();
-
-                if (matchedDisc) {
-                  await supabase.from('appointments').update({ linked_discovery_id: matchedDisc.id }).eq('id', existingByGhlId.id);
-                  await supabase.from('discoveries').update({ linked_appointment_id: existingByGhlId.id, show_outcome: 'booked' }).eq('id', matchedDisc.id);
-                  console.log('🔗 Updated discovery link for existing appointment:', { discoveryId: matchedDisc.id, appointmentId: existingByGhlId.id });
-                }
-              } catch (e) {
-                console.warn('Failed to update discovery link:', e);
-              }
-            }
-          }
-          
-          return; // Skip creating new appointment
-        }
-      }
-      
-      // Second check: Comprehensive duplicate detection for appointments without GHL ID
-      // Use contact_id and scheduled time
-      if (appointmentContactId && appointmentData.date_booked_for) {
-        const { data: existingComprehensive } = await supabase
-          .from('appointments')
-          .select('id, sales_rep_ghl_id, setter_ghl_id, ghl_appointment_id')
-          .eq('account_id', account.id)
-          .eq('contact_id', appointmentContactId)
-          .eq('date_booked_for', appointmentData.date_booked_for)
-          .maybeSingle();
-        
-        if (existingComprehensive) {
-          const sameRep = existingComprehensive.sales_rep_ghl_id === appointmentData.sales_rep_ghl_id;
-          const sameSetter = existingComprehensive.setter_ghl_id === appointmentData.setter_ghl_id;
-          const hasGhlId = existingComprehensive.ghl_appointment_id;
-          
-          if ((sameRep || sameSetter) && !hasGhlId) {
-            console.log('📋 Duplicate appointment detected by comprehensive matching, skipping:', {
-              existingId: existingComprehensive.id,
-              contactId: appointmentContactId,
-              scheduledTime: appointmentData.date_booked_for,
-              reason: sameRep ? 'same sales rep' : 'same setter'
-            });
-            return;
-          } else {
-            console.log('✅ Same contact/time but different team members - allowing as separate appointment:', {
-              newSalesRep: appointmentData.sales_rep_ghl_id,
-              existingSalesRep: existingComprehensive.sales_rep_ghl_id,
-              newSetter: appointmentData.setter_ghl_id,
-              existingSetter: existingComprehensive.setter_ghl_id
-            });
-          }
-        }
-      }
-
-      const { data: savedAppointment, error: saveError } = await supabase
-        .from('appointments')
-        .insert(sanitizeRecord({
-          ...appointmentData,
-          contact_id: appointmentContactId,
-        }))
-        .select()
-        .single();
-      
-      if (saveError) {
-        console.error('Failed to save appointment:', saveError);
-        throw new Error(`Failed to save appointment: ${saveError.message}`);
-      }
-      
-      console.log('✅ Appointment saved successfully:', payload.appointment?.id);
-      
-      // Link appointment to originating dial (for "booked calls from dials" metrics)
-      try {
-        if (appointmentContactId && savedAppointment.date_booked) {
-          const bookedAt = new Date(savedAppointment.date_booked as string);
-          // FIXED: Link dials within ±30 minutes of appointment (dial can happen before OR after appointment webhook)
-          const dialWindowStart = new Date(bookedAt.getTime() - 30 * 60 * 1000); // 30 minutes before appointment
-          const dialWindowEnd = new Date(bookedAt.getTime() + 30 * 60 * 1000); // 30 minutes after appointment
-
-          const { data: matchingDials, error: dialSearchErr } = await supabase
-            .from('dials')
-            .select('id, date_called, contact_id')
+            .select('id, date_booked, contact_id')
             .eq('account_id', account.id)
-            .eq('contact_id', appointmentContactId)
-            .eq('booked', false) // Only unbooked dials
-            .gte('date_called', dialWindowStart.toISOString())
-            .lte('date_called', dialWindowEnd.toISOString())
-            .order('date_called', { ascending: false }) // Most recent first
-            .limit(1);
+            .eq('contact_id', dialData.contact_id)
+            .gte('date_booked', windowStart.toISOString())
+            .lte('date_booked', windowEnd.toISOString())
+            .order('date_booked', { ascending: true })
+            .limit(1)
+          const matchedAppt = matchedAppts && matchedAppts.length > 0 ? matchedAppts[0] : null
 
-          if (dialSearchErr) {
-            console.error('Error searching for dials to link to appointment:', dialSearchErr);
-          } else if (matchingDials && matchingDials.length > 0) {
-            const dialToLink = matchingDials[0];
-            const { error: linkDialErr } = await supabase
+          if (matchedAppt) {
+            const minutesDiff = (new Date(matchedAppt.date_booked).getTime() - dialTime.getTime()) / (1000 * 60);
+            const { error: updErr } = await supabase
               .from('dials')
               .update({ 
                 booked: true, 
-                booked_appointment_id: savedAppointment.id 
+                booked_appointment_id: matchedAppt.id,
               })
-              .eq('id', dialToLink.id);
-
-            if (linkDialErr) {
-              console.error('Failed to link dial to appointment:', linkDialErr);
+              .eq('id', savedDial.id);
+            if (updErr) {
+              console.error('Failed to mark dial as booked/link appointment (dial-first path):', updErr);
             } else {
-              const minutesDiff = (new Date(savedAppointment.date_booked as string).getTime() - new Date(dialToLink.date_called).getTime()) / (1000 * 60);
-              console.log('🔗 Linked dial to appointment:', { 
-                dialId: dialToLink.id, 
-                appointmentId: savedAppointment.id,
-                minutesApart: Math.round(minutesDiff * 10) / 10
+              console.log('🔗 Linked dial to existing appointment (dial-first path):', { 
+                dialId: savedDial.id, 
+                appointmentId: matchedAppt.id,
+                minutesAfterDial: Math.round(minutesDiff * 10) / 10
               });
             }
           } else {
-            console.log('ℹ️ No matching dials found within ±30 minutes of appointment for linking');
-          }
-        }
-      } catch (dialLinkError) {
-        console.error('Error in appointment dial linking:', dialLinkError);
-        // Don't throw - this shouldn't fail the appointment creation
-      }
-      
-      // Note: Removed automatic role refresh to prevent roles from changing randomly
-      // User roles should only be changed manually by admins, not automatically by webhooks
-      
-      // Link discovery→appointment when discovery was scheduled within 60 minutes before booking
-      try {
-        const bookedAtIso = savedAppointment.date_booked as string;
-        if (bookedAtIso) {
-          const bookedAt = new Date(bookedAtIso);
-          const discWindowStart = new Date(bookedAt.getTime() - 60 * 60 * 1000);
-
-          // Match discovery by contact_id within the window
-          let matchedDisc: any = null;
-          if (appointmentContactId) {
-            const { data: discs, error: discErr } = await supabase
-              .from('discoveries')
-              .select('id, date_booked_for, contact_id, linked_appointment_id')
-              .eq('account_id', account.id)
-              .eq('contact_id', appointmentContactId)
-              .gte('date_booked_for', discWindowStart.toISOString())
-              .lte('date_booked_for', bookedAt.toISOString())
-              .order('date_booked_for', { ascending: false })
-              .limit(1)
-            if (discErr) {
-              console.error('Error searching discoveries for appointment-side linking:', discErr);
-            } else if (discs && discs.length > 0) {
-              matchedDisc = discs[0]
-            }
-          }
-
-          if (matchedDisc && !matchedDisc.linked_appointment_id) {
-            const { error: linkApptErr } = await supabase
-              .from('appointments')
-              .update({ linked_discovery_id: matchedDisc.id })
-              .eq('id', savedAppointment.id);
-            const { error: linkDiscErr } = await supabase
-              .from('discoveries')
-              .update({ linked_appointment_id: savedAppointment.id })
-              .eq('id', matchedDisc.id);
-            if (linkApptErr || linkDiscErr) {
-              console.error('Failed to set discovery<->appointment link (appt-side):', linkApptErr || linkDiscErr);
-            } else {
-              console.log('🔗 Linked discovery to appointment (appt-side):', { discoveryId: matchedDisc.id, appointmentId: savedAppointment.id });
-
-              // Backfill discovery's sales rep IDs from the appointment now that we have the link
-              try {
-                const repUserId = (savedAppointment as any)?.sales_rep_user_id || null;
-                const repGhlId = (savedAppointment as any)?.sales_rep_ghl_id || (salesRepData?.id ?? null);
-                if (repUserId || repGhlId) {
-                  const { error: updateDiscRepErr } = await supabase
-                    .from('discoveries')
-                    .update({ 
-                      sales_rep_user_id: repUserId,
-                      sales_rep_ghl_id: repGhlId,
-                    })
-                    .eq('id', matchedDisc.id);
-                  if (updateDiscRepErr) {
-                    console.warn('⚠️ Failed to backfill discovery sales rep IDs after linking:', updateDiscRepErr);
-                  } else {
-                    console.log('✅ Backfilled discovery sales rep IDs from appointment');
-                  }
-                }
-              } catch (bfErr) {
-                console.warn('⚠️ Exception while backfilling discovery sales rep IDs:', bfErr);
-              }
-
-              // Note: Keeping dial links for "booked calls from dials" metrics
-              // Previously this code cleared dial links, but we need them for dashboard metrics
-              console.log('🔗 Discovery linked - maintaining dial links for metrics compatibility');
-            }
-          }
-        }
-      } catch (e3) {
-        console.error('Error in appointment-side discovery linking:', e3);
-      }
-      
-    } else if (calendarMapping.target_table === 'discoveries') {
-      // Auto-create users for discoveries
-      // Rule: setter = appointment owner (salesRepData). sales_rep stays blank until a linked appointment is found
-      console.log('👥 Auto-creating users for discovery data (setter from appointment owner, sales_rep blank):', {
-        setter: baseData.setter,
-        setterGhlId: salesRepData?.id,
-      });
-
-      const { linkExistingUsersToData } = await import('@/lib/auto-user-creation');
-      const userIds = await linkExistingUsersToData(
-        supabase,
-        account.id,
-        baseData.setter, // appointment owner (salesRepData)
-        null, // sales_rep unknown at discovery time
-        salesRepData?.email,
-        null
-      );
-
-      console.log('✅ User creation results for discovery:', {
-        setterUserId: userIds.setterUserId || 'None',
-        salesRepUserId: 'None (deferred until appointment link)'
-      });
-
-      // Process contact attribution data for discoveries
-      const contactAttribution = contactData?.attributionSource || contactData?.lastAttributionSource || {};
-      console.log('🎯 Processing discovery contact attribution:', {
-        contactSource: contactData?.source,
-        attributionSource: contactAttribution,
-        hasAttribution: !!contactAttribution
-      });
-
-      // Call the classification function for discoveries
-      let classifiedAttribution = null;
-      if (contactData) {
-        try {
-          const { data: attributionResult, error: attributionError } = await supabase
-            .rpc('classify_contact_attribution_enhanced', {
-              p_contact_source: contactData.source || null,
-              p_utm_source: contactAttribution.utmSource || null,
-              p_utm_medium: contactAttribution.utmMedium || null,
-              p_utm_campaign: contactAttribution.campaign || null,
-              p_referrer: contactAttribution.referrer || null,
-              p_gclid: contactAttribution.gclid || null,
-              p_fbclid: contactAttribution.fbclid || null,
-              p_account_id: account.id
-            });
-
-          if (attributionError) {
-            console.error('Error classifying discovery contact attribution:', attributionError);
-          } else {
-            classifiedAttribution = attributionResult;
-            console.log('✅ Discovery contact attribution classified:', classifiedAttribution);
-          }
-        } catch (error) {
-          console.error('Error calling discovery attribution classification:', error);
-        }
-      }
-
-      // Resolve contact_id EARLY for duplicate detection
-      let discoveryContactId: string | null = null
-      try {
-        const up = await supabase
-          .from('contacts')
-          .upsert({
-            account_id: account.id,
-            ghl_contact_id: payload.appointment?.contactId || contactData?.id || null,
-            name: (contactData?.name || ((contactData?.firstName || '') || '') || '').toString() || null,
-            email: contactData?.email || null,
-            phone: contactData?.phone || null,
-            date_added: contactData?.dateAdded ? new Date(contactData.dateAdded).toISOString() : new Date().toISOString(),
-          }, { onConflict: 'account_id,ghl_contact_id' })
-          .select('id')
-          .maybeSingle()
-        discoveryContactId = up?.data?.id || null
-        
-        // FUTURE-PROOF FALLBACK: If contact creation failed, try GHL sync
-        if (!discoveryContactId && (payload.appointment?.contactId || contactData?.id)) {
-          console.log('🔄 Attempting contact sync from GHL API for discovery...');
-          const { syncSingleContactFromGHL } = await import('@/lib/ghl-contact-sync');
-          const ghlContactId = payload.appointment?.contactId || contactData?.id;
-          
-          if (ghlContactId && typeof ghlContactId === 'string') {
-            const syncResult = await syncSingleContactFromGHL(account.id, ghlContactId);
-            
-            if (syncResult.success && syncResult.contactId) {
-              discoveryContactId = syncResult.contactId;
-              console.log('✅ Contact synced from GHL and linked to discovery:', syncResult.contactId);
-            } else {
-              console.log('⚠️ GHL contact sync failed for discovery:', syncResult.error);
-            }
-          }
-        }
-      } catch (contactSyncError) {
-        console.error('❌ Contact sync error for discovery:', contactSyncError);
-        
-        // FINAL FALLBACK: Try GHL sync even after errors
-        if (payload.appointment?.contactId || contactData?.id) {
-          try {
-            console.log('🔄 Final attempt at contact sync from GHL API...');
-            const { syncSingleContactFromGHL } = await import('@/lib/ghl-contact-sync');
-            const ghlContactId = payload.appointment?.contactId || contactData?.id;
-            
-            if (ghlContactId && typeof ghlContactId === 'string') {
-              const syncResult = await syncSingleContactFromGHL(account.id, ghlContactId);
-              
-              if (syncResult.success && syncResult.contactId) {
-                discoveryContactId = syncResult.contactId;
-                console.log('✅ Contact synced from GHL after error and linked to discovery:', syncResult.contactId);
-              }
-            }
-          } catch (finalError) {
-            console.error('❌ Final GHL contact sync also failed:', finalError);
+            console.log('ℹ️ No appointment found within ±30 minutes of dial for linking via contact_id');
           }
         }
       }
-
-      const discoveryData = {
-        ...baseData,
-        date_booked_for: payload.appointment.startTime ? 
-          new Date(payload.appointment.startTime).toISOString() : null,
-        setter_user_id: userIds.setterUserId || null, // appointment owner user ID
-        sales_rep_user_id: null, // never set from creator at discovery time
-        setter_ghl_id: salesRepData?.id || null, // setter from appointment owner
-        sales_rep_ghl_id: null, // never set from creator at discovery time
-        ghl_appointment_id: payload.appointment?.id || null,
-        ghl_source: fullAppointmentData?.createdBy?.source || fullAppointmentData?.source || 'unknown', // Add GHL source from createdBy.source
-        contact_id: discoveryContactId,
-      };
-      
-      // Check for existing discovery to prevent duplicates
-      // Use GHL appointment ID as primary unique identifier, with fallback to comprehensive matching
-      const ghlAppointmentId = payload.appointment?.id;
-      
-      if (ghlAppointmentId) {
-        // First check: Look for existing discovery with same GHL ID
-        const { data: existingByGhlId } = await supabase
-          .from('discoveries')
-          .select('id, ghl_appointment_id, call_outcome, show_outcome, lead_quality')
-          .eq('account_id', account.id)
-          .eq('ghl_appointment_id', ghlAppointmentId)
-          .maybeSingle();
-        
-        if (existingByGhlId) {
-          console.log('📋 Existing discovery found, updating linking fields only:', {
-            existingId: existingByGhlId.id,
-            ghlAppointmentId: ghlAppointmentId,
-            contactId: discoveryContactId
-          });
-          
-          // Update only linking fields, preserve outcome data
-          const linkingUpdate = {
-            contact_id: discoveryContactId,
-            setter_user_id: userIds.setterUserId || null,
-            sales_rep_user_id: userIds.salesRepUserId || null,
-            setter_ghl_id: salesRepData?.id || null, // setter from appointment owner
-            sales_rep_ghl_id: setterData?.id || null, // sales rep from setter
-            setter: getSetterName(),
-            sales_rep: getSalesRepName(),
-            updated_at: new Date().toISOString(),
-          };
-          
-          const { error: updateError } = await supabase
-            .from('discoveries')
-            .update(linkingUpdate)
-            .eq('id', existingByGhlId.id);
-            
-          if (updateError) {
-            console.error('Failed to update discovery linking:', updateError);
-          } else {
-            console.log('✅ Updated discovery linking fields:', existingByGhlId.id);
-          }
-          
-          return; // Skip creating new discovery
-        }
-      }
-      
-      // Second check: Comprehensive duplicate detection for discoveries without GHL ID
-      // Use contact_id and scheduled time
-      if (discoveryContactId && discoveryData.date_booked_for) {
-        const { data: existingComprehensive } = await supabase
-          .from('discoveries')
-          .select('id, sales_rep_ghl_id, setter_ghl_id, ghl_appointment_id')
-          .eq('account_id', account.id)
-          .eq('contact_id', discoveryContactId)
-          .eq('date_booked_for', discoveryData.date_booked_for)
-          .maybeSingle();
-        
-        if (existingComprehensive) {
-          const sameRep = existingComprehensive.sales_rep_ghl_id === discoveryData.sales_rep_ghl_id;
-          const sameSetter = existingComprehensive.setter_ghl_id === discoveryData.setter_ghl_id;
-          const hasGhlId = existingComprehensive.ghl_appointment_id;
-          
-          if ((sameRep || sameSetter) && !hasGhlId) {
-            console.log('📋 Duplicate discovery detected by comprehensive matching, skipping:', {
-              existingId: existingComprehensive.id,
-              contactId: discoveryContactId,
-              scheduledTime: discoveryData.date_booked_for,
-              reason: sameRep ? 'same sales rep' : 'same setter'
-            });
-            return;
-          } else {
-            console.log('✅ Same contact/time but different team members - allowing as separate discovery:', {
-              newSalesRep: discoveryData.sales_rep_ghl_id,
-              existingSalesRep: existingComprehensive.sales_rep_ghl_id,
-              newSetter: discoveryData.setter_ghl_id,
-              existingSetter: existingComprehensive.setter_ghl_id
-            });
-          }
-        }
-      }
-
-      const { data: savedDiscovery, error: saveError } = await supabase
-        .from('discoveries')
-        .insert(sanitizeRecord({
-          ...discoveryData,
-          contact_id: discoveryContactId,
-        }))
-        .select()
-        .single();
-      
-      if (saveError) {
-        console.error('Failed to save discovery:', saveError);
-        throw new Error(`Failed to save discovery: ${saveError.message}`);
-      }
-      
-      console.log('✅ Discovery saved successfully:', payload.appointment?.id);
-      
-      // Note: Removed automatic role refresh to prevent roles from changing randomly
-      // User roles should only be changed manually by admins, not automatically by webhooks
-      
-      // Removed dial linking for discoveries per new rules
+    } catch (e) {
+      console.error('Error linking dial to appointment (dial-first path):', e);
     }
     
   } catch (error) {
-    console.error('Error processing appointment webhook:', error);
+    console.error('Error processing phone call webhook:', error);
     throw error;
   }
 }
