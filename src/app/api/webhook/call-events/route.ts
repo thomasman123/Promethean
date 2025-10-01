@@ -849,6 +849,7 @@ async function processPhoneCallWebhook(payload: any) {
     }
     
     // Get contact information by fetching from GHL API
+    let currentAccessToken = account.ghl_api_key
     let contactName = null;
     let contactEmail = null;
     let contactPhone = null;
@@ -866,7 +867,7 @@ async function processPhoneCallWebhook(payload: any) {
           'Version': '2021-07-28',
         } as Record<string, string>);
 
-        let contactToken = currentAccessToken || account.ghl_api_key;
+        let contactToken = currentAccessToken;
         let contactResponse = await fetch(`https://services.leadconnectorhq.com/contacts/${payload.contactId}`, {
           headers: makeContactHeaders(contactToken),
         });
@@ -980,9 +981,6 @@ async function processPhoneCallWebhook(payload: any) {
       answered: payload.callDuration > 30 && payload.status === 'completed' && payload.callStatus !== 'voicemail',
       meaningful_conversation: payload.callDuration > 120 && payload.status === 'completed' && payload.callStatus !== 'voicemail',
       date_called: new Date(payload.timestamp || payload.dateAdded || new Date().toISOString()).toISOString(),
-      contact_email_snapshot: contactEmail || null,
-      contact_phone_snapshot: contactPhone || null,
-      contact_name_snapshot: contactName || null,
     } as any;
 
     // Try to upsert contact first
@@ -1416,9 +1414,6 @@ async function processAppointmentWebhook(payload: any) {
       answered: payload.callDuration > 30 && payload.status === 'completed' && payload.callStatus !== 'voicemail',
       meaningful_conversation: payload.callDuration > 120 && payload.status === 'completed' && payload.callStatus !== 'voicemail',
       date_called: new Date(payload.timestamp || payload.dateAdded || new Date().toISOString()).toISOString(),
-      contact_email_snapshot: contactEmail || null,
-      contact_phone_snapshot: contactPhone || null,
-      contact_name_snapshot: contactName || null,
     } as any;
 
     // Try to upsert contact first
