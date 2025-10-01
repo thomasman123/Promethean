@@ -840,8 +840,7 @@ async function processPhoneCallWebhook(payload: any) {
         setterName,
         null,
         setterEmail,
-        null,
-        { allowAutoGrant: false }
+        null
       );
       linkedSetterUserId = userIds.setterUserId || null;
       console.log('✅ User link results for dial:', { setterUserId: linkedSetterUserId || 'None' });
@@ -983,6 +982,9 @@ async function processPhoneCallWebhook(payload: any) {
       answered: payload.callDuration > 30 && payload.status === 'completed' && payload.callStatus !== 'voicemail',
       meaningful_conversation: payload.callDuration > 120 && payload.status === 'completed' && payload.callStatus !== 'voicemail',
       date_called: new Date(payload.timestamp || payload.dateAdded || new Date().toISOString()).toISOString(),
+      contact_email_snapshot: contactEmail || null,
+      contact_phone_snapshot: contactPhone || null,
+      contact_name_snapshot: contactName || null,
     } as any;
 
     // Try to upsert contact first
@@ -1295,8 +1297,7 @@ async function processAppointmentWebhook(payload: any) {
         setterName,
         null,
         setterEmail,
-        null,
-        { allowAutoGrant: false }
+        null
       );
       linkedSetterUserId = userIds.setterUserId || null;
       console.log('✅ User link results for dial:', { setterUserId: linkedSetterUserId || 'None' });
@@ -1417,6 +1418,9 @@ async function processAppointmentWebhook(payload: any) {
       answered: payload.callDuration > 30 && payload.status === 'completed' && payload.callStatus !== 'voicemail',
       meaningful_conversation: payload.callDuration > 120 && payload.status === 'completed' && payload.callStatus !== 'voicemail',
       date_called: new Date(payload.timestamp || payload.dateAdded || new Date().toISOString()).toISOString(),
+      contact_email_snapshot: contactEmail || null,
+      contact_phone_snapshot: contactPhone || null,
+      contact_name_snapshot: contactName || null,
     } as any;
 
     // Try to upsert contact first
