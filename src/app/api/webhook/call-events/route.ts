@@ -840,7 +840,8 @@ async function processPhoneCallWebhook(payload: any) {
         setterName,
         null,
         setterEmail,
-        null
+        null,
+        { allowAutoGrant: false }
       );
       linkedSetterUserId = userIds.setterUserId || null;
       console.log('✅ User link results for dial:', { setterUserId: linkedSetterUserId || 'None' });
@@ -857,15 +858,18 @@ async function processPhoneCallWebhook(payload: any) {
     let dialLastAttrSource: any = null;
     let contactSource: string | null = null;
     
-    if (payload.contactId && account.ghl_api_key) {
+    if (payload.contactId) {
       try {
         console.log('🔍 Fetching contact details from GHL for contactId:', payload.contactId);
         
-        const contactResponse = await fetch(`https://services.leadconnectorhq.com/contacts/${payload.contactId}`, {
-          headers: {
-            'Authorization': `Bearer ${account.ghl_api_key}`,
-            'Version': '2021-07-28',
-          },
+        const makeContactHeaders = (token: string | null) => ({
+          'Authorization': `Bearer ${token}`,
+          'Version': '2021-07-28',
+        } as Record<string, string>);
+
+        let contactToken = currentAccessToken || account.ghl_api_key;
+        let contactResponse = await fetch(`https://services.leadconnectorhq.com/contacts/${payload.contactId}`, {
+          headers: makeContactHeaders(contactToken),
         });
         
         if (contactResponse.ok) {
@@ -887,6 +891,40 @@ async function processPhoneCallWebhook(payload: any) {
             email: contactEmail,
             phone: contactPhone
           });
+        } else {
+          console.log('⚠️ Contact not found in GHL API');
+        } else if (contactResponse.status === 401 || contactResponse.status === 403) {
+          console.warn('⚠️ Contact fetch unauthorized - attempting token refresh');
+          const refreshedToken = await getValidGhlAccessToken(account, supabase, true);
+          if (refreshedToken) {
+            contactToken = refreshedToken;
+            contactResponse = await fetch(`https://services.leadconnectorhq.com/contacts/${payload.contactId}`, {
+              headers: makeContactHeaders(contactToken),
+            });
+            if (contactResponse.ok) {
+              const rawContact = await contactResponse.json();
+              const c: any = rawContact?.contact || rawContact;
+              contactName = c?.name || 
+                           (c?.firstName && c?.lastName ? 
+                            `${c.firstName} ${c.lastName}`.trim() : 
+                            c?.firstName || c?.lastName) || null;
+              contactEmail = c?.email || null;
+              contactPhone = c?.phone || null;
+              dialAttrSource = c?.attributionSource || null;
+              dialLastAttrSource = c?.lastAttributionSource || null;
+              contactSource = c?.source || null;
+
+              console.log('✅ Successfully fetched contact data after token refresh:', {
+                name: contactName,
+                email: contactEmail,
+                phone: contactPhone
+              });
+            } else {
+              console.log('⚠️ Contact not found in GHL API after token refresh');
+            }
+          } else {
+            console.warn('⚠️ Token refresh failed - contact enrichment skipped');
+          }
         } else {
           console.log('⚠️ Contact not found in GHL API');
         }
@@ -1257,7 +1295,8 @@ async function processAppointmentWebhook(payload: any) {
         setterName,
         null,
         setterEmail,
-        null
+        null,
+        { allowAutoGrant: false }
       );
       linkedSetterUserId = userIds.setterUserId || null;
       console.log('✅ User link results for dial:', { setterUserId: linkedSetterUserId || 'None' });
@@ -1274,7 +1313,7 @@ async function processAppointmentWebhook(payload: any) {
     let dialLastAttrSource: any = null;
     let contactSource: string | null = null;
     
-    if (payload.contactId && currentAccessToken) {
+    if (payload.contactId) {
       try {
         console.log('🔍 Fetching contact details from GHL for contactId:', payload.contactId);
         
@@ -1284,8 +1323,9 @@ async function processAppointmentWebhook(payload: any) {
           'Version': '2021-07-28',
         } as Record<string, string>);
         
+        let tokenToUse = currentAccessToken || account.ghl_api_key;
         let contactResponse = await fetch(contactUrl, {
-          headers: makeContactHeaders(currentAccessToken as string),
+          headers: makeContactHeaders(tokenToUse as string),
         });
         
         // If unauthorized, attempt to refresh token once and retry
@@ -1293,8 +1333,9 @@ async function processAppointmentWebhook(payload: any) {
           const refreshedToken = await getValidGhlAccessToken(account, supabase, true);
           if (refreshedToken && refreshedToken !== currentAccessToken) {
             currentAccessToken = refreshedToken;
+            tokenToUse = refreshedToken;
             contactResponse = await fetch(contactUrl, {
-              headers: makeContactHeaders(currentAccessToken as string),
+              headers: makeContactHeaders(tokenToUse as string),
             });
           }
         }
