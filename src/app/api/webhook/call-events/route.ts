@@ -890,8 +890,6 @@ async function processPhoneCallWebhook(payload: any) {
             email: contactEmail,
             phone: contactPhone
           });
-        } else {
-          console.log('⚠️ Contact not found in GHL API');
         } else if (contactResponse.status === 401 || contactResponse.status === 403) {
           console.warn('⚠️ Contact fetch unauthorized - attempting token refresh');
           const refreshedToken = await getValidGhlAccessToken(account, supabase, true);
