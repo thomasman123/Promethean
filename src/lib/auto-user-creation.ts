@@ -8,10 +8,7 @@ export async function linkExistingUsersToData(
 	setterName: string | null,
 	salesRepName: string | null,
 	setterEmail?: string | null,
-	salesRepEmail?: string | null,
-	options?: {
-		allowAutoGrant?: boolean
-	}
+	salesRepEmail?: string | null
 ): Promise<{ 
 	setterUserId?: string; 
 	salesRepUserId?: string;
@@ -21,8 +18,6 @@ export async function linkExistingUsersToData(
 		setterUserId?: string; 
 		salesRepUserId?: string;
 	} = {}
-
-	const allowAutoGrant = options?.allowAutoGrant ?? true
 	
 	async function findOrGrantByEmail(email: string, role: 'setter' | 'sales_rep' | 'moderator' = 'moderator'): Promise<string | undefined> {
 		const normalized = email.trim().toLowerCase()
@@ -37,29 +32,8 @@ export async function linkExistingUsersToData(
 
 		if (existingAccess?.user_id) return existingAccess.user_id as any
 
-		if (!allowAutoGrant) {
-			return undefined
-		}
-
-		// 2) Else, try to find a profile by email globally
-		const { data: profile } = await supabase
-			.from('profiles')
-			.select('id, email')
-			.ilike('email', normalized)
-			.maybeSingle()
-
-		if (profile?.id) {
-			// Grant access with the intended role
-			await supabase.rpc('grant_account_access' as any, {
-				p_user_id: profile.id,
-				p_account_id: accountId,
-				p_role: role,
-				p_granted_by_user_id: null,
-			})
-			return profile.id as any
-		}
-
 		return undefined
+
 	}
 	
 	try {
