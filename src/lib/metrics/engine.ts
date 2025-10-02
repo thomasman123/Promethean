@@ -152,7 +152,7 @@ export class MetricsEngine {
     } else if (metric.name?.startsWith('Cost Per Booked Call')) {
       sql = this.buildCostPerBookedCallSQL(appliedFilters, metric, options)
     } else if (metric.name === 'Lead to Appointment') {
-      sql = this.buildLeadToAppointmentSQL(appliedFilters, metric, options)
+      sql = this.buildLeadToAppointmentSQL(filters, metric, options)
     } else if (metric.name === 'Data Completion Rate') {
       sql = this.buildDataCompletionRateSQL(appliedFilters, metric, options)
     } else if (metric.name === 'Overdue Items') {
@@ -1131,38 +1131,85 @@ WHERE speed_to_lead_seconds IS NOT NULL
    /**
     * Special SQL builder for Lead to Appointment calculation (Appointments / Contacts)
     */
-   private buildLeadToAppointmentSQL(appliedFilters: any, metric: MetricDefinition, options?: any): string {
+   private buildLeadToAppointmentSQL(filtersOrApplied: any, metric: MetricDefinition, options?: any): string {
      // Lead to Appointment = (Total Appointments / Total Contacts) * 100 for percentage
      // We need to join contacts and appointments tables
      
-     const whereClause = buildWhereClause(appliedFilters, [])
+     // Check if we received raw filters or appliedFilters
+     const isRawFilters = filtersOrApplied.dateRange !== undefined
      
-     return `
-       WITH contact_data AS (
+     if (isRawFilters) {
+       // Generate separate appliedFilters for contacts and appointments
+       const contactFilters = applyStandardFilters(filtersOrApplied, 'contacts')
+       const appointmentFilters = applyStandardFilters(filtersOrApplied, 'appointments')
+       
+       const contactWhereClause = buildWhereClause(contactFilters, [])
+       const appointmentWhereClause = buildWhereClause(appointmentFilters, [])
+       
+       return `
+         WITH contact_data AS (
+           SELECT 
+             account_id,
+             COUNT(*) as total_contacts
+           FROM contacts
+           ${contactWhereClause}
+           GROUP BY account_id
+         ),
+         appointment_data AS (
+           SELECT 
+             account_id,
+             COUNT(*) as total_appointments
+           FROM appointments
+           ${appointmentWhereClause}
+           GROUP BY account_id
+         )
          SELECT 
-           account_id,
-           COUNT(*) as total_contacts
-         FROM contacts
-         ${whereClause.replace('appointments.', 'contacts.')}
-         GROUP BY account_id
-       ),
-       appointment_data AS (
+           CASE 
+             WHEN contact_data.total_contacts > 0 
+             THEN ROUND((appointment_data.total_appointments::DECIMAL / contact_data.total_contacts), 4)
+             ELSE 0 
+           END as value
+         FROM contact_data
+         FULL OUTER JOIN appointment_data ON contact_data.account_id = appointment_data.account_id
+       `.trim()
+     } else {
+       // Legacy: received appliedFilters (based on contacts table with ghl_local_date)
+       // Need to adapt for appointments table which uses local_date
+       const whereClause = buildWhereClause(filtersOrApplied, [])
+       const contactWhereClause = whereClause.replace('appointments.', 'contacts.')
+       // Replace ghl_local_date with local_date for appointments
+       const appointmentWhereClause = whereClause
+         .replace(/ghl_local_date/g, 'local_date')
+         .replace(/ghl_local_week/g, 'local_week')
+         .replace(/ghl_local_month/g, 'local_month')
+       
+       return `
+         WITH contact_data AS (
+           SELECT 
+             account_id,
+             COUNT(*) as total_contacts
+           FROM contacts
+           ${contactWhereClause}
+           GROUP BY account_id
+         ),
+         appointment_data AS (
+           SELECT 
+             account_id,
+             COUNT(*) as total_appointments
+           FROM appointments
+           ${appointmentWhereClause}
+           GROUP BY account_id
+         )
          SELECT 
-           account_id,
-           COUNT(*) as total_appointments
-         FROM appointments
-         ${whereClause}
-         GROUP BY account_id
-       )
-       SELECT 
-         CASE 
-           WHEN contact_data.total_contacts > 0 
-           THEN ROUND((appointment_data.total_appointments::DECIMAL / contact_data.total_contacts), 4)
-           ELSE 0 
-         END as value
-       FROM contact_data
-       FULL OUTER JOIN appointment_data ON contact_data.account_id = appointment_data.account_id
-     `.trim()
+           CASE 
+             WHEN contact_data.total_contacts > 0 
+             THEN ROUND((appointment_data.total_appointments::DECIMAL / contact_data.total_contacts), 4)
+             ELSE 0 
+           END as value
+         FROM contact_data
+         FULL OUTER JOIN appointment_data ON contact_data.account_id = appointment_data.account_id
+       `.trim()
+     }
    }
 
   /**
