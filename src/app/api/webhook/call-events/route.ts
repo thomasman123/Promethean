@@ -766,14 +766,25 @@ async function processPhoneCallWebhook(payload: any) {
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
     const supabase = createClient(supabaseUrl, serviceKey);
     
-    // Find account by GHL location ID
-    const { data: account, error: accountError } = await supabase
-      .from('accounts')
-      .select('id, name, ghl_location_id, ghl_api_key')
-      .eq('ghl_location_id', payload.locationId)
+    // Find account by GHL location ID using the ghl_locations table
+    const { data: locationData, error: locationError } = await supabase
+      .from('ghl_locations')
+      .select(`
+        account_id,
+        location_id,
+        accounts!inner(
+          id, 
+          name, 
+          ghl_location_id, 
+          ghl_api_key
+        )
+      `)
+      .eq('location_id', payload.locationId)
       .single();
     
-    if (accountError || !account) {
+    const account = locationData?.accounts as any;
+    
+    if (locationError || !account) {
       console.warn('⚠️ Phone call webhook received for unknown location ID:', payload.locationId);
       
       // Try to find and update an account that might match this location
@@ -1193,14 +1204,28 @@ async function processAppointmentWebhook(payload: any) {
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
     const supabase = createClient(supabaseUrl, serviceKey);
     
-    // Find account by GHL location ID
-    const { data: account, error: accountError } = await supabase
-      .from('accounts')
-      .select('id, name, ghl_location_id, ghl_api_key, ghl_refresh_token, ghl_token_expires_at, ghl_auth_type')
-      .eq('ghl_location_id', payload.locationId)
+    // Find account by GHL location ID using the ghl_locations table
+    const { data: locationData, error: locationError } = await supabase
+      .from('ghl_locations')
+      .select(`
+        account_id,
+        location_id,
+        accounts!inner(
+          id, 
+          name, 
+          ghl_location_id, 
+          ghl_api_key, 
+          ghl_refresh_token, 
+          ghl_token_expires_at, 
+          ghl_auth_type
+        )
+      `)
+      .eq('location_id', payload.locationId)
       .single();
     
-    if (accountError || !account) {
+    const account = locationData?.accounts as any;
+    
+    if (locationError || !account) {
       console.warn('⚠️ Webhook received for unknown location ID:', payload.locationId);
       
       // Try to find and update an account that might match this location
@@ -1212,19 +1237,19 @@ async function processAppointmentWebhook(payload: any) {
       }
       
       // Log helpful debugging info
-      const { data: allAccounts } = await supabase
-        .from('accounts')
-        .select('id, name, ghl_location_id, ghl_auth_type')
-        .eq('ghl_auth_type', 'oauth2');
+      const { data: allLocations } = await supabase
+        .from('ghl_locations')
+        .select('location_id, location_name, accounts!inner(name, id, ghl_auth_type)');
       
       console.error('🚨 Location ID Recovery Failed', {
         webhookLocationId: payload.locationId,
-        availableAccounts: allAccounts?.map(a => ({
-          name: a.name,
-          id: a.id,
-          storedLocationId: a.ghl_location_id || 'none'
+        availableLocations: allLocations?.map(l => ({
+          locationId: l.location_id,
+          locationName: l.location_name,
+          accountName: (l.accounts as any)?.name,
+          accountId: (l.accounts as any)?.id,
         })) || [],
-        solution: 'Please reconnect GHL OAuth in Account → CRM Connection'
+        solution: 'Please add this location ID to the ghl_locations table'
       });
       
       return;
@@ -1628,14 +1653,25 @@ async function processAppointmentUpdateWebhook(payload: any) {
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
     const supabase = createClient(supabaseUrl, serviceKey);
     
-    // Find account by GHL location ID using accounts table
-    const { data: account, error: accountError } = await supabase
-      .from('accounts')
-      .select('id, name, ghl_location_id, ghl_api_key')
-      .eq('ghl_location_id', payload.locationId)
+    // Find account by GHL location ID using the ghl_locations table
+    const { data: locationData, error: locationError } = await supabase
+      .from('ghl_locations')
+      .select(`
+        account_id,
+        location_id,
+        accounts!inner(
+          id, 
+          name, 
+          ghl_location_id, 
+          ghl_api_key
+        )
+      `)
+      .eq('location_id', payload.locationId)
       .single();
     
-    if (accountError || !account) {
+    const account = locationData?.accounts as any;
+    
+    if (locationError || !account) {
       console.warn('⚠️ Webhook received for unknown location ID:', payload.locationId);
       return;
     }
@@ -1687,14 +1723,25 @@ async function processAppointmentDeleteWebhook(payload: any) {
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
     const supabase = createClient(supabaseUrl, serviceKey);
     
-    // Find account by GHL location ID using accounts table
-    const { data: account, error: accountError } = await supabase
-      .from('accounts')
-      .select('id, name, ghl_location_id, ghl_api_key')
-      .eq('ghl_location_id', payload.locationId)
+    // Find account by GHL location ID using the ghl_locations table
+    const { data: locationData, error: locationError } = await supabase
+      .from('ghl_locations')
+      .select(`
+        account_id,
+        location_id,
+        accounts!inner(
+          id, 
+          name, 
+          ghl_location_id, 
+          ghl_api_key
+        )
+      `)
+      .eq('location_id', payload.locationId)
       .single();
     
-    if (accountError || !account) {
+    const account = locationData?.accounts as any;
+    
+    if (locationError || !account) {
       console.warn('⚠️ Webhook received for unknown location ID:', payload.locationId);
       return;
     }
@@ -1896,16 +1943,20 @@ async function tryRecoverLocationId(supabase: any, webhookLocationId: string): P
         const matchingLocation = locations.find((loc: any) => loc.id === webhookLocationId);
         
         if (matchingLocation) {
-          console.log(`✅ Found matching location! Updating account "${account.name}" with location ID: ${webhookLocationId}`);
+          console.log(`✅ Found matching location! Adding location ID ${webhookLocationId} to account "${account.name}"`);
           
-          // Update the account with the correct location ID
-          const { error: updateError } = await supabase
-            .from('accounts')
-            .update({ ghl_location_id: webhookLocationId })
-            .eq('id', account.id);
+          // Insert into ghl_locations table
+          const { error: insertError } = await supabase
+            .from('ghl_locations')
+            .insert({
+              account_id: account.id,
+              location_id: webhookLocationId,
+              location_name: matchingLocation.name || null,
+              is_primary: false
+            });
           
-          if (updateError) {
-            console.error('❌ Failed to update location ID:', updateError);
+          if (insertError) {
+            console.error('❌ Failed to insert location ID:', insertError);
             continue;
           }
           
