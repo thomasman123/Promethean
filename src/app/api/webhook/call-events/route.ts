@@ -775,14 +775,20 @@ async function processPhoneCallWebhook(payload: any) {
         accounts!inner(
           id, 
           name, 
-          ghl_location_id, 
-          ghl_api_key
+          ghl_api_key,
+          ghl_refresh_token,
+          ghl_token_expires_at,
+          ghl_auth_type
         )
       `)
       .eq('location_id', payload.locationId)
       .single();
     
     const account = locationData?.accounts as any;
+    // Add the location_id from the ghl_locations table to the account object for compatibility
+    if (account && locationData) {
+      account.ghl_location_id = locationData.location_id;
+    }
     
     if (locationError || !account) {
       console.warn('⚠️ Phone call webhook received for unknown location ID:', payload.locationId);
@@ -805,9 +811,20 @@ async function processPhoneCallWebhook(payload: any) {
     let callerUserId = null;
     let setterName = null;
     let setterEmail = null;
+    let currentAccessToken = account.ghl_api_key;
     
-    if (payload.userId && account.ghl_api_key) {
-      const userData = await fetchGhlUserDetails(payload.userId, account.ghl_api_key, account.ghl_location_id || '');
+    if (payload.userId && currentAccessToken) {
+      let userData = await fetchGhlUserDetails(payload.userId, currentAccessToken, account.ghl_location_id || '');
+      
+      // If the user fetch failed (possibly due to expired/revoked token), force refresh and retry once
+      if (!userData) {
+        console.log('🔁 Retrying user fetch after token refresh...');
+        const refreshedToken = await getValidGhlAccessToken(account, supabase, true);
+        if (refreshedToken && refreshedToken !== currentAccessToken) {
+          currentAccessToken = refreshedToken;
+          userData = await fetchGhlUserDetails(payload.userId, currentAccessToken, account.ghl_location_id || '');
+        }
+      }
       
       if (userData) {
         setterName = userData.name || `${userData.firstName || ''} ${userData.lastName || ''}`.trim();
@@ -860,7 +877,7 @@ async function processPhoneCallWebhook(payload: any) {
     }
     
     // Get contact information by fetching from GHL API
-    let currentAccessToken = account.ghl_api_key
+    // (currentAccessToken already initialized above, potentially refreshed)
     let contactName = null;
     let contactEmail = null;
     let contactPhone = null;
@@ -1662,14 +1679,20 @@ async function processAppointmentUpdateWebhook(payload: any) {
         accounts!inner(
           id, 
           name, 
-          ghl_location_id, 
-          ghl_api_key
+          ghl_api_key,
+          ghl_refresh_token,
+          ghl_token_expires_at,
+          ghl_auth_type
         )
       `)
       .eq('location_id', payload.locationId)
       .single();
     
     const account = locationData?.accounts as any;
+    // Add the location_id from the ghl_locations table to the account object for compatibility
+    if (account && locationData) {
+      account.ghl_location_id = locationData.location_id;
+    }
     
     if (locationError || !account) {
       console.warn('⚠️ Webhook received for unknown location ID:', payload.locationId);
@@ -1732,14 +1755,20 @@ async function processAppointmentDeleteWebhook(payload: any) {
         accounts!inner(
           id, 
           name, 
-          ghl_location_id, 
-          ghl_api_key
+          ghl_api_key,
+          ghl_refresh_token,
+          ghl_token_expires_at,
+          ghl_auth_type
         )
       `)
       .eq('location_id', payload.locationId)
       .single();
     
     const account = locationData?.accounts as any;
+    // Add the location_id from the ghl_locations table to the account object for compatibility
+    if (account && locationData) {
+      account.ghl_location_id = locationData.location_id;
+    }
     
     if (locationError || !account) {
       console.warn('⚠️ Webhook received for unknown location ID:', payload.locationId);
