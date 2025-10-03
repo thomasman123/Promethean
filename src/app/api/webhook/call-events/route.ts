@@ -1212,7 +1212,7 @@ async function processAppointmentWebhook(payload: any) {
     calendarId: payload.appointment?.calendarId,
     title: payload.appointment?.title,
     startTime: payload.appointment?.startTime,
-    contactId: payload.appointment?.contactId,
+    contactId: payload.appointment?.contactId || payload.contactId,
     assignedUserId: payload.appointment?.assignedUserId
   });
   
@@ -1222,7 +1222,7 @@ async function processAppointmentWebhook(payload: any) {
     const supabase = createClient(supabaseUrl, serviceKey);
     
     // Find account by GHL location ID using the ghl_locations table
-    const { data: locationData, error: locationError } = await supabase
+    const { data: locationData, error: locationError} = await supabase
       .from('ghl_locations')
       .select(`
         account_id,
@@ -1273,6 +1273,25 @@ async function processAppointmentWebhook(payload: any) {
     }
     
     console.log('📍 Found account:', account.name, '(', account.id, ')');
+
+    // Check if this calendar is mapped to appointments or discoveries
+    const { data: calendarMapping, error: mappingError } = await supabase
+      .from('calendar_mappings')
+      .select('*')
+      .eq('account_id', account.id)
+      .eq('ghl_calendar_id', payload.appointment?.calendarId)
+      .single();
+    
+    if (mappingError || !calendarMapping || !calendarMapping.is_enabled) {
+      console.log('📋 Calendar not mapped or not enabled, skipping:', {
+        calendarId: payload.appointment?.calendarId,
+        appointmentId: payload.appointment?.id,
+        error: mappingError?.message
+      });
+      return;
+    }
+
+    console.log('📅 Calendar mapped to:', calendarMapping.target_table);
 
     // Ensure we have a valid access token for GHL API calls
     const initialAccessToken = await getValidGhlAccessToken(account, supabase);
@@ -1346,20 +1365,23 @@ async function processAppointmentWebhook(payload: any) {
       console.warn('⚠️ Failed to link setter user for dial (non-critical):', linkErr);
     }
     
+    // Get appointment contact ID (can be nested or top-level)
+    const ghlContactId = payload.appointment?.contactId || payload.contactId;
+    
     // Get contact information by fetching from GHL API
     let contactName = null;
     let contactEmail = null;
     let contactPhone = null;
     // Attribution and contact source from contact
-    let dialAttrSource: any = null;
-    let dialLastAttrSource: any = null;
+    let attrSource: any = null;
+    let lastAttrSource: any = null;
     let contactSource: string | null = null;
     
-    if (payload.contactId) {
+    if (ghlContactId) {
       try {
-        console.log('🔍 Fetching contact details from GHL for contactId:', payload.contactId);
+        console.log('🔍 Fetching contact details from GHL for contactId:', ghlContactId);
         
-        const contactUrl = `https://services.leadconnectorhq.com/contacts/${payload.contactId}`;
+        const contactUrl = `https://services.leadconnectorhq.com/contacts/${ghlContactId}`;
         const makeContactHeaders = (token: string | null) => ({
           'Authorization': `Bearer ${token}`,
           'Version': '2021-07-28',
@@ -1392,8 +1414,8 @@ async function processAppointmentWebhook(payload: any) {
           contactEmail = c?.email || null;
           contactPhone = c?.phone || null;
           // capture attribution and source (same as appointments/discoveries)
-          dialAttrSource = c?.attributionSource || null;
-          dialLastAttrSource = c?.lastAttributionSource || null;
+          attrSource = c?.attributionSource || null;
+          lastAttrSource = c?.lastAttributionSource || null;
           contactSource = c?.source || null;
           
           console.log('✅ Successfully fetched contact data:', {

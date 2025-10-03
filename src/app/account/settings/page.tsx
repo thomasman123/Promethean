@@ -14,6 +14,7 @@ import { useDashboard } from "@/lib/dashboard-context"
 import { useEffectiveUser } from "@/hooks/use-effective-user"
 import { Settings, AlertCircle, Loader2, Globe, Save, RefreshCw } from "lucide-react"
 import { ContactSyncTools } from "@/components/account/contact-sync-tools"
+import { AppointmentBackfillTools } from "@/components/account/appointment-backfill-tools"
 import { Loading } from "@/components/ui/loading"
 
 // Simple timezone list
@@ -264,6 +265,9 @@ export default function AccountSettingsPage() {
 
           {/* Contact Sync Tools */}
           <ContactSyncTools accountId={selectedAccountId} />
+
+          {/* Appointment/Discovery Backfill */}
+          <AppointmentBackfillTools accountId={selectedAccountId} />
 
           {/* Advanced Tracking Link */}
           <Card>
