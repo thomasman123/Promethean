@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Progress } from '@/components/ui/progress'
 import { Database, Loader2, CheckCircle, AlertCircle, RefreshCw, Download, Users } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 
@@ -107,10 +108,12 @@ export function ContactSyncTools({ accountId }: ContactSyncToolsProps) {
 
   const handleFullContactSync = async () => {
     setIsSyncLoading(true)
+    setSyncResult(null)
+    
     try {
       console.log('🔄 Starting full contact sync from GHL...')
       
-      const response = await fetch('/api/admin/sync-all-contacts', {
+      const response = await fetch('/api/admin/sync-all-contacts-stream', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -120,30 +123,87 @@ export function ContactSyncTools({ accountId }: ContactSyncToolsProps) {
         }),
       })
 
-      const result = await response.json()
-      setSyncResult(result)
-
-      if (response.ok && result.success) {
-        toast({
-          title: "Contact sync completed",
-          description: result.message,
-        })
-        console.log('✅ Full contact sync completed:', result)
-        await loadContactStats()
-      } else {
-        toast({
-          title: "Contact sync failed",
-          description: result.error || 'Unknown error',
-          variant: "destructive"
-        })
-        console.error('❌ Full contact sync failed:', result)
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
       }
+
+      const reader = response.body?.getReader()
+      const decoder = new TextDecoder()
+
+      if (!reader) {
+        throw new Error('No reader available')
+      }
+
+      let buffer = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n\n')
+        buffer = lines.pop() || ''
+
+        for (const line of lines) {
+          if (line.startsWith('event:')) {
+            const eventMatch = line.match(/event: (\w+)/)
+            const dataMatch = line.match(/data: (.+)/)
+            
+            if (eventMatch && dataMatch) {
+              const eventType = eventMatch[1]
+              const data = JSON.parse(dataMatch[1])
+
+              console.log(`📡 SSE ${eventType}:`, data)
+
+              if (eventType === 'progress') {
+                setSyncResult({
+                  inProgress: true,
+                  stage: data.stage,
+                  message: data.message,
+                  syncedCount: data.syncedCount || 0,
+                  totalEstimate: data.totalEstimate || 0,
+                  progress: data.progress || 0,
+                  batchNumber: data.batchNumber,
+                })
+              } else if (eventType === 'complete') {
+                setSyncResult({
+                  success: true,
+                  syncedCount: data.syncedCount,
+                  message: data.message,
+                  progress: 100,
+                })
+                toast({
+                  title: "Contact sync completed",
+                  description: data.message,
+                })
+                await loadContactStats()
+              } else if (eventType === 'error') {
+                setSyncResult({
+                  success: false,
+                  error: data.error,
+                })
+                toast({
+                  title: "Contact sync failed",
+                  description: data.error || 'Unknown error',
+                  variant: "destructive"
+                })
+              }
+            }
+          }
+        }
+      }
+
     } catch (error) {
       console.error('❌ Contact sync error:', error)
       toast({
         title: "Sync error",
         description: "Failed to start contact sync process",
         variant: "destructive"
+      })
+      setSyncResult({
+        success: false,
+        error: 'Failed to start sync process'
       })
     } finally {
       setIsSyncLoading(false)
@@ -262,18 +322,45 @@ export function ContactSyncTools({ accountId }: ContactSyncToolsProps) {
           </Button>
 
           {syncResult && (
-            <div className="text-xs text-muted-foreground">
-              {syncResult.success 
-                ? `Last sync: ${syncResult.syncedContacts || 0} contacts processed`
-                : `Error: ${syncResult.error}`
-              }
+            <div className="space-y-3">
+              {syncResult.inProgress && (
+                <>
+                  <Progress value={syncResult.progress || 0} className="h-2" />
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">{syncResult.message}</span>
+                    <span className="font-medium">
+                      {syncResult.syncedCount || 0}
+                      {syncResult.totalEstimate > 0 && ` / ${syncResult.totalEstimate}`} contacts
+                    </span>
+                  </div>
+                  {syncResult.batchNumber && (
+                    <div className="text-xs text-muted-foreground">
+                      Processing batch {syncResult.batchNumber}...
+                    </div>
+                  )}
+                </>
+              )}
+              {syncResult.success && (
+                <div className="flex items-center gap-2 text-sm text-green-600">
+                  <CheckCircle className="h-4 w-4" />
+                  <span>Last sync: {syncResult.syncedCount || 0} contacts processed</span>
+                </div>
+              )}
+              {syncResult.error && (
+                <div className="flex items-center gap-2 text-sm text-destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <span>Error: {syncResult.error}</span>
+                </div>
+              )}
             </div>
           )}
           
-          <p className="text-xs text-muted-foreground">
-            This will fetch every contact from your GoHighLevel account and add any missing ones to the app.
-            Existing contacts will be updated with the latest data.
-          </p>
+          {!syncResult && (
+            <p className="text-xs text-muted-foreground">
+              This will fetch every contact from your GoHighLevel account and add any missing ones to the app.
+              Existing contacts will be updated with the latest data.
+            </p>
+          )}
         </div>
 
       </CardContent>
