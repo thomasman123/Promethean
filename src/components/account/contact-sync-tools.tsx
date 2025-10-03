@@ -63,10 +63,12 @@ export function ContactSyncTools({ accountId }: ContactSyncToolsProps) {
 
   const handleBackfillDates = async () => {
     setIsBackfillLoading(true)
+    setBackfillResult(null)
+    
     try {
-      console.log('🔄 Starting contact GHL dates backfill...')
+      console.log('🔄 Starting full contact sync from GHL (backfill + new contacts)...')
       
-      const response = await fetch('/api/admin/backfill-contact-ghl-dates', {
+      const response = await fetch('/api/admin/sync-all-contacts-stream', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -76,30 +78,87 @@ export function ContactSyncTools({ accountId }: ContactSyncToolsProps) {
         }),
       })
 
-      const result = await response.json()
-      setBackfillResult(result)
-
-      if (response.ok && result.success) {
-        toast({
-          title: "Date backfill completed",
-          description: result.message,
-        })
-        console.log('✅ Contact date backfill completed:', result)
-        await loadContactStats()
-      } else {
-        toast({
-          title: "Date backfill failed",
-          description: result.error || 'Unknown error',
-          variant: "destructive"
-        })
-        console.error('❌ Contact date backfill failed:', result)
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
       }
+
+      const reader = response.body?.getReader()
+      const decoder = new TextDecoder()
+
+      if (!reader) {
+        throw new Error('No reader available')
+      }
+
+      let buffer = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n\n')
+        buffer = lines.pop() || ''
+
+        for (const line of lines) {
+          if (line.startsWith('event:')) {
+            const eventMatch = line.match(/event: (\w+)/)
+            const dataMatch = line.match(/data: (.+)/)
+            
+            if (eventMatch && dataMatch) {
+              const eventType = eventMatch[1]
+              const data = JSON.parse(dataMatch[1])
+
+              console.log(`📡 Backfill SSE ${eventType}:`, data)
+
+              if (eventType === 'progress') {
+                setBackfillResult({
+                  inProgress: true,
+                  stage: data.stage,
+                  message: data.message,
+                  syncedCount: data.syncedCount || 0,
+                  totalEstimate: data.totalEstimate || 0,
+                  progress: data.progress || 0,
+                  batchNumber: data.batchNumber,
+                })
+              } else if (eventType === 'complete') {
+                setBackfillResult({
+                  success: true,
+                  totalProcessed: data.syncedCount,
+                  message: data.message,
+                  progress: 100,
+                })
+                toast({
+                  title: "Contact sync completed",
+                  description: data.message,
+                })
+                await loadContactStats()
+              } else if (eventType === 'error') {
+                setBackfillResult({
+                  success: false,
+                  error: data.error,
+                })
+                toast({
+                  title: "Contact sync failed",
+                  description: data.error || 'Unknown error',
+                  variant: "destructive"
+                })
+              }
+            }
+          }
+        }
+      }
+
     } catch (error) {
-      console.error('❌ Contact date backfill error:', error)
+      console.error('❌ Contact sync error:', error)
       toast({
-        title: "Backfill error",
-        description: "Failed to start date backfill process",
+        title: "Sync error",
+        description: "Failed to start contact sync process",
         variant: "destructive"
+      })
+      setBackfillResult({
+        success: false,
+        error: 'Failed to start sync process'
       })
     } finally {
       setIsBackfillLoading(false)
@@ -250,9 +309,9 @@ export function ContactSyncTools({ accountId }: ContactSyncToolsProps) {
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <div>
-              <h4 className="font-medium">Backfill Contact Dates</h4>
+              <h4 className="font-medium">Backfill Leads</h4>
               <p className="text-sm text-muted-foreground">
-                Update existing contacts with accurate GHL creation dates
+                Sync all contacts from GHL (updates existing + creates new ones)
               </p>
             </div>
             <Button
@@ -277,9 +336,9 @@ export function ContactSyncTools({ accountId }: ContactSyncToolsProps) {
               {isBackfillLoading ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Backfilling...
+                  Syncing Leads...
                 </>
-              ) : needsBackfill ? 'Continue Backfill' : 'Backfill Contact Dates'}
+              ) : 'Backfill Leads'}
             </Button>
             
             {isComplete && (
@@ -288,12 +347,43 @@ export function ContactSyncTools({ accountId }: ContactSyncToolsProps) {
           </div>
 
           {backfillResult && (
-            <div className="text-xs text-muted-foreground">
-              {backfillResult.success 
-                ? `Last run: Processed ${backfillResult.totalProcessed || 0} contacts`
-                : `Error: ${backfillResult.error}`
-              }
+            <div className="space-y-3">
+              {backfillResult.inProgress && (
+                <>
+                  <Progress value={backfillResult.progress || 0} className="h-2" />
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">{backfillResult.message}</span>
+                    <span className="font-medium">
+                      {backfillResult.syncedCount || 0}
+                      {backfillResult.totalEstimate > 0 && ` / ${backfillResult.totalEstimate}`} contacts
+                    </span>
+                  </div>
+                  {backfillResult.batchNumber && (
+                    <div className="text-xs text-muted-foreground">
+                      Processing batch {backfillResult.batchNumber}...
+                    </div>
+                  )}
+                </>
+              )}
+              {backfillResult.success && (
+                <div className="flex items-center gap-2 text-sm text-green-600">
+                  <CheckCircle className="h-4 w-4" />
+                  <span>Last sync: {backfillResult.totalProcessed || 0} contacts processed</span>
+                </div>
+              )}
+              {backfillResult.error && (
+                <div className="flex items-center gap-2 text-sm text-destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <span>Error: {backfillResult.error}</span>
+                </div>
+              )}
             </div>
+          )}
+          
+          {!backfillResult && (
+            <p className="text-xs text-muted-foreground">
+              Fetches ALL contacts from GHL, updates existing ones with correct dates, and creates any missing contacts.
+            </p>
           )}
         </div>
 
