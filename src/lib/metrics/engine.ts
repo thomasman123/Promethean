@@ -1129,85 +1129,69 @@ WHERE speed_to_lead_seconds IS NOT NULL
   }
 
    /**
-    * Special SQL builder for Lead to Appointment calculation (Appointments / Contacts)
+    * Special SQL builder for Lead to Appointment calculation
+    * Calculates what percentage of contacts created in the date range have ANY appointment
     */
    private buildLeadToAppointmentSQL(filtersOrApplied: any, metric: MetricDefinition, options?: any): string {
-     // Lead to Appointment = (Total Appointments / Total Contacts) * 100 for percentage
-     // We need to join contacts and appointments tables
+     // New approach: Of the contacts created in the selected date range,
+     // what percentage have at least one appointment (regardless of appointment date)?
+     // This gives a true conversion rate for that cohort of leads.
      
      // Check if we received raw filters or appliedFilters
      const isRawFilters = filtersOrApplied.dateRange !== undefined
      
      if (isRawFilters) {
-       // Generate separate appliedFilters for contacts and appointments
+       // Generate appliedFilters for contacts (to filter by creation date)
        const contactFilters = applyStandardFilters(filtersOrApplied, 'contacts')
-       const appointmentFilters = applyStandardFilters(filtersOrApplied, 'appointments')
-       
        const contactWhereClause = buildWhereClause(contactFilters, [])
-       const appointmentWhereClause = buildWhereClause(appointmentFilters, [])
        
        return `
-         WITH contact_data AS (
+         WITH contacts_in_range AS (
            SELECT 
-             account_id,
-             COUNT(*) as total_contacts
+             id,
+             account_id
            FROM contacts
            ${contactWhereClause}
-           GROUP BY account_id
          ),
-         appointment_data AS (
-           SELECT 
-             account_id,
-             COUNT(*) as total_appointments
-           FROM appointments
-           ${appointmentWhereClause}
-           GROUP BY account_id
+         contacts_with_appointments AS (
+           SELECT DISTINCT c.id, c.account_id
+           FROM contacts_in_range c
+           INNER JOIN appointments a ON a.contact_id = c.id
          )
          SELECT 
            CASE 
-             WHEN contact_data.total_contacts > 0 
-             THEN ROUND((appointment_data.total_appointments::DECIMAL / contact_data.total_contacts), 4)
+             WHEN COUNT(DISTINCT c.id) > 0 
+             THEN ROUND((COUNT(DISTINCT cwa.id)::DECIMAL / COUNT(DISTINCT c.id)), 4)
              ELSE 0 
            END as value
-         FROM contact_data
-         FULL OUTER JOIN appointment_data ON contact_data.account_id = appointment_data.account_id
+         FROM contacts_in_range c
+         LEFT JOIN contacts_with_appointments cwa ON cwa.id = c.id
        `.trim()
      } else {
-       // Legacy: received appliedFilters (based on contacts table with ghl_local_date)
-       // Need to adapt for appointments table which uses local_date
-       const whereClause = buildWhereClause(filtersOrApplied, [])
-       const contactWhereClause = whereClause.replace('appointments.', 'contacts.')
-       // Replace ghl_local_date with local_date for appointments
-       const appointmentWhereClause = whereClause
-         .replace(/ghl_local_date/g, 'local_date')
-         .replace(/ghl_local_week/g, 'local_week')
-         .replace(/ghl_local_month/g, 'local_month')
+       // Legacy: received appliedFilters (based on contacts table)
+       const contactWhereClause = buildWhereClause(filtersOrApplied, [])
        
        return `
-         WITH contact_data AS (
+         WITH contacts_in_range AS (
            SELECT 
-             account_id,
-             COUNT(*) as total_contacts
+             id,
+             account_id
            FROM contacts
            ${contactWhereClause}
-           GROUP BY account_id
          ),
-         appointment_data AS (
-           SELECT 
-             account_id,
-             COUNT(*) as total_appointments
-           FROM appointments
-           ${appointmentWhereClause}
-           GROUP BY account_id
+         contacts_with_appointments AS (
+           SELECT DISTINCT c.id, c.account_id
+           FROM contacts_in_range c
+           INNER JOIN appointments a ON a.contact_id = c.id
          )
          SELECT 
            CASE 
-             WHEN contact_data.total_contacts > 0 
-             THEN ROUND((appointment_data.total_appointments::DECIMAL / contact_data.total_contacts), 4)
+             WHEN COUNT(DISTINCT c.id) > 0 
+             THEN ROUND((COUNT(DISTINCT cwa.id)::DECIMAL / COUNT(DISTINCT c.id)), 4)
              ELSE 0 
            END as value
-         FROM contact_data
-         FULL OUTER JOIN appointment_data ON contact_data.account_id = appointment_data.account_id
+         FROM contacts_in_range c
+         LEFT JOIN contacts_with_appointments cwa ON cwa.id = c.id
        `.trim()
      }
    }
