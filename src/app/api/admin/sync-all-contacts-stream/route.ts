@@ -183,45 +183,27 @@ export async function POST(req: NextRequest) {
             progress: 10 + (totalEstimate > 0 ? (syncedCount / totalEstimate) * 85 : 0)
           });
 
-          // Process each contact
-          for (const ghlContact of contacts) {
-            try {
-              const { data: existingContact } = await supabase
-                .from('contacts')
-                .select('id')
-                .eq('account_id', accountId)
-                .eq('ghl_contact_id', ghlContact.id)
-                .single();
+          // Batch upsert all contacts at once (much faster than individual queries)
+          try {
+            const contactsToUpsert = contacts.map((ghlContact: any) => 
+              mapGHLContactToSupabase(ghlContact, accountId)
+            );
 
-              const contactData = mapGHLContactToSupabase(ghlContact, accountId);
+            const { error: upsertError, count } = await supabase
+              .from('contacts')
+              .upsert(contactsToUpsert, {
+                onConflict: 'account_id,ghl_contact_id',
+                ignoreDuplicates: false
+              })
+              .select('id', { count: 'exact' });
 
-              if (!existingContact) {
-                const { error } = await supabase
-                  .from('contacts')
-                  .insert(contactData);
-
-                if (!error) {
-                  syncedCount++;
-                }
-              } else {
-                delete (contactData as any).account_id;
-                delete (contactData as any).ghl_contact_id;
-                
-                const { error } = await supabase
-                  .from('contacts')
-                  .update({
-                    ...contactData,
-                    updated_at: new Date().toISOString()
-                  })
-                  .eq('id', existingContact.id);
-
-                if (!error) {
-                  syncedCount++;
-                }
-              }
-            } catch (error) {
-              console.error('Error processing contact:', ghlContact.id, error);
+            if (!upsertError) {
+              syncedCount += contacts.length;
+            } else {
+              console.error('Batch upsert error:', upsertError);
             }
+          } catch (error) {
+            console.error('Error processing batch:', error);
           }
 
           // Send progress after batch
@@ -249,8 +231,8 @@ export async function POST(req: NextRequest) {
             hasMore = false;
           }
 
-          // Rate limiting
-          await new Promise(resolve => setTimeout(resolve, 500));
+          // Rate limiting (GHL allows 120 req/min = 2/sec, so 100ms = 10/sec is safe)
+          await new Promise(resolve => setTimeout(resolve, 100));
         }
 
         // Send completion event
