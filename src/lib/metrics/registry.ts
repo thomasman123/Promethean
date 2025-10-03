@@ -413,7 +413,7 @@ const BASE_METRICS = {
 
 	'lead_to_appointment': {
 		name: 'Lead to Appointment',
-		description: 'Percentage of leads that convert to appointments',
+		description: 'Percentage of leads created in the date range that have at least one appointment (measures conversion rate of lead cohorts)',
 		breakdownType: 'total' as const,
 		query: {
 			table: 'contacts',
