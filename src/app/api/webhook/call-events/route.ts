@@ -1611,6 +1611,9 @@ async function processAppointmentWebhook(payload: any) {
     const ghlAppointmentId = payload.appointment?.id || payload.id;
     const appointmentStartTime = payload.appointment?.startTime || payload.startTime;
     
+    console.log(`🎯 Creating ${target_table} for appointment:`, ghlAppointmentId);
+    console.log(`📞 Contact ID to link:`, dialData.contact_id);
+    
     // Construct the appointment/discovery data
     const appointmentOrDiscoveryData: any = {
       account_id: account.id,
@@ -1621,7 +1624,7 @@ async function processAppointmentWebhook(payload: any) {
       sales_rep: null, // TODO: Determine sales rep if different from setter
       setter_user_id: linkedSetterUserId,
       sales_rep_user_id: null,
-      contact_id: dialData.contact_id,
+      contact_id: dialData.contact_id || null,
       contact_email_snapshot: contactEmail || null,
       contact_phone_snapshot: contactPhone || null,
       contact_name_snapshot: contactName || null,
@@ -1632,7 +1635,12 @@ async function processAppointmentWebhook(payload: any) {
       contact_enhanced_attribution: enhancedClassification || null,
     };
 
-    console.log(`💾 Upserting ${target_table} record...`);
+    console.log(`💾 Upserting into ${target_table} table...`, {
+      ghl_appointment_id: appointmentOrDiscoveryData.ghl_appointment_id,
+      contact_id: appointmentOrDiscoveryData.contact_id,
+      setter: appointmentOrDiscoveryData.setter,
+      date_booked_for: appointmentOrDiscoveryData.date_booked_for
+    });
     
     // Upsert to appointments or discoveries table (update if exists, insert if not)
     const { data: savedRecord, error: recordError } = await supabase
@@ -1645,12 +1653,17 @@ async function processAppointmentWebhook(payload: any) {
       .maybeSingle();
     
     if (recordError) {
-      console.error(`❌ Failed to save ${target_table} record:`, recordError);
+      console.error(`❌ FAILED to save ${target_table} record:`, recordError);
       throw recordError;
     }
     
-    console.log(`✅ ${target_table} record saved successfully:`, savedRecord?.id);
-    console.log('✅ Created/updated via webhook pipeline:', ghlAppointmentId);
+    if (!savedRecord) {
+      console.error(`❌ ${target_table} upsert returned no data!`);
+    } else {
+      console.log(`✅ SUCCESS! ${target_table} record saved:`, savedRecord.id);
+    }
+    
+    console.log('✅ Appointment/Discovery created via webhook pipeline:', ghlAppointmentId);
 
     
   } catch (error) {
