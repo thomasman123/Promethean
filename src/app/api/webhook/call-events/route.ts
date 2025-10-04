@@ -1216,6 +1216,7 @@ async function processAppointmentWebhook(payload: any) {
     assignedUserId: payload.appointment?.assignedUserId
   });
   
+  // THIS FUNCTION CREATES APPOINTMENTS/DISCOVERIES, NOT DIALS
   try {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -1603,73 +1604,54 @@ async function processAppointmentWebhook(payload: any) {
       }
     }
 
-    console.log('💾 Saving dial data:', {
-      ...dialData,
-      setter_info: setterName ? { name: setterName, email: setterEmail } : null
-    });
+    // ==========================================
+    // CREATE APPOINTMENT OR DISCOVERY RECORD
+    // ==========================================
+    const target_table = calendarMapping.target_table; // 'appointments' or 'discoveries'
+    const ghlAppointmentId = payload.appointment?.id || payload.id;
+    const appointmentStartTime = payload.appointment?.startTime || payload.startTime;
     
-    // Save to dials table
-    const { data: savedDial, error: dialError } = await supabase
-      .from('dials')
-      .insert(sanitizeRecord(dialData))
+    // Construct the appointment/discovery data
+    const appointmentOrDiscoveryData: any = {
+      account_id: account.id,
+      ghl_appointment_id: ghlAppointmentId || null,
+      date_booked_for: appointmentStartTime ? new Date(appointmentStartTime).toISOString() : null,
+      date_booked: new Date().toISOString(),
+      setter: setterName || 'Unknown',
+      sales_rep: null, // TODO: Determine sales rep if different from setter
+      setter_user_id: linkedSetterUserId,
+      sales_rep_user_id: null,
+      contact_id: dialData.contact_id,
+      contact_email_snapshot: contactEmail || null,
+      contact_phone_snapshot: contactPhone || null,
+      contact_name_snapshot: contactName || null,
+      // Attribution fields
+      contact_attribution_source: attrSource || null,
+      contact_last_attribution_source: lastAttrSource || null,
+      contact_classified_attribution: classifiedAttribution || null,
+      contact_enhanced_attribution: enhancedClassification || null,
+    };
+
+    console.log(`💾 Upserting ${target_table} record...`);
+    
+    // Upsert to appointments or discoveries table (update if exists, insert if not)
+    const { data: savedRecord, error: recordError } = await supabase
+      .from(target_table)
+      .upsert(
+        sanitizeRecord(appointmentOrDiscoveryData),
+        { onConflict: 'account_id,ghl_appointment_id' }
+      )
       .select()
-      .single();
+      .maybeSingle();
     
-    if (dialError) {
-      console.error('Failed to save dial:', dialError);
-      throw dialError;
+    if (recordError) {
+      console.error(`❌ Failed to save ${target_table} record:`, recordError);
+      throw recordError;
     }
     
-    console.log('✅ Dial saved successfully:', savedDial.id);
-    
-    // New: If the appointment already exists (dial arrived after appointment), link it here
-    // FIXED: Only link appointments that happen AFTER the dial, within 30 minutes
-    try {
-      if (dialData.contact_id) {
-        const dialTimeIso = dialData.date_called;
-        if (dialTimeIso) {
-          const dialTime = new Date(dialTimeIso);
-          // Look for appointments within ±30 minutes of dial (appointment can be booked during call before hangup)
-          const windowStart = new Date(dialTime.getTime() - 30 * 60 * 1000); // 30 minutes before dial
-          const windowEnd = new Date(dialTime.getTime() + 30 * 60 * 1000); // 30 minutes after dial
+    console.log(`✅ ${target_table} record saved successfully:`, savedRecord?.id);
+    console.log('✅ Created/updated via webhook pipeline:', ghlAppointmentId);
 
-          const { data: matchedAppts } = await supabase
-            .from('appointments')
-            .select('id, date_booked, contact_id')
-            .eq('account_id', account.id)
-            .eq('contact_id', dialData.contact_id)
-            .gte('date_booked', windowStart.toISOString())
-            .lte('date_booked', windowEnd.toISOString())
-            .order('date_booked', { ascending: true })
-            .limit(1)
-          const matchedAppt = matchedAppts && matchedAppts.length > 0 ? matchedAppts[0] : null
-
-          if (matchedAppt) {
-            const minutesDiff = (new Date(matchedAppt.date_booked).getTime() - dialTime.getTime()) / (1000 * 60);
-            const { error: updErr } = await supabase
-              .from('dials')
-              .update({ 
-                booked: true, 
-                booked_appointment_id: matchedAppt.id,
-              })
-              .eq('id', savedDial.id);
-            if (updErr) {
-              console.error('Failed to mark dial as booked/link appointment (dial-first path):', updErr);
-            } else {
-              console.log('🔗 Linked dial to existing appointment (dial-first path):', { 
-                dialId: savedDial.id, 
-                appointmentId: matchedAppt.id,
-                minutesAfterDial: Math.round(minutesDiff * 10) / 10
-              });
-            }
-          } else {
-            console.log('ℹ️ No appointment found within ±30 minutes of dial for linking via contact_id');
-          }
-        }
-      }
-    } catch (e) {
-      console.error('Error linking dial to appointment (dial-first path):', e);
-    }
     
   } catch (error) {
     console.error('Error processing phone call webhook:', error);
