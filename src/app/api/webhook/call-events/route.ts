@@ -1348,7 +1348,7 @@ async function processAppointmentWebhook(payload: any) {
       }
     }
     
-    // Link setter to an existing app user and capture setter_user_id for the dial
+    // Link setter to an existing app user and capture setter_user_id
     let linkedSetterUserId: string | null = null;
     try {
       const { linkExistingUsersToData } = await import('@/lib/auto-user-creation');
@@ -1361,9 +1361,59 @@ async function processAppointmentWebhook(payload: any) {
         null
       );
       linkedSetterUserId = userIds.setterUserId || null;
-      console.log('✅ User link results for dial:', { setterUserId: linkedSetterUserId || 'None' });
+      console.log('✅ Setter linked:', { setterUserId: linkedSetterUserId || 'None' });
     } catch (linkErr) {
-      console.warn('⚠️ Failed to link setter user for dial (non-critical):', linkErr);
+      console.warn('⚠️ Failed to link setter user (non-critical):', linkErr);
+    }
+    
+    // Also fetch and link the sales rep (assignedUserId from appointment)
+    let salesRepName: string | null = null;
+    let salesRepEmail: string | null = null;
+    let linkedSalesRepUserId: string | null = null;
+    
+    const assignedUserId = payload.appointment?.assignedUserId;
+    if (assignedUserId && currentAccessToken) {
+      console.log('🔍 Fetching assigned user (sales rep) from GHL:', assignedUserId);
+      let assignedUserData = await fetchGhlUserDetails(assignedUserId, currentAccessToken, account.ghl_location_id || '');
+      
+      // Retry with refreshed token if needed
+      if (!assignedUserData) {
+        console.log('🔁 Retrying assigned user fetch after token refresh...');
+        const refreshedToken = await getValidGhlAccessToken(account, supabase, true);
+        if (refreshedToken && refreshedToken !== currentAccessToken) {
+          currentAccessToken = refreshedToken;
+          assignedUserData = await fetchGhlUserDetails(assignedUserId, currentAccessToken, account.ghl_location_id || '');
+        }
+      }
+      
+      if (assignedUserData) {
+        salesRepName = assignedUserData.name || `${assignedUserData.firstName || ''} ${assignedUserData.lastName || ''}`.trim();
+        salesRepEmail = assignedUserData.email || null;
+        
+        console.log('✅ Successfully fetched assigned user (sales rep):', {
+          name: salesRepName,
+          email: salesRepEmail
+        });
+        
+        // Link sales rep to platform user
+        try {
+          const { linkExistingUsersToData } = await import('@/lib/auto-user-creation');
+          const salesRepUserIds = await linkExistingUsersToData(
+            supabase,
+            account.id,
+            null,
+            salesRepName,
+            null,
+            salesRepEmail
+          );
+          linkedSalesRepUserId = salesRepUserIds.salesRepUserId || null;
+          console.log('✅ Sales rep linked:', { salesRepUserId: linkedSalesRepUserId || 'None' });
+        } catch (linkErr) {
+          console.warn('⚠️ Failed to link sales rep user (non-critical):', linkErr);
+        }
+      } else {
+        console.log('⚠️ Assigned user (sales rep) not found in GHL API');
+      }
     }
     
     // Get appointment contact ID (can be nested or top-level)
@@ -1621,9 +1671,9 @@ async function processAppointmentWebhook(payload: any) {
       date_booked_for: appointmentStartTime ? new Date(appointmentStartTime).toISOString() : null,
       date_booked: new Date().toISOString(),
       setter: setterName || 'Unknown',
-      sales_rep: null, // TODO: Determine sales rep if different from setter
+      sales_rep: salesRepName || null,
       setter_user_id: linkedSetterUserId,
-      sales_rep_user_id: null,
+      sales_rep_user_id: linkedSalesRepUserId,
       contact_id: dialData.contact_id || null,
       contact_email_snapshot: contactEmail || null,
       contact_phone_snapshot: contactPhone || null,
@@ -1639,6 +1689,9 @@ async function processAppointmentWebhook(payload: any) {
       ghl_appointment_id: appointmentOrDiscoveryData.ghl_appointment_id,
       contact_id: appointmentOrDiscoveryData.contact_id,
       setter: appointmentOrDiscoveryData.setter,
+      setter_user_id: appointmentOrDiscoveryData.setter_user_id,
+      sales_rep: appointmentOrDiscoveryData.sales_rep,
+      sales_rep_user_id: appointmentOrDiscoveryData.sales_rep_user_id,
       date_booked_for: appointmentOrDiscoveryData.date_booked_for
     });
     
