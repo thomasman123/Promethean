@@ -1490,7 +1490,7 @@ async function processAppointmentWebhook(payload: any) {
     try {
       const contactUpsert = {
         account_id: account.id,
-        ghl_contact_id: payload.contactId || null,
+        ghl_contact_id: ghlContactId || null,
         first_name: contactName?.split(' ')?.[0] || null,
         last_name: contactName?.split(' ')?.slice(1).join(' ') || null,
         name: contactName || null,
