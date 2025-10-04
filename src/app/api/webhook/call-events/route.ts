@@ -882,8 +882,8 @@ async function processPhoneCallWebhook(payload: any) {
     let contactEmail = null;
     let contactPhone = null;
     // Attribution and contact source from contact
-    let dialAttrSource: any = null;
-    let dialLastAttrSource: any = null;
+    let attrSource: any = null;
+    let lastAttrSource: any = null;
     let contactSource: string | null = null;
     
     if (payload.contactId) {
@@ -910,8 +910,8 @@ async function processPhoneCallWebhook(payload: any) {
           contactEmail = c?.email || null;
           contactPhone = c?.phone || null;
           // capture attribution and source (same as appointments/discoveries)
-          dialAttrSource = c?.attributionSource || null;
-          dialLastAttrSource = c?.lastAttributionSource || null;
+          attrSource = c?.attributionSource || null;
+          lastAttrSource = c?.lastAttributionSource || null;
           contactSource = c?.source || null;
           
           console.log('✅ Successfully fetched contact data:', {
@@ -936,8 +936,8 @@ async function processPhoneCallWebhook(payload: any) {
                             c?.firstName || c?.lastName) || null;
               contactEmail = c?.email || null;
               contactPhone = c?.phone || null;
-              dialAttrSource = c?.attributionSource || null;
-              dialLastAttrSource = c?.lastAttributionSource || null;
+              attrSource = c?.attributionSource || null;
+              lastAttrSource = c?.lastAttributionSource || null;
               contactSource = c?.source || null;
 
               console.log('✅ Successfully fetched contact data after token refresh:', {
@@ -960,9 +960,9 @@ async function processPhoneCallWebhook(payload: any) {
     }
     
     // Prepare dial data (mapped to existing dials schema)
-    const contactAttribution = dialAttrSource || dialLastAttrSource || {};
-    const attributionSource = dialAttrSource || null;
-    const lastAttributionSource = dialLastAttrSource || null;
+    const contactAttribution = attrSource || lastAttrSource || {};
+    const attributionSource = attrSource || null;
+    const lastAttributionSource = lastAttrSource || null;
 
     let classifiedAttribution: any = null;
     try {
@@ -1025,8 +1025,8 @@ async function processPhoneCallWebhook(payload: any) {
         email: contactEmail || null,
         phone: contactPhone || null,
         source: contactSource || null,
-        attribution_source: dialAttrSource || null,
-        last_attribution_source: dialLastAttrSource || null,
+        attribution_source: attrSource || null,
+        last_attribution_source: lastAttrSource || null,
         date_added: new Date().toISOString(), // Set current time as fallback
       }
       
@@ -1432,9 +1432,9 @@ async function processAppointmentWebhook(payload: any) {
     }
     
     // Prepare dial data (mapped to existing dials schema)
-    const contactAttribution = dialAttrSource || dialLastAttrSource || {};
-    const attributionSource = dialAttrSource || null;
-    const lastAttributionSource = dialLastAttrSource || null;
+    const contactAttribution = attrSource || lastAttrSource || {};
+    const attributionSource = attrSource || null;
+    const lastAttributionSource = lastAttrSource || null;
 
     let classifiedAttribution: any = null;
     try {
@@ -1497,8 +1497,8 @@ async function processAppointmentWebhook(payload: any) {
         email: contactEmail || null,
         phone: contactPhone || null,
         source: contactSource || null,
-        attribution_source: dialAttrSource || null,
-        last_attribution_source: dialLastAttrSource || null,
+        attribution_source: attrSource || null,
+        last_attribution_source: lastAttrSource || null,
         date_added: new Date().toISOString(), // Set current time as fallback
       }
       
