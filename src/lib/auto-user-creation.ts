@@ -21,17 +21,32 @@ export async function linkExistingUsersToData(
 	
 	async function findOrGrantByEmail(email: string, role: 'setter' | 'sales_rep' | 'moderator' = 'moderator'): Promise<string | undefined> {
 		const normalized = email.trim().toLowerCase()
+		
+		console.log(`🔍 Searching for ${role} with email:`, normalized, `in account:`, accountId)
+		
 		// 1) Try to find existing account access by profile email (case-insensitive)
-		const { data: existingAccess } = await supabase
+		const { data: existingAccess, error } = await supabase
 			.from('account_access')
-			.select('user_id, profiles!inner(id, email)')
+			.select('user_id, profiles!inner(id, email, full_name)')
 			.eq('account_id', accountId)
 			.ilike('profiles.email' as any, normalized)
 			.eq('is_active', true)
 			.maybeSingle()
 
-		if (existingAccess?.user_id) return existingAccess.user_id as any
+		if (error) {
+			console.error(`❌ Error searching for ${role}:`, error)
+		}
 
+		if (existingAccess?.user_id) {
+			console.log(`✅ Found ${role} in account_access:`, {
+				userId: existingAccess.user_id,
+				email: (existingAccess as any).profiles?.email,
+				name: (existingAccess as any).profiles?.full_name
+			})
+			return existingAccess.user_id as any
+		}
+
+		console.log(`❌ No match found for ${role} email:`, normalized)
 		return undefined
 
 	}
