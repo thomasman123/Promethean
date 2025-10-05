@@ -1665,6 +1665,8 @@ async function processAppointmentWebhook(payload: any) {
     console.log(`📞 Contact ID to link:`, dialData.contact_id);
     
     // Construct the appointment/discovery data
+    // Note: We link to the contact via contact_id only. 
+    // All contact data (email, phone, name, attribution) is stored in the contacts table.
     const appointmentOrDiscoveryData: any = {
       account_id: account.id,
       ghl_appointment_id: ghlAppointmentId || null,
@@ -1674,15 +1676,7 @@ async function processAppointmentWebhook(payload: any) {
       sales_rep: salesRepName || null,
       setter_user_id: linkedSetterUserId,
       sales_rep_user_id: linkedSalesRepUserId,
-      contact_id: dialData.contact_id || null,
-      contact_email_snapshot: contactEmail || null,
-      contact_phone_snapshot: contactPhone || null,
-      contact_name_snapshot: contactName || null,
-      // Attribution fields
-      contact_attribution_source: attrSource || null,
-      contact_last_attribution_source: lastAttrSource || null,
-      contact_classified_attribution: classifiedAttribution || null,
-      contact_enhanced_attribution: enhancedClassification || null,
+      contact_id: dialData.contact_id || null, // Link to contacts table - all contact data lives there
     };
 
     console.log(`💾 Upserting into ${target_table} table...`, {
