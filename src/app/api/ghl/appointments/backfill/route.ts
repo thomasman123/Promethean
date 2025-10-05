@@ -2,6 +2,24 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { processAppointmentWebhook } from '@/app/api/webhook/call-events/route'
 
+interface AppointmentLog {
+	eventId: string
+	title: string
+	startTime: string
+	contactId: string | null
+	assignedUserId: string | null
+	steps: {
+		fetchEvent: { status: 'success' | 'failed', message?: string }
+		mapCalendar: { status: 'success' | 'failed', message?: string, targetTable?: string }
+		fetchContact: { status: 'success' | 'failed', message?: string, contactEmail?: string }
+		linkSetter: { status: 'success' | 'failed', message?: string, setterName?: string }
+		linkSalesRep: { status: 'success' | 'failed', message?: string, salesRepName?: string }
+		createRecord: { status: 'success' | 'failed', message?: string, recordId?: string }
+	}
+	finalStatus: 'success' | 'failed'
+	errorMessage?: string
+}
+
 export async function POST(request: NextRequest) {
 	try {
 		const body = await request.json()
@@ -47,13 +65,15 @@ export async function POST(request: NextRequest) {
 		let created = 0
 		const errors: any[] = []
 		const calendarResults: Record<string, any> = {}
+		const appointmentLogs: AppointmentLog[] = []
 
 		if (!mappings || mappings.length === 0) {
 			return NextResponse.json({ 
 				error: 'No calendar mappings found for this account',
 				processed: 0, 
 				created: 0, 
-				mappingCount: 0 
+				mappingCount: 0,
+				appointmentLogs: []
 			})
 		}
 
@@ -91,6 +111,25 @@ export async function POST(request: NextRequest) {
 				// Process each event through EXACT webhook logic
 				for (const event of events) {
 					processed++
+					
+					// Initialize log for this appointment
+					const log: AppointmentLog = {
+						eventId: event.id,
+						title: event.title || 'Untitled',
+						startTime: event.startTime || 'Unknown',
+						contactId: event.contactId || null,
+						assignedUserId: event.assignedUserId || null,
+						steps: {
+							fetchEvent: { status: 'success' },
+							mapCalendar: { status: 'success', targetTable: mapping.target_table, message: `Mapped to ${mapping.target_table}` },
+							fetchContact: { status: 'failed', message: 'Not attempted' },
+							linkSetter: { status: 'failed', message: 'Not attempted' },
+							linkSalesRep: { status: 'failed', message: 'Not attempted' },
+							createRecord: { status: 'failed', message: 'Not attempted' }
+						},
+						finalStatus: 'failed'
+					}
+
 					try {
 						console.log(`🔄 Processing event ${event.id} (${processed}/${totalEvents})`)
 
@@ -110,16 +149,76 @@ export async function POST(request: NextRequest) {
 
 						console.log(`📝 Processing through webhook pipeline: ${event.title} (${event.startTime})`)
 
-						// Call EXACT same function as webhooks
-						await processAppointmentWebhook(payload)
-						created++
+						// Attempt to track individual steps by wrapping the webhook call
+						// We'll mark steps as success if the overall call succeeds
+						// For more granular tracking, we'd need to modify processAppointmentWebhook to return step details
+						
+						try {
+							await processAppointmentWebhook(payload)
+							
+							// If we got here, all steps succeeded
+							log.steps.fetchContact.status = 'success'
+							log.steps.fetchContact.message = `Contact ${event.contactId || 'N/A'}`
+							
+							log.steps.linkSetter.status = 'success'
+							log.steps.linkSetter.message = 'Setter linked'
+							
+							log.steps.linkSalesRep.status = 'success'
+							log.steps.linkSalesRep.message = event.assignedUserId ? `Sales rep ${event.assignedUserId}` : 'No sales rep'
+							
+							log.steps.createRecord.status = 'success'
+							log.steps.createRecord.message = `Record created/updated in ${mapping.target_table}`
+							
+							log.finalStatus = 'success'
+							created++
+							
+							console.log(`✅ Created/updated via webhook pipeline: ${event.id}`)
 
-						console.log(`✅ Created/updated via webhook pipeline: ${event.id}`)
+						} catch (webhookError: any) {
+							// Determine which step failed based on error message
+							const errMsg = webhookError?.message || String(webhookError)
+							
+							if (errMsg.includes('contact') || errMsg.includes('Contact')) {
+								log.steps.fetchContact.status = 'failed'
+								log.steps.fetchContact.message = errMsg.slice(0, 100)
+							} else if (errMsg.includes('setter') || errMsg.includes('Setter')) {
+								log.steps.fetchContact.status = 'success'
+								log.steps.linkSetter.status = 'failed'
+								log.steps.linkSetter.message = errMsg.slice(0, 100)
+							} else if (errMsg.includes('sales rep') || errMsg.includes('assigned')) {
+								log.steps.fetchContact.status = 'success'
+								log.steps.linkSetter.status = 'success'
+								log.steps.linkSalesRep.status = 'failed'
+								log.steps.linkSalesRep.message = errMsg.slice(0, 100)
+							} else if (errMsg.includes('upsert') || errMsg.includes('insert')) {
+								log.steps.fetchContact.status = 'success'
+								log.steps.linkSetter.status = 'success'
+								log.steps.linkSalesRep.status = 'success'
+								log.steps.createRecord.status = 'failed'
+								log.steps.createRecord.message = errMsg.slice(0, 100)
+							} else {
+								// Generic error
+								log.steps.createRecord.status = 'failed'
+								log.steps.createRecord.message = errMsg.slice(0, 100)
+							}
+							
+							log.errorMessage = errMsg
+							log.finalStatus = 'failed'
+							
+							throw webhookError
+						}
 
 					} catch (e) {
-						console.error(`❌ Error processing event ${event.id}:`, e)
-						errors.push({ eventId: event.id, error: (e as any)?.message || String(e) })
+						const errMsg = (e as any)?.message || String(e)
+						console.error(`❌ Error processing event ${event.id}:`, errMsg)
+						errors.push({ eventId: event.id, error: errMsg })
+						
+						if (!log.errorMessage) {
+							log.errorMessage = errMsg
+						}
 					}
+					
+					appointmentLogs.push(log)
 				}
 
 			} catch (e) {
@@ -136,7 +235,8 @@ export async function POST(request: NextRequest) {
 			created, 
 			mappingCount: mappings?.length || 0, 
 			calendarResults, 
-			errors 
+			errors,
+			appointmentLogs
 		})
 	} catch (e) {
 		console.error('❌ Backfill error:', e)
