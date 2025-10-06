@@ -395,7 +395,7 @@ export default function PaymentPlansPage() {
 
   if (userLoading) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen">
         <TopBar />
         <main className={`pt-16 h-screen overflow-y-auto ${isImpersonating ? "pt-[104px]" : "pt-16"}`}>
           <Loading text="Loading user data..." />
@@ -406,7 +406,7 @@ export default function PaymentPlansPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen">
         <TopBar />
         <main className={`pt-16 h-screen overflow-y-auto ${isImpersonating ? "pt-[104px]" : "pt-16"}`}>
           <Loading text="Loading payment plans..." />
@@ -416,7 +416,7 @@ export default function PaymentPlansPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen">
       <TopBar />
       
       <main className={`pt-16 h-screen overflow-y-auto ${isImpersonating ? "pt-[104px]" : "pt-16"}`}>

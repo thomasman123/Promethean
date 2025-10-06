@@ -40,7 +40,7 @@ export default function HomePage() {
 
   if (checking) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen">
         <Loading text="Loading..." />
       </div>
     )

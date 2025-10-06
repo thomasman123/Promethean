@@ -691,7 +691,7 @@ function GHLConnectionContent() {
 
   if (userLoading || loading) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen">
         <TopBar />
         <main className="pt-16 p-6">
           <Loading text="Loading GHL connection..." />
@@ -702,7 +702,7 @@ function GHLConnectionContent() {
 
   if (!hasAccess) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen">
         <TopBar />
         <main className="pt-16 p-6">
           <div className="max-w-2xl mx-auto">
@@ -721,7 +721,7 @@ function GHLConnectionContent() {
 
   if (!selectedAccountId) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen">
         <TopBar />
         <main className="pt-16 p-6">
           <div className="max-w-2xl mx-auto">
@@ -739,7 +739,7 @@ function GHLConnectionContent() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen">
       <TopBar />
       
       <main className="pt-16 p-6">
@@ -1131,7 +1131,7 @@ function GHLConnectionContent() {
 export default function GHLConnectionPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen">
         <TopBar />
         <main className="pt-16 p-6">
           <Loading text="Loading..." />
