@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { DashboardProvider } from "@/lib/dashboard-context";
 import { ImpersonationBar } from "@/components/layout/impersonation-bar";
+import { RaycastAnimatedBackground } from "@/components/ui/raycast-animated-background";
 import { cn } from "@/lib/utils";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -39,10 +40,15 @@ export default function RootLayout({
         inter.className,
         "min-h-screen bg-background font-sans antialiased"
       )}>
-        <DashboardProvider>
-          <ImpersonationBar />
-          {children}
-        </DashboardProvider>
+        <div className="hidden dark:block">
+          <RaycastAnimatedBackground />
+        </div>
+        <div className="relative z-10">
+          <DashboardProvider>
+            <ImpersonationBar />
+            {children}
+          </DashboardProvider>
+        </div>
       </body>
     </html>
   );
