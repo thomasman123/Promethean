@@ -23,13 +23,13 @@ interface WidgetProps {
 export function Widget({ title, children, className, onRemove, onEdit, reducedPadding }: WidgetProps) {
   return (
     <div className={cn(
-      "h-full w-full rounded-lg bg-card/80 backdrop-blur-sm border shadow-sm",
+      "h-full w-full rounded-lg bg-card/60 backdrop-blur-md border shadow-sm",
       "relative group flex flex-col overflow-hidden",
       className
     )}>
       {/* Header */}
       {title && (
-        <div className="px-4 py-3 border-b bg-muted/20">
+        <div className="px-4 py-3 border-b bg-muted/15">
           <h3 className="text-sm font-medium truncate pr-8">
             {title}
           </h3>
