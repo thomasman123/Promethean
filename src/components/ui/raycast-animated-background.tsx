@@ -62,23 +62,34 @@ export const RaycastAnimatedBackground = () => {
   }
 
   // Different opacity for light and dark modes
-  const opacity = isDarkMode ? 0.6 : 0.3;
+  const opacity = isDarkMode ? 0.6 : 0.2;
 
   return (
-    <div 
-      className={cn("fixed inset-0 pointer-events-none overflow-hidden transition-opacity duration-500")}
-      style={{ 
-        zIndex: 0,
-        opacity
-      }}
-    >
-      <UnicornScene 
-        production={true} 
-        projectId="cbmTT38A0CcuYxeiyj5H" 
-        width={width} 
-        height={height} 
-      />
-    </div>
+    <>
+      {/* Animated scene */}
+      <div 
+        className={cn("fixed inset-0 pointer-events-none overflow-hidden transition-opacity duration-500")}
+        style={{ 
+          zIndex: 0,
+          opacity
+        }}
+      >
+        <UnicornScene 
+          production={true} 
+          projectId="cbmTT38A0CcuYxeiyj5H" 
+          width={width} 
+          height={height} 
+        />
+      </div>
+      
+      {/* White overlay for light mode to brighten the dark animation */}
+      {!isDarkMode && (
+        <div 
+          className="fixed inset-0 pointer-events-none bg-white/40 transition-opacity duration-500"
+          style={{ zIndex: 0 }}
+        />
+      )}
+    </>
   );
 };
 
