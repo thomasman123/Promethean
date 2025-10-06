@@ -38,12 +38,12 @@ export default function RootLayout({
       </head>
       <body className={cn(
         inter.className,
-        "min-h-screen bg-background font-sans antialiased"
+        "relative min-h-screen bg-background font-sans antialiased"
       )}>
-        <div className="hidden dark:block">
+        <div className="hidden dark:block fixed inset-0 z-0">
           <RaycastAnimatedBackground />
         </div>
-        <div className="relative z-10">
+        <div className="relative z-10 min-h-screen">
           <DashboardProvider>
             <ImpersonationBar />
             {children}
