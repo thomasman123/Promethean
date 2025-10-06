@@ -51,26 +51,89 @@ export async function linkExistingUsersToData(
 
 	}
 	
+	async function findByName(name: string, role: 'setter' | 'sales_rep' | 'moderator' = 'moderator'): Promise<string | undefined> {
+		const normalized = name.trim()
+		
+		console.log(`🔍 Searching for ${role} with name:`, normalized, `in account:`, accountId)
+		
+		// Try to find existing account access by profile name (case-insensitive)
+		const { data: existingAccess, error } = await supabase
+			.from('account_access')
+			.select('user_id, profiles!inner(id, email, full_name)')
+			.eq('account_id', accountId)
+			.ilike('profiles.full_name' as any, normalized)
+			.eq('is_active', true)
+			.maybeSingle()
+
+		if (error) {
+			console.error(`❌ Error searching for ${role} by name:`, error)
+		}
+
+		if (existingAccess?.user_id) {
+			console.log(`✅ Found ${role} in account_access by name:`, {
+				userId: existingAccess.user_id,
+				email: (existingAccess as any).profiles?.email,
+				name: (existingAccess as any).profiles?.full_name
+			})
+			return existingAccess.user_id as any
+		}
+
+		console.log(`❌ No match found for ${role} name:`, normalized)
+		return undefined
+	}
+	
 	try {
-		// Process setter - link or grant
+		// Process setter - try email first, then fallback to name
 		if (setterEmail) {
 			const uid = await findOrGrantByEmail(setterEmail, 'setter')
 			if (uid) {
 				result.setterUserId = uid
-				console.log('✅ Linked/granted setter user:', setterEmail)
+				console.log('✅ Linked/granted setter user by email:', setterEmail)
+			} else if (setterName) {
+				// Fallback to name matching
+				const nameUid = await findByName(setterName, 'setter')
+				if (nameUid) {
+					result.setterUserId = nameUid
+					console.log('✅ Linked/granted setter user by name:', setterName)
+				} else {
+					console.log('⚠️ Setter not found in app users:', setterName || setterEmail)
+				}
+			}
+		} else if (setterName) {
+			// No email provided, try name only
+			const uid = await findByName(setterName, 'setter')
+			if (uid) {
+				result.setterUserId = uid
+				console.log('✅ Linked/granted setter user by name (no email):', setterName)
 			} else {
-				console.log('⚠️ Setter not found in app users:', setterName || setterEmail)
+				console.log('⚠️ Setter not found in app users:', setterName)
 			}
 		}
 
-		// Process sales rep - link or grant
+		// Process sales rep - try email first, then fallback to name
 		if (salesRepEmail) {
 			const uid = await findOrGrantByEmail(salesRepEmail, 'sales_rep')
 			if (uid) {
 				result.salesRepUserId = uid
-				console.log('✅ Linked/granted sales rep user:', salesRepEmail)
+				console.log('✅ Linked/granted sales rep user by email:', salesRepEmail)
+			} else if (salesRepName) {
+				// Fallback to name matching
+				const nameUid = await findByName(salesRepName, 'sales_rep')
+				if (nameUid) {
+					result.salesRepUserId = nameUid
+					console.log('✅ Linked/granted sales rep user by name:', salesRepName)
+				} else {
+					console.log('⚠️ Sales rep not found in app users:', salesRepName || salesRepEmail)
+				}
+			}
+		} else if (salesRepName) {
+			// No email provided, try name only
+			const uid = await findByName(salesRepName, 'sales_rep')
+			if (uid) {
+				result.salesRepUserId = uid
+				console.log('✅ Linked/granted sales rep user by name (no email):', salesRepName)
 			} else {
-				console.log('⚠️ Sales rep not found in app users:', salesRepName || salesRepEmail)
+				console.log('⚠️ Sales rep not found in app users:', salesRepName)
 			}
 		}
 
