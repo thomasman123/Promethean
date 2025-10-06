@@ -32,9 +32,24 @@ export const useWindowSize = () => {
 
 export const RaycastAnimatedBackground = () => {
   const { width, height } = useWindowSize();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted || !width || !height) {
+    return null;
+  }
 
   return (
-    <div className={cn("fixed inset-0 z-0 pointer-events-none")}>
+    <div 
+      className={cn("fixed inset-0 pointer-events-none overflow-hidden")}
+      style={{ 
+        zIndex: 0,
+        opacity: 0.6
+      }}
+    >
       <UnicornScene 
         production={true} 
         projectId="cbmTT38A0CcuYxeiyj5H" 
