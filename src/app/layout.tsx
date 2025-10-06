@@ -40,7 +40,8 @@ export default function RootLayout({
         inter.className,
         "relative min-h-screen bg-background font-sans antialiased"
       )}>
-        <div className="hidden dark:block fixed inset-0 z-0">
+        {/* Animated background for both light and dark modes */}
+        <div className="fixed inset-0 z-0">
           <RaycastAnimatedBackground />
         </div>
         <div className="relative z-10 min-h-screen">

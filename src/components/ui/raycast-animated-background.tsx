@@ -33,21 +33,43 @@ export const useWindowSize = () => {
 export const RaycastAnimatedBackground = () => {
   const { width, height } = useWindowSize();
   const [mounted, setMounted] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(false);
 
   useEffect(() => {
     setMounted(true);
+    // Check initial dark mode state
+    setIsDarkMode(document.documentElement.classList.contains('dark'));
+    
+    // Watch for dark mode changes
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.attributeName === 'class') {
+          setIsDarkMode(document.documentElement.classList.contains('dark'));
+        }
+      });
+    });
+    
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class']
+    });
+    
+    return () => observer.disconnect();
   }, []);
 
   if (!mounted || !width || !height) {
     return null;
   }
 
+  // Different opacity for light and dark modes
+  const opacity = isDarkMode ? 0.6 : 0.3;
+
   return (
     <div 
-      className={cn("fixed inset-0 pointer-events-none overflow-hidden")}
+      className={cn("fixed inset-0 pointer-events-none overflow-hidden transition-opacity duration-500")}
       style={{ 
         zIndex: 0,
-        opacity: 0.6
+        opacity
       }}
     >
       <UnicornScene 
