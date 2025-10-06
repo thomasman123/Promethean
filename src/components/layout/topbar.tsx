@@ -57,6 +57,7 @@ export function TopBar({ onAddWidget }: TopBarProps) {
   const [showAdminSettingsModal, setShowAdminSettingsModal] = useState(false)
   const [isImpersonating, setIsImpersonating] = useState(false)
   const [appointmentsTab, setAppointmentsTab] = useState<'appointments' | 'discoveries'>('appointments')
+  const [hasSettingsAccess, setHasSettingsAccess] = useState(false)
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createBrowserClient(
@@ -115,6 +116,39 @@ export function TopBar({ onAddWidget }: TopBarProps) {
     window.addEventListener("scroll", handleScroll)
     return () => window.removeEventListener("scroll", handleScroll)
   }, [])
+
+  // Check if user has settings access
+  useEffect(() => {
+    const checkSettingsAccess = async () => {
+      if (!effectiveUser || !selectedAccountId) {
+        setHasSettingsAccess(false)
+        return
+      }
+
+      // Global admins always have access
+      if (effectiveUser.role === 'admin') {
+        setHasSettingsAccess(true)
+        return
+      }
+
+      // Check if user is account moderator or admin
+      try {
+        const { data: access } = await supabase
+          .from('account_access')
+          .select('role')
+          .eq('user_id', effectiveUser.id)
+          .eq('account_id', selectedAccountId)
+          .eq('is_active', true)
+          .single()
+
+        setHasSettingsAccess(access && ['admin', 'moderator'].includes(access.role))
+      } catch (error) {
+        setHasSettingsAccess(false)
+      }
+    }
+
+    checkSettingsAccess()
+  }, [effectiveUser, selectedAccountId, supabase])
 
   const getCurrentUser = async () => {
     try {
@@ -242,7 +276,8 @@ export function TopBar({ onAddWidget }: TopBarProps) {
       label: "Account", 
       icon: Settings,
       dropdownItems: [
-        { href: "/account/settings", label: "Settings", icon: Settings },
+        // Conditionally include Settings link based on user permissions
+        ...(hasSettingsAccess ? [{ href: "/account/settings", label: "Settings", icon: Settings }] : []),
         { href: "/account/ghl-connection", label: "GHL Connection", icon: Shield },
         { href: "/account/meta-ads-connection", label: "Meta Ads Connection", icon: TrendingUp },
         { href: "/account/team", label: "Team", icon: Users }
