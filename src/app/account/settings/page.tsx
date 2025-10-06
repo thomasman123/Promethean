@@ -130,7 +130,7 @@ export default function AccountSettingsPage() {
 
   if (userLoading || loading) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen">
         <TopBar />
         <main className="pt-16 p-6">
           <Loading text="Loading account settings..." />
@@ -141,7 +141,7 @@ export default function AccountSettingsPage() {
 
   if (!hasAccess) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen">
         <TopBar />
         <main className="pt-16 p-6">
           <div className="max-w-2xl mx-auto">
@@ -160,7 +160,7 @@ export default function AccountSettingsPage() {
 
   if (!selectedAccountId) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen">
         <TopBar />
         <main className="pt-16 p-6">
           <div className="max-w-2xl mx-auto">
@@ -178,7 +178,7 @@ export default function AccountSettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen">
       <TopBar />
       
       <main className="pt-16 p-6">

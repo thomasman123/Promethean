@@ -22,7 +22,7 @@ export default function AdvancedTrackingPage() {
   const metaUtmTemplate = `?utm_source=facebook&utm_medium=paid_social&utm_campaign={{campaign.name}}&utm_content={{ad.name}}&utm_term={{adset.name}}&utm_id={{campaign.id}}_{{adset.id}}_{{ad.id}}`
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen">
       <TopBar />
       <main className="pt-16 p-6">
         <div className="max-w-5xl mx-auto space-y-6">

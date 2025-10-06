@@ -4,7 +4,7 @@ import { TopBar } from "@/components/layout/topbar"
 
 export default function AccountPage() {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen">
       <TopBar />
       
       <main className="pt-16 p-6">

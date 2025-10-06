@@ -654,7 +654,7 @@ function MetaAdsConnectionContent() {
 
   if (userLoading || loading) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen">
         <TopBar />
         <main className="pt-16 p-6">
           <Loading text="Loading Meta Ads connection..." />
@@ -665,7 +665,7 @@ function MetaAdsConnectionContent() {
 
   if (!hasAccess) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen">
         <TopBar />
         <main className="pt-16 p-6">
           <div className="max-w-2xl mx-auto">
@@ -684,7 +684,7 @@ function MetaAdsConnectionContent() {
 
   if (!selectedAccountId) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen">
         <TopBar />
         <main className="pt-16 p-6">
           <div className="max-w-2xl mx-auto">
@@ -702,7 +702,7 @@ function MetaAdsConnectionContent() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen">
       <TopBar />
       
       <main className="pt-16 p-6">
@@ -1084,7 +1084,7 @@ function MetaAdsConnectionContent() {
 export default function MetaAdsConnectionPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen">
         <TopBar />
         <main className="pt-16 p-6">
           <Loading text="Loading..." />

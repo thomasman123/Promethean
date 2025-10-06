@@ -344,7 +344,7 @@ export default function DashboardPage() {
   // Prevent hydration mismatch by not rendering until client-side
   if (!isClient) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen">
         <TopBar onAddWidget={handleAddWidget} />
         <main className="pt-16 h-screen overflow-y-auto">
           <Loading text="Loading..." />
@@ -355,7 +355,7 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen">
         <TopBar onAddWidget={handleAddWidget} />
         <main className="pt-16 h-screen overflow-y-auto">
           <Loading text="Loading dashboard..." />
@@ -365,7 +365,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen">
       <TopBar onAddWidget={handleAddWidget} />
       
       <main className="pt-16 h-screen overflow-y-auto">
