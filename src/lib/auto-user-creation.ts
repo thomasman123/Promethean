@@ -27,7 +27,7 @@ export async function linkExistingUsersToData(
 		// 1) Try to find existing account access by profile email (case-insensitive)
 		const { data: existingAccess, error } = await supabase
 			.from('account_access')
-			.select('user_id, profiles!inner(id, email, full_name)')
+			.select('user_id, profiles!account_access_user_id_fkey!inner(id, email, full_name)')
 			.eq('account_id', accountId)
 			.ilike('profiles.email' as any, normalized)
 			.eq('is_active', true)
@@ -59,7 +59,7 @@ export async function linkExistingUsersToData(
 		// Try to find existing account access by profile name (case-insensitive)
 		const { data: existingAccess, error } = await supabase
 			.from('account_access')
-			.select('user_id, profiles!inner(id, email, full_name)')
+			.select('user_id, profiles!account_access_user_id_fkey!inner(id, email, full_name)')
 			.eq('account_id', accountId)
 			.ilike('profiles.full_name' as any, normalized)
 			.eq('is_active', true)
