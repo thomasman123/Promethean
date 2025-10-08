@@ -99,6 +99,13 @@ interface FilterState {
   dateRange: { start: Date | null; end: Date | null }
 }
 
+interface Rep {
+  id: string
+  name: string
+  email: string
+  role: string
+}
+
 export default function AppointmentsDiscoveriesPage() {
   const [appointments, setAppointments] = useState<AppointmentData[]>([])
   const [discoveries, setDiscoveries] = useState<DiscoveryData[]>([])
@@ -117,6 +124,12 @@ export default function AppointmentsDiscoveriesPage() {
     dateRange: { start: null, end: null }
   })
   
+  // Admin-specific state
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [viewAllMode, setViewAllMode] = useState(false)
+  const [selectedRepId, setSelectedRepId] = useState<string>("")
+  const [reps, setReps] = useState<Rep[]>([])
+  
   const { toast } = useToast()
   const { isImpersonating } = useImpersonation()
   const { user: effectiveUser, loading: userLoading } = useEffectiveUser()
@@ -129,9 +142,16 @@ export default function AppointmentsDiscoveriesPage() {
 
   useEffect(() => {
     if (effectiveUser) {
+      checkAdminStatus()
       fetchData()
     }
-  }, [effectiveUser, activeTab, selectedAccountId])
+  }, [effectiveUser, activeTab, selectedAccountId, viewAllMode, selectedRepId])
+
+  useEffect(() => {
+    if (isAdmin && viewAllMode) {
+      fetchReps()
+    }
+  }, [isAdmin, viewAllMode])
 
   useEffect(() => {
     // Listen for tab change from topbar
@@ -145,6 +165,35 @@ export default function AppointmentsDiscoveriesPage() {
     }
   }, [])
 
+  const checkAdminStatus = async () => {
+    if (!effectiveUser) return
+    
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', effectiveUser.id)
+        .single()
+      
+      setIsAdmin(profile?.role === 'admin')
+    } catch (error) {
+      console.error('Error checking admin status:', error)
+    }
+  }
+
+  const fetchReps = async () => {
+    try {
+      const response = await fetch('/api/admin/reps')
+      const data = await response.json()
+      
+      if (response.ok) {
+        setReps(data.reps || [])
+      }
+    } catch (error) {
+      console.error('Error fetching reps:', error)
+    }
+  }
+
   const fetchData = async () => {
     if (!effectiveUser) return
     
@@ -153,18 +202,37 @@ export default function AppointmentsDiscoveriesPage() {
       console.log('🔍 [appointments-discoveries] Fetching data with filters:', {
         effectiveUser: effectiveUser.id,
         selectedAccountId,
-        activeTab
+        activeTab,
+        viewAllMode,
+        selectedRepId
       })
 
-      // Create API endpoint call that handles impersonation properly
-      const queryParams = new URLSearchParams({
-        user_id: effectiveUser.id,
-        account_id: selectedAccountId || '',
-        tab: activeTab
-      })
+      let response, data
 
-      const response = await fetch(`/api/update-data/appointments-discoveries?${queryParams}`)
-      const data = await response.json()
+      // Use admin endpoint if in viewAllMode and user is admin
+      if (viewAllMode && isAdmin) {
+        const queryParams = new URLSearchParams({
+          account_id: selectedAccountId || '',
+          tab: activeTab
+        })
+
+        if (selectedRepId) {
+          queryParams.set('rep_user_id', selectedRepId)
+        }
+
+        response = await fetch(`/api/admin/appointments/all?${queryParams}`)
+        data = await response.json()
+      } else {
+        // Create API endpoint call that handles impersonation properly
+        const queryParams = new URLSearchParams({
+          user_id: effectiveUser.id,
+          account_id: selectedAccountId || '',
+          tab: activeTab
+        })
+
+        response = await fetch(`/api/update-data/appointments-discoveries?${queryParams}`)
+        data = await response.json()
+      }
 
       if (!response.ok) {
         throw new Error(data.error || 'Failed to fetch data')
@@ -421,6 +489,44 @@ export default function AppointmentsDiscoveriesPage() {
                       className="pl-10"
                     />
                   </div>
+
+                  {/* Admin Controls */}
+                  {isAdmin && (
+                    <>
+                      <div className="flex items-center gap-2 px-3 py-2 border rounded-lg bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800">
+                        <Label htmlFor="view-all-toggle" className="text-sm font-medium cursor-pointer">
+                          View All {activeTab === 'appointments' ? 'Appointments' : 'Discoveries'}
+                        </Label>
+                        <Checkbox
+                          id="view-all-toggle"
+                          checked={viewAllMode}
+                          onCheckedChange={(checked) => {
+                            setViewAllMode(!!checked)
+                            setSelectedRepId("")
+                          }}
+                        />
+                      </div>
+
+                      {viewAllMode && (
+                        <Select
+                          value={selectedRepId}
+                          onValueChange={setSelectedRepId}
+                        >
+                          <SelectTrigger className="w-[200px]">
+                            <SelectValue placeholder="Filter by Rep" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="">All Reps</SelectItem>
+                            {reps.map((rep) => (
+                              <SelectItem key={rep.id} value={rep.id}>
+                                {rep.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </>
+                  )}
 
                   {/* Filter Dropdowns */}
                   <DropdownMenu>
