@@ -509,14 +509,14 @@ export default function AppointmentsDiscoveriesPage() {
 
                       {viewAllMode && (
                         <Select
-                          value={selectedRepId}
-                          onValueChange={setSelectedRepId}
+                          value={selectedRepId || "all"}
+                          onValueChange={(value) => setSelectedRepId(value === "all" ? "" : value)}
                         >
                           <SelectTrigger className="w-[200px]">
                             <SelectValue placeholder="Filter by Rep" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="">All Reps</SelectItem>
+                            <SelectItem value="all">All Reps</SelectItem>
                             {reps.map((rep) => (
                               <SelectItem key={rep.id} value={rep.id}>
                                 {rep.name}
