@@ -5,8 +5,8 @@ export async function middleware(req: NextRequest) {
   const { pathname, searchParams } = req.nextUrl
   const hostname = req.headers.get('host') || ''
 
-  // Handle marketing site (www.getpromethean.com)
-  if (hostname === 'www.getpromethean.com') {
+  // Handle marketing site (www.getpromethean.com and getpromethean.com)
+  if (hostname === 'www.getpromethean.com' || hostname === 'getpromethean.com') {
     // Allow webhook routes to pass through without redirect (for external services like GHL)
     if (pathname.startsWith('/api/webhook') || pathname.startsWith('/api/webhooks')) {
       return NextResponse.next()
