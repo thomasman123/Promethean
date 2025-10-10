@@ -1,5 +1,5 @@
 {
-  "alias": ["app.getpromethean.com"],
+  "alias": ["app.getpromethean.com", "www.getpromethean.com", "getpromethean.com"],
   "framework": "nextjs",
   "regions": ["iad1"],
   "headers": [
@@ -23,13 +23,6 @@
           "value": "strict-origin-when-cross-origin"
         }
       ]
-    }
-  ],
-  "redirects": [
-    {
-      "source": "/",
-      "destination": "/dashboard",
-      "permanent": false
     }
   ],
   "crons": [
