@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { PageLayout } from "@/components/layout/page-layout"
+import { TopBar } from "@/components/layout/topbar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -354,7 +354,10 @@ export default function UpdateDataPage() {
   }
 
   return (
-    <PageLayout>
+    <div className="min-h-screen">
+      <TopBar />
+      
+      <main className={`pt-16 h-screen overflow-y-auto ${isImpersonating ? "pt-[104px]" : "pt-16"}`}>
         <div className="p-6">
           {userLoading ? (
             <Loading text="Loading user data..." />
@@ -503,6 +506,7 @@ export default function UpdateDataPage() {
         </div>
 
         <QuickFlowModal />
-    </PageLayout>
+      </main>
+    </div>
   )
 } 

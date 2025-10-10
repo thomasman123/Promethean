@@ -24,7 +24,7 @@ import { TransformHandles } from '@/components/playground/transform-handles'
 import { SnapGuides, snapToGuides } from '@/components/playground/snap-guides'
 import { useUndoRedo } from '@/hooks/use-undo-redo'
 import { AutosaveStatus } from '@/components/playground/autosave-status'
-import { PageLayout } from '@/components/layout/page-layout'
+import { TopBar } from '@/components/layout/topbar'
 
 interface Page {
   id: string
@@ -392,9 +392,10 @@ export default function PlaygroundPage() {
   }, [selectedTool, previousTool, isSpacePressed, selectedElements, handleDeleteElement, handleDuplicateElement])
 
   return (
-    <PageLayout>
+    <div className="h-screen flex flex-col bg-background">
+      <TopBar />
       {/* Main Frame Container */}
-      <Card className="flex-1 m-4 overflow-hidden flex flex-col">
+      <Card className="flex-1 m-4 overflow-hidden flex flex-col mt-16">
         <div className="flex-1 flex overflow-hidden">
           {/* Left Sidebar - Pages */}
           <div className={cn(
@@ -690,6 +691,6 @@ export default function PlaygroundPage() {
         onClose={() => setIsWidgetModalOpen(false)}
         onCreateWidget={handleCreateWidget}
       />
-    </PageLayout>
+    </div>
   )
 } 
