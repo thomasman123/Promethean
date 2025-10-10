@@ -22,8 +22,9 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Search, UserCheck, Users, Settings2, Shield, Building2, Plus, X, Building } from "lucide-react"
+import { Search, UserCheck, Users, Settings2, Shield, Building2, Plus, X, Building, Layout } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { createBrowserClient } from "@supabase/ssr"
 import { Database } from "@/lib/database.types"
 import { useToast } from "@/hooks/use-toast"
@@ -75,6 +76,10 @@ export function AdminSettingsModal({ open, onOpenChange }: AdminSettingsModalPro
   const [sessionSearch, setSessionSearch] = useState("")
   const [sessionLimit, setSessionLimit] = useState<string>("50")
   
+  // Layout preference state
+  const [layoutPreference, setLayoutPreference] = useState<string>("classic")
+  const [layoutLoading, setLayoutLoading] = useState(false)
+  
   const { toast } = useToast()
   const router = useRouter()
   
@@ -88,6 +93,7 @@ export function AdminSettingsModal({ open, onOpenChange }: AdminSettingsModalPro
       fetchUsers()
       fetchAccounts()
       fetchSessions()
+      fetchLayoutPreference()
     }
   }, [open])
 
@@ -257,6 +263,58 @@ export function AdminSettingsModal({ open, onOpenChange }: AdminSettingsModalPro
     }
   }
 
+  const fetchLayoutPreference = async () => {
+    try {
+      const response = await fetch('/api/admin/layout-preference')
+      if (response.ok) {
+        const data = await response.json()
+        setLayoutPreference(data.layoutPreference || 'classic')
+      }
+    } catch (error) {
+      console.error('Error fetching layout preference:', error)
+    }
+  }
+
+  const handleLayoutChange = async (newLayout: string) => {
+    setLayoutLoading(true)
+    try {
+      const response = await fetch('/api/admin/layout-preference', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ layoutPreference: newLayout })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to update layout preference')
+      }
+
+      setLayoutPreference(newLayout)
+      toast({
+        title: "Success",
+        description: "Layout preference updated. Refreshing page..."
+      })
+
+      // Dispatch event for layout wrapper to pick up
+      window.dispatchEvent(new CustomEvent('layoutPreferenceChanged', { 
+        detail: { layoutPreference: newLayout } 
+      }))
+
+      // Refresh page after a short delay
+      setTimeout(() => {
+        window.location.reload()
+      }, 1000)
+    } catch (error) {
+      console.error('Error updating layout preference:', error)
+      toast({
+        title: "Error",
+        description: "Failed to update layout preference",
+        variant: "destructive"
+      })
+    } finally {
+      setLayoutLoading(false)
+    }
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-6xl max-h-[90vh] p-0">
@@ -269,7 +327,7 @@ export function AdminSettingsModal({ open, onOpenChange }: AdminSettingsModalPro
 
         <div className="h-[calc(90vh-80px)]">
           <Tabs defaultValue="users" className="h-full">
-            <TabsList className="mx-6 mt-4 grid w-fit grid-cols-3">
+            <TabsList className="mx-6 mt-4 grid w-fit grid-cols-4">
               <TabsTrigger value="users" className="flex items-center gap-2">
                 <Users className="h-4 w-4" />
                 Users
@@ -281,6 +339,10 @@ export function AdminSettingsModal({ open, onOpenChange }: AdminSettingsModalPro
               <TabsTrigger value="attribution" className="flex items-center gap-2">
                 <Settings2 className="h-4 w-4" />
                 Attribution
+              </TabsTrigger>
+              <TabsTrigger value="settings" className="flex items-center gap-2">
+                <Layout className="h-4 w-4" />
+                Settings
               </TabsTrigger>
             </TabsList>
 
@@ -605,6 +667,53 @@ export function AdminSettingsModal({ open, onOpenChange }: AdminSettingsModalPro
                       )}
                     </TableBody>
                   </Table>
+                </div>
+              </div>
+            </TabsContent>
+
+            {/* Settings Tab */}
+            <TabsContent value="settings" className="h-[calc(100%-60px)] px-6 pb-6">
+              <div className="h-full flex flex-col gap-6">
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-lg font-semibold mb-2">Layout Preference</h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Choose your preferred layout style. This setting is only available to admin users.
+                    </p>
+                  </div>
+
+                  <RadioGroup 
+                    value={layoutPreference} 
+                    onValueChange={handleLayoutChange}
+                    disabled={layoutLoading}
+                    className="gap-4"
+                  >
+                    <div className="flex items-start space-x-3 p-4 border rounded-lg hover:bg-accent/50 transition-colors">
+                      <RadioGroupItem value="classic" id="classic" />
+                      <Label htmlFor="classic" className="flex-1 cursor-pointer">
+                        <div className="font-medium">Classic Layout</div>
+                        <div className="text-sm text-muted-foreground mt-1">
+                          Traditional top bar navigation with horizontal menu
+                        </div>
+                      </Label>
+                    </div>
+
+                    <div className="flex items-start space-x-3 p-4 border rounded-lg hover:bg-accent/50 transition-colors">
+                      <RadioGroupItem value="modern" id="modern" />
+                      <Label htmlFor="modern" className="flex-1 cursor-pointer">
+                        <div className="font-medium">Modern Sidebar Layout</div>
+                        <div className="text-sm text-muted-foreground mt-1">
+                          Collapsible sidebar with vertical navigation and gradient cards
+                        </div>
+                      </Label>
+                    </div>
+                  </RadioGroup>
+
+                  {layoutLoading && (
+                    <div className="text-sm text-muted-foreground">
+                      Updating layout preference...
+                    </div>
+                  )}
                 </div>
               </div>
             </TabsContent>

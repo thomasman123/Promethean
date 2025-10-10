@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from "react"
 import { Responsive, WidthProvider } from "react-grid-layout"
 import { TopBar } from "@/components/layout/topbar"
+import { LayoutWrapper, useLayout } from "@/components/layout/layout-wrapper"
 import { Widget } from "@/components/dashboard/widget"
 import { MetricWidget } from "@/components/dashboard/metric-widget"
 import { WidgetConfig } from "@/components/dashboard/add-widget-modal"
@@ -31,8 +32,9 @@ interface ViewData {
   layouts: any
 }
 
-export default function DashboardPage() {
+function DashboardContent() {
   const { selectedAccountId, currentViewId, setCurrentViewId } = useDashboard()
+  const { isModern } = useLayout()
   const [layouts, setLayouts] = useState(defaultLayouts)
   const [widgets, setWidgets] = useState<WidgetConfig[]>([])
   const [loading, setLoading] = useState(true)
@@ -344,32 +346,32 @@ export default function DashboardPage() {
   // Prevent hydration mismatch by not rendering until client-side
   if (!isClient) {
     return (
-      <div className="min-h-screen">
-        <TopBar onAddWidget={handleAddWidget} />
-        <main className="pt-16 h-screen overflow-y-auto">
+      <>
+        {!isModern && <TopBar onAddWidget={handleAddWidget} />}
+        <main className={isModern ? "" : "pt-16 h-screen overflow-y-auto"}>
           <Loading text="Loading..." />
         </main>
-      </div>
+      </>
     )
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen">
-        <TopBar onAddWidget={handleAddWidget} />
-        <main className="pt-16 h-screen overflow-y-auto">
+      <>
+        {!isModern && <TopBar onAddWidget={handleAddWidget} />}
+        <main className={isModern ? "" : "pt-16 h-screen overflow-y-auto"}>
           <Loading text="Loading dashboard..." />
         </main>
-      </div>
+      </>
     )
   }
 
   return (
-    <div className="min-h-screen">
-      <TopBar onAddWidget={handleAddWidget} />
+    <>
+      {!isModern && <TopBar onAddWidget={handleAddWidget} />}
       
-      <main className="pt-16 h-screen overflow-y-auto">
-        <div className="p-6">
+      <main className={isModern ? "" : "pt-16 h-screen overflow-y-auto"}>
+        <div className={isModern ? "page-fade-in" : "p-6"}>
           <div className="mb-4" />
           {!currentViewId ? (
             <div className="flex items-center justify-center h-64">
@@ -415,6 +417,14 @@ export default function DashboardPage() {
         onSaveWidget={handleSaveEditedWidget}
         widget={editingWidget}
       />
-    </div>
+    </>
+  )
+}
+
+export default function DashboardPage() {
+  return (
+    <LayoutWrapper>
+      <DashboardContent />
+    </LayoutWrapper>
   )
 } 
