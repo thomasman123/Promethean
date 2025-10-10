@@ -3,6 +3,8 @@
 import { useState, useCallback, useEffect, useRef } from "react"
 import { Responsive, WidthProvider } from "react-grid-layout"
 import { TopBar } from "@/components/layout/topbar"
+import { ModernSidebar } from "@/components/layout/modern-sidebar"
+import { useNavigationMode } from "@/components/layout/navigation-mode-toggle"
 import { Widget } from "@/components/dashboard/widget"
 import { MetricWidget } from "@/components/dashboard/metric-widget"
 import { WidgetConfig } from "@/components/dashboard/add-widget-modal"
@@ -13,6 +15,7 @@ import "react-grid-layout/css/styles.css"
 import "react-resizable/css/styles.css"
 import { Loading } from "@/components/ui/loading"
 import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 
 const ResponsiveGridLayout = WidthProvider(Responsive)
 
@@ -33,6 +36,7 @@ interface ViewData {
 
 export default function DashboardPage() {
   const { selectedAccountId, currentViewId, setCurrentViewId } = useDashboard()
+  const { navigationMode, isAdmin } = useNavigationMode()
   const [layouts, setLayouts] = useState(defaultLayouts)
   const [widgets, setWidgets] = useState<WidgetConfig[]>([])
   const [loading, setLoading] = useState(true)
@@ -354,21 +358,39 @@ export default function DashboardPage() {
   }
 
   if (loading) {
+    const useSidebar = isAdmin && navigationMode === 'sidebar'
+    
     return (
       <div className="min-h-screen">
-        <TopBar onAddWidget={handleAddWidget} />
-        <main className="pt-16 h-screen overflow-y-auto">
+        {useSidebar ? (
+          <ModernSidebar onAddWidget={handleAddWidget} />
+        ) : (
+          <TopBar onAddWidget={handleAddWidget} />
+        )}
+        <main className={cn(
+          "h-screen overflow-y-auto",
+          useSidebar ? "pl-64 pt-14" : "pt-16"
+        )}>
           <Loading text="Loading dashboard..." />
         </main>
       </div>
     )
   }
 
+  const useSidebar = isAdmin && navigationMode === 'sidebar'
+
   return (
     <div className="min-h-screen">
-      <TopBar onAddWidget={handleAddWidget} />
+      {useSidebar ? (
+        <ModernSidebar onAddWidget={handleAddWidget} />
+      ) : (
+        <TopBar onAddWidget={handleAddWidget} />
+      )}
       
-      <main className="pt-16 h-screen overflow-y-auto">
+      <main className={cn(
+        "h-screen overflow-y-auto",
+        useSidebar ? "pl-64 pt-14" : "pt-16"
+      )}>
         <div className="p-6">
           <div className="mb-4" />
           {!currentViewId ? (

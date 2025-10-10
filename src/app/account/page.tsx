@@ -1,15 +1,13 @@
 "use client"
 
-import { TopBar } from "@/components/layout/topbar"
+import { PageLayout } from "@/components/layout/page-layout"
 
 export default function AccountPage() {
   return (
-    <div className="min-h-screen">
-      <TopBar />
-      
-      <main className="pt-16 p-6">
+    <PageLayout>
+      <div className="p-6">
         {/* Content removed */}
-      </main>
-    </div>
+      </div>
+    </PageLayout>
   )
 } 

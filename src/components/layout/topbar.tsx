@@ -30,6 +30,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { LocationCountrySelector } from "@/components/data/location-country-selector"
 import { ConnectedGithubGlobe } from "@/components/data/connected-github-globe"
 import { ApplyLocationButton } from "@/components/data/location-apply-button"
+import { NavigationModeToggle } from "./navigation-mode-toggle"
 
 interface Account {
   id: string
@@ -600,6 +601,9 @@ export function TopBar({ onAddWidget }: TopBarProps) {
 
         {/* Follow-up Notifications */}
         <FollowUpNotifications />
+
+        {/* Navigation Mode Toggle - Admin Only */}
+        <NavigationModeToggle />
 
         {/* Dark mode toggle - Updated to match new design */}
         <Button
