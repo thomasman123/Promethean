@@ -1,17 +1,27 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs"
-import { cookies } from "next/headers"
+import { createServerClient } from "@supabase/ssr"
+import type { Database } from "@/lib/database.types"
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies })
+    const supabase = createServerClient<Database>(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return request.cookies.get(name)?.value
+          },
+          set() {},
+          remove() {},
+        },
+      }
+    )
 
     // Get the current user
-    const {
-      data: { session },
-    } = await supabase.auth.getSession()
+    const { data: { user } } = await supabase.auth.getUser()
 
-    if (!session) {
+    if (!user) {
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 401 }
@@ -22,7 +32,7 @@ export async function GET(request: NextRequest) {
     const { data: userData, error } = await supabase
       .from("users")
       .select("layout_preference")
-      .eq("id", session.user.id)
+      .eq("id", user.id)
       .single()
 
     if (error) {
@@ -47,14 +57,24 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies })
+    const supabase = createServerClient<Database>(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return request.cookies.get(name)?.value
+          },
+          set() {},
+          remove() {},
+        },
+      }
+    )
 
     // Get the current user
-    const {
-      data: { session },
-    } = await supabase.auth.getSession()
+    const { data: { user } } = await supabase.auth.getUser()
 
-    if (!session) {
+    if (!user) {
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 401 }
@@ -65,7 +85,7 @@ export async function POST(request: NextRequest) {
     const { data: userData } = await supabase
       .from("users")
       .select("role")
-      .eq("id", session.user.id)
+      .eq("id", user.id)
       .single()
 
     if (userData?.role !== "admin") {
@@ -89,7 +109,7 @@ export async function POST(request: NextRequest) {
     const { error } = await supabase
       .from("users")
       .update({ layout_preference: layoutPreference })
-      .eq("id", session.user.id)
+      .eq("id", user.id)
 
     if (error) {
       console.error("Error updating layout preference:", error)
