@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { TopBar } from "@/components/layout/topbar"
+import { LayoutWrapper, useLayout } from "@/components/layout/layout-wrapper"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -28,7 +29,8 @@ interface TaskAppointment {
   data_filled: boolean
 }
 
-export default function UpdateDataPage() {
+function UpdateDataContent() {
+  const { isModern } = useLayout()
   const [todayAppointments, setTodayAppointments] = useState<TaskAppointment[]>([])
   const [pendingAppointments, setPendingAppointments] = useState<TaskAppointment[]>([])
   const [recentCompleted, setRecentCompleted] = useState<TaskAppointment[]>([])
@@ -354,10 +356,10 @@ export default function UpdateDataPage() {
   }
 
   return (
-    <div className="min-h-screen">
-      <TopBar />
+    <>
+      {!isModern && <TopBar />}
       
-      <main className={`pt-16 h-screen overflow-y-auto ${isImpersonating ? "pt-[104px]" : "pt-16"}`}>
+      <main className={isModern ? "page-fade-in" : `pt-16 h-screen overflow-y-auto ${isImpersonating ? "pt-[104px]" : "pt-16"}`}>
         <div className="p-6">
           {userLoading ? (
             <Loading text="Loading user data..." />
@@ -507,6 +509,14 @@ export default function UpdateDataPage() {
 
         <QuickFlowModal />
       </main>
-    </div>
+    </>
+  )
+}
+
+export default function UpdateDataPage() {
+  return (
+    <LayoutWrapper>
+      <UpdateDataContent />
+    </LayoutWrapper>
   )
 } 
