@@ -25,6 +25,7 @@ import { SnapGuides, snapToGuides } from '@/components/playground/snap-guides'
 import { useUndoRedo } from '@/hooks/use-undo-redo'
 import { AutosaveStatus } from '@/components/playground/autosave-status'
 import { TopBar } from '@/components/layout/topbar'
+import { LayoutWrapper, useLayout } from '@/components/layout/layout-wrapper'
 
 interface Page {
   id: string
@@ -34,7 +35,8 @@ interface Page {
 
 type ToolType = 'select' | 'hand' | 'pencil' | 'text' | 'shapes' | null
 
-export default function PlaygroundPage() {
+function PlaygroundContent() {
+  const { isModern } = useLayout()
   const [pages, setPages] = useState<Page[]>([
     { id: '1', name: 'Page 1', elements: [] }
   ])
@@ -692,5 +694,13 @@ export default function PlaygroundPage() {
         onCreateWidget={handleCreateWidget}
       />
     </div>
+  )
+}
+
+export default function PlaygroundPage() {
+  return (
+    <LayoutWrapper>
+      <PlaygroundContent />
+    </LayoutWrapper>
   )
 } 

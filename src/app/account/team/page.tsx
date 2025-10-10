@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { TopBar } from "@/components/layout/topbar"
+import { LayoutWrapper, useLayout } from "@/components/layout/layout-wrapper"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -76,7 +77,8 @@ interface EditUserForm {
   role: string
 }
 
-export default function TeamPage() {
+function TeamContent() {
+  const { isModern } = useLayout()
   const [loading, setLoading] = useState(true)
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
   const [hasAccess, setHasAccess] = useState(false)
@@ -443,20 +445,20 @@ export default function TeamPage() {
 
   if (userLoading || loading) {
     return (
-      <div className="min-h-screen">
-        <TopBar />
-        <main className="pt-16 p-6">
+      <>
+        {!isModern && <TopBar />}
+        <main className={isModern ? "page-fade-in" : "pt-16 p-6"}>
           <Loading text="Loading team data..." />
         </main>
-      </div>
+      </>
     )
   }
 
   if (!hasAccess) {
     return (
-      <div className="min-h-screen">
-        <TopBar />
-        <main className="pt-16 p-6">
+      <>
+        {!isModern && <TopBar />}
+        <main className={isModern ? "page-fade-in" : "pt-16 p-6"}>
           <div className="max-w-2xl mx-auto">
             <Alert className="border-red-200 bg-red-50">
               <AlertCircle className="h-4 w-4 text-red-600" />
@@ -467,15 +469,15 @@ export default function TeamPage() {
             </Alert>
           </div>
         </main>
-      </div>
+      </>
     )
   }
 
   if (!selectedAccountId) {
     return (
-      <div className="min-h-screen">
-        <TopBar />
-        <main className="pt-16 p-6">
+      <>
+        {!isModern && <TopBar />}
+        <main className={isModern ? "page-fade-in" : "pt-16 p-6"}>
           <div className="max-w-2xl mx-auto">
             <Alert>
               <AlertCircle className="h-4 w-4" />
@@ -486,13 +488,13 @@ export default function TeamPage() {
             </Alert>
           </div>
         </main>
-      </div>
+      </>
     )
   }
 
   return (
-    <div className="min-h-screen">
-      <TopBar />
+    <>
+      {!isModern && <TopBar />}
       
       <main className="pt-16 p-6">
         <div className="max-w-6xl mx-auto space-y-6">
@@ -816,8 +818,14 @@ export default function TeamPage() {
           )}
         </DialogContent>
       </Dialog>
+    </>
+  )
+}
 
-
-    </div>
+export default function TeamPage() {
+  return (
+    <LayoutWrapper>
+      <TeamContent />
+    </LayoutWrapper>
   )
 } 
