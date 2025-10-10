@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { PageLayout } from "@/components/layout/page-layout"
+import { TopBar } from "@/components/layout/topbar"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -443,18 +443,20 @@ export default function TeamPage() {
 
   if (userLoading || loading) {
     return (
-      <PageLayout>
-        <div className="p-6">
+      <div className="min-h-screen">
+        <TopBar />
+        <main className="pt-16 p-6">
           <Loading text="Loading team data..." />
-        </div>
-      </PageLayout>
+        </main>
+      </div>
     )
   }
 
   if (!hasAccess) {
     return (
-      <PageLayout>
-        <div className="p-6">
+      <div className="min-h-screen">
+        <TopBar />
+        <main className="pt-16 p-6">
           <div className="max-w-2xl mx-auto">
             <Alert className="border-red-200 bg-red-50">
               <AlertCircle className="h-4 w-4 text-red-600" />
@@ -464,15 +466,16 @@ export default function TeamPage() {
               </AlertDescription>
             </Alert>
           </div>
-        </div>
-      </PageLayout>
+        </main>
+      </div>
     )
   }
 
   if (!selectedAccountId) {
     return (
-      <PageLayout>
-        <div className="p-6">
+      <div className="min-h-screen">
+        <TopBar />
+        <main className="pt-16 p-6">
           <div className="max-w-2xl mx-auto">
             <Alert>
               <AlertCircle className="h-4 w-4" />
@@ -482,14 +485,17 @@ export default function TeamPage() {
               </AlertDescription>
             </Alert>
           </div>
-        </div>
-      </PageLayout>
+        </main>
+      </div>
     )
   }
 
   return (
-    <PageLayout>
-        <div className="max-w-6xl mx-auto space-y-6 p-6">
+    <div className="min-h-screen">
+      <TopBar />
+      
+      <main className="pt-16 p-6">
+        <div className="max-w-6xl mx-auto space-y-6">
           {/* Header */}
           <div className="flex items-center justify-between">
             <div>
@@ -755,6 +761,7 @@ export default function TeamPage() {
             </CardContent>
           </Card>
         </div>
+      </main>
 
       {/* Edit User Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
@@ -809,6 +816,8 @@ export default function TeamPage() {
           )}
         </DialogContent>
       </Dialog>
-    </PageLayout>
+
+
+    </div>
   )
 } 
