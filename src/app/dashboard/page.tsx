@@ -2,8 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from "react"
 import { Responsive, WidthProvider } from "react-grid-layout"
-import { TopBar } from "@/components/layout/topbar"
-import { LayoutWrapper, useLayout } from "@/components/layout/layout-wrapper"
+import { LayoutWrapper } from "@/components/layout/layout-wrapper"
 import { Widget } from "@/components/dashboard/widget"
 import { MetricWidget } from "@/components/dashboard/metric-widget"
 import { WidgetConfig, AddWidgetModal } from "@/components/dashboard/add-widget-modal"
@@ -365,41 +364,26 @@ function DashboardContent() {
   // Prevent hydration mismatch by not rendering until client-side
   if (!isClient) {
     return (
-      <>
-        {!isModern && <TopBar onAddWidget={handleAddWidget} />}
-        <main className={isModern ? "" : "pt-16 h-screen overflow-y-auto"}>
-          <Loading text="Loading..." />
-        </main>
-      </>
+      <Loading text="Loading..." />
     )
   }
 
   if (loading) {
     return (
-      <>
-        {!isModern && <TopBar onAddWidget={handleAddWidget} />}
-        <main className={isModern ? "" : "pt-16 h-screen overflow-y-auto"}>
-          <Loading text="Loading dashboard..." />
-        </main>
-      </>
+      <Loading text="Loading dashboard..." />
     )
   }
 
   return (
     <>
-      {!isModern && <TopBar onAddWidget={handleAddWidget} />}
-      
-      <main className={isModern ? "" : "pt-16 h-screen overflow-y-auto"}>
-        <div className={isModern ? "page-fade-in" : "p-6"}>
-          {/* Dashboard Controls - Only show in modern layout */}
-          {isModern && (
-            <DashboardControls
-              currentUserId={currentUserId}
-              currentViewId={currentViewId}
-              onViewChange={setCurrentViewId}
-              onAddWidget={() => setIsAddWidgetModalOpen(true)}
-            />
-          )}
+      <div className="page-fade-in">
+        {/* Dashboard Controls */}
+        <DashboardControls
+          currentUserId={currentUserId}
+          currentViewId={currentViewId}
+          onViewChange={setCurrentViewId}
+          onAddWidget={() => setIsAddWidgetModalOpen(true)}
+        />
 
           {!currentViewId ? (
             <div className="flex items-center justify-center h-64">
@@ -435,8 +419,7 @@ function DashboardContent() {
               ))}
             </ResponsiveGridLayout>
           )}
-        </div>
-      </main>
+      </div>
 
       {/* Add Widget Modal */}
       <AddWidgetModal

@@ -1,8 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { TopBar } from "@/components/layout/topbar"
-import { LayoutWrapper, useLayout } from "@/components/layout/layout-wrapper"
+import { LayoutWrapper } from "@/components/layout/layout-wrapper"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -30,7 +29,6 @@ interface TaskAppointment {
 }
 
 function UpdateDataContent() {
-  const { isModern } = useLayout()
   const [todayAppointments, setTodayAppointments] = useState<TaskAppointment[]>([])
   const [pendingAppointments, setPendingAppointments] = useState<TaskAppointment[]>([])
   const [recentCompleted, setRecentCompleted] = useState<TaskAppointment[]>([])
@@ -356,10 +354,7 @@ function UpdateDataContent() {
   }
 
   return (
-    <>
-      {!isModern && <TopBar />}
-      
-      <main className={isModern ? "page-fade-in" : `pt-16 h-screen overflow-y-auto ${isImpersonating ? "pt-[104px]" : "pt-16"}`}>
+    <div className="page-fade-in">
         <div className="p-6">
           {userLoading ? (
             <Loading text="Loading user data..." />
@@ -508,8 +503,7 @@ function UpdateDataContent() {
         </div>
 
         <QuickFlowModal />
-      </main>
-    </>
+    </div>
   )
 }
 

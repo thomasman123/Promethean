@@ -24,8 +24,7 @@ import { TransformHandles } from '@/components/playground/transform-handles'
 import { SnapGuides, snapToGuides } from '@/components/playground/snap-guides'
 import { useUndoRedo } from '@/hooks/use-undo-redo'
 import { AutosaveStatus } from '@/components/playground/autosave-status'
-import { TopBar } from '@/components/layout/topbar'
-import { LayoutWrapper, useLayout } from '@/components/layout/layout-wrapper'
+import { LayoutWrapper } from '@/components/layout/layout-wrapper'
 
 interface Page {
   id: string
@@ -36,7 +35,6 @@ interface Page {
 type ToolType = 'select' | 'hand' | 'pencil' | 'text' | 'shapes' | null
 
 function PlaygroundContent() {
-  const { isModern } = useLayout()
   const [pages, setPages] = useState<Page[]>([
     { id: '1', name: 'Page 1', elements: [] }
   ])

@@ -1,8 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { TopBar } from "@/components/layout/topbar"
-import { LayoutWrapper, useLayout } from "@/components/layout/layout-wrapper"
+import { LayoutWrapper } from "@/components/layout/layout-wrapper"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -78,7 +77,6 @@ interface EditUserForm {
 }
 
 function TeamContent() {
-  const { isModern } = useLayout()
   const [loading, setLoading] = useState(true)
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
   const [hasAccess, setHasAccess] = useState(false)
@@ -445,58 +443,46 @@ function TeamContent() {
 
   if (userLoading || loading) {
     return (
-      <>
-        {!isModern && <TopBar />}
-        <main className={isModern ? "page-fade-in" : "pt-16 p-6"}>
-          <Loading text="Loading team data..." />
-        </main>
-      </>
+      <div className="page-fade-in">
+        <Loading text="Loading team data..." />
+      </div>
     )
   }
 
   if (!hasAccess) {
     return (
-      <>
-        {!isModern && <TopBar />}
-        <main className={isModern ? "page-fade-in" : "pt-16 p-6"}>
-          <div className="max-w-2xl mx-auto">
-            <Alert className="border-red-200 bg-red-50">
-              <AlertCircle className="h-4 w-4 text-red-600" />
-              <AlertTitle>Access Denied</AlertTitle>
-              <AlertDescription>
-                Only account moderators and admins can manage team members.
-              </AlertDescription>
-            </Alert>
-          </div>
-        </main>
-      </>
+      <div className="page-fade-in">
+        <div className="max-w-2xl mx-auto">
+          <Alert className="border-red-200 bg-red-50">
+            <AlertCircle className="h-4 w-4 text-red-600" />
+            <AlertTitle>Access Denied</AlertTitle>
+            <AlertDescription>
+              Only account moderators and admins can manage team members.
+            </AlertDescription>
+          </Alert>
+        </div>
+      </div>
     )
   }
 
   if (!selectedAccountId) {
     return (
-      <>
-        {!isModern && <TopBar />}
-        <main className={isModern ? "page-fade-in" : "pt-16 p-6"}>
-          <div className="max-w-2xl mx-auto">
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>No Account Selected</AlertTitle>
-              <AlertDescription>
-                Please select an account from the dropdown to manage its team members.
-              </AlertDescription>
-            </Alert>
-          </div>
-        </main>
-      </>
+      <div className="page-fade-in">
+        <div className="max-w-2xl mx-auto">
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>No Account Selected</AlertTitle>
+            <AlertDescription>
+              Please select an account from the dropdown to manage its team members.
+            </AlertDescription>
+          </Alert>
+        </div>
+      </div>
     )
   }
 
   return (
-    <>
-      {!isModern && <TopBar />}
-      
-      <main className="pt-16 p-6">
+    <div className="page-fade-in">
         <div className="max-w-6xl mx-auto space-y-6">
           {/* Header */}
           <div className="flex items-center justify-between">
@@ -818,7 +804,7 @@ function TeamContent() {
           )}
         </DialogContent>
       </Dialog>
-    </>
+    </div>
   )
 }
 

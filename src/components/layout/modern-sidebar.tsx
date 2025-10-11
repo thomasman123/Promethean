@@ -63,7 +63,7 @@ const navigationSections: NavSection[] = [
   {
     title: "DATA",
     items: [
-      { name: "Follow ups", href: "/follow-ups", icon: Calendar },
+      { name: "Follow ups", href: "/update-data/follow-ups", icon: Calendar },
       { name: "Appointments/Discoveries", href: "/update-data/appointments-discoveries", icon: Calendar },
       { name: "Payment Plans", href: "/update-data/payment-plans", icon: RefreshCw },
     ]
