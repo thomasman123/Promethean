@@ -86,7 +86,7 @@ export function ModernLayout({ children }: ModernLayoutProps) {
       
       {/* Desktop Sidebar */}
       <div className="hidden md:block">
-        <ModernSidebar accountName={selectedAccount?.name} />
+        <ModernSidebar />
       </div>
 
       {/* Mobile Menu Button */}
@@ -108,7 +108,7 @@ export function ModernLayout({ children }: ModernLayoutProps) {
             onClick={() => setIsMobileMenuOpen(false)}
           />
           <div className="md:hidden fixed left-0 top-0 h-screen w-60 z-50">
-            <ModernSidebar accountName={selectedAccount?.name} />
+            <ModernSidebar />
           </div>
         </>
       )}

@@ -19,18 +19,24 @@ import {
   User,
   ChevronDown,
   Building2,
+  Check,
+  Sword,
 } from "lucide-react"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
 import { createBrowserClient } from "@supabase/ssr"
 import { useEffectiveUser } from "@/hooks/use-effective-user"
+import { useAccountsCache } from "@/hooks/use-accounts-cache"
+import { useDashboard } from "@/lib/dashboard-context"
 
 interface NavItem {
   name: string
@@ -48,16 +54,14 @@ const navigationItems: NavItem[] = [
   { name: "Playground", href: "/playground", icon: Palette },
 ]
 
-interface ModernSidebarProps {
-  accountName?: string
-}
-
-export function ModernSidebar({ accountName = "Account" }: ModernSidebarProps) {
+export function ModernSidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null)
   const pathname = usePathname()
   const router = useRouter()
   const { user: effectiveUser } = useEffectiveUser()
+  const { accounts } = useAccountsCache(effectiveUser?.id)
+  const { selectedAccountId, setSelectedAccountId } = useDashboard()
   
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -99,6 +103,14 @@ export function ModernSidebar({ accountName = "Account" }: ModernSidebarProps) {
     router.push("/login")
   }
 
+  const handleAccountChange = (accountId: string) => {
+    setSelectedAccountId(accountId)
+    localStorage.setItem('selectedAccountId', accountId)
+    window.dispatchEvent(new CustomEvent('accountChanged', { detail: { accountId } }))
+    // Refresh the page to reload data with new account
+    window.location.reload()
+  }
+
   const isActive = (href: string) => {
     if (href === "/dashboard") {
       return pathname === href
@@ -113,50 +125,70 @@ export function ModernSidebar({ accountName = "Account" }: ModernSidebarProps) {
         isCollapsed ? "w-16" : "w-60"
       )}
     >
-      {/* Account Section */}
+      {/* Promethean Branding Section */}
       <div className={cn("p-4 border-b border-border", isCollapsed && "px-2")}>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
               className={cn(
-                "w-full flex items-center gap-3 p-2 rounded-lg hover:bg-accent transition-colors",
+                "w-full flex items-center gap-2 p-2 rounded-lg hover:bg-accent transition-colors",
                 isCollapsed && "justify-center"
               )}
             >
-              <Avatar className="h-8 w-8 border border-border/50">
-                <AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/10 text-primary font-semibold">
-                  {accountName.charAt(0).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
+              <Sword className="h-5 w-5 text-primary" />
               {!isCollapsed && (
                 <>
-                  <div className="flex-1 text-left">
-                    <p className="text-sm font-medium truncate">{accountName}</p>
-                    <p className="text-xs text-muted-foreground">Account</p>
-                  </div>
+                  <span className="text-base font-semibold flex-1 text-left">Promethean</span>
                   <ChevronDown className="h-4 w-4 text-muted-foreground" />
                 </>
               )}
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align={isCollapsed ? "end" : "start"} className="w-56">
+            {/* Account Selector as First Item */}
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>
+                <Building2 className="mr-2 h-4 w-4" />
+                <span>Switch Account</span>
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent className="w-56">
+                {accounts.map((account) => (
+                  <DropdownMenuItem
+                    key={account.id}
+                    onClick={() => handleAccountChange(account.id)}
+                    className="flex items-center justify-between"
+                  >
+                    <span>{account.name}</span>
+                    {selectedAccountId === account.id && (
+                      <Check className="h-4 w-4" />
+                    )}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+
+            <DropdownMenuSeparator />
+            
+            {/* User Settings */}
             <DropdownMenuItem onClick={() => router.push("/account/settings")}>
               <Settings className="mr-2 h-4 w-4" />
-              <span>Settings</span>
+              <span>Account Settings</span>
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => router.push("/account")}>
               <User className="mr-2 h-4 w-4" />
               <span>Profile</span>
             </DropdownMenuItem>
+            
             {currentUserRole === 'admin' && (
               <>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => router.push("/admin")}>
+                <DropdownMenuItem>
                   <Shield className="mr-2 h-4 w-4" />
                   <span>Admin Settings</span>
                 </DropdownMenuItem>
               </>
             )}
+            
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleSignOut}>
               <LogOut className="mr-2 h-4 w-4" />
@@ -177,16 +209,17 @@ export function ModernSidebar({ accountName = "Account" }: ModernSidebarProps) {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200",
-                "hover:bg-accent/50",
-                active && "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm",
+                "flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 text-sm font-normal",
+                active 
+                  ? "bg-muted text-foreground" 
+                  : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
                 isCollapsed && "justify-center"
               )}
               title={isCollapsed ? item.name : undefined}
             >
-              <Icon className={cn("h-5 w-5", !active && "text-muted-foreground", active && "text-primary-foreground")} />
+              <Icon className="h-5 w-5 flex-shrink-0" />
               {!isCollapsed && (
-                <span className="text-sm font-medium">{item.name}</span>
+                <span>{item.name}</span>
               )}
             </Link>
           )
@@ -199,14 +232,14 @@ export function ModernSidebar({ accountName = "Account" }: ModernSidebarProps) {
           variant="ghost"
           size="sm"
           onClick={toggleCollapse}
-          className={cn("w-full", isCollapsed && "px-0")}
+          className={cn("w-full text-xs text-muted-foreground", isCollapsed && "px-0")}
         >
           {isCollapsed ? (
             <ChevronRight className="h-4 w-4" />
           ) : (
             <>
               <ChevronLeft className="h-4 w-4 mr-2" />
-              <span className="text-xs">Collapse</span>
+              <span>Collapse</span>
             </>
           )}
         </Button>
