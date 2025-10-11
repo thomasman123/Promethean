@@ -1164,7 +1164,15 @@ function AppointmentsDiscoveriesContent() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </main>
+      </div>
     </div>
+  )
+}
+
+export default function AppointmentsDiscoveriesPage() {
+  return (
+    <LayoutWrapper>
+      <AppointmentsDiscoveriesContent />
+    </LayoutWrapper>
   )
 } 
