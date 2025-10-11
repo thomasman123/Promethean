@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { TopBar } from '@/components/layout/topbar';
+import { LayoutWrapper } from '@/components/layout/layout-wrapper';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -50,7 +50,7 @@ interface FollowUp {
   account_name?: string;
 }
 
-export default function FollowUpsPage() {
+function FollowUpsContent() {
   const { user } = useEffectiveUser();
   const { isImpersonating } = useImpersonation();
   const { selectedAccountId } = useDashboard();
@@ -307,8 +307,7 @@ export default function FollowUpsPage() {
   };
 
   return (
-    <div className="min-h-screen">
-      <TopBar />
+    <div className="page-fade-in">
       
       <main className={`pt-16 h-screen overflow-y-auto ${isImpersonating ? "pt-[104px]" : "pt-16"}`}>
         <div className="p-6 space-y-6">
