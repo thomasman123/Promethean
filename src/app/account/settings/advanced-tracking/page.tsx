@@ -1,13 +1,13 @@
 "use client"
 
-import { TopBar } from "@/components/layout/topbar"
+import { LayoutWrapper } from "@/components/layout/layout-wrapper"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Copy } from "lucide-react"
 import { useState } from "react"
 
-export default function AdvancedTrackingPage() {
+function AdvancedTrackingContent() {
   const [copied, setCopied] = useState<string>("")
 
   const copy = async (id: string, text: string) => {
@@ -22,9 +22,7 @@ export default function AdvancedTrackingPage() {
   const metaUtmTemplate = `?utm_source=facebook&utm_medium=paid_social&utm_campaign={{campaign.name}}&utm_content={{ad.name}}&utm_term={{adset.name}}&utm_id={{campaign.id}}_{{adset.id}}_{{ad.id}}`
 
   return (
-    <div className="min-h-screen">
-      <TopBar />
-      <main className="pt-16 p-6">
+    <div className="page-fade-in">
         <div className="max-w-5xl mx-auto space-y-6">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Advanced Tracking</h1>
@@ -119,7 +117,14 @@ export default function AdvancedTrackingPage() {
             <div className="text-sm text-muted-foreground">This guide can be refined further with your funnel specifics.</div>
           </div>
         </div>
-      </main>
     </div>
+  )
+}
+
+export default function AdvancedTrackingPage() {
+  return (
+    <LayoutWrapper>
+      <AdvancedTrackingContent />
+    </LayoutWrapper>
   )
 } 
