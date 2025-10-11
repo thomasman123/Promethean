@@ -8,6 +8,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Settings, Building2, Rocket, Users } from "lucide-react"
 import { AccountSettingsTab } from "@/components/account/account-settings-tab"
 import { TeamTab } from "@/components/account/team-tab"
@@ -117,14 +118,34 @@ export function AccountSettingsModal({ open, onOpenChange, defaultTab = "account
             {/* GHL Connection Tab */}
             <TabsContent value="ghl" className="h-[calc(100%-60px)] px-6 pb-6 overflow-y-auto">
               <div className="py-4">
-                <p className="text-muted-foreground">GHL connection tab - Content coming next</p>
+                <Alert>
+                  <Building2 className="h-4 w-4" />
+                  <AlertTitle>GHL Connection</AlertTitle>
+                  <AlertDescription>
+                    The GHL connection page remains accessible at{" "}
+                    <a href="/account/ghl-connection" className="underline">
+                      /account/ghl-connection
+                    </a>
+                    {" "}for OAuth flows and calendar management.
+                  </AlertDescription>
+                </Alert>
               </div>
             </TabsContent>
 
             {/* Meta Ads Connection Tab */}
             <TabsContent value="meta-ads" className="h-[calc(100%-60px)] px-6 pb-6 overflow-y-auto">
               <div className="py-4">
-                <p className="text-muted-foreground">Meta Ads connection tab - Content coming next</p>
+                <Alert>
+                  <Rocket className="h-4 w-4" />
+                  <AlertTitle>Meta Ads Connection</AlertTitle>
+                  <AlertDescription>
+                    The Meta Ads connection page remains accessible at{" "}
+                    <a href="/account/meta-ads-connection" className="underline">
+                      /account/meta-ads-connection
+                    </a>
+                    {" "}for OAuth flows and ad account management.
+                  </AlertDescription>
+                </Alert>
               </div>
             </TabsContent>
 
