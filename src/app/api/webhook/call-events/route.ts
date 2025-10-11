@@ -1298,64 +1298,18 @@ async function processAppointmentWebhook(payload: any) {
     const initialAccessToken = await getValidGhlAccessToken(account, supabase);
     let currentAccessToken = initialAccessToken || account.ghl_api_key;
     
-    // Try to find the caller user by fetching from GHL API and matching to platform users
+    // Find the setter by fetching appointment from GHL API to get createdBy.userId
     let callerUserId = null;
     let setterName = null;
     let setterEmail = null;
     let setterGhlId = null;
     
-    // Strategy 1: Try payload.userId first
-    if (payload.userId && currentAccessToken) {
-      setterGhlId = payload.userId;
-      let userData = await fetchGhlUserDetails(payload.userId, currentAccessToken, account.ghl_location_id || '');
-      
-      // If the user fetch failed (possibly due to expired/revoked token), force refresh and retry once
-      if (!userData) {
-        console.log('🔁 Retrying user fetch after token refresh...');
-        const refreshedToken = await getValidGhlAccessToken(account, supabase, true);
-        if (refreshedToken && refreshedToken !== currentAccessToken) {
-          currentAccessToken = refreshedToken;
-          userData = await fetchGhlUserDetails(payload.userId, currentAccessToken, account.ghl_location_id || '');
-        }
-      }
-      
-      if (userData) {
-        setterName = userData.name || `${userData.firstName || ''} ${userData.lastName || ''}`.trim();
-        setterEmail = userData.email || null;
-        
-        console.log('✅ Successfully fetched user data from payload.userId:', {
-          name: setterName,
-          email: setterEmail,
-          phone: userData.phone
-        });
-        
-        // Try to match to existing platform user by email
-        if (userData.email) {
-          const { data: platformUser } = await supabase
-            .from('users')
-            .select('id')
-            .eq('account_id', account.id)
-            .eq('email', userData.email)
-            .single();
-          
-          callerUserId = platformUser?.id || null;
-          
-          if (callerUserId) {
-            console.log('✅ Matched GHL user to platform user:', callerUserId);
-          } else {
-            console.log('⚠️ GHL user not found in platform users table');
-          }
-        }
-      } else {
-        console.log('⚠️ User not found in GHL API from payload.userId');
-      }
-    }
-    
-    // Strategy 2: If no setter found yet, try to fetch appointment from GHL API to get createdBy.userId
-    if (!setterName && currentAccessToken && (payload.appointment?.id || payload.id)) {
+    // PRIMARY STRATEGY: Always fetch appointment from GHL API to get createdBy.userId
+    // This is the most reliable method as shown by successful backfill (85% success rate)
+    if (currentAccessToken && (payload.appointment?.id || payload.id)) {
       try {
         const ghlAppointmentId = payload.appointment?.id || payload.id;
-        console.log('🔍 No userId in payload, fetching appointment from GHL API:', ghlAppointmentId);
+        console.log('🔍 Fetching appointment from GHL API for setter info:', ghlAppointmentId);
         
         const appointmentResponse = await fetch(
           `https://services.leadconnectorhq.com/calendars/events/appointments/${ghlAppointmentId}`,
@@ -1375,7 +1329,7 @@ async function processAppointmentWebhook(payload: any) {
           
           if (createdByUserId) {
             setterGhlId = createdByUserId;
-            console.log('🔍 Found createdBy.userId from appointment:', createdByUserId);
+            console.log('✅ Found createdBy.userId from appointment:', createdByUserId);
             
             const creatorData = await fetchGhlUserDetails(createdByUserId, currentAccessToken, account.ghl_location_id || '');
             if (creatorData) {
@@ -1398,15 +1352,81 @@ async function processAppointmentWebhook(payload: any) {
                 
                 callerUserId = platformUser?.id || null;
               }
+            } else {
+              console.log('⚠️ Could not fetch user details for createdBy.userId:', createdByUserId);
             }
           } else {
             console.log('⚠️ No createdBy.userId in appointment data');
           }
         } else {
           console.log('⚠️ Failed to fetch appointment from GHL API:', appointmentResponse.status);
+          
+          // Retry with refreshed token if unauthorized
+          if (appointmentResponse.status === 401 || appointmentResponse.status === 403) {
+            console.log('🔁 Retrying appointment fetch after token refresh...');
+            const refreshedToken = await getValidGhlAccessToken(account, supabase, true);
+            if (refreshedToken && refreshedToken !== currentAccessToken) {
+              currentAccessToken = refreshedToken;
+              
+              const retryResponse = await fetch(
+                `https://services.leadconnectorhq.com/calendars/events/appointments/${ghlAppointmentId}`,
+                {
+                  headers: {
+                    'Authorization': `Bearer ${currentAccessToken}`,
+                    'Version': '2021-07-28',
+                  },
+                }
+              );
+              
+              if (retryResponse.ok) {
+                const appointmentData = await retryResponse.json();
+                const event = appointmentData.appointment || appointmentData.event || appointmentData;
+                const createdByUserId = event.createdBy?.userId;
+                
+                if (createdByUserId) {
+                  setterGhlId = createdByUserId;
+                  const creatorData = await fetchGhlUserDetails(createdByUserId, currentAccessToken, account.ghl_location_id || '');
+                  if (creatorData) {
+                    setterName = creatorData.name || `${creatorData.firstName || ''} ${creatorData.lastName || ''}`.trim();
+                    setterEmail = creatorData.email || null;
+                    console.log('✅ Successfully fetched creator after token refresh');
+                  }
+                }
+              }
+            }
+          }
         }
       } catch (error) {
         console.error('❌ Error fetching appointment from GHL API:', error);
+      }
+    }
+    
+    // FALLBACK STRATEGY 1: Try payload.userId if primary strategy failed
+    if (!setterName && payload.userId && currentAccessToken) {
+      console.log('🔍 Primary strategy failed, trying payload.userId fallback:', payload.userId);
+      setterGhlId = payload.userId;
+      let userData = await fetchGhlUserDetails(payload.userId, currentAccessToken, account.ghl_location_id || '');
+      
+      if (userData) {
+        setterName = userData.name || `${userData.firstName || ''} ${userData.lastName || ''}`.trim();
+        setterEmail = userData.email || null;
+        
+        console.log('✅ Successfully fetched user data from payload.userId fallback:', {
+          name: setterName,
+          email: setterEmail
+        });
+        
+        // Try to match to existing platform user by email
+        if (userData.email) {
+          const { data: platformUser } = await supabase
+            .from('users')
+            .select('id')
+            .eq('account_id', account.id)
+            .eq('email', userData.email)
+            .single();
+          
+          callerUserId = platformUser?.id || null;
+        }
       }
     }
     
@@ -1717,7 +1737,7 @@ async function processAppointmentWebhook(payload: any) {
     }
 
     // ==========================================
-    // STRATEGY 3: FALLBACK TO RECENT DIAL
+    // FALLBACK STRATEGY 2: SEARCH RECENT DIALS
     // ==========================================
     // If we still don't have a setter, try to find a recent dial from the same contact
     if (!setterName && dialData.contact_id) {
