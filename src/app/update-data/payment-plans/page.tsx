@@ -395,22 +395,16 @@ function PaymentPlansContent() {
 
   if (userLoading) {
     return (
-      <div className="min-h-screen">
-        <TopBar />
-        <main className={`pt-16 h-screen overflow-y-auto ${isImpersonating ? "pt-[104px]" : "pt-16"}`}>
-          <Loading text="Loading user data..." />
-        </main>
+      <div className="page-fade-in">
+        <Loading text="Loading user data..." />
       </div>
     )
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen">
-        <TopBar />
-        <main className={`pt-16 h-screen overflow-y-auto ${isImpersonating ? "pt-[104px]" : "pt-16"}`}>
-          <Loading text="Loading payment plans..." />
-        </main>
+      <div className="page-fade-in">
+        <Loading text="Loading payment plans..." />
       </div>
     )
   }
