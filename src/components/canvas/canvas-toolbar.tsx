@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
+import { CanvasDrawingSettings } from './canvas-drawing-settings'
 import { 
   Square, 
   Circle, 
@@ -19,7 +20,9 @@ import {
   Share2,
   Wifi,
   WifiOff,
-  Users
+  Users,
+  Pencil,
+  Eraser
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -34,6 +37,8 @@ export type ToolType =
   | 'sticky-note'
   | 'widget'
   | 'arrow'
+  | 'pen'
+  | 'eraser'
 
 interface CanvasToolbarProps {
   selectedTool: ToolType
@@ -43,6 +48,12 @@ interface CanvasToolbarProps {
   hasSelection?: boolean
   isConnected?: boolean
   collaboratorCount?: number
+  strokeColor?: string
+  onStrokeColorChange?: (color: string) => void
+  strokeWidth?: number
+  onStrokeWidthChange?: (width: number) => void
+  fillColor?: string
+  onFillColorChange?: (color: string) => void
 }
 
 export function CanvasToolbar({ 
@@ -52,10 +63,18 @@ export function CanvasToolbar({
   onShare,
   hasSelection,
   isConnected = false,
-  collaboratorCount = 0
+  collaboratorCount = 0,
+  strokeColor = '#000000',
+  onStrokeColorChange = () => {},
+  strokeWidth = 2,
+  onStrokeWidthChange = () => {},
+  fillColor = '#ffffff',
+  onFillColorChange = () => {},
 }: CanvasToolbarProps) {
   const tools = [
     { id: 'select' as ToolType, icon: MousePointer2, label: 'Select' },
+    { id: 'pen' as ToolType, icon: Pencil, label: 'Draw' },
+    { id: 'eraser' as ToolType, icon: Eraser, label: 'Eraser' },
     { id: 'rectangle' as ToolType, icon: Square, label: 'Rectangle' },
     { id: 'circle' as ToolType, icon: Circle, label: 'Circle' },
     { id: 'triangle' as ToolType, icon: Triangle, label: 'Triangle' },
@@ -87,6 +106,18 @@ export function CanvasToolbar({
           </Button>
         ))}
       </div>
+
+      <Separator orientation="vertical" className="h-6 mx-2" />
+
+      {/* Drawing Settings */}
+      <CanvasDrawingSettings
+        strokeColor={strokeColor}
+        onStrokeColorChange={onStrokeColorChange}
+        strokeWidth={strokeWidth}
+        onStrokeWidthChange={onStrokeWidthChange}
+        fillColor={fillColor}
+        onFillColorChange={onFillColorChange}
+      />
 
       <Separator orientation="vertical" className="h-6 mx-2" />
 

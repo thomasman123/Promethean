@@ -20,6 +20,11 @@ export function CanvasWorkspace() {
   const [isShareModalOpen, setIsShareModalOpen] = useState(false)
   const [hasSelection, setHasSelection] = useState(false)
   const [currentUser, setCurrentUser] = useState<{ id: string; name: string } | null>(null)
+  
+  // Drawing settings
+  const [strokeColor, setStrokeColor] = useState('#000000')
+  const [strokeWidth, setStrokeWidth] = useState(2)
+  const [fillColor, setFillColor] = useState('#ffffff')
 
   // Get current user (only once on mount)
   useEffect(() => {
@@ -145,6 +150,12 @@ export function CanvasWorkspace() {
           hasSelection={hasSelection}
           isConnected={isConnected}
           collaboratorCount={collaborators.length}
+          strokeColor={strokeColor}
+          onStrokeColorChange={setStrokeColor}
+          strokeWidth={strokeWidth}
+          onStrokeWidthChange={setStrokeWidth}
+          fillColor={fillColor}
+          onFillColorChange={setFillColor}
         />
 
         {/* Canvas */}
@@ -154,6 +165,9 @@ export function CanvasWorkspace() {
             onWidgetToolClick={() => setIsWidgetPickerOpen(true)}
             onSelectionChange={setHasSelection}
             onDeleteSelection={handleDeleteSelection}
+            strokeColor={strokeColor}
+            strokeWidth={strokeWidth}
+            fillColor={fillColor}
           />
         </div>
       </div>

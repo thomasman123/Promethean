@@ -22,6 +22,7 @@ import { CanvasShapeNode } from './canvas-shape-node'
 import { CanvasTextNode } from './canvas-text-node'
 import { CanvasStickyNoteNode } from './canvas-sticky-note-node'
 import { CanvasWidgetNode } from './canvas-widget-node'
+import { CanvasFreehandNode } from './canvas-freehand-node'
 import { useCanvas } from '@/lib/canvas-context'
 import { useCanvasKeyboard } from '@/hooks/use-canvas-keyboard'
 import { ToolType } from './canvas-toolbar'
@@ -31,6 +32,7 @@ const nodeTypes: NodeTypes = {
   text: CanvasTextNode,
   'sticky-note': CanvasStickyNoteNode,
   widget: CanvasWidgetNode,
+  freehand: CanvasFreehandNode,
 }
 
 interface CanvasFlowContentProps {
@@ -38,13 +40,19 @@ interface CanvasFlowContentProps {
   onWidgetToolClick: () => void
   onSelectionChange: (hasSelection: boolean) => void
   onDeleteSelection: () => void
+  strokeColor: string
+  strokeWidth: number
+  fillColor: string
 }
 
 function CanvasFlowContent({ 
   selectedTool, 
   onWidgetToolClick,
   onSelectionChange,
-  onDeleteSelection
+  onDeleteSelection,
+  strokeColor,
+  strokeWidth,
+  fillColor,
 }: CanvasFlowContentProps) {
   const { elements, updateElement, addElement, deleteElement, selectedBoardId } = useCanvas()
   const [nodes, setNodes, onNodesChange] = useNodesState([])
@@ -53,6 +61,11 @@ function CanvasFlowContent({
   const [copiedElements, setCopiedElements] = useState<any[]>([])
   const { screenToFlowPosition } = useReactFlow()
   const updateTimeouts = useRef<Record<string, NodeJS.Timeout>>({})
+  
+  // Freehand drawing state
+  const [isDrawing, setIsDrawing] = useState(false)
+  const [currentPath, setCurrentPath] = useState<{ x: number; y: number }[]>([])
+  const [drawingStartPos, setDrawingStartPos] = useState<{ x: number; y: number } | null>(null)
 
   // Convert canvas elements to React Flow nodes and edges
   useEffect(() => {
@@ -195,10 +208,81 @@ function CanvasFlowContent({
     },
   })
 
+  // Freehand drawing handlers
+  const handleMouseDown = useCallback((event: React.MouseEvent) => {
+    if (selectedTool !== 'pen') return
+    if (!selectedBoardId) return
+
+    const position = screenToFlowPosition({
+      x: event.clientX,
+      y: event.clientY,
+    })
+
+    setIsDrawing(true)
+    setDrawingStartPos(position)
+    setCurrentPath([position])
+  }, [selectedTool, selectedBoardId, screenToFlowPosition])
+
+  const handleMouseMove = useCallback((event: React.MouseEvent) => {
+    if (!isDrawing || selectedTool !== 'pen') return
+
+    const position = screenToFlowPosition({
+      x: event.clientX,
+      y: event.clientY,
+    })
+
+    setCurrentPath(prev => [...prev, position])
+  }, [isDrawing, selectedTool, screenToFlowPosition])
+
+  const handleMouseUp = useCallback(() => {
+    if (!isDrawing || !selectedBoardId || currentPath.length < 2) {
+      setIsDrawing(false)
+      setCurrentPath([])
+      setDrawingStartPos(null)
+      return
+    }
+
+    // Convert path to SVG path string
+    const pathData = currentPath.reduce((acc, point, index) => {
+      if (index === 0) {
+        return `M ${point.x} ${point.y}`
+      }
+      return `${acc} L ${point.x} ${point.y}`
+    }, '')
+
+    // Calculate bounding box
+    const minX = Math.min(...currentPath.map(p => p.x))
+    const minY = Math.min(...currentPath.map(p => p.y))
+    const maxX = Math.max(...currentPath.map(p => p.x))
+    const maxY = Math.max(...currentPath.map(p => p.y))
+
+    // Create freehand node
+    addElement({
+      board_id: selectedBoardId,
+      type: 'shape', // Use shape type with freehand data
+      element_data: {
+        shape: 'freehand',
+        path: pathData,
+        stroke: strokeColor,
+        strokeWidth: strokeWidth,
+        fill: 'none',
+        opacity: 1,
+      },
+      position: { x: minX, y: minY },
+      size: { width: maxX - minX + 10, height: maxY - minY + 10 },
+      z_index: elements.length,
+      created_by: '',
+    })
+
+    setIsDrawing(false)
+    setCurrentPath([])
+    setDrawingStartPos(null)
+  }, [isDrawing, selectedBoardId, currentPath, addElement, elements.length])
+
   // Handle canvas click to add elements
   const handlePaneClick = useCallback((event: React.MouseEvent) => {
     if (!selectedBoardId) return
-    if (selectedTool === 'select' || selectedTool === 'arrow') return
+    if (selectedTool === 'select' || selectedTool === 'arrow' || selectedTool === 'pen' || selectedTool === 'eraser') return
     if (selectedTool === 'widget') {
       onWidgetToolClick()
       return
@@ -221,9 +305,9 @@ function CanvasFlowContent({
       case 'hexagon':
         elementData = {
           shape: selectedTool,
-          fill: '#ffffff',
-          stroke: '#000000',
-          strokeWidth: 2,
+          fill: fillColor,
+          stroke: strokeColor,
+          strokeWidth: strokeWidth,
           opacity: 1,
         }
         size = { width: 150, height: 150 }
@@ -243,7 +327,7 @@ function CanvasFlowContent({
           text: 'Double click to edit',
           fontSize: 16,
           fontWeight: 'normal',
-          color: '#000000',
+          color: strokeColor,
           align: 'left',
         }
         size = { width: 200, height: 60 }
@@ -314,35 +398,79 @@ function CanvasFlowContent({
 
   // Determine if panning should be enabled (only in select mode)
   const isPanningEnabled = selectedTool === 'select'
+  const isDrawingTool = selectedTool === 'pen'
+
+  // Eraser mode - delete nodes on click
+  const handleNodeClick = useCallback((_event: React.MouseEvent, node: Node) => {
+    if (selectedTool === 'eraser') {
+      deleteElement(node.id)
+    }
+  }, [selectedTool, deleteElement])
 
   return (
-    <ReactFlow
-      nodes={nodes}
-      edges={edges}
-      onNodesChange={handleNodesChange}
-      onEdgesChange={onEdgesChange}
-      onConnect={onConnect}
-      onPaneClick={handlePaneClick}
-      nodeTypes={nodeTypes}
-      fitView
-      snapToGrid
-      snapGrid={[15, 15]}
-      panOnDrag={isPanningEnabled}
-      panOnScroll={true}
-      zoomOnScroll={true}
-      zoomOnDoubleClick={false}
-      nodesDraggable={isPanningEnabled}
-      nodesConnectable={selectedTool === 'arrow'}
-      elementsSelectable={isPanningEnabled}
-      defaultEdgeOptions={{
-        markerEnd: {
-          type: MarkerType.ArrowClosed,
-        },
-      }}
+    <div
+      className="w-full h-full"
+      onMouseDown={isDrawingTool ? handleMouseDown : undefined}
+      onMouseMove={isDrawingTool ? handleMouseMove : undefined}
+      onMouseUp={isDrawingTool ? handleMouseUp : undefined}
+      onMouseLeave={isDrawingTool ? handleMouseUp : undefined}
     >
-      <Controls />
-      <Background variant={BackgroundVariant.Dots} gap={20} size={1} />
-    </ReactFlow>
+      <ReactFlow
+        nodes={nodes}
+        edges={edges}
+        onNodesChange={handleNodesChange}
+        onEdgesChange={onEdgesChange}
+        onConnect={onConnect}
+        onPaneClick={handlePaneClick}
+        onNodeClick={handleNodeClick}
+        nodeTypes={nodeTypes}
+        fitView
+        snapToGrid
+        snapGrid={[15, 15]}
+        panOnDrag={isPanningEnabled}
+        panOnScroll={true}
+        zoomOnScroll={true}
+        zoomOnDoubleClick={false}
+        nodesDraggable={isPanningEnabled}
+        nodesConnectable={selectedTool === 'arrow'}
+        elementsSelectable={isPanningEnabled}
+        defaultEdgeOptions={{
+          markerEnd: {
+            type: MarkerType.ArrowClosed,
+          },
+        }}
+      >
+        <Controls />
+        <Background variant={BackgroundVariant.Dots} gap={20} size={1} />
+        
+        {/* Show current drawing path */}
+        {isDrawing && currentPath.length > 1 && (
+          <svg
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              pointerEvents: 'none',
+              zIndex: 1000,
+            }}
+          >
+            <path
+              d={currentPath.reduce((acc, point, index) => {
+                if (index === 0) return `M ${point.x} ${point.y}`
+                return `${acc} L ${point.x} ${point.y}`
+              }, '')}
+              stroke={strokeColor}
+              strokeWidth={strokeWidth}
+              fill="none"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        )}
+      </ReactFlow>
+    </div>
   )
 }
 
@@ -351,6 +479,9 @@ interface CanvasFlowProps {
   onWidgetToolClick: () => void
   onSelectionChange: (hasSelection: boolean) => void
   onDeleteSelection: () => void
+  strokeColor: string
+  strokeWidth: number
+  fillColor: string
 }
 
 export function CanvasFlow(props: CanvasFlowProps) {
