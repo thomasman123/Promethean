@@ -55,17 +55,18 @@ function CanvasFlowContent({
   fillColor,
 }: CanvasFlowContentProps) {
   const { elements, updateElement, addElement, deleteElement, selectedBoardId } = useCanvas()
+  
+  // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURNS
   const [nodes, setNodes, onNodesChange] = useNodesState([])
   const [edges, setEdges, onEdgesChange] = useEdgesState([])
   const [selectedNodes, setSelectedNodes] = useState<string[]>([])
   const [copiedElements, setCopiedElements] = useState<any[]>([])
-  const { screenToFlowPosition } = useReactFlow()
-  const updateTimeouts = useRef<Record<string, NodeJS.Timeout>>({})
-  
-  // Freehand drawing state
   const [isDrawing, setIsDrawing] = useState(false)
   const [currentPath, setCurrentPath] = useState<{ x: number; y: number }[]>([])
   const [drawingStartPos, setDrawingStartPos] = useState<{ x: number; y: number } | null>(null)
+  
+  const { screenToFlowPosition } = useReactFlow()
+  const updateTimeouts = useRef<Record<string, NodeJS.Timeout>>({})
 
   // Convert canvas elements to React Flow nodes and edges
   useEffect(() => {
@@ -392,16 +393,7 @@ function CanvasFlowContent({
     })
   }, [selectedBoardId, setEdges, addElement, elements.length])
 
-
-  if (!selectedBoardId) {
-    return (
-      <div className="flex items-center justify-center h-full bg-muted/30">
-        <p className="text-muted-foreground">Select or create a board to get started</p>
-      </div>
-    )
-  }
-
-  // Determine interaction modes based on selected tool
+  // Determine interaction modes based on selected tool (MOVED BEFORE EARLY RETURN)
   const isPanningEnabled = selectedTool === 'select'
   const isDrawingTool = selectedTool === 'pen'
   const isEraserTool = selectedTool === 'eraser'
@@ -413,6 +405,15 @@ function CanvasFlowContent({
       deleteElement(node.id)
     }
   }, [selectedTool, deleteElement])
+
+  // NOW check for early return AFTER all hooks
+  if (!selectedBoardId) {
+    return (
+      <div className="flex items-center justify-center h-full bg-muted/30">
+        <p className="text-muted-foreground">Select or create a board to get started</p>
+      </div>
+    )
+  }
 
   return (
     <div
