@@ -96,7 +96,7 @@ interface SummaryData {
   completedCount: number
 }
 
-export default function PaymentPlansPage() {
+function PaymentPlansContent() {
   const [paymentPlans, setPaymentPlans] = useState<PaymentPlanData[]>([])
   const [summary, setSummary] = useState<SummaryData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -416,11 +416,8 @@ export default function PaymentPlansPage() {
   }
 
   return (
-    <div className="min-h-screen">
-      <TopBar />
-      
-      <main className={`pt-16 h-screen overflow-y-auto ${isImpersonating ? "pt-[104px]" : "pt-16"}`}>
-        <div className="p-6">
+    <div className="page-fade-in">
+      <div>
           {/* Header */}
           <div className="mb-6">
             <h1 className="text-2xl font-bold tracking-tight">Payment Plans</h1>
@@ -669,7 +666,16 @@ export default function PaymentPlansPage() {
             </div>
           )}
         </DialogContent>
-      </Dialog>
+        </Dialog>
+      </div>
     </div>
   )
-} 
+}
+
+export default function PaymentPlansPage() {
+  return (
+    <LayoutWrapper>
+      <PaymentPlansContent />
+    </LayoutWrapper>
+  )
+}

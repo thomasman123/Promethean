@@ -308,9 +308,7 @@ function FollowUpsContent() {
 
   return (
     <div className="page-fade-in">
-      
-      <main className={`pt-16 h-screen overflow-y-auto ${isImpersonating ? "pt-[104px]" : "pt-16"}`}>
-        <div className="p-6 space-y-6">
+      <div className="space-y-6">
           <div className="flex justify-between items-center">
             <h1 className="text-3xl font-bold">Follow-ups</h1>
             <Button onClick={() => loadFollowUps()} variant="outline">
@@ -681,7 +679,15 @@ function FollowUpsContent() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </main>
+      </div>
     </div>
   );
+}
+
+export default function FollowUpsPage() {
+  return (
+    <LayoutWrapper>
+      <FollowUpsContent />
+    </LayoutWrapper>
+  )
 } 
