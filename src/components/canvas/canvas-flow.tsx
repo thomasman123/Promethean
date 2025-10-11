@@ -275,7 +275,7 @@ function CanvasFlowContent({
         })
         break
     }
-  }, [selectedTool, selectedBoardId, project, addElement, elements.length, onWidgetToolClick])
+  }, [selectedTool, selectedBoardId, screenToFlowPosition, addElement, elements.length, onWidgetToolClick])
 
   // Handle edge connections
   const onConnect = useCallback((connection: Connection) => {
