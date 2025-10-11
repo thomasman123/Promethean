@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
 
     // Fetch user's layout preference
     const { data: userData, error } = await supabase
-      .from("users")
+      .from("profiles")
       .select("layout_preference")
       .eq("id", user.id)
       .single()
@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
 
     // Check if user is admin
     const { data: userData } = await supabase
-      .from("users")
+      .from("profiles")
       .select("role")
       .eq("id", user.id)
       .single()
@@ -107,7 +107,7 @@ export async function POST(request: NextRequest) {
 
     // Update user's layout preference
     const { error } = await supabase
-      .from("users")
+      .from("profiles")
       .update({ layout_preference: layoutPreference })
       .eq("id", user.id)
 
