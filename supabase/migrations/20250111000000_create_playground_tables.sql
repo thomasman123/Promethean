@@ -46,7 +46,7 @@ CREATE POLICY "Users can view their account boards"
     )
     OR
     EXISTS (
-      SELECT 1 FROM users
+      SELECT 1 FROM user_profiles
       WHERE id = auth.uid() AND role = 'admin'
     )
   );
@@ -63,7 +63,7 @@ CREATE POLICY "Users can create boards for their accounts"
     )
     OR
     EXISTS (
-      SELECT 1 FROM users
+      SELECT 1 FROM user_profiles
       WHERE id = auth.uid() AND role = 'admin'
     )
   );
@@ -80,7 +80,7 @@ CREATE POLICY "Users can update their account boards"
     )
     OR
     EXISTS (
-      SELECT 1 FROM users
+      SELECT 1 FROM user_profiles
       WHERE id = auth.uid() AND role = 'admin'
     )
   );
@@ -97,7 +97,7 @@ CREATE POLICY "Users can delete their account boards"
     )
     OR
     EXISTS (
-      SELECT 1 FROM users
+      SELECT 1 FROM user_profiles
       WHERE id = auth.uid() AND role = 'admin'
     )
   );
@@ -114,7 +114,7 @@ CREATE POLICY "Users can view pages from accessible boards"
         WHERE user_id = auth.uid() AND is_active = true
       )
       OR EXISTS (
-        SELECT 1 FROM users
+        SELECT 1 FROM user_profiles
         WHERE id = auth.uid() AND role = 'admin'
       )
     )
@@ -133,7 +133,7 @@ CREATE POLICY "Users can create pages in accessible boards"
           AND is_active = true
       )
       OR EXISTS (
-        SELECT 1 FROM users
+        SELECT 1 FROM user_profiles
         WHERE id = auth.uid() AND role = 'admin'
       )
     )
@@ -152,7 +152,7 @@ CREATE POLICY "Users can update pages in accessible boards"
           AND is_active = true
       )
       OR EXISTS (
-        SELECT 1 FROM users
+        SELECT 1 FROM user_profiles
         WHERE id = auth.uid() AND role = 'admin'
       )
     )
@@ -171,7 +171,7 @@ CREATE POLICY "Users can delete pages from accessible boards"
           AND is_active = true
       )
       OR EXISTS (
-        SELECT 1 FROM users
+        SELECT 1 FROM user_profiles
         WHERE id = auth.uid() AND role = 'admin'
       )
     )
@@ -190,7 +190,7 @@ CREATE POLICY "Users can view content from accessible pages"
         WHERE user_id = auth.uid() AND is_active = true
       )
       OR EXISTS (
-        SELECT 1 FROM users
+        SELECT 1 FROM user_profiles
         WHERE id = auth.uid() AND role = 'admin'
       )
     )
@@ -210,7 +210,7 @@ CREATE POLICY "Users can create content in accessible pages"
           AND is_active = true
       )
       OR EXISTS (
-        SELECT 1 FROM users
+        SELECT 1 FROM user_profiles
         WHERE id = auth.uid() AND role = 'admin'
       )
     )
@@ -230,7 +230,7 @@ CREATE POLICY "Users can update content in accessible pages"
           AND is_active = true
       )
       OR EXISTS (
-        SELECT 1 FROM users
+        SELECT 1 FROM user_profiles
         WHERE id = auth.uid() AND role = 'admin'
       )
     )
@@ -250,7 +250,7 @@ CREATE POLICY "Users can delete content from accessible pages"
           AND is_active = true
       )
       OR EXISTS (
-        SELECT 1 FROM users
+        SELECT 1 FROM user_profiles
         WHERE id = auth.uid() AND role = 'admin'
       )
     )
