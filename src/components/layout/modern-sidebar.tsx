@@ -40,6 +40,8 @@ import { createBrowserClient } from "@supabase/ssr"
 import { useEffectiveUser } from "@/hooks/use-effective-user"
 import { useAccountsCache } from "@/hooks/use-accounts-cache"
 import { useDashboard } from "@/lib/dashboard-context"
+import { AccountSettingsModal } from "./account-settings-modal"
+import { AdminSettingsModal } from "./admin-settings-modal"
 
 interface NavItem {
   name: string
@@ -80,6 +82,9 @@ export function ModernSidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null)
   const [isDarkMode, setIsDarkMode] = useState(false)
+  const [settingsModalOpen, setSettingsModalOpen] = useState(false)
+  const [settingsModalTab, setSettingsModalTab] = useState("account")
+  const [adminSettingsOpen, setAdminSettingsOpen] = useState(false)
   const [notifications, setNotifications] = useState<Notification[]>([
     { id: '1', title: 'Modern Sidebar Layout', href: '/dashboard' }
   ])
@@ -222,19 +227,31 @@ export function ModernSidebar() {
             <DropdownMenuSeparator />
             
             {/* Account & Settings */}
-            <DropdownMenuItem onClick={() => router.push("/account/settings")}>
+            <DropdownMenuItem onClick={() => {
+              setSettingsModalTab("account")
+              setSettingsModalOpen(true)
+            }}>
               <Settings className="mr-2 h-4 w-4" />
               <span>Account Settings</span>
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => router.push("/account/ghl-connection")}>
+            <DropdownMenuItem onClick={() => {
+              setSettingsModalTab("ghl")
+              setSettingsModalOpen(true)
+            }}>
               <Building2 className="mr-2 h-4 w-4" />
               <span>GHL Connection</span>
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => router.push("/account/meta-ads-connection")}>
+            <DropdownMenuItem onClick={() => {
+              setSettingsModalTab("meta-ads")
+              setSettingsModalOpen(true)
+            }}>
               <Rocket className="mr-2 h-4 w-4" />
               <span>Meta Ads Connection</span>
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => router.push("/account/team")}>
+            <DropdownMenuItem onClick={() => {
+              setSettingsModalTab("team")
+              setSettingsModalOpen(true)
+            }}>
               <Users className="mr-2 h-4 w-4" />
               <span>Team</span>
             </DropdownMenuItem>
@@ -242,7 +259,7 @@ export function ModernSidebar() {
             {currentUserRole === 'admin' && (
               <>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setAdminSettingsOpen(true)}>
                   <Shield className="mr-2 h-4 w-4" />
                   <span>Admin Settings</span>
                 </DropdownMenuItem>
@@ -362,6 +379,19 @@ export function ModernSidebar() {
           </Button>
         </div>
       </div>
+
+      {/* Account Settings Modal */}
+      <AccountSettingsModal
+        open={settingsModalOpen}
+        onOpenChange={setSettingsModalOpen}
+        defaultTab={settingsModalTab}
+      />
+
+      {/* Admin Settings Modal */}
+      <AdminSettingsModal
+        open={adminSettingsOpen}
+        onOpenChange={setAdminSettingsOpen}
+      />
     </div>
   )
 }
