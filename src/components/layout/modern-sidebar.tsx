@@ -46,14 +46,27 @@ interface NavItem {
   icon: any
 }
 
-const navigationItems: NavItem[] = [
-  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { name: "Follow-ups", href: "/follow-ups", icon: Calendar },
-  { name: "Update Data", href: "/update-data", icon: RefreshCw },
-  { name: "Account", href: "/account", icon: Settings },
-  { name: "Team", href: "/account/team", icon: Users },
-  { name: "Marketing", href: "/marketing", icon: Rocket },
-  { name: "Playground", href: "/playground", icon: Palette },
+interface NavSection {
+  title: string
+  items: NavItem[]
+}
+
+const navigationSections: NavSection[] = [
+  {
+    title: "DASHBOARD",
+    items: [
+      { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+      { name: "Playground", href: "/playground", icon: Palette },
+    ]
+  },
+  {
+    title: "DATA",
+    items: [
+      { name: "Follow ups", href: "/follow-ups", icon: Calendar },
+      { name: "Appointments/Discoveries", href: "/update-data/appointments-discoveries", icon: Calendar },
+      { name: "Payment Plans", href: "/update-data/payment-plans", icon: RefreshCw },
+    ]
+  },
 ]
 
 export function ModernSidebar() {
@@ -188,14 +201,22 @@ export function ModernSidebar() {
 
             <DropdownMenuSeparator />
             
-            {/* User Settings */}
+            {/* Account & Settings */}
             <DropdownMenuItem onClick={() => router.push("/account/settings")}>
               <Settings className="mr-2 h-4 w-4" />
               <span>Account Settings</span>
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => router.push("/account")}>
-              <User className="mr-2 h-4 w-4" />
-              <span>Profile</span>
+            <DropdownMenuItem onClick={() => router.push("/account/ghl-connection")}>
+              <Building2 className="mr-2 h-4 w-4" />
+              <span>GHL Connection</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => router.push("/account/meta-ads-connection")}>
+              <Rocket className="mr-2 h-4 w-4" />
+              <span>Meta Ads Connection</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => router.push("/account/team")}>
+              <Users className="mr-2 h-4 w-4" />
+              <span>Team</span>
             </DropdownMenuItem>
             
             {currentUserRole === 'admin' && (
@@ -218,31 +239,47 @@ export function ModernSidebar() {
       </div>
 
       {/* Navigation Items */}
-      <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-        {navigationItems.map((item) => {
-          const Icon = item.icon
-          const active = isActive(item.href)
+      <nav className="flex-1 p-3 space-y-4 overflow-y-auto">
+        {navigationSections.map((section, sectionIndex) => (
+          <div key={section.title}>
+            {/* Section Header */}
+            {!isCollapsed && (
+              <div className="px-3 mb-2">
+                <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+                  {section.title}
+                </h4>
+              </div>
+            )}
+            
+            {/* Section Items */}
+            <div className="space-y-0.5">
+              {section.items.map((item) => {
+                const Icon = item.icon
+                const active = isActive(item.href)
 
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "flex items-center gap-2.5 px-3 py-1.5 rounded-lg transition-all duration-200 text-[13px] font-normal",
-                active 
-                  ? "bg-muted text-foreground" 
-                  : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
-                isCollapsed && "justify-center"
-              )}
-              title={isCollapsed ? item.name : undefined}
-            >
-              <Icon className="h-[18px] w-[18px] flex-shrink-0" />
-              {!isCollapsed && (
-                <span>{item.name}</span>
-              )}
-            </Link>
-          )
-        })}
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={cn(
+                      "flex items-center gap-2.5 px-3 py-1.5 rounded-lg transition-all duration-200 text-[13px] font-normal",
+                      active 
+                        ? "bg-muted text-foreground" 
+                        : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
+                      isCollapsed && "justify-center"
+                    )}
+                    title={isCollapsed ? item.name : undefined}
+                  >
+                    <Icon className="h-[18px] w-[18px] flex-shrink-0" />
+                    {!isCollapsed && (
+                      <span>{item.name}</span>
+                    )}
+                  </Link>
+                )
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
 
       {/* Bottom Section: What's New, Theme Toggle, Collapse */}
