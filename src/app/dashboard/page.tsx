@@ -34,7 +34,6 @@ interface ViewData {
 
 function DashboardContent() {
   const { selectedAccountId, currentViewId, setCurrentViewId } = useDashboard()
-  const { isModern } = useLayout()
   const [layouts, setLayouts] = useState(defaultLayouts)
   const [widgets, setWidgets] = useState<WidgetConfig[]>([])
   const [loading, setLoading] = useState(true)
