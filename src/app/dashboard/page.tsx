@@ -6,8 +6,9 @@ import { TopBar } from "@/components/layout/topbar"
 import { LayoutWrapper, useLayout } from "@/components/layout/layout-wrapper"
 import { Widget } from "@/components/dashboard/widget"
 import { MetricWidget } from "@/components/dashboard/metric-widget"
-import { WidgetConfig } from "@/components/dashboard/add-widget-modal"
+import { WidgetConfig, AddWidgetModal } from "@/components/dashboard/add-widget-modal"
 import { EditWidgetModal } from "@/components/dashboard/edit-widget-modal"
+import { DashboardControls } from "@/components/dashboard/dashboard-controls"
 import { useDashboard } from "@/lib/dashboard-context"
 import { METRICS_REGISTRY } from "@/lib/metrics/registry"
 import "react-grid-layout/css/styles.css"
@@ -41,12 +42,30 @@ function DashboardContent() {
   const [accountsLoaded, setAccountsLoaded] = useState(false)
   const [editingWidget, setEditingWidget] = useState<WidgetConfig | null>(null)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [isAddWidgetModalOpen, setIsAddWidgetModalOpen] = useState(false)
   const [isClient, setIsClient] = useState(false)
+  const [currentUserId, setCurrentUserId] = useState<string>("")
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   // Fix hydration by ensuring client-side only rendering for localStorage access
   useEffect(() => {
     setIsClient(true)
+  }, [])
+
+  // Get current user ID
+  useEffect(() => {
+    const getCurrentUser = async () => {
+      try {
+        const response = await fetch('/api/auth/session')
+        if (response.ok) {
+          const data = await response.json()
+          setCurrentUserId(data.user?.id || "")
+        }
+      } catch (error) {
+        console.error('Failed to get current user:', error)
+      }
+    }
+    getCurrentUser()
   }, [])
 
   // Load saved view from localStorage on mount (client-side only)
@@ -372,7 +391,16 @@ function DashboardContent() {
       
       <main className={isModern ? "" : "pt-16 h-screen overflow-y-auto"}>
         <div className={isModern ? "page-fade-in" : "p-6"}>
-          <div className="mb-4" />
+          {/* Dashboard Controls - Only show in modern layout */}
+          {isModern && (
+            <DashboardControls
+              currentUserId={currentUserId}
+              currentViewId={currentViewId}
+              onViewChange={setCurrentViewId}
+              onAddWidget={() => setIsAddWidgetModalOpen(true)}
+            />
+          )}
+
           {!currentViewId ? (
             <div className="flex items-center justify-center h-64">
               <span className="text-muted-foreground">Please select or create a view to get started</span>
@@ -409,6 +437,13 @@ function DashboardContent() {
           )}
         </div>
       </main>
+
+      {/* Add Widget Modal */}
+      <AddWidgetModal
+        open={isAddWidgetModalOpen}
+        onOpenChange={setIsAddWidgetModalOpen}
+        onAddWidget={handleAddWidget}
+      />
 
       {/* Edit Widget Modal */}
       <EditWidgetModal
