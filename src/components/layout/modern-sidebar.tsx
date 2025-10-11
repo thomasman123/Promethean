@@ -234,17 +234,11 @@ export function ModernSidebar() {
               <Settings className="mr-2 h-4 w-4" />
               <span>Account Settings</span>
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => {
-              setSettingsModalTab("ghl")
-              setSettingsModalOpen(true)
-            }}>
+            <DropdownMenuItem onClick={() => router.push("/account/ghl-connection")}>
               <Building2 className="mr-2 h-4 w-4" />
               <span>GHL Connection</span>
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => {
-              setSettingsModalTab("meta-ads")
-              setSettingsModalOpen(true)
-            }}>
+            <DropdownMenuItem onClick={() => router.push("/account/meta-ads-connection")}>
               <Rocket className="mr-2 h-4 w-4" />
               <span>Meta Ads Connection</span>
             </DropdownMenuItem>
