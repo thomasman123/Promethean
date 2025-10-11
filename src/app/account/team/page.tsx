@@ -749,7 +749,6 @@ function TeamContent() {
             </CardContent>
           </Card>
         </div>
-      </main>
 
       {/* Edit User Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>

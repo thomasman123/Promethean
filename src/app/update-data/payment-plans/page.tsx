@@ -607,7 +607,6 @@ function PaymentPlansContent() {
             </CardContent>
           </Card>
         </div>
-      </main>
 
       {/* Payment Plan Detail Modal */}
       <Dialog open={!!selectedPlan} onOpenChange={(open) => !open && setSelectedPlan(null)}>
