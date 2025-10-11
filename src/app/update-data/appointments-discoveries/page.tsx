@@ -1164,7 +1164,6 @@ function AppointmentsDiscoveriesContent() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </div>
     </div>
   )
 }
