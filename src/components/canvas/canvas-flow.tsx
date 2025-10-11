@@ -23,6 +23,7 @@ import { CanvasTextNode } from './canvas-text-node'
 import { CanvasStickyNoteNode } from './canvas-sticky-note-node'
 import { CanvasWidgetNode } from './canvas-widget-node'
 import { useCanvas } from '@/lib/canvas-context'
+import { useCanvasKeyboard } from '@/hooks/use-canvas-keyboard'
 import { ToolType } from './canvas-toolbar'
 
 const nodeTypes: NodeTypes = {
@@ -48,6 +49,8 @@ function CanvasFlowContent({
   const { elements, updateElement, addElement, deleteElement, selectedBoardId } = useCanvas()
   const [nodes, setNodes, onNodesChange] = useNodesState([])
   const [edges, setEdges, onEdgesChange] = useEdgesState([])
+  const [selectedNodes, setSelectedNodes] = useState<string[]>([])
+  const [copiedElements, setCopiedElements] = useState<any[]>([])
   const { project } = useReactFlow()
 
   // Convert canvas elements to React Flow nodes and edges
@@ -114,8 +117,74 @@ function CanvasFlowContent({
   // Handle selection changes
   useEffect(() => {
     const selected = nodes.filter(n => n.selected)
+    setSelectedNodes(selected.map(n => n.id))
     onSelectionChange(selected.length > 0)
   }, [nodes, onSelectionChange])
+
+  // Handle delete selected elements
+  const handleDelete = useCallback(() => {
+    if (selectedNodes.length === 0) return
+    
+    selectedNodes.forEach(nodeId => {
+      deleteElement(nodeId)
+    })
+    
+    setSelectedNodes([])
+  }, [selectedNodes, deleteElement])
+
+  // Handle copy
+  const handleCopy = useCallback(() => {
+    const selected = nodes.filter(n => selectedNodes.includes(n.id))
+    if (selected.length === 0) return
+    
+    const elementsToCopy = selected.map(node => {
+      const element = elements.find(el => el.id === node.id)
+      return element
+    }).filter(Boolean)
+    
+    setCopiedElements(elementsToCopy)
+  }, [selectedNodes, nodes, elements])
+
+  // Handle paste
+  const handlePaste = useCallback(() => {
+    if (copiedElements.length === 0 || !selectedBoardId) return
+    
+    copiedElements.forEach(element => {
+      if (!element) return
+      
+      addElement({
+        board_id: selectedBoardId,
+        type: element.type,
+        element_data: element.element_data,
+        widget_config: element.widget_config,
+        position: {
+          x: element.position.x + 20,
+          y: element.position.y + 20,
+        },
+        size: element.size,
+        style: element.style,
+        z_index: elements.length,
+        created_by: '',
+      })
+    })
+  }, [copiedElements, selectedBoardId, addElement, elements.length])
+
+  // Handle duplicate
+  const handleDuplicate = useCallback(() => {
+    handleCopy()
+    setTimeout(() => handlePaste(), 100)
+  }, [handleCopy, handlePaste])
+
+  // Keyboard shortcuts
+  useCanvasKeyboard({
+    onDelete: handleDelete,
+    onCopy: handleCopy,
+    onPaste: handlePaste,
+    onDuplicate: handleDuplicate,
+    onEscape: () => {
+      setNodes(nodes.map(n => ({ ...n, selected: false })))
+    },
+  })
 
   // Handle canvas click to add elements
   const handlePaneClick = useCallback((event: React.MouseEvent) => {
@@ -221,17 +290,6 @@ function CanvasFlowContent({
     })
   }, [selectedBoardId, setEdges, addElement, elements.length])
 
-  // Handle delete key
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.key === 'Delete' || e.key === 'Backspace') && !['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)) {
-        onDeleteSelection()
-      }
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [onDeleteSelection])
 
   if (!selectedBoardId) {
     return (
