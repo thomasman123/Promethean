@@ -94,10 +94,10 @@ export function ModernLayout({ children }: ModernLayoutProps) {
           isImpersonating && "top-10"
         )}
       >
-        <div className="h-full p-4 md:p-6">
+        <div className="h-full p-2 md:p-3">
           {/* Rounded content container with scrollable inside */}
-          <div className="h-full rounded-2xl border border-border/40 bg-muted/20 backdrop-blur-sm overflow-hidden flex flex-col">
-            <div className="flex-1 overflow-y-auto p-6">
+          <div className="h-full rounded-2xl border-2 border-border/60 bg-muted/20 backdrop-blur-sm overflow-hidden flex flex-col">
+            <div className="flex-1 overflow-y-auto p-6 scrollbar-hide">
               {children}
             </div>
           </div>
