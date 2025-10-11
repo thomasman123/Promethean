@@ -10,6 +10,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Settings, Building2, Rocket, Users } from "lucide-react"
 import { AccountSettingsTab } from "@/components/account/account-settings-tab"
+import { TeamTab } from "@/components/account/team-tab"
 import { useDashboard } from "@/lib/dashboard-context"
 import { useEffectiveUser } from "@/hooks/use-effective-user"
 import { createBrowserClient } from "@supabase/ssr"
@@ -130,7 +131,10 @@ export function AccountSettingsModal({ open, onOpenChange, defaultTab = "account
             {/* Team Tab */}
             <TabsContent value="team" className="h-[calc(100%-60px)] px-6 pb-6 overflow-y-auto">
               <div className="py-4">
-                <p className="text-muted-foreground">Team management tab - Content coming next</p>
+                <TeamTab 
+                  selectedAccountId={selectedAccountId}
+                  hasAccess={hasAccess}
+                />
               </div>
             </TabsContent>
           </Tabs>
