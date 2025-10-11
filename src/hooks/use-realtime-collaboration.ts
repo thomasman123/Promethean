@@ -67,10 +67,12 @@ export function useRealtimeCollaboration({
 
   // Initialize realtime connection (memoized to prevent reconnection loops)
   useEffect(() => {
-    if (!boardId || !userId) return
-    
-    // Prevent running if dependencies haven't actually changed
-    const connectionKey = `${boardId}-${userId}`
+    if (!boardId || !userId) {
+      // Cleanup and return early if no board/user
+      setIsConnected(false)
+      setCollaborators([])
+      return
+    }
     
     console.log('🔌 [Realtime] Connecting to board:', boardId)
 
