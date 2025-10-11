@@ -392,10 +392,9 @@ function PlaygroundContent() {
   }, [selectedTool, previousTool, isSpacePressed, selectedElements, handleDeleteElement, handleDuplicateElement])
 
   return (
-    <div className="h-screen flex flex-col bg-background">
-      <TopBar />
+    <div className="h-full bg-background flex flex-col">
       {/* Main Frame Container */}
-      <Card className="flex-1 m-4 overflow-hidden flex flex-col mt-16">
+      <Card className="flex-1 overflow-hidden flex flex-col">
         <div className="flex-1 flex overflow-hidden">
           {/* Left Sidebar - Pages */}
           <div className={cn(
