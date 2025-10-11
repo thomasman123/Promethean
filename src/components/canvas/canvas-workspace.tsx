@@ -46,25 +46,27 @@ export function CanvasWorkspace() {
     })
   }, [])
 
-  // Real-time collaboration with debounced refresh
+  // Real-time collaboration with memoized callback
   const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  
+  const handleElementChange = useCallback((payload: any) => {
+    // Debounce element refresh to prevent loops
+    if (payload.eventType === 'INSERT' || payload.eventType === 'DELETE') {
+      // Only refresh on INSERT/DELETE, not UPDATE to avoid loops
+      if (refreshTimeoutRef.current) {
+        clearTimeout(refreshTimeoutRef.current)
+      }
+      refreshTimeoutRef.current = setTimeout(() => {
+        refreshElements()
+      }, 1000)
+    }
+  }, [refreshElements])
   
   const { collaborators, isConnected } = useRealtimeCollaboration({
     boardId: selectedBoardId,
     userId: currentUser?.id || null,
     userName: currentUser?.name || null,
-    onElementChange: (payload) => {
-      // Debounce element refresh to prevent loops
-      if (payload.eventType === 'INSERT' || payload.eventType === 'DELETE') {
-        // Only refresh on INSERT/DELETE, not UPDATE to avoid loops
-        if (refreshTimeoutRef.current) {
-          clearTimeout(refreshTimeoutRef.current)
-        }
-        refreshTimeoutRef.current = setTimeout(() => {
-          refreshElements()
-        }, 1000)
-      }
-    },
+    onElementChange: handleElementChange,
   })
 
   const handleToolSelect = (tool: ToolType) => {

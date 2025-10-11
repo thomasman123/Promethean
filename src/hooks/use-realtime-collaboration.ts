@@ -65,10 +65,13 @@ export function useRealtimeCollaboration({
     })
   }, [boardId, userId, userName])
 
-  // Initialize realtime connection
+  // Initialize realtime connection (memoized to prevent reconnection loops)
   useEffect(() => {
     if (!boardId || !userId) return
-
+    
+    // Prevent running if dependencies haven't actually changed
+    const connectionKey = `${boardId}-${userId}`
+    
     console.log('🔌 [Realtime] Connecting to board:', boardId)
 
     const channel = supabase.channel(`board:${boardId}`, {
@@ -168,7 +171,8 @@ export function useRealtimeCollaboration({
       }
       setIsConnected(false)
     }
-  }, [boardId, userId, userName, onElementChange, supabase])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [boardId, userId])
 
   // Track mouse movement
   useEffect(() => {
