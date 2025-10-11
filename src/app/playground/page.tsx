@@ -15,7 +15,7 @@ import { useToast } from '@/hooks/use-toast'
 interface PlaygroundPageContent {
   tldrawSnapshot?: any
   widgets: {
-    id: string
+  id: string
     config: PlaygroundWidgetConfig
     position: { x: number; y: number }
     size: { width: number; height: number }
@@ -349,16 +349,16 @@ function PlaygroundContent() {
       {/* Top Toolbar */}
       <div className="bg-card border-b px-4 py-2 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2">
-          <Button
+              <Button
             size="sm"
             variant="default"
             onClick={() => setIsWidgetDialogOpen(true)}
           >
             <BarChart3 className="h-4 w-4 mr-2" />
             Add Widget
-          </Button>
-        </div>
-        
+                  </Button>
+                </div>
+                
         <div className="flex items-center gap-2">
           {isSaving && (
             <span className="text-xs text-muted-foreground flex items-center gap-2">
@@ -366,17 +366,17 @@ function PlaygroundContent() {
               Saving...
             </span>
           )}
-          <Button
-            size="sm"
+              <Button
+                size="sm"
             variant="outline"
             onClick={handleSaveNow}
             disabled={isSaving}
           >
             <Save className="h-4 w-4 mr-2" />
             Save Now
-          </Button>
-        </div>
-      </div>
+              </Button>
+            </div>
+          </div>
 
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
@@ -485,4 +485,4 @@ export default function PlaygroundPage() {
       <PlaygroundContent />
     </LayoutWrapper>
   )
-}
+} 
