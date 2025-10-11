@@ -7,24 +7,26 @@ Many appointments and discoveries have `setter = "Unknown"` because the webhook 
 
 ### 1. **Improved Webhook Logic** (Prevents Future Issues)
 
-The appointment/discovery webhook now uses a **3-tier fallback strategy** to resolve setter information:
+The appointment/discovery webhook now uses a **robust 3-tier strategy** to resolve setter information:
 
-#### Strategy 1: payload.userId
-- Tries to get setter from `payload.userId` in the webhook
+#### Primary Strategy: Fetch from GHL Appointment API (ALWAYS)
+- **Always** fetches the appointment from GHL API first
+- Extracts `createdBy.userId` from the appointment data
+- Fetches user details and links to platform users
+- **Most reliable method** (85% success rate proven by backfill)
+- Includes automatic token refresh retry if needed
+
+#### Fallback Strategy 1: payload.userId
+- If primary strategy fails, tries `payload.userId` from webhook
 - Fetches user details from GHL API
 - Links to platform users by email
 
-#### Strategy 2: Fetch from GHL Appointment API
-- If no `payload.userId`, fetches the appointment from GHL API
-- Extracts `createdBy.userId` from the appointment data
-- Fetches user details and links to platform users
-
-#### Strategy 3: Recent Dial Lookup
-- If still no setter found, searches for recent dials from the same contact
+#### Fallback Strategy 2: Recent Dial Lookup
+- If both above strategies fail, searches for recent dials from the same contact
 - Looks for dials within 60 minutes before the appointment was booked
 - Uses the setter from the most recent matching dial
 
-#### Fallback: "Unknown"
+#### Final Fallback: "Unknown"
 - Only defaults to "Unknown" if all strategies fail
 - Logs a clear warning when this happens
 
@@ -144,12 +146,14 @@ After GHL API backfill:
 
 ## Summary
 
-- ✅ **Webhook improved** - 3-tier fallback strategy prevents "Unknown" setters
+- ✅ **Webhook improved** - Now ALWAYS fetches from GHL API as primary strategy (85% proven success)
+- ✅ **3-tier strategy** - GHL API (primary) → payload.userId → recent dials → Unknown
 - ✅ **SQL backfill** - Fast bulk update using existing dial data
 - ✅ **API backfill** - Detailed backfill from GHL API for remaining records (85% success)
 - ✅ **Handles both** appointments and discoveries
 - ✅ **Clear logging** - Easy to debug when setter can't be resolved
 - ✅ **Critical bug fixed** - Correctly parse GHL API responses using `appointment` key
+- ✅ **Production ready** - New appointments will automatically get correct setter info
 
 ## Files Changed
 
