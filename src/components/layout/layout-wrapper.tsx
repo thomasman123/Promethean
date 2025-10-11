@@ -34,35 +34,11 @@ export function LayoutWrapper({ children }: LayoutWrapperProps) {
       }
 
       try {
-        // Check if user is admin
-        const response = await fetch('/api/auth/session')
-        if (!response.ok) {
-          setLayoutPreference("classic")
-          setLoading(false)
-          return
-        }
-
-        const data = await response.json()
-        const isAdmin = data.user?.role === 'admin'
-
-        if (!isAdmin) {
-          // Non-admins always use classic layout
-          setLayoutPreference("classic")
-          setLoading(false)
-          return
-        }
-
-        // Fetch user's layout preference
-        const prefResponse = await fetch('/api/admin/layout-preference')
-        if (prefResponse.ok) {
-          const prefData = await prefResponse.json()
-          setLayoutPreference(prefData.layoutPreference || "classic")
-        } else {
-          setLayoutPreference("classic")
-        }
+        // Everyone now uses modern layout by default
+        setLayoutPreference("modern")
       } catch (error) {
-        console.error('Failed to fetch layout preference:', error)
-        setLayoutPreference("classic")
+        console.error('Error setting layout preference:', error)
+        setLayoutPreference("modern")
       } finally {
         setLoading(false)
       }
