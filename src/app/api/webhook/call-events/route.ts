@@ -1369,7 +1369,8 @@ async function processAppointmentWebhook(payload: any) {
         
         if (appointmentResponse.ok) {
           const appointmentData = await appointmentResponse.json();
-          const event = appointmentData.event || appointmentData;
+          // GHL API returns data under 'appointment' key
+          const event = appointmentData.appointment || appointmentData.event || appointmentData;
           const createdByUserId = event.createdBy?.userId;
           
           if (createdByUserId) {

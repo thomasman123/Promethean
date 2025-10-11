@@ -214,7 +214,8 @@ export async function POST(request: NextRequest) {
         }
 
         const ghlData = await ghlResponse.json()
-        const event = ghlData.event || ghlData
+        // GHL API returns data under 'appointment' key
+        const event = ghlData.appointment || ghlData.event || ghlData
 
         // Get the setter (createdBy.userId)
         const setterGhlId = event.createdBy?.userId
