@@ -33,6 +33,16 @@ export interface WidgetNodeData {
 
 export const CanvasWidgetNode = memo(({ data, selected }: NodeProps<WidgetNodeData>) => {
   const { widgetConfig, onDateRangeChange, onEdit } = data
+  
+  // Safety check for widgetConfig
+  if (!widgetConfig) {
+    return (
+      <div className="w-full h-full bg-background border-2 border-border rounded-lg shadow-md p-4 flex items-center justify-center">
+        <span className="text-muted-foreground text-sm">Invalid widget configuration</span>
+      </div>
+    )
+  }
+  
   const [dateRange, setDateRange] = useState<DateRange | undefined>(
     widgetConfig.dateRange
       ? { from: new Date(widgetConfig.dateRange.from), to: new Date(widgetConfig.dateRange.to) }

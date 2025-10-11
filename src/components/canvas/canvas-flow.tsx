@@ -51,7 +51,7 @@ function CanvasFlowContent({
   const [edges, setEdges, onEdgesChange] = useEdgesState([])
   const [selectedNodes, setSelectedNodes] = useState<string[]>([])
   const [copiedElements, setCopiedElements] = useState<any[]>([])
-  const { project } = useReactFlow()
+  const { screenToFlowPosition } = useReactFlow()
   const updateTimeouts = useRef<Record<string, NodeJS.Timeout>>({})
 
   // Convert canvas elements to React Flow nodes and edges
@@ -81,11 +81,15 @@ function CanvasFlowContent({
         })
       } else {
         // Convert other elements to nodes
+        const nodeData = el.type === 'widget' 
+          ? { widgetConfig: el.widget_config, ...el.element_data }
+          : el.element_data
+          
         flowNodes.push({
           id: el.id,
           type: el.type,
           position: el.position,
-          data: el.element_data,
+          data: nodeData,
           style: {
             width: el.size?.width || 200,
             height: el.size?.height || 100,
@@ -200,11 +204,10 @@ function CanvasFlowContent({
       return
     }
 
-    // Get the React Flow viewport position
-    const reactFlowBounds = (event.currentTarget as HTMLElement).getBoundingClientRect()
-    const position = project({
-      x: event.clientX - reactFlowBounds.left,
-      y: event.clientY - reactFlowBounds.top,
+    // Get the React Flow viewport position using new API
+    const position = screenToFlowPosition({
+      x: event.clientX,
+      y: event.clientY,
     })
 
     let elementData: any = {}
