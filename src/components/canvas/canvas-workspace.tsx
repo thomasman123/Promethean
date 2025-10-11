@@ -61,30 +61,29 @@ export function CanvasWorkspace() {
 
   // TEMPORARILY DISABLE real-time collaboration to stop the loops
   // Will re-enable once core canvas is stable
-  const collaborators: any[] = []
-  const isConnected = false
+  // Hooks must be called unconditionally
+  const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   
-  // const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const handleElementChange = useCallback((payload: any) => {
+    // Debounce element refresh to prevent loops
+    if (payload.eventType === 'INSERT' || payload.eventType === 'DELETE') {
+      // Only refresh on INSERT/DELETE, not UPDATE to avoid loops
+      if (refreshTimeoutRef.current) {
+        clearTimeout(refreshTimeoutRef.current)
+      }
+      refreshTimeoutRef.current = setTimeout(() => {
+        refreshElements()
+      }, 1000)
+    }
+  }, [refreshElements])
   
-  // const handleElementChange = useCallback((payload: any) => {
-  //   // Debounce element refresh to prevent loops
-  //   if (payload.eventType === 'INSERT' || payload.eventType === 'DELETE') {
-  //     // Only refresh on INSERT/DELETE, not UPDATE to avoid loops
-  //     if (refreshTimeoutRef.current) {
-  //       clearTimeout(refreshTimeoutRef.current)
-  //     }
-  //     refreshTimeoutRef.current = setTimeout(() => {
-  //       refreshElements()
-  //     }, 1000)
-  //   }
-  // }, [refreshElements])
-  
-  // const { collaborators, isConnected } = useRealtimeCollaboration({
-  //   boardId: selectedBoardId,
-  //   userId: currentUser?.id || null,
-  //   userName: currentUser?.name || null,
-  //   onElementChange: handleElementChange,
-  // })
+  // Hook is called but we'll just not use the results for now
+  const { collaborators, isConnected } = useRealtimeCollaboration({
+    boardId: null, // Pass null to disable without breaking hook order
+    userId: null,
+    userName: null,
+    onElementChange: handleElementChange,
+  })
 
   const handleToolSelect = (tool: ToolType) => {
     setSelectedTool(tool)
