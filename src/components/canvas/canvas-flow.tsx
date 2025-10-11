@@ -214,6 +214,9 @@ function CanvasFlowContent({
     if (selectedTool !== 'pen') return
     if (!selectedBoardId) return
 
+    event.preventDefault()
+    event.stopPropagation()
+
     const position = screenToFlowPosition({
       x: event.clientX,
       y: event.clientY,
@@ -226,6 +229,8 @@ function CanvasFlowContent({
 
   const handleMouseMove = useCallback((event: React.MouseEvent) => {
     if (!isDrawing || selectedTool !== 'pen') return
+
+    event.preventDefault()
 
     const position = screenToFlowPosition({
       x: event.clientX,
@@ -417,15 +422,20 @@ function CanvasFlowContent({
 
   return (
     <div
-      className="w-full h-full"
+      className="w-full h-full react-flow-wrapper"
       onMouseDown={isDrawingTool ? handleMouseDown : undefined}
       onMouseMove={isDrawingTool ? handleMouseMove : undefined}
       onMouseUp={isDrawingTool ? handleMouseUp : undefined}
       onMouseLeave={isDrawingTool ? handleMouseUp : undefined}
-      style={{
-        cursor: isEraserTool ? 'crosshair' : isPlacementTool ? 'crosshair' : isDrawingTool ? 'crosshair' : 'default'
-      }}
     >
+      <style jsx global>{`
+        .react-flow-wrapper .react-flow__pane {
+          cursor: ${isEraserTool || isPlacementTool || isDrawingTool ? 'crosshair' : 'default'} !important;
+        }
+        .react-flow-wrapper .react-flow__node {
+          cursor: ${isPanningEnabled ? 'move' : 'default'} !important;
+        }
+      `}</style>
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -436,9 +446,8 @@ function CanvasFlowContent({
         onNodeClick={handleNodeClick}
         nodeTypes={nodeTypes}
         fitView={false}
-        snapToGrid
-        snapGrid={[15, 15]}
-        panOnDrag={isPanningEnabled ? [1, 2] : false}
+        snapToGrid={false}
+        panOnDrag={false}
         panOnScroll={true}
         zoomOnScroll={true}
         zoomOnDoubleClick={false}
@@ -446,6 +455,7 @@ function CanvasFlowContent({
         nodesConnectable={selectedTool === 'arrow'}
         elementsSelectable={true}
         selectNodesOnDrag={isPanningEnabled}
+        proOptions={{ hideAttribution: true }}
         defaultEdgeOptions={{
           markerEnd: {
             type: MarkerType.ArrowClosed,
@@ -455,31 +465,32 @@ function CanvasFlowContent({
         <Controls />
         <Background variant={BackgroundVariant.Dots} gap={20} size={1} />
         
-        {/* Show current drawing path */}
+        {/* Drawing overlay - shows current path being drawn */}
         {isDrawing && currentPath.length > 1 && (
-          <svg
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              width: '100%',
-              height: '100%',
-              pointerEvents: 'none',
-              zIndex: 1000,
-            }}
-          >
-            <path
-              d={currentPath.reduce((acc, point, index) => {
-                if (index === 0) return `M ${point.x} ${point.y}`
-                return `${acc} L ${point.x} ${point.y}`
-              }, '')}
-              stroke={strokeColor}
-              strokeWidth={strokeWidth}
-              fill="none"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
+          <div style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            pointerEvents: 'none',
+            zIndex: 1000,
+          }}>
+            <svg style={{ width: '100%', height: '100%', overflow: 'visible' }}>
+              <path
+                d={currentPath.reduce((acc, point, index) => {
+                  if (index === 0) return `M ${point.x} ${point.y}`
+                  return `${acc} L ${point.x} ${point.y}`
+                }, '')}
+                stroke={strokeColor}
+                strokeWidth={strokeWidth}
+                fill="none"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                transform="translate(0, 0)"
+              />
+            </svg>
+          </div>
         )}
       </ReactFlow>
     </div>
