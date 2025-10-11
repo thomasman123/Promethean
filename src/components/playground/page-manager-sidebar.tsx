@@ -12,15 +12,13 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 
 export interface PlaygroundPage {
   id: string
@@ -220,23 +218,28 @@ export function PageManagerSidebar({
       </div>
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={deletePageId !== null} onOpenChange={(open) => !open && setDeletePageId(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Page</AlertDialogTitle>
-            <AlertDialogDescription>
+      <Dialog open={deletePageId !== null} onOpenChange={(open) => !open && setDeletePageId(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Page</DialogTitle>
+            <DialogDescription>
               Are you sure you want to delete this page? This action cannot be undone.
               All content on this page will be permanently deleted.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeletePageId(null)}>
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleDeleteConfirm}
+            >
               Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }
