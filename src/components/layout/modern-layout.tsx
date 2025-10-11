@@ -17,14 +17,7 @@ interface ModernLayoutProps {
 export function ModernLayout({ children }: ModernLayoutProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
-  const [isDarkMode, setIsDarkMode] = useState(false)
   const [isImpersonating, setIsImpersonating] = useState(false)
-  
-  const { user: effectiveUser } = useEffectiveUser()
-  const { accounts } = useAccountsCache(effectiveUser?.id)
-  const { selectedAccountId } = useDashboard()
-
-  const selectedAccount = accounts.find((a) => a.id === selectedAccountId)
 
   // Check sidebar collapsed state
   useEffect(() => {
@@ -67,18 +60,6 @@ export function ModernLayout({ children }: ModernLayoutProps) {
     checkImpersonation()
   }, [])
 
-  const toggleDarkMode = () => {
-    const newMode = !isDarkMode
-    setIsDarkMode(newMode)
-    
-    if (newMode) {
-      document.documentElement.classList.add('dark')
-      localStorage.setItem('theme', 'dark')
-    } else {
-      document.documentElement.classList.remove('dark')
-      localStorage.setItem('theme', 'light')
-    }
-  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -113,39 +94,20 @@ export function ModernLayout({ children }: ModernLayoutProps) {
         </>
       )}
 
-      {/* Top Bar for Mobile/Desktop */}
-      <div
-        className={cn(
-          "fixed right-0 top-0 z-30 flex items-center justify-end gap-3 p-4",
-          "transition-all duration-300",
-          sidebarCollapsed ? "md:left-16" : "md:left-60",
-          "left-0",
-          isImpersonating && "top-10"
-        )}
-      >
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={toggleDarkMode}
-          className="h-9 w-9"
-        >
-          {isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-        </Button>
-      </div>
-
       {/* Main Content */}
       <main
         className={cn(
-          "min-h-screen transition-all duration-300",
-          "p-4 md:p-6",
-          sidebarCollapsed ? "md:ml-16" : "md:ml-60",
-          isImpersonating && "pt-14"
+          "fixed inset-0 transition-all duration-300",
+          sidebarCollapsed ? "md:left-16" : "md:left-60",
+          isImpersonating && "top-10"
         )}
       >
-        <div className="h-full">
-          {/* Rounded content container */}
-          <div className="h-full rounded-2xl border border-border/40 bg-muted/20 p-6 backdrop-blur-sm">
-            {children}
+        <div className="h-full p-4 md:p-6">
+          {/* Rounded content container with scrollable inside */}
+          <div className="h-full rounded-2xl border border-border/40 bg-muted/20 backdrop-blur-sm overflow-hidden flex flex-col">
+            <div className="flex-1 overflow-y-auto p-6">
+              {children}
+            </div>
           </div>
         </div>
       </main>
