@@ -46,7 +46,7 @@ CREATE POLICY "Users can view their account boards"
     )
     OR
     EXISTS (
-      SELECT 1 FROM user_profiles
+      SELECT 1 FROM public.user_profiles
       WHERE id = auth.uid() AND role = 'admin'
     )
   );
@@ -63,7 +63,7 @@ CREATE POLICY "Users can create boards for their accounts"
     )
     OR
     EXISTS (
-      SELECT 1 FROM user_profiles
+      SELECT 1 FROM public.user_profiles
       WHERE id = auth.uid() AND role = 'admin'
     )
   );
@@ -80,7 +80,7 @@ CREATE POLICY "Users can update their account boards"
     )
     OR
     EXISTS (
-      SELECT 1 FROM user_profiles
+      SELECT 1 FROM public.user_profiles
       WHERE id = auth.uid() AND role = 'admin'
     )
   );
@@ -97,7 +97,7 @@ CREATE POLICY "Users can delete their account boards"
     )
     OR
     EXISTS (
-      SELECT 1 FROM user_profiles
+      SELECT 1 FROM public.user_profiles
       WHERE id = auth.uid() AND role = 'admin'
     )
   );
