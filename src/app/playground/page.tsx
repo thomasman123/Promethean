@@ -1,26 +1,29 @@
 "use client"
 
 import { useEffect, useState, useCallback, useRef } from 'react'
-import { Tldraw, TLEditorComponents, Editor, createShapeId, TLShape, useEditor } from 'tldraw'
-import 'tldraw/tldraw.css'
 import { LayoutWrapper } from '@/components/layout/layout-wrapper'
 import { PageManagerSidebar, PlaygroundPage } from '@/components/playground/page-manager-sidebar'
 import { WidgetConfigDialog } from '@/components/playground/widget-config-dialog'
-import { PlaygroundWidgetConfig, PlaygroundWidget } from '@/components/playground/playground-widget'
+import { PlaygroundWidgetConfig } from '@/components/playground/playground-widget'
+import { CanvasSystem, CanvasElement } from '@/components/playground/canvas-system'
 import { useDashboard } from '@/lib/dashboard-context'
 import { Button } from '@/components/ui/button'
-import { BarChart3, Save, Loader2 } from 'lucide-react'
+import { 
+  BarChart3, 
+  Save, 
+  Loader2, 
+  MousePointer, 
+  Hand, 
+  Pencil, 
+  Type, 
+  Square,
+  Circle,
+  ArrowRight
+} from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
+import { cn } from '@/lib/utils'
 
-interface PlaygroundPageContent {
-  tldrawSnapshot?: any
-  widgets: {
-  id: string
-    config: PlaygroundWidgetConfig
-    position: { x: number; y: number }
-    size: { width: number; height: number }
-  }[]
-}
+type Tool = 'select' | 'pan' | 'draw' | 'text' | 'shape' | 'arrow'
 
 function PlaygroundContent() {
   const { selectedAccountId } = useDashboard()
@@ -33,8 +36,8 @@ function PlaygroundContent() {
   const [isWidgetDialogOpen, setIsWidgetDialogOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
-  const [editor, setEditor] = useState<Editor | null>(null)
-  const [pageContent, setPageContent] = useState<PlaygroundPageContent>({ widgets: [] })
+  const [selectedTool, setSelectedTool] = useState<Tool>('select')
+  const [canvasElements, setCanvasElements] = useState<CanvasElement[]>([])
   
   const saveTimeoutRef = useRef<NodeJS.Timeout>()
 
@@ -63,7 +66,6 @@ function PlaygroundContent() {
       setBoardId(data.board.id)
       setPages(data.board.pages || [])
       
-      // Select first page if available
       if (data.board.pages?.length > 0) {
         setCurrentPageId(data.board.pages[0].id)
       }
@@ -86,22 +88,21 @@ function PlaygroundContent() {
       if (!response.ok) throw new Error('Failed to load content')
       
       const data = await response.json()
-      setPageContent(data.content || { widgets: [] })
+      const content = data.content || {}
       
-      // Load tldraw snapshot if available
-      if (data.content?.tldrawSnapshot && editor) {
-        try {
-          editor.store.loadSnapshot(data.content.tldrawSnapshot)
-        } catch (err) {
-          console.error('Error loading tldraw snapshot:', err)
-        }
-      }
+      // Convert stored widgets to canvas elements
+      const elements: CanvasElement[] = (content.elements || []).map((el: any) => ({
+        ...el,
+        zIndex: el.zIndex || 0
+      }))
+      
+      setCanvasElements(elements)
     } catch (error) {
       console.error('Error loading page content:', error)
     }
   }
 
-  const savePageContent = useCallback(async (content: PlaygroundPageContent) => {
+  const savePageContent = useCallback(async (elements: CanvasElement[]) => {
     if (!currentPageId || isSaving) return
     
     try {
@@ -109,7 +110,11 @@ function PlaygroundContent() {
       const response = await fetch(`/api/playground/pages/${currentPageId}/content`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content })
+        body: JSON.stringify({ 
+          content: {
+            elements
+          }
+        })
       })
       
       if (!response.ok) throw new Error('Failed to save content')
@@ -126,15 +131,20 @@ function PlaygroundContent() {
     }
   }, [currentPageId, isSaving, toast])
 
-  const debouncedSave = useCallback((content: PlaygroundPageContent) => {
+  const debouncedSave = useCallback((elements: CanvasElement[]) => {
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current)
     }
     
     saveTimeoutRef.current = setTimeout(() => {
-      savePageContent(content)
+      savePageContent(elements)
     }, 2000)
   }, [savePageContent])
+
+  const handleElementsChange = useCallback((elements: CanvasElement[]) => {
+    setCanvasElements(elements)
+    debouncedSave(elements)
+  }, [debouncedSave])
 
   const handlePageCreate = async () => {
     if (!boardId) return
@@ -200,11 +210,9 @@ function PlaygroundContent() {
     if (!boardId) return
     
     try {
-      // First, load the content of the page to duplicate
       const contentResponse = await fetch(`/api/playground/pages/${pageId}/content`)
       const contentData = await contentResponse.json()
       
-      // Create new page
       const page = pages.find(p => p.id === pageId)
       const response = await fetch('/api/playground/pages', {
         method: 'POST',
@@ -219,7 +227,6 @@ function PlaygroundContent() {
       
       const data = await response.json()
       
-      // Copy content to new page
       await fetch(`/api/playground/pages/${data.page.id}/content`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -262,7 +269,6 @@ function PlaygroundContent() {
       const newPages = pages.filter(p => p.id !== pageId)
       setPages(newPages)
       
-      // Switch to another page if current was deleted
       if (currentPageId === pageId && newPages.length > 0) {
         setCurrentPageId(newPages[0].id)
       }
@@ -282,45 +288,27 @@ function PlaygroundContent() {
   }
 
   const handleAddWidget = (config: PlaygroundWidgetConfig) => {
-    if (!editor) return
-    
-    // Add widget to center of viewport
-    const viewport = editor.getViewportPageBounds()
-    const position = {
-      x: viewport.center.x - 200,
-      y: viewport.center.y - 150
-    }
-    
-    const newWidget = {
+    const newElement: CanvasElement = {
       id: `widget-${Date.now()}`,
-      config,
-      position,
-      size: { width: 400, height: 300 }
+      type: 'widget',
+      x: 100,
+      y: 100,
+      width: 400,
+      height: 300,
+      zIndex: canvasElements.length,
+      data: config
     }
     
-    const updatedContent = {
-      ...pageContent,
-      widgets: [...pageContent.widgets, newWidget]
-    }
-    
-    setPageContent(updatedContent)
-    debouncedSave(updatedContent)
-    
+    const newElements = [...canvasElements, newElement]
+    setCanvasElements(newElements)
+    debouncedSave(newElements)
     setIsWidgetDialogOpen(false)
   }
 
   const handleSaveNow = () => {
-    if (!editor || !currentPageId) return
-    
-    // Get tldraw snapshot
-    const snapshot = editor.store.getSnapshot()
-    
-    const content: PlaygroundPageContent = {
-      tldrawSnapshot: snapshot,
-      widgets: pageContent.widgets
+    if (currentPageId) {
+      savePageContent(canvasElements)
     }
-    
-    savePageContent(content)
   }
 
   if (!selectedAccountId) {
@@ -349,16 +337,36 @@ function PlaygroundContent() {
       {/* Top Toolbar */}
       <div className="bg-card border-b px-4 py-2 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2">
-              <Button
-            size="sm"
-            variant="default"
-            onClick={() => setIsWidgetDialogOpen(true)}
-          >
-            <BarChart3 className="h-4 w-4 mr-2" />
-            Add Widget
-                  </Button>
-                </div>
-                
+          {/* Tool selection */}
+          <div className="flex items-center gap-1 border rounded-lg p-1">
+            <Button
+              size="sm"
+              variant={selectedTool === 'select' ? 'default' : 'ghost'}
+              onClick={() => setSelectedTool('select')}
+              className="h-8 w-8 p-0"
+            >
+              <MousePointer className="h-4 w-4" />
+            </Button>
+            <Button
+              size="sm"
+              variant={selectedTool === 'pan' ? 'default' : 'ghost'}
+              onClick={() => setSelectedTool('pan')}
+              className="h-8 w-8 p-0"
+            >
+              <Hand className="h-4 w-4" />
+            </Button>
+            <div className="w-px h-6 bg-border mx-1" />
+            <Button
+              size="sm"
+              variant="default"
+              onClick={() => setIsWidgetDialogOpen(true)}
+            >
+              <BarChart3 className="h-4 w-4 mr-2" />
+              Add Widget
+            </Button>
+          </div>
+        </div>
+        
         <div className="flex items-center gap-2">
           {isSaving && (
             <span className="text-xs text-muted-foreground flex items-center gap-2">
@@ -366,17 +374,17 @@ function PlaygroundContent() {
               Saving...
             </span>
           )}
-              <Button
-                size="sm"
+          <Button
+            size="sm"
             variant="outline"
             onClick={handleSaveNow}
             disabled={isSaving}
           >
             <Save className="h-4 w-4 mr-2" />
             Save Now
-              </Button>
-            </div>
-          </div>
+          </Button>
+        </div>
+      </div>
 
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
@@ -393,88 +401,19 @@ function PlaygroundContent() {
         />
 
         <div className="flex-1 relative">
-          {/* Tldraw Canvas */}
-          <div className="absolute inset-0">
-            <Tldraw
-              onMount={(editorInstance) => {
-                setEditor(editorInstance)
-              }}
-              components={customComponents}
-            >
-              {/* Render widgets as overlays */}
-              <WidgetOverlays 
-                widgets={pageContent.widgets}
-                onConfigChange={(widgetId, config) => {
-                  const updatedContent = {
-                    ...pageContent,
-                    widgets: pageContent.widgets.map(w =>
-                      w.id === widgetId ? { ...w, config } : w
-                    )
-                  }
-                  setPageContent(updatedContent)
-                  debouncedSave(updatedContent)
-                }}
-              />
-            </Tldraw>
-          </div>
+          <CanvasSystem
+            elements={canvasElements}
+            onElementsChange={handleElementsChange}
+            selectedTool={selectedTool}
+          />
         </div>
       </div>
 
-      {/* Widget Configuration Dialog */}
       <WidgetConfigDialog
         isOpen={isWidgetDialogOpen}
         onClose={() => setIsWidgetDialogOpen(false)}
         onConfirm={handleAddWidget}
       />
-    </div>
-  )
-}
-
-// Custom components for tldraw UI
-const customComponents: TLEditorComponents = {
-  // Hide some UI elements for cleaner interface
-}
-
-// Widget overlays component
-function WidgetOverlays({ 
-  widgets, 
-  onConfigChange 
-}: { 
-  widgets: PlaygroundPageContent['widgets']
-  onConfigChange: (widgetId: string, config: PlaygroundWidgetConfig) => void
-}) {
-  const editor = useEditor()
-  
-  if (!editor) return null
-  
-  return (
-    <div className="tl-overlays__wrapper">
-      {widgets.map((widget) => {
-        const screenPos = editor.pageToScreen(widget.position)
-        
-        return (
-          <div
-            key={widget.id}
-            style={{
-              position: 'absolute',
-              left: screenPos.x,
-              top: screenPos.y,
-              width: widget.size.width,
-              height: widget.size.height,
-              pointerEvents: 'auto',
-              transform: `scale(${editor.getZoomLevel()})`,
-              transformOrigin: 'top left'
-            }}
-          >
-            <PlaygroundWidget
-              config={widget.config}
-              width={widget.size.width}
-              height={widget.size.height}
-              onConfigChange={(config) => onConfigChange(widget.id, config)}
-            />
-          </div>
-        )
-      })}
     </div>
   )
 }
@@ -485,4 +424,4 @@ export default function PlaygroundPage() {
       <PlaygroundContent />
     </LayoutWrapper>
   )
-} 
+}
