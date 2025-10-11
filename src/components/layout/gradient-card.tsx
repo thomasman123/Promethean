@@ -12,8 +12,8 @@ export function GradientCard({ children, className }: GradientCardProps) {
     <div
       className={cn(
         "rounded-xl p-6",
-        "bg-gradient-to-br from-muted/30 to-muted/10",
-        "border border-border/50",
+        "bg-gradient-to-br from-muted/40 via-muted/20 to-background/50",
+        "border border-border/40",
         "shadow-sm",
         "backdrop-blur-sm",
         className

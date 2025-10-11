@@ -137,13 +137,16 @@ export function ModernLayout({ children }: ModernLayoutProps) {
       <main
         className={cn(
           "min-h-screen transition-all duration-300",
-          "pt-16 p-6",
+          "p-4 md:p-6",
           sidebarCollapsed ? "md:ml-16" : "md:ml-60",
-          isImpersonating && "pt-24"
+          isImpersonating && "pt-14"
         )}
       >
-        <div className="max-w-7xl mx-auto">
-          {children}
+        <div className="h-full">
+          {/* Rounded content container */}
+          <div className="h-full rounded-2xl border border-border/40 bg-muted/20 p-6 backdrop-blur-sm">
+            {children}
+          </div>
         </div>
       </main>
     </div>
