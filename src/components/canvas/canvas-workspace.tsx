@@ -9,7 +9,7 @@ import { CanvasShareModal } from './canvas-share-modal'
 import { CanvasCollaborationCursors } from './canvas-collaboration-cursors'
 import { WidgetConfig } from '@/components/dashboard/add-widget-modal'
 import { useCanvas } from '@/lib/canvas-context'
-import { useRealtimeCollaboration } from '@/hooks/use-realtime-collaboration'
+// import { useRealtimeCollaboration } from '@/hooks/use-realtime-collaboration' // Temporarily disabled
 import { startOfMonth } from 'date-fns'
 import { createBrowserClient } from '@supabase/ssr'
 
@@ -59,31 +59,10 @@ export function CanvasWorkspace() {
     }
   }, [])
 
-  // TEMPORARILY DISABLE real-time collaboration to stop the loops
-  // Will re-enable once core canvas is stable
-  // Hooks must be called unconditionally
-  const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-  
-  const handleElementChange = useCallback((payload: any) => {
-    // Debounce element refresh to prevent loops
-    if (payload.eventType === 'INSERT' || payload.eventType === 'DELETE') {
-      // Only refresh on INSERT/DELETE, not UPDATE to avoid loops
-      if (refreshTimeoutRef.current) {
-        clearTimeout(refreshTimeoutRef.current)
-      }
-      refreshTimeoutRef.current = setTimeout(() => {
-        refreshElements()
-      }, 1000)
-    }
-  }, [refreshElements])
-  
-  // Hook is called but we'll just not use the results for now
-  const { collaborators, isConnected } = useRealtimeCollaboration({
-    boardId: null, // Pass null to disable without breaking hook order
-    userId: null,
-    userName: null,
-    onElementChange: handleElementChange,
-  })
+  // TEMPORARILY DISABLE real-time collaboration - completely removed to fix Hook #310 error
+  // Using static values instead of hook
+  const collaborators: any[] = []
+  const isConnected = false
 
   const handleToolSelect = (tool: ToolType) => {
     setSelectedTool(tool)
