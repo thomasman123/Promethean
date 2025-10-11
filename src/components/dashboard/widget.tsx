@@ -27,7 +27,6 @@ export function Widget({ title, children, className, onRemove, onEdit, reducedPa
       "bg-gradient-to-br from-muted/40 via-muted/20 to-background/50",
       "backdrop-blur-sm",
       "relative group flex flex-col",
-      "p-1",
       className
     )}>
       {/* Menu button */}
@@ -67,20 +66,23 @@ export function Widget({ title, children, className, onRemove, onEdit, reducedPa
         </DropdownMenuContent>
       </DropdownMenu>
 
+      {/* Header - part of gradient frame */}
+      {title && (
+        <div className="px-4 py-3">
+          <h3 className="text-sm font-medium truncate pr-8">
+            {title}
+          </h3>
+        </div>
+      )}
+
       {/* Inner content container - clean background */}
-      <div className="flex-1 min-h-0 rounded-lg bg-background/95 overflow-hidden flex flex-col">
-        {/* Header */}
-        {title && (
-          <div className="px-4 py-3 border-b border-border/30">
-            <h3 className="text-sm font-medium truncate pr-8">
-              {title}
-            </h3>
-          </div>
-        )}
-        
-        {/* Content */}
+      <div className={cn(
+        "flex-1 min-h-0 overflow-hidden",
+        "rounded-b-lg bg-background/95",
+        title && "rounded-t-none"
+      )}>
         <div className={cn(
-          "flex-1 min-h-0 overflow-hidden",
+          "h-full overflow-hidden",
           reducedPadding ? "p-1" : "p-4"
         )}>
           {children}

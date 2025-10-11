@@ -18,21 +18,24 @@ export function GradientCard({ children, className, title, description }: Gradie
         "border border-border/40",
         "shadow-sm",
         "backdrop-blur-sm",
-        "p-1",
         className
       )}
     >
-      {/* Inner content container with clean background */}
-      <div className="rounded-lg bg-background/95 h-full overflow-hidden">
-        {(title || description) && (
-          <div className="px-6 py-4 border-b border-border/30">
-            {title && <h2 className="text-lg font-semibold mb-1">{title}</h2>}
-            {description && <p className="text-sm text-muted-foreground">{description}</p>}
-          </div>
-        )}
-        <div className="p-6">
-          {children}
+      {/* Header - part of gradient frame */}
+      {(title || description) && (
+        <div className="px-6 py-4">
+          {title && <h2 className="text-lg font-semibold mb-1">{title}</h2>}
+          {description && <p className="text-sm text-muted-foreground">{description}</p>}
         </div>
+      )}
+
+      {/* Inner content container with clean background */}
+      <div className={cn(
+        "bg-background/95 overflow-hidden",
+        title || description ? "rounded-b-xl" : "rounded-xl",
+        "p-6"
+      )}>
+        {children}
       </div>
     </div>
   )

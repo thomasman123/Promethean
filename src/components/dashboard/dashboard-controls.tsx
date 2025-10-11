@@ -25,7 +25,7 @@ export function DashboardControls({
 
   return (
     <div className="sticky top-0 z-10 mb-6">
-      <div className="flex items-center gap-3 p-3 rounded-lg bg-background/95 border border-border/40 shadow-sm backdrop-blur-sm">
+      <div className="flex items-center gap-3">
         {/* Date Picker */}
         <DatePicker
           value={dateRange}
