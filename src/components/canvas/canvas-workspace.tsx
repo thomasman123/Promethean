@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { CanvasFlow } from './canvas-flow'
 import { CanvasToolbar, ToolType } from './canvas-toolbar'
 import { CanvasPageNavigation } from './canvas-page-navigation'
@@ -46,15 +46,23 @@ export function CanvasWorkspace() {
     })
   }, [])
 
-  // Real-time collaboration
+  // Real-time collaboration with debounced refresh
+  const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  
   const { collaborators, isConnected } = useRealtimeCollaboration({
     boardId: selectedBoardId,
     userId: currentUser?.id || null,
     userName: currentUser?.name || null,
     onElementChange: (payload) => {
-      // Refresh elements when changes occur from other users
-      if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE' || payload.eventType === 'DELETE') {
-        refreshElements()
+      // Debounce element refresh to prevent loops
+      if (payload.eventType === 'INSERT' || payload.eventType === 'DELETE') {
+        // Only refresh on INSERT/DELETE, not UPDATE to avoid loops
+        if (refreshTimeoutRef.current) {
+          clearTimeout(refreshTimeoutRef.current)
+        }
+        refreshTimeoutRef.current = setTimeout(() => {
+          refreshElements()
+        }, 1000)
       }
     },
   })

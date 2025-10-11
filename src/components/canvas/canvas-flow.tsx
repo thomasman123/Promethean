@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, useRef } from 'react'
 import ReactFlow, {
   Node,
   Edge,
@@ -52,6 +52,7 @@ function CanvasFlowContent({
   const [selectedNodes, setSelectedNodes] = useState<string[]>([])
   const [copiedElements, setCopiedElements] = useState<any[]>([])
   const { project } = useReactFlow()
+  const updateTimeouts = useRef<Record<string, NodeJS.Timeout>>({})
 
   // Convert canvas elements to React Flow nodes and edges
   useEffect(() => {
@@ -97,19 +98,23 @@ function CanvasFlowContent({
     setEdges(flowEdges)
   }, [elements, selectedBoardId, setNodes, setEdges])
 
-  // Handle node changes (position, size, etc.)
+  // Handle node changes (position, size, etc.) - REMOVED dimension updates to prevent infinite loop
   const handleNodesChange = useCallback((changes: any) => {
     onNodesChange(changes)
     
-    // Update backend on position/dimension changes
+    // Only update position when drag ends (not dimensions - causes loop)
     changes.forEach((change: any) => {
       if (change.type === 'position' && change.position && !change.dragging) {
-        updateElement(change.id, { position: change.position })
-      }
-      if (change.type === 'dimensions' && change.dimensions) {
-        updateElement(change.id, { 
-          size: { width: change.dimensions.width, height: change.dimensions.height } 
-        })
+        // Clear existing timeout
+        if (updateTimeouts.current[change.id]) {
+          clearTimeout(updateTimeouts.current[change.id])
+        }
+        
+        // Debounce the update
+        updateTimeouts.current[change.id] = setTimeout(() => {
+          updateElement(change.id, { position: change.position })
+          delete updateTimeouts.current[change.id]
+        }, 500)
       }
     })
   }, [onNodesChange, updateElement])
