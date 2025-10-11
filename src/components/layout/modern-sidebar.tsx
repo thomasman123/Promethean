@@ -173,13 +173,12 @@ export function ModernSidebar() {
   return (
     <div
       className={cn(
-        "fixed left-0 top-0 h-screen bg-background border-r border-border transition-all duration-300 z-40 flex flex-col",
-        "rounded-r-2xl",
+        "fixed left-0 top-0 h-screen bg-background transition-all duration-300 z-40 flex flex-col",
         isCollapsed ? "w-16" : "w-60"
       )}
     >
       {/* Promethean Branding Section */}
-      <div className={cn("p-4 border-b border-border", isCollapsed && "px-2")}>
+      <div className={cn("p-4", isCollapsed && "px-2")}>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
@@ -304,7 +303,7 @@ export function ModernSidebar() {
       </nav>
 
       {/* Bottom Section: What's New, Theme Toggle, Collapse */}
-      <div className="border-t border-border">
+      <div>
         {/* What's New Notifications */}
         {!isCollapsed && notifications.length > 0 && (
           <div className="p-3 space-y-2">
