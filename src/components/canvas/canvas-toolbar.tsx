@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
+import { Badge } from '@/components/ui/badge'
 import { 
   Square, 
   Circle, 
@@ -15,7 +16,10 @@ import {
   MousePointer2,
   Trash2,
   ArrowRight,
-  Share2
+  Share2,
+  Wifi,
+  WifiOff,
+  Users
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -37,6 +41,8 @@ interface CanvasToolbarProps {
   onDelete?: () => void
   onShare?: () => void
   hasSelection?: boolean
+  isConnected?: boolean
+  collaboratorCount?: number
 }
 
 export function CanvasToolbar({ 
@@ -44,7 +50,9 @@ export function CanvasToolbar({
   onToolSelect, 
   onDelete, 
   onShare,
-  hasSelection 
+  hasSelection,
+  isConnected = false,
+  collaboratorCount = 0
 }: CanvasToolbarProps) {
   const tools = [
     { id: 'select' as ToolType, icon: MousePointer2, label: 'Select' },
@@ -108,6 +116,32 @@ export function CanvasToolbar({
             Share
           </Button>
         )}
+      </div>
+
+      <div className="flex-1" />
+
+      {/* Collaboration Status */}
+      <div className="flex items-center gap-2 pr-2">
+        {collaboratorCount > 0 && (
+          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+            <Users className="h-3 w-3" />
+            <span>{collaboratorCount} online</span>
+          </div>
+        )}
+        
+        <div className="flex items-center gap-1">
+          {isConnected ? (
+            <Badge variant="outline" className="gap-1 text-xs">
+              <Wifi className="h-3 w-3 text-green-500" />
+              Live
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="gap-1 text-xs">
+              <WifiOff className="h-3 w-3 text-muted-foreground" />
+              Offline
+            </Badge>
+          )}
+        </div>
       </div>
     </div>
   )

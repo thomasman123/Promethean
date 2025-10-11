@@ -38,7 +38,7 @@
     "date-fns": "^4.1.0",
     "date-fns-tz": "^3.2.0",
     "dotenv": "^17.2.1",
-    "framer-motion": "^12.23.19",
+    "framer-motion": "^12.23.24",
     "globe.gl": "^2.44.0",
     "motion": "^12.23.24",
     "next": "15.4.6",
