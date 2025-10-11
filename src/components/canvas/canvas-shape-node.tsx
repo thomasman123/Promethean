@@ -6,16 +6,17 @@ import { NodeResizer } from '@reactflow/node-resizer'
 import '@reactflow/node-resizer/dist/style.css'
 
 export interface ShapeNodeData {
-  shape: 'rectangle' | 'circle' | 'triangle' | 'diamond' | 'hexagon'
+  shape: 'rectangle' | 'circle' | 'triangle' | 'diamond' | 'hexagon' | 'freehand'
   fill: string
   stroke: string
   strokeWidth: number
   opacity: number
   text?: string
+  path?: string // For freehand shapes
 }
 
 export const CanvasShapeNode = memo(({ data, selected }: NodeProps<ShapeNodeData>) => {
-  const { shape, fill, stroke, strokeWidth, opacity, text } = data
+  const { shape, fill, stroke, strokeWidth, opacity, text, path } = data
 
   const renderShape = () => {
     const style = {
@@ -26,6 +27,22 @@ export const CanvasShapeNode = memo(({ data, selected }: NodeProps<ShapeNodeData
     }
 
     switch (shape) {
+      case 'freehand':
+        return (
+          <div className="w-full h-full">
+            <svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none">
+              <path
+                d={path || ''}
+                stroke={stroke}
+                strokeWidth={strokeWidth}
+                fill="none"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                vectorEffect="non-scaling-stroke"
+              />
+            </svg>
+          </div>
+        )
       case 'circle':
         return (
           <div className="w-full h-full flex items-center justify-center">
