@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   Dialog,
   DialogContent,
@@ -9,6 +9,11 @@ import {
 } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Settings, Building2, Rocket, Users } from "lucide-react"
+import { AccountSettingsTab } from "@/components/account/account-settings-tab"
+import { useDashboard } from "@/lib/dashboard-context"
+import { useEffectiveUser } from "@/hooks/use-effective-user"
+import { createBrowserClient } from "@supabase/ssr"
+import { Database } from "@/lib/database.types"
 
 interface AccountSettingsModalProps {
   open: boolean
@@ -17,6 +22,56 @@ interface AccountSettingsModalProps {
 }
 
 export function AccountSettingsModal({ open, onOpenChange, defaultTab = "account" }: AccountSettingsModalProps) {
+  const [hasAccess, setHasAccess] = useState(false)
+  const { selectedAccountId } = useDashboard()
+  const { user: effectiveUser, loading: userLoading } = useEffectiveUser()
+  
+  const supabase = createBrowserClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
+
+  // Check user permissions
+  useEffect(() => {
+    const checkAccess = async () => {
+      if (!effectiveUser || userLoading) return
+
+      try {
+        // Check if user is global admin
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', effectiveUser.id)
+          .single()
+
+        if (profile?.role === 'admin') {
+          setHasAccess(true)
+          return
+        }
+
+        // Check if user has account-level moderator access
+        if (selectedAccountId) {
+          const { data: access } = await supabase
+            .from('account_access')
+            .select('role')
+            .eq('user_id', effectiveUser.id)
+            .eq('account_id', selectedAccountId)
+            .eq('is_active', true)
+            .single()
+
+          setHasAccess(access?.role === 'moderator' || access?.role === 'admin')
+        }
+      } catch (error) {
+        console.error('Error checking access:', error)
+        setHasAccess(false)
+      }
+    }
+
+    if (open) {
+      checkAccess()
+    }
+  }, [effectiveUser, userLoading, selectedAccountId, supabase, open])
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-6xl max-h-[90vh] p-0">
@@ -51,28 +106,31 @@ export function AccountSettingsModal({ open, onOpenChange, defaultTab = "account
             {/* Account Settings Tab */}
             <TabsContent value="account" className="h-[calc(100%-60px)] px-6 pb-6 overflow-y-auto">
               <div className="py-4">
-                <p className="text-muted-foreground">Account settings content will go here</p>
+                <AccountSettingsTab 
+                  selectedAccountId={selectedAccountId}
+                  hasAccess={hasAccess}
+                />
               </div>
             </TabsContent>
 
             {/* GHL Connection Tab */}
             <TabsContent value="ghl" className="h-[calc(100%-60px)] px-6 pb-6 overflow-y-auto">
               <div className="py-4">
-                <p className="text-muted-foreground">GHL connection content will go here</p>
+                <p className="text-muted-foreground">GHL connection tab - Content coming next</p>
               </div>
             </TabsContent>
 
             {/* Meta Ads Connection Tab */}
             <TabsContent value="meta-ads" className="h-[calc(100%-60px)] px-6 pb-6 overflow-y-auto">
               <div className="py-4">
-                <p className="text-muted-foreground">Meta Ads connection content will go here</p>
+                <p className="text-muted-foreground">Meta Ads connection tab - Content coming next</p>
               </div>
             </TabsContent>
 
             {/* Team Tab */}
             <TabsContent value="team" className="h-[calc(100%-60px)] px-6 pb-6 overflow-y-auto">
               <div className="py-4">
-                <p className="text-muted-foreground">Team management content will go here</p>
+                <p className="text-muted-foreground">Team management tab - Content coming next</p>
               </div>
             </TabsContent>
           </Tabs>
@@ -81,4 +139,5 @@ export function AccountSettingsModal({ open, onOpenChange, defaultTab = "account
     </Dialog>
   )
 }
+
 
