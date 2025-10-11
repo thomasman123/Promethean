@@ -1302,8 +1302,11 @@ async function processAppointmentWebhook(payload: any) {
     let callerUserId = null;
     let setterName = null;
     let setterEmail = null;
+    let setterGhlId = null;
     
+    // Strategy 1: Try payload.userId first
     if (payload.userId && currentAccessToken) {
+      setterGhlId = payload.userId;
       let userData = await fetchGhlUserDetails(payload.userId, currentAccessToken, account.ghl_location_id || '');
       
       // If the user fetch failed (possibly due to expired/revoked token), force refresh and retry once
@@ -1320,7 +1323,7 @@ async function processAppointmentWebhook(payload: any) {
         setterName = userData.name || `${userData.firstName || ''} ${userData.lastName || ''}`.trim();
         setterEmail = userData.email || null;
         
-        console.log('✅ Successfully fetched user data:', {
+        console.log('✅ Successfully fetched user data from payload.userId:', {
           name: setterName,
           email: setterEmail,
           phone: userData.phone
@@ -1344,7 +1347,65 @@ async function processAppointmentWebhook(payload: any) {
           }
         }
       } else {
-        console.log('⚠️ User not found in GHL API');
+        console.log('⚠️ User not found in GHL API from payload.userId');
+      }
+    }
+    
+    // Strategy 2: If no setter found yet, try to fetch appointment from GHL API to get createdBy.userId
+    if (!setterName && currentAccessToken && (payload.appointment?.id || payload.id)) {
+      try {
+        const ghlAppointmentId = payload.appointment?.id || payload.id;
+        console.log('🔍 No userId in payload, fetching appointment from GHL API:', ghlAppointmentId);
+        
+        const appointmentResponse = await fetch(
+          `https://services.leadconnectorhq.com/calendars/events/appointments/${ghlAppointmentId}`,
+          {
+            headers: {
+              'Authorization': `Bearer ${currentAccessToken}`,
+              'Version': '2021-07-28',
+            },
+          }
+        );
+        
+        if (appointmentResponse.ok) {
+          const appointmentData = await appointmentResponse.json();
+          const event = appointmentData.event || appointmentData;
+          const createdByUserId = event.createdBy?.userId;
+          
+          if (createdByUserId) {
+            setterGhlId = createdByUserId;
+            console.log('🔍 Found createdBy.userId from appointment:', createdByUserId);
+            
+            const creatorData = await fetchGhlUserDetails(createdByUserId, currentAccessToken, account.ghl_location_id || '');
+            if (creatorData) {
+              setterName = creatorData.name || `${creatorData.firstName || ''} ${creatorData.lastName || ''}`.trim();
+              setterEmail = creatorData.email || null;
+              
+              console.log('✅ Successfully fetched creator data from appointment:', {
+                name: setterName,
+                email: setterEmail
+              });
+              
+              // Try to match to platform user
+              if (creatorData.email) {
+                const { data: platformUser } = await supabase
+                  .from('users')
+                  .select('id')
+                  .eq('account_id', account.id)
+                  .eq('email', creatorData.email)
+                  .single();
+                
+                callerUserId = platformUser?.id || null;
+              }
+            }
+          } else {
+            console.log('⚠️ No createdBy.userId in appointment data');
+          }
+        } else {
+          console.log('⚠️ Failed to fetch appointment from GHL API:', appointmentResponse.status);
+        }
+      } catch (error) {
+        console.error('❌ Error fetching appointment from GHL API:', error);
       }
     }
     
@@ -1655,6 +1716,48 @@ async function processAppointmentWebhook(payload: any) {
     }
 
     // ==========================================
+    // STRATEGY 3: FALLBACK TO RECENT DIAL
+    // ==========================================
+    // If we still don't have a setter, try to find a recent dial from the same contact
+    if (!setterName && dialData.contact_id) {
+      try {
+        console.log('🔍 No setter found yet, searching for recent dials from contact:', dialData.contact_id);
+        
+        const currentTime = new Date();
+        const searchWindowStart = new Date(currentTime.getTime() - (60 * 60 * 1000)); // 60 minutes ago
+        
+        const { data: recentDials, error: dialSearchError } = await supabase
+          .from('dials')
+          .select('setter, setter_user_id, date_called')
+          .eq('account_id', account.id)
+          .eq('contact_id', dialData.contact_id)
+          .not('setter', 'is', null)
+          .neq('setter', 'Unknown')
+          .neq('setter', '')
+          .gte('date_called', searchWindowStart.toISOString())
+          .lte('date_called', currentTime.toISOString())
+          .order('date_called', { ascending: false })
+          .limit(1);
+        
+        if (!dialSearchError && recentDials && recentDials.length > 0) {
+          const recentDial = recentDials[0];
+          setterName = recentDial.setter;
+          linkedSetterUserId = recentDial.setter_user_id;
+          
+          console.log('✅ Found setter from recent dial:', {
+            setter: setterName,
+            setter_user_id: linkedSetterUserId,
+            dial_time: recentDial.date_called
+          });
+        } else {
+          console.log('⚠️ No recent dials found for this contact');
+        }
+      } catch (dialSearchError) {
+        console.error('❌ Error searching for recent dials:', dialSearchError);
+      }
+    }
+    
+    // ==========================================
     // CREATE APPOINTMENT OR DISCOVERY RECORD
     // ==========================================
     const target_table = calendarMapping.target_table; // 'appointments' or 'discoveries'
@@ -1663,6 +1766,11 @@ async function processAppointmentWebhook(payload: any) {
     
     console.log(`🎯 Creating ${target_table} for appointment:`, ghlAppointmentId);
     console.log(`📞 Contact ID to link:`, dialData.contact_id);
+    
+    // Log setter resolution strategy
+    if (!setterName) {
+      console.log('⚠️ WARNING: Could not resolve setter through any strategy, defaulting to "Unknown"');
+    }
     
     // Construct the appointment/discovery data
     // Note: We link to the contact via contact_id only. 
