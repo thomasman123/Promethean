@@ -691,49 +691,40 @@ function GHLConnectionContent() {
 
   if (userLoading || loading) {
     return (
-      <div className="min-h-screen">
-        <TopBar />
-        <main className="pt-16 p-6">
-          <Loading text="Loading GHL connection..." />
-        </main>
+      <div className="page-fade-in">
+        <Loading text="Loading GHL connection..." />
       </div>
     )
   }
 
   if (!hasAccess) {
     return (
-      <div className="min-h-screen">
-        <TopBar />
-        <main className="pt-16 p-6">
-          <div className="max-w-2xl mx-auto">
-            <Alert className="border-red-200 bg-red-50">
-              <AlertCircle className="h-4 w-4 text-red-600" />
-              <AlertTitle>Access Denied</AlertTitle>
-              <AlertDescription>
-                Only account moderators can manage GHL connections.
-              </AlertDescription>
-            </Alert>
-          </div>
-        </main>
+      <div className="page-fade-in">
+        <div className="max-w-2xl mx-auto">
+          <Alert className="border-red-200 bg-red-50">
+            <AlertCircle className="h-4 w-4 text-red-600" />
+            <AlertTitle>Access Denied</AlertTitle>
+            <AlertDescription>
+              Only account moderators can manage GHL connections.
+            </AlertDescription>
+          </Alert>
+        </div>
       </div>
     )
   }
 
   if (!selectedAccountId) {
     return (
-      <div className="min-h-screen">
-        <TopBar />
-        <main className="pt-16 p-6">
-          <div className="max-w-2xl mx-auto">
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>No Account Selected</AlertTitle>
-              <AlertDescription>
-                Please select an account from the dropdown to manage its GHL connection.
-              </AlertDescription>
-            </Alert>
-          </div>
-        </main>
+      <div className="page-fade-in">
+        <div className="max-w-2xl mx-auto">
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>No Account Selected</AlertTitle>
+            <AlertDescription>
+              Please select an account from the dropdown to manage its GHL connection.
+            </AlertDescription>
+          </Alert>
+        </div>
       </div>
     )
   }
