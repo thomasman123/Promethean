@@ -194,13 +194,18 @@ function CanvasFlowContent({
   // Handle canvas click to add elements
   const handlePaneClick = useCallback((event: React.MouseEvent) => {
     if (!selectedBoardId) return
-    if (selectedTool === 'select') return
+    if (selectedTool === 'select' || selectedTool === 'arrow') return
     if (selectedTool === 'widget') {
       onWidgetToolClick()
       return
     }
 
-    const position = project({ x: event.clientX, y: event.clientY })
+    // Get the React Flow viewport position
+    const reactFlowBounds = (event.currentTarget as HTMLElement).getBoundingClientRect()
+    const position = project({
+      x: event.clientX - reactFlowBounds.left,
+      y: event.clientY - reactFlowBounds.top,
+    })
 
     let elementData: any = {}
     let size = { width: 200, height: 100 }
@@ -304,6 +309,9 @@ function CanvasFlowContent({
     )
   }
 
+  // Determine if panning should be enabled (only in select mode)
+  const isPanningEnabled = selectedTool === 'select'
+
   return (
     <ReactFlow
       nodes={nodes}
@@ -316,6 +324,13 @@ function CanvasFlowContent({
       fitView
       snapToGrid
       snapGrid={[15, 15]}
+      panOnDrag={isPanningEnabled}
+      panOnScroll={true}
+      zoomOnScroll={true}
+      zoomOnDoubleClick={false}
+      nodesDraggable={isPanningEnabled}
+      nodesConnectable={selectedTool === 'arrow'}
+      elementsSelectable={isPanningEnabled}
       defaultEdgeOptions={{
         markerEnd: {
           type: MarkerType.ArrowClosed,
