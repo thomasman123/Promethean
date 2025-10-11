@@ -679,7 +679,6 @@ function FollowUpsContent() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </div>
     </div>
   );
 }

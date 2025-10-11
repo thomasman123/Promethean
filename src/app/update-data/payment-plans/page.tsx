@@ -666,7 +666,6 @@ function PaymentPlansContent() {
           )}
         </DialogContent>
         </Dialog>
-      </div>
     </div>
   )
 }
