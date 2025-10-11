@@ -128,13 +128,28 @@ With the improved webhook logic, new appointments/discoveries should rarely have
    - No recent dials from that contact
    - Appointment doesn't exist in GHL API (edge case)
 
+## Backfill Results (October 2025)
+
+Initial state: **105 appointments** with "Unknown" setter
+
+After SQL backfill (from dials): Still 105 Unknown (no matching dials within 60min window)
+
+After GHL API backfill:
+- ✅ **Successfully updated: 89 appointments (85%)**
+- ❌ **Failed: 16 appointments (15%)**
+  - 15 failed: GHL user `6yTdjpjtU5V0rszpklbC` no longer exists in GHL
+  - 1 failed: Appointment has no creator (`createdBy.userId` is null)
+
+**Key Fix Applied:** GHL API returns data under `appointment` key, not `event` key
+
 ## Summary
 
 - ✅ **Webhook improved** - 3-tier fallback strategy prevents "Unknown" setters
 - ✅ **SQL backfill** - Fast bulk update using existing dial data
-- ✅ **API backfill** - Detailed backfill from GHL API for remaining records
+- ✅ **API backfill** - Detailed backfill from GHL API for remaining records (85% success)
 - ✅ **Handles both** appointments and discoveries
 - ✅ **Clear logging** - Easy to debug when setter can't be resolved
+- ✅ **Critical bug fixed** - Correctly parse GHL API responses using `appointment` key
 
 ## Files Changed
 
