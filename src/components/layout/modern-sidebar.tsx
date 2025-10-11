@@ -21,6 +21,8 @@ import {
   Building2,
   Check,
   Sword,
+  Sun,
+  Moon,
 } from "lucide-react"
 import {
   DropdownMenu,
@@ -57,6 +59,7 @@ const navigationItems: NavItem[] = [
 export function ModernSidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null)
+  const [isDarkMode, setIsDarkMode] = useState(false)
   const pathname = usePathname()
   const router = useRouter()
   const { user: effectiveUser } = useEffectiveUser()
@@ -68,12 +71,15 @@ export function ModernSidebar() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
 
-  // Load collapsed state from localStorage
+  // Load collapsed state and theme from localStorage
   useEffect(() => {
     const saved = localStorage.getItem("sidebarCollapsed")
     if (saved !== null) {
       setIsCollapsed(saved === "true")
     }
+    
+    const theme = localStorage.getItem('theme')
+    setIsDarkMode(theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches))
   }, [])
 
   // Get current user role
@@ -96,6 +102,19 @@ export function ModernSidebar() {
     const newState = !isCollapsed
     setIsCollapsed(newState)
     localStorage.setItem("sidebarCollapsed", newState.toString())
+  }
+
+  const toggleDarkMode = () => {
+    const newMode = !isDarkMode
+    setIsDarkMode(newMode)
+    
+    if (newMode) {
+      document.documentElement.classList.add('dark')
+      localStorage.setItem('theme', 'dark')
+    } else {
+      document.documentElement.classList.remove('dark')
+      localStorage.setItem('theme', 'light')
+    }
   }
 
   const handleSignOut = async () => {
@@ -135,11 +154,11 @@ export function ModernSidebar() {
                 isCollapsed && "justify-center"
               )}
             >
-              <Sword className="h-5 w-5 text-primary" />
+              <Sword className="h-4 w-4 text-primary" />
               {!isCollapsed && (
                 <>
-                  <span className="text-base font-semibold flex-1 text-left">Promethean</span>
-                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-semibold flex-1 text-left">Promethean</span>
+                  <ChevronDown className="h-3 w-3 text-muted-foreground" />
                 </>
               )}
             </button>
@@ -209,7 +228,7 @@ export function ModernSidebar() {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 text-sm font-normal",
+                "flex items-center gap-2.5 px-3 py-1.5 rounded-lg transition-all duration-200 text-[13px] font-normal",
                 active 
                   ? "bg-muted text-foreground" 
                   : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
@@ -217,7 +236,7 @@ export function ModernSidebar() {
               )}
               title={isCollapsed ? item.name : undefined}
             >
-              <Icon className="h-5 w-5 flex-shrink-0" />
+              <Icon className="h-[18px] w-[18px] flex-shrink-0" />
               {!isCollapsed && (
                 <span>{item.name}</span>
               )}
@@ -226,23 +245,48 @@ export function ModernSidebar() {
         })}
       </nav>
 
-      {/* Collapse Toggle */}
-      <div className={cn("p-4 border-t border-border", isCollapsed && "px-2")}>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={toggleCollapse}
-          className={cn("w-full text-xs text-muted-foreground", isCollapsed && "px-0")}
-        >
-          {isCollapsed ? (
-            <ChevronRight className="h-4 w-4" />
-          ) : (
-            <>
-              <ChevronLeft className="h-4 w-4 mr-2" />
-              <span>Collapse</span>
-            </>
-          )}
-        </Button>
+      {/* Bottom Section: What's New, Theme Toggle, Collapse */}
+      <div className="border-t border-border">
+        {/* What's New Notification */}
+        {!isCollapsed && (
+          <div className="p-3 mx-3 mt-3 mb-2 rounded-lg bg-muted/50 border border-border/50">
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 font-medium">
+              What's new
+            </div>
+            <div className="text-xs font-medium text-foreground">
+              Modern Sidebar Layout
+            </div>
+          </div>
+        )}
+
+        {/* Bottom Actions */}
+        <div className={cn("p-3 flex items-center justify-between gap-2", isCollapsed && "flex-col")}>
+          {/* Theme Toggle */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleDarkMode}
+            className="h-8 w-8 text-muted-foreground hover:text-foreground"
+            title="Toggle theme"
+          >
+            {isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          </Button>
+
+          {/* Collapse Toggle */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleCollapse}
+            className="h-8 w-8 text-muted-foreground hover:text-foreground"
+            title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            {isCollapsed ? (
+              <ChevronRight className="h-4 w-4" />
+            ) : (
+              <ChevronLeft className="h-4 w-4" />
+            )}
+          </Button>
+        </div>
       </div>
     </div>
   )
