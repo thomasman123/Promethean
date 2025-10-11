@@ -23,6 +23,7 @@ import {
   Sword,
   Sun,
   Moon,
+  X,
 } from "lucide-react"
 import {
   DropdownMenu,
@@ -69,10 +70,19 @@ const navigationSections: NavSection[] = [
   },
 ]
 
+interface Notification {
+  id: string
+  title: string
+  href?: string
+}
+
 export function ModernSidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null)
   const [isDarkMode, setIsDarkMode] = useState(false)
+  const [notifications, setNotifications] = useState<Notification[]>([
+    { id: '1', title: 'Modern Sidebar Layout', href: '/dashboard' }
+  ])
   const pathname = usePathname()
   const router = useRouter()
   const { user: effectiveUser } = useEffectiveUser()
@@ -143,6 +153,16 @@ export function ModernSidebar() {
     window.location.reload()
   }
 
+  const handleDismissNotification = (id: string) => {
+    setNotifications(prev => prev.filter(n => n.id !== id))
+  }
+
+  const handleNotificationClick = (notification: Notification) => {
+    if (notification.href) {
+      router.push(notification.href)
+    }
+  }
+
   const isActive = (href: string) => {
     if (href === "/dashboard") {
       return pathname === href
@@ -154,6 +174,7 @@ export function ModernSidebar() {
     <div
       className={cn(
         "fixed left-0 top-0 h-screen bg-background border-r border-border transition-all duration-300 z-40 flex flex-col",
+        "rounded-r-2xl",
         isCollapsed ? "w-16" : "w-60"
       )}
     >
@@ -284,15 +305,32 @@ export function ModernSidebar() {
 
       {/* Bottom Section: What's New, Theme Toggle, Collapse */}
       <div className="border-t border-border">
-        {/* What's New Notification */}
-        {!isCollapsed && (
-          <div className="p-3 mx-3 mt-3 mb-2 rounded-lg bg-muted/50 border border-border/50">
-            <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 font-medium">
+        {/* What's New Notifications */}
+        {!isCollapsed && notifications.length > 0 && (
+          <div className="p-3 space-y-2">
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2 font-medium px-3">
               What's new
             </div>
-            <div className="text-xs font-medium text-foreground">
-              Modern Sidebar Layout
-            </div>
+            {notifications.map((notification) => (
+              <div
+                key={notification.id}
+                onClick={() => handleNotificationClick(notification)}
+                className="group relative p-3 rounded-lg bg-muted/50 border border-border/50 hover:bg-muted/70 hover:border-border transition-all cursor-pointer"
+              >
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleDismissNotification(notification.id)
+                  }}
+                  className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+                <div className="text-xs font-medium text-foreground pr-6">
+                  {notification.title}
+                </div>
+              </div>
+            ))}
           </div>
         )}
 
