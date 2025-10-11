@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { TopBar } from "@/components/layout/topbar"
+import { LayoutWrapper } from "@/components/layout/layout-wrapper"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -30,7 +30,7 @@ const TIMEZONES = [
   { value: 'Australia/Sydney', label: 'Sydney' },
 ]
 
-export default function AccountSettingsPage() {
+function AccountSettingsContent() {
   const [loading, setLoading] = useState(true)
   const [hasAccess, setHasAccess] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -178,11 +178,8 @@ export default function AccountSettingsPage() {
   }
 
   return (
-    <div className="min-h-screen">
-      <TopBar />
-      
-      <main className="pt-16 p-6">
-        <div className="max-w-6xl mx-auto space-y-6">
+    <div className="page-fade-in">
+      <div className="max-w-6xl mx-auto space-y-6">
           {/* Header */}
           <div className="flex items-center justify-between">
             <div>
@@ -284,8 +281,15 @@ export default function AccountSettingsPage() {
               </Button>
             </CardContent>
           </Card>
-        </div>
-      </main>
+      </div>
     </div>
+  )
+}
+
+export default function AccountSettingsPage() {
+  return (
+    <LayoutWrapper>
+      <AccountSettingsContent />
+    </LayoutWrapper>
   )
 } 

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, Suspense } from "react"
-import { TopBar } from "@/components/layout/topbar"
+import { LayoutWrapper } from "@/components/layout/layout-wrapper"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -739,11 +739,8 @@ function GHLConnectionContent() {
   }
 
   return (
-    <div className="min-h-screen">
-      <TopBar />
-      
-      <main className="pt-16 p-6">
-        <div className="max-w-4xl mx-auto space-y-6">
+    <div className="page-fade-in">
+      <div className="max-w-4xl mx-auto space-y-6">
           <div>
             <h1 className="text-3xl font-bold">GoHighLevel Connection</h1>
             <p className="text-muted-foreground mt-2">
@@ -1122,23 +1119,21 @@ function GHLConnectionContent() {
               </CardContent>
             </Card>
           )}
-        </div>
-      </main>
+      </div>
     </div>
   )
 }
 
 export default function GHLConnectionPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen">
-        <TopBar />
-        <main className="pt-16 p-6">
+    <LayoutWrapper>
+      <Suspense fallback={
+        <div className="page-fade-in">
           <Loading text="Loading..." />
-        </main>
-      </div>
-    }>
-      <GHLConnectionContent />
-    </Suspense>
+        </div>
+      }>
+        <GHLConnectionContent />
+      </Suspense>
+    </LayoutWrapper>
   )
 } 
