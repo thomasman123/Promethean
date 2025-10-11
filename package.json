@@ -27,6 +27,10 @@
     "@radix-ui/react-tabs": "^1.1.13",
     "@radix-ui/react-tooltip": "^1.2.8",
     "@react-three/fiber": "^9.3.0",
+    "@reactflow/background": "^11.3.14",
+    "@reactflow/controls": "^11.2.14",
+    "@reactflow/minimap": "^11.7.14",
+    "@reactflow/node-resizer": "^2.2.14",
     "@supabase/ssr": "^0.6.1",
     "@supabase/supabase-js": "^2.53.0",
     "@tanstack/react-table": "^8.21.3",
@@ -42,6 +46,7 @@
     "react-day-picker": "^9.9.0",
     "react-dom": "19.1.0",
     "react-grid-layout": "^1.5.2",
+    "reactflow": "^11.11.4",
     "recharts": "^3.1.2",
     "three": "^0.180.0",
     "zod": "^4.0.15"

@@ -59,7 +59,7 @@ const navigationSections: NavSection[] = [
     title: "DASHBOARD",
     items: [
       { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-      { name: "Playground", href: "/playground", icon: Palette },
+      { name: "Canvas", href: "/canvas", icon: Palette },
     ]
   },
   {
