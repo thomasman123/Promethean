@@ -279,16 +279,20 @@ function CanvasFlowContent({
     setDrawingStartPos(null)
   }, [isDrawing, selectedBoardId, currentPath, addElement, elements.length])
 
-  // Handle canvas click to add elements
+  // Handle canvas click to add elements - INSTANT PLACEMENT
   const handlePaneClick = useCallback((event: React.MouseEvent) => {
     if (!selectedBoardId) return
+    
+    // Skip for tools that don't place on click
     if (selectedTool === 'select' || selectedTool === 'arrow' || selectedTool === 'pen' || selectedTool === 'eraser') return
+    
+    // Widget tool opens picker
     if (selectedTool === 'widget') {
       onWidgetToolClick()
       return
     }
 
-    // Get the React Flow viewport position using new API
+    // Get the exact click position
     const position = screenToFlowPosition({
       x: event.clientX,
       y: event.clientY,
@@ -297,6 +301,7 @@ function CanvasFlowContent({
     let elementData: any = {}
     let size = { width: 200, height: 100 }
 
+    // Place element immediately at click position
     switch (selectedTool) {
       case 'rectangle':
       case 'circle':
@@ -318,7 +323,7 @@ function CanvasFlowContent({
           position,
           size,
           z_index: elements.length,
-          created_by: '', // Will be set by API
+          created_by: '',
         })
         break
 
@@ -359,7 +364,7 @@ function CanvasFlowContent({
         })
         break
     }
-  }, [selectedTool, selectedBoardId, screenToFlowPosition, addElement, elements.length, onWidgetToolClick])
+  }, [selectedTool, selectedBoardId, screenToFlowPosition, addElement, elements.length, onWidgetToolClick, strokeColor, strokeWidth, fillColor])
 
   // Handle edge connections
   const onConnect = useCallback((connection: Connection) => {
@@ -396,9 +401,11 @@ function CanvasFlowContent({
     )
   }
 
-  // Determine if panning should be enabled (only in select mode)
+  // Determine interaction modes based on selected tool
   const isPanningEnabled = selectedTool === 'select'
   const isDrawingTool = selectedTool === 'pen'
+  const isEraserTool = selectedTool === 'eraser'
+  const isPlacementTool = ['rectangle', 'circle', 'triangle', 'diamond', 'hexagon', 'text', 'sticky-note', 'widget'].includes(selectedTool)
 
   // Eraser mode - delete nodes on click
   const handleNodeClick = useCallback((_event: React.MouseEvent, node: Node) => {
@@ -414,6 +421,9 @@ function CanvasFlowContent({
       onMouseMove={isDrawingTool ? handleMouseMove : undefined}
       onMouseUp={isDrawingTool ? handleMouseUp : undefined}
       onMouseLeave={isDrawingTool ? handleMouseUp : undefined}
+      style={{
+        cursor: isEraserTool ? 'crosshair' : isPlacementTool ? 'crosshair' : isDrawingTool ? 'crosshair' : 'default'
+      }}
     >
       <ReactFlow
         nodes={nodes}
@@ -424,16 +434,17 @@ function CanvasFlowContent({
         onPaneClick={handlePaneClick}
         onNodeClick={handleNodeClick}
         nodeTypes={nodeTypes}
-        fitView
+        fitView={false}
         snapToGrid
         snapGrid={[15, 15]}
-        panOnDrag={isPanningEnabled}
+        panOnDrag={isPanningEnabled ? [1, 2] : false}
         panOnScroll={true}
         zoomOnScroll={true}
         zoomOnDoubleClick={false}
         nodesDraggable={isPanningEnabled}
         nodesConnectable={selectedTool === 'arrow'}
-        elementsSelectable={isPanningEnabled}
+        elementsSelectable={true}
+        selectNodesOnDrag={isPanningEnabled}
         defaultEdgeOptions={{
           markerEnd: {
             type: MarkerType.ArrowClosed,
