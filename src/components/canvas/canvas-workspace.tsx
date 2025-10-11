@@ -21,15 +21,17 @@ export function CanvasWorkspace() {
   const [hasSelection, setHasSelection] = useState(false)
   const [currentUser, setCurrentUser] = useState<{ id: string; name: string } | null>(null)
 
-  // Get current user
+  // Get current user (only once on mount)
   useEffect(() => {
     const supabase = createBrowserClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     )
 
+    let mounted = true
+
     supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) {
+      if (user && mounted) {
         // Get user profile for name
         supabase
           .from('profiles')
@@ -37,13 +39,19 @@ export function CanvasWorkspace() {
           .eq('id', user.id)
           .single()
           .then(({ data }) => {
-            setCurrentUser({
-              id: user.id,
-              name: data?.name || user.email || 'Anonymous',
-            })
+            if (mounted) {
+              setCurrentUser({
+                id: user.id,
+                name: data?.name || user.email || 'Anonymous',
+              })
+            }
           })
       }
     })
+
+    return () => {
+      mounted = false
+    }
   }, [])
 
   // TEMPORARILY DISABLE real-time collaboration to stop the loops
