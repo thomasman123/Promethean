@@ -67,10 +67,25 @@
     "eslint-config-next": "15.4.6",
     "lucide-react": "^0.542.0",
     "postcss": "^8.5.6",
+    "shadcn": "^3.4.0",
     "supabase": "^2.33.9",
     "tailwind-merge": "^3.3.1",
     "tailwindcss": "^3.4.17",
     "tailwindcss-animate": "^1.0.7",
     "typescript": "^5"
-  }
+  },
+  "description": "A modern data analytics platform built with Next.js and Supabase. The application runs on `app.getpromethean.com`.",
+  "main": "postcss.config.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/thomasman123/Promethean.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/thomasman123/Promethean/issues"
+  },
+  "homepage": "https://github.com/thomasman123/Promethean#readme"
 }

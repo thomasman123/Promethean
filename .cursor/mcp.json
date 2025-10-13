@@ -9,6 +9,13 @@
         "--project-ref=encqrassymusdmwduhzi"
       ],
       "env": {}
+    },
+    "shadcn": {
+      "command": "npx",
+      "args": [
+        "shadcn@latest",
+        "mcp"
+      ]
     }
   }
 }

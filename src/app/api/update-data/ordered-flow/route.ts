@@ -8,10 +8,12 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const userId = searchParams.get('user_id')
   const accountId = searchParams.get('account_id') || ''
+  const moderateUserId = searchParams.get('moderate_user_id') // For moderator view
   
   console.log('🔍 [ordered-flow-api] Query params:', {
     userId,
-    accountId
+    accountId,
+    moderateUserId
   })
 
   if (!userId) {
@@ -74,12 +76,6 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Validate that the requested userId matches the effective user
-    if (userId !== effectiveUserId) {
-      console.log('❌ [ordered-flow-api] Requested user ID does not match effective user')
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 })
-    }
-
     console.log('🔍 [ordered-flow-api] Final effective user ID:', effectiveUserId)
     console.log('🔍 [ordered-flow-api] Is impersonating:', isImpersonating)
 
@@ -100,12 +96,47 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    // If moderateUserId is provided, verify user has moderator access
+    let targetUserId = effectiveUserId
+    if (moderateUserId) {
+      console.log('🔍 [ordered-flow-api] Moderator view requested for user:', moderateUserId)
+      
+      // Verify the current user has moderator/admin access for the account
+      if (accountId) {
+        const { data: accessCheck } = await querySupabase
+          .from('account_access')
+          .select('role')
+          .eq('user_id', effectiveUserId)
+          .eq('account_id', accountId)
+          .in('role', ['admin', 'moderator'])
+          .single()
+        
+        if (!accessCheck) {
+          console.log('❌ [ordered-flow-api] User does not have moderator access')
+          return NextResponse.json({ error: 'Moderator access denied' }, { status: 403 })
+        }
+        
+        targetUserId = moderateUserId
+        console.log('✅ [ordered-flow-api] Moderator access granted, viewing data for:', targetUserId)
+      } else {
+        return NextResponse.json({ error: 'Account ID required for moderator view' }, { status: 400 })
+      }
+    } else {
+      // Validate that the requested userId matches the effective user
+      if (userId !== effectiveUserId) {
+        console.log('❌ [ordered-flow-api] Requested user ID does not match effective user')
+        return NextResponse.json({ error: 'Access denied' }, { status: 403 })
+      }
+    }
+
+    console.log('🔍 [ordered-flow-api] Target user ID (for data query):', targetUserId)
+
     // Get current time to filter for past appointments/discoveries only
     const now = new Date().toISOString()
     console.log('🔍 [ordered-flow-api] Filtering for items before:', now)
 
-    // Fetch appointments where user is sales rep and date_booked_for has passed
-    console.log('🔍 [ordered-flow-api] Fetching past appointments where user is sales rep...')
+    // Fetch appointments where user is sales rep, date_booked_for has passed, and data not filled
+    console.log('🔍 [ordered-flow-api] Fetching incomplete past appointments where user is sales rep...')
     
     let appointmentsQuery = querySupabase
       .from('appointments')
@@ -137,7 +168,8 @@ export async function GET(request: NextRequest) {
           email
         )
       `)
-      .eq('sales_rep_user_id', effectiveUserId)
+      .eq('sales_rep_user_id', targetUserId)
+      .eq('data_filled', false)
       .lte('date_booked_for', now)
 
     // Apply account filter if specified
@@ -152,8 +184,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch appointments' }, { status: 500 })
     }
 
-    // Fetch discoveries where user is setter and date_booked_for has passed
-    console.log('🔍 [ordered-flow-api] Fetching past discoveries where user is setter...')
+    // Fetch discoveries where user is setter, date_booked_for has passed, and data not filled
+    console.log('🔍 [ordered-flow-api] Fetching incomplete past discoveries where user is setter...')
     
     let discoveriesQuery = querySupabase
       .from('discoveries')
@@ -179,7 +211,8 @@ export async function GET(request: NextRequest) {
           email
         )
       `)
-      .eq('setter_user_id', effectiveUserId)
+      .eq('setter_user_id', targetUserId)
+      .eq('data_filled', false)
       .lte('date_booked_for', now)
 
     // Apply account filter if specified
@@ -238,8 +271,13 @@ export async function GET(request: NextRequest) {
       data_filled: disc.data_filled || false
     }))
 
-    // Combine and sort by date_booked_for (most recent first, then oldest first as requested)
-    const allItems = [...appointments, ...discoveries].sort((a, b) => {
+    // Combine and sort: discoveries first (by date), then appointments (by date)
+    const allItems = [...discoveries, ...appointments].sort((a, b) => {
+      // First, sort by type (discoveries before appointments)
+      if (a.type !== b.type) {
+        return a.type === 'discovery' ? -1 : 1
+      }
+      // Then sort by date within the same type
       return new Date(a.date_booked_for).getTime() - new Date(b.date_booked_for).getTime()
     })
 

@@ -80,6 +80,7 @@ export function OrderedDataFlow({ className }: OrderedDataFlowProps) {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [editForm, setEditForm] = useState<any>({})
   const [saving, setSaving] = useState(false)
+  const [showSuccessAnimation, setShowSuccessAnimation] = useState(false)
   
   const { toast } = useToast()
   const { isImpersonating } = useImpersonation()
@@ -96,6 +97,40 @@ export function OrderedDataFlow({ className }: OrderedDataFlowProps) {
       fetchOrderedData()
     }
   }, [effectiveUser, selectedAccountId])
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      // Don't trigger shortcuts if user is typing in an input
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return
+      }
+
+      // Enter key: Save and continue
+      if (e.key === 'Enter' && editForm.callOutcome && !saving) {
+        e.preventDefault()
+        saveItemData()
+      }
+
+      // Arrow keys for lead quality rating (1-5)
+      if (e.key >= '1' && e.key <= '5') {
+        setEditForm({...editForm, leadQuality: parseInt(e.key)})
+      }
+
+      // Arrow left: Previous
+      if (e.key === 'ArrowLeft' && currentIndex > 0) {
+        handlePrevious()
+      }
+
+      // Arrow right: Next (skip)
+      if (e.key === 'ArrowRight' && currentIndex < items.length - 1) {
+        handleNext()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyPress)
+    return () => window.removeEventListener('keydown', handleKeyPress)
+  }, [editForm, currentIndex, items.length, saving])
 
   const fetchOrderedData = async () => {
     if (!effectiveUser) return
@@ -210,18 +245,24 @@ export function OrderedDataFlow({ className }: OrderedDataFlowProps) {
       })
 
       if (response.ok) {
+        // Show success animation
+        setShowSuccessAnimation(true)
+        setTimeout(() => setShowSuccessAnimation(false), 1000)
+        
         toast({
           title: "Success",
           description: `${currentItem.type === 'appointment' ? 'Appointment' : 'Discovery'} data saved`
         })
         
-        // Auto-advance to next item
-        if (currentIndex < items.length - 1) {
-          handleNext()
-        } else {
-          // Refresh data if we're at the end
-          await fetchOrderedData()
-        }
+        // Auto-advance to next item after animation
+        setTimeout(() => {
+          if (currentIndex < items.length - 1) {
+            handleNext()
+          } else {
+            // Refresh data if we're at the end
+            fetchOrderedData()
+          }
+        }, 500)
       } else {
         throw new Error('Failed to save')
       }
@@ -264,72 +305,78 @@ export function OrderedDataFlow({ className }: OrderedDataFlowProps) {
   const progress = ((currentIndex + 1) / items.length) * 100
 
   return (
-    <div className={cn("w-full max-w-4xl mx-auto space-y-4", className)}>
+    <div className={cn("w-full max-w-5xl mx-auto space-y-4 md:space-y-6 px-2 md:px-0", className)}>
       {/* Progress Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4 md:mb-8">
         <div className="flex-1">
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="text-lg font-semibold">Update Data Flow</h2>
-            <span className="text-sm text-muted-foreground">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-xl md:text-2xl font-semibold">Update Data Flow</h2>
+            <span className="text-sm md:text-base text-muted-foreground font-medium">
               {currentIndex + 1} of {items.length}
             </span>
           </div>
-          <Progress value={progress} className="h-2" />
+          <Progress value={progress} className="h-2.5 md:h-3" />
+          <p className="text-xs md:text-sm text-muted-foreground mt-2">
+            Keyboard: 1-5 for rating, Enter to save, ← → to navigate
+          </p>
         </div>
       </div>
 
       {/* Main Card */}
-      <Card className="border-2">
-        <CardHeader className="pb-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+      <Card className={cn(
+        "border-2 transition-all duration-300",
+        showSuccessAnimation && "border-green-500 shadow-lg shadow-green-500/20"
+      )}>
+        <CardHeader className="pb-4 md:pb-6 px-4 md:px-8 pt-6 md:pt-8">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="flex items-center gap-3 md:gap-4">
               {currentItem.type === 'appointment' ? (
-                <div className="p-2 bg-muted rounded-lg">
-                  <Calendar className="h-6 w-6 text-muted-foreground" />
+                <div className="p-2.5 md:p-3 bg-primary/10 rounded-lg">
+                  <Calendar className="h-6 w-6 md:h-7 md:w-7 text-primary" />
                 </div>
               ) : (
-                <div className="p-2 bg-muted rounded-lg">
-                  <Users className="h-6 w-6 text-muted-foreground" />
+                <div className="p-2.5 md:p-3 bg-primary/10 rounded-lg">
+                  <Users className="h-6 w-6 md:h-7 md:w-7 text-primary" />
                 </div>
               )}
               <div>
-                <CardTitle className="text-xl">
+                <CardTitle className="text-xl md:text-2xl">
                   {currentItem.type === 'appointment' ? 'Appointment' : 'Discovery Call'}
                 </CardTitle>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm md:text-base text-muted-foreground mt-1">
                   {format(new Date(currentItem.date_booked_for), 'PPP')} at {' '}
                   {format(new Date(currentItem.date_booked_for), 'p')}
                 </p>
               </div>
             </div>
-            <Badge variant="outline" className="text-lg px-3 py-1">
-              <Building2 className="h-4 w-4 mr-1" />
+            <Badge variant="outline" className="text-base md:text-lg px-3 md:px-4 py-1.5 md:py-2 whitespace-nowrap">
+              <Building2 className="h-4 w-4 mr-1.5" />
               {currentItem.account_name}
             </Badge>
           </div>
         </CardHeader>
 
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-6 md:space-y-8 px-4 md:px-8 pb-6 md:pb-8">
           {/* Contact Information */}
-          <div className="bg-muted/50 rounded-lg p-4">
-            <h3 className="font-semibold mb-3">Contact Information</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="flex items-center gap-2">
-                <User className="h-4 w-4 text-muted-foreground" />
-                <span className="font-medium">{currentItem.contact_name}</span>
+          <div className="bg-muted/50 rounded-lg p-4 md:p-6 border">
+            <h3 className="font-semibold text-base md:text-lg mb-4">Contact Information</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+              <div className="flex items-center gap-2.5 md:gap-3">
+                <User className="h-4 w-4 md:h-5 md:w-5 text-muted-foreground flex-shrink-0" />
+                <span className="font-medium text-sm md:text-base">{currentItem.contact_name}</span>
               </div>
-              <div className="flex items-center gap-2">
-                <Mail className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm">{currentItem.contact_email}</span>
+              <div className="flex items-center gap-2.5 md:gap-3">
+                <Mail className="h-4 w-4 md:h-5 md:w-5 text-muted-foreground flex-shrink-0" />
+                <span className="text-sm md:text-base truncate">{currentItem.contact_email}</span>
               </div>
-              <div className="flex items-center gap-2">
-                <User className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm">Setter: {currentItem.setter}</span>
+              <div className="flex items-center gap-2.5 md:gap-3">
+                <User className="h-4 w-4 md:h-5 md:w-5 text-muted-foreground flex-shrink-0" />
+                <span className="text-sm md:text-base">Setter: {currentItem.setter}</span>
               </div>
               {currentItem.sales_rep && (
-                <div className="flex items-center gap-2">
-                  <User className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">Sales Rep: {currentItem.sales_rep}</span>
+                <div className="flex items-center gap-2.5 md:gap-3">
+                  <User className="h-4 w-4 md:h-5 md:w-5 text-muted-foreground flex-shrink-0" />
+                  <span className="text-sm md:text-base">Sales Rep: {currentItem.sales_rep}</span>
                 </div>
               )}
             </div>
@@ -338,61 +385,61 @@ export function OrderedDataFlow({ className }: OrderedDataFlowProps) {
           {/* Form Fields */}
           <div className="space-y-6">
             {/* Call Outcome */}
-            <div className="space-y-2">
-              <Label htmlFor="call-outcome" className="text-base font-medium">
+            <div className="space-y-3 md:space-y-4">
+              <Label htmlFor="call-outcome" className="text-base md:text-lg font-semibold">
                 Call Outcome <span className="text-red-500">*</span>
               </Label>
               <RadioGroup
                 value={editForm.callOutcome}
                 onValueChange={(value) => setEditForm({...editForm, callOutcome: value})}
               >
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                   <label className={cn(
-                    "flex items-center gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all",
+                    "flex items-center gap-3 md:gap-4 p-4 md:p-5 rounded-lg border-2 cursor-pointer transition-all min-h-[60px] md:min-h-[72px]",
                     editForm.callOutcome === 'show' 
-                      ? "border-primary bg-primary/5" 
-                      : "border-border hover:border-primary/50"
+                      ? "border-primary bg-primary/5 shadow-sm" 
+                      : "border-border hover:border-primary/50 hover:bg-accent/50"
                   )}>
-                    <RadioGroupItem value="show" id="show" />
+                    <RadioGroupItem value="show" id="show" className="w-5 h-5 md:w-6 md:h-6" />
                     <div>
-                      <p className="font-medium">Show</p>
-                      <p className="text-sm text-muted-foreground">They attended the call</p>
+                      <p className="font-semibold text-sm md:text-base">Show</p>
+                      <p className="text-xs md:text-sm text-muted-foreground">They attended the call</p>
                     </div>
                   </label>
                   <label className={cn(
-                    "flex items-center gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all",
+                    "flex items-center gap-3 md:gap-4 p-4 md:p-5 rounded-lg border-2 cursor-pointer transition-all min-h-[60px] md:min-h-[72px]",
                     editForm.callOutcome === 'no_show' 
-                      ? "border-primary bg-primary/5" 
-                      : "border-border hover:border-primary/50"
+                      ? "border-primary bg-primary/5 shadow-sm" 
+                      : "border-border hover:border-primary/50 hover:bg-accent/50"
                   )}>
-                    <RadioGroupItem value="no_show" id="no_show" />
+                    <RadioGroupItem value="no_show" id="no_show" className="w-5 h-5 md:w-6 md:h-6" />
                     <div>
-                      <p className="font-medium">No Show</p>
-                      <p className="text-sm text-muted-foreground">They didn't attend</p>
+                      <p className="font-semibold text-sm md:text-base">No Show</p>
+                      <p className="text-xs md:text-sm text-muted-foreground">They didn't attend</p>
                     </div>
                   </label>
                   <label className={cn(
-                    "flex items-center gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all",
+                    "flex items-center gap-3 md:gap-4 p-4 md:p-5 rounded-lg border-2 cursor-pointer transition-all min-h-[60px] md:min-h-[72px]",
                     editForm.callOutcome === 'reschedule' 
-                      ? "border-primary bg-primary/5" 
-                      : "border-border hover:border-primary/50"
+                      ? "border-primary bg-primary/5 shadow-sm" 
+                      : "border-border hover:border-primary/50 hover:bg-accent/50"
                   )}>
-                    <RadioGroupItem value="reschedule" id="reschedule" />
+                    <RadioGroupItem value="reschedule" id="reschedule" className="w-5 h-5 md:w-6 md:h-6" />
                     <div>
-                      <p className="font-medium">Rescheduled</p>
-                      <p className="text-sm text-muted-foreground">Moved to another time</p>
+                      <p className="font-semibold text-sm md:text-base">Rescheduled</p>
+                      <p className="text-xs md:text-sm text-muted-foreground">Moved to another time</p>
                     </div>
                   </label>
                   <label className={cn(
-                    "flex items-center gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all",
+                    "flex items-center gap-3 md:gap-4 p-4 md:p-5 rounded-lg border-2 cursor-pointer transition-all min-h-[60px] md:min-h-[72px]",
                     editForm.callOutcome === 'cancel' 
-                      ? "border-primary bg-primary/5" 
-                      : "border-border hover:border-primary/50"
+                      ? "border-primary bg-primary/5 shadow-sm" 
+                      : "border-border hover:border-primary/50 hover:bg-accent/50"
                   )}>
-                    <RadioGroupItem value="cancel" id="cancel" />
+                    <RadioGroupItem value="cancel" id="cancel" className="w-5 h-5 md:w-6 md:h-6" />
                     <div>
-                      <p className="font-medium">Cancelled</p>
-                      <p className="text-sm text-muted-foreground">Appointment cancelled</p>
+                      <p className="font-semibold text-sm md:text-base">Cancelled</p>
+                      <p className="text-xs md:text-sm text-muted-foreground">Appointment cancelled</p>
                     </div>
                   </label>
                 </div>
@@ -400,27 +447,28 @@ export function OrderedDataFlow({ className }: OrderedDataFlowProps) {
             </div>
 
             {/* Lead Quality */}
-            <div className="space-y-2">
-              <Label className="text-base font-medium">
+            <div className="space-y-3 md:space-y-4">
+              <Label className="text-base md:text-lg font-semibold">
                 Lead Quality <span className="text-red-500">*</span>
+                <span className="text-sm font-normal text-muted-foreground ml-2">(Press 1-5)</span>
               </Label>
-              <div className="flex gap-2">
+              <div className="grid grid-cols-5 gap-2 md:gap-3">
                 {[1, 2, 3, 4, 5].map(rating => (
                   <Button
                     key={rating}
                     type="button"
                     variant={editForm.leadQuality === rating ? "default" : "outline"}
                     size="lg"
-                    className="flex-1"
+                    className="flex-1 min-h-[80px] md:min-h-[100px] flex-col gap-2 md:gap-3"
                     onClick={() => setEditForm({...editForm, leadQuality: rating})}
                   >
-                    <div className="flex flex-col items-center">
-                      <div className="flex mb-1">
+                    <div className="flex flex-col items-center w-full">
+                      <div className="flex mb-1 md:mb-2 text-lg md:text-2xl">
                         {[...Array(rating)].map((_, i) => (
-                          <span key={i} className={editForm.leadQuality === rating ? "text-primary-foreground" : "text-muted-foreground"}>★</span>
+                          <span key={i} className={editForm.leadQuality === rating ? "text-primary-foreground" : "text-amber-400"}>★</span>
                         ))}
                       </div>
-                      <span className="text-xs">
+                      <span className="text-xs md:text-sm font-medium">
                         {rating === 5 && "Excellent"}
                         {rating === 4 && "Good"}
                         {rating === 3 && "Average"}
@@ -571,12 +619,14 @@ export function OrderedDataFlow({ className }: OrderedDataFlowProps) {
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center justify-between pt-6 border-t">
-            <div className="flex gap-2">
+          <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between pt-6 md:pt-8 border-t gap-3 md:gap-0">
+            <div className="flex gap-2 md:gap-3 order-2 md:order-1">
               <Button
                 variant="outline"
                 onClick={handlePrevious}
                 disabled={currentIndex === 0}
+                className="flex-1 md:flex-none min-h-[48px] md:min-h-[44px]"
+                size="lg"
               >
                 <ChevronLeft className="h-4 w-4 mr-2" />
                 Previous
@@ -584,26 +634,38 @@ export function OrderedDataFlow({ className }: OrderedDataFlowProps) {
               <Button
                 variant="ghost"
                 onClick={handleSkip}
+                className="flex-1 md:flex-none min-h-[48px] md:min-h-[44px]"
+                size="lg"
               >
                 <SkipForward className="h-4 w-4 mr-2" />
                 Skip
               </Button>
             </div>
             
-            <div className="flex gap-2">
+            <div className="flex gap-2 order-1 md:order-2">
               <Button
                 variant="default"
                 onClick={saveItemData}
                 disabled={!editForm.callOutcome || saving}
-                className="min-w-[120px]"
+                className="w-full md:min-w-[180px] min-h-[52px] md:min-h-[48px] text-base md:text-sm font-semibold"
+                size="lg"
               >
                 {saving ? (
                   <>Saving...</>
                 ) : (
                   <>
-                    Save & Continue
-                    {currentIndex < items.length - 1 && (
-                      <ChevronRight className="h-4 w-4 ml-2" />
+                    {showSuccessAnimation ? (
+                      <>
+                        <CheckCircle2 className="h-5 w-5 mr-2" />
+                        Saved!
+                      </>
+                    ) : (
+                      <>
+                        Save & Continue
+                        {currentIndex < items.length - 1 && (
+                          <ChevronRight className="h-5 w-5 ml-2" />
+                        )}
+                      </>
                     )}
                   </>
                 )}
