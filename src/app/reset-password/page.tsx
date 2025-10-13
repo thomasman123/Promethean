@@ -62,16 +62,31 @@ function ResetPasswordInner() {
         let hashAccessTokenValue = null
         let hashRefreshTokenValue = null
         let hashTypeValue = null
+        let hashErrorValue = null
+        let hashErrorDescription = null
         
         if (hash) {
           const hashParams = new URLSearchParams(hash.substring(1))
           hashAccessTokenValue = hashParams.get('access_token')
           hashRefreshTokenValue = hashParams.get('refresh_token')
           hashTypeValue = hashParams.get('type')
+          hashErrorValue = hashParams.get('error')
+          hashErrorDescription = hashParams.get('error_description')
           
           if (hashAccessTokenValue) setHashAccessToken(hashAccessTokenValue)
           if (hashRefreshTokenValue) setHashRefreshToken(hashRefreshTokenValue)
           if (hashTypeValue) setHashType(hashTypeValue)
+        }
+
+        // Check for errors in hash or query params
+        const errorCode = hashErrorValue || searchParams?.get('error')
+        const errorDescription = hashErrorDescription || searchParams?.get('error_description')
+        
+        if (errorCode) {
+          console.error('🔍 Auth error in URL:', errorCode, errorDescription)
+          setError(errorDescription || 'Authentication error occurred')
+          setParsing(false)
+          return
         }
 
         // Determine final tokens (prefer query params, fallback to hash)
@@ -84,46 +99,56 @@ function ResetPasswordInner() {
         if (finalRefreshToken && !queryRefreshToken) setRefreshToken(finalRefreshToken)
         if ((hashTypeValue || queryType) && !linkType) setLinkType(hashTypeValue || queryType)
 
+        // First, check if we already have a valid session (from the redirect)
+        const { data: { session: existingSession } } = await supabase.auth.getSession()
+        if (existingSession) {
+          console.log('🔍 Existing valid session found')
+          setHasSession(true)
+          setError('')
+          setParsing(false)
+          return
+        }
+
+        // Try to establish session from URL parameters
         if (finalCode || finalAccessToken) {
           console.log('🔍 Password reset link detected, processing...')
           setError('')
           
           if (finalCode) {
-            // Handle the newer auth code flow
-            const { error } = await supabase.auth.exchangeCodeForSession(finalCode)
+            // Handle the auth code flow (PKCE)
+            console.log('🔍 Attempting to exchange code for session...')
+            const { data, error } = await supabase.auth.exchangeCodeForSession(finalCode)
             if (error) {
               console.error('🔍 Error exchanging code:', error)
               setError('Invalid or expired reset link. Please request a new one.')
+              setParsing(false)
+              return
             } else {
-              console.log('🔍 Successfully exchanged code for session')
+              console.log('🔍 Successfully exchanged code for session', data)
               setHasSession(true)
               setError('')
             }
           } else if (finalAccessToken && finalRefreshToken) {
-            // Handle the older direct token flow (fallback)
-            const { error } = await supabase.auth.setSession({
+            // Handle the direct token flow (legacy)
+            console.log('🔍 Attempting to set session from tokens...')
+            const { data, error } = await supabase.auth.setSession({
               access_token: finalAccessToken,
               refresh_token: finalRefreshToken
             })
             if (error) {
               console.error('🔍 Error setting session:', error)
               setError('Invalid or expired reset link. Please request a new one.')
+              setParsing(false)
+              return
             } else {
-              console.log('🔍 Successfully set session from tokens')
+              console.log('🔍 Successfully set session from tokens', data)
               setHasSession(true)
               setError('')
             }
           }
         } else {
-          // Check if we already have a valid session
-          const { data: { session } } = await supabase.auth.getSession()
-          if (session) {
-            console.log('🔍 Existing session found')
-            setHasSession(true)
-            setError('')
-          } else {
-            setError('No valid reset session found. Please request a new password reset link.')
-          }
+          console.log('🔍 No auth code or tokens found in URL')
+          setError('No valid reset session found. Please request a new password reset link.')
         }
 
         // Set debug info
@@ -137,7 +162,9 @@ function ResetPasswordInner() {
           hashType: hashTypeValue,
           hasCode: !!finalCode,
           currentUrl: window.location.href,
-          hash: window.location.hash
+          hash: window.location.hash,
+          errorCode,
+          errorDescription
         })
       } catch (err) {
         console.error('🔍 Initialization error:', err)
