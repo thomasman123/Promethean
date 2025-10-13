@@ -3,10 +3,12 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { Sword } from "lucide-react"
+import { Sword, ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { createBrowserClient } from "@supabase/ssr"
+import { AnimatedGridPattern } from "@/components/ui/animated-grid-pattern"
+import { cn } from "@/lib/utils"
 
 export default function SignupPage() {
   const [email, setEmail] = useState("")
@@ -61,8 +63,8 @@ export default function SignupPage() {
         
         if (!signInError && signInData.session) {
           setSuccess(true)
-                  // Use window.location for more reliable redirect after auth
-        window.location.href = "/dashboard"
+          // Use window.location for more reliable redirect after auth
+          window.location.href = "/dashboard"
         } else {
           // If auto sign-in fails, redirect to login
           router.push("/login")
@@ -75,26 +77,53 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
-      {/* Header */}
-      <div className="flex items-center justify-between p-6">
-        <Link href="/" className="flex items-center gap-2">
-          <Sword className="h-6 w-6 text-primary" />
-          <span className="text-xl font-semibold">Promethean</span>
-        </Link>
+    <div className="min-h-screen flex flex-col md:flex-row">
+      {/* Left Side - Brand Section */}
+      <div className="relative w-full md:w-1/2 bg-gradient-to-br from-primary via-primary/90 to-primary/80 text-primary-foreground p-8 md:p-12 flex flex-col justify-between min-h-[40vh] md:min-h-screen">
+        {/* Animated Background Pattern */}
+        <AnimatedGridPattern
+          numSquares={30}
+          maxOpacity={0.15}
+          duration={3}
+          repeatDelay={1}
+          className={cn(
+            "[mask-image:radial-gradient(500px_circle_at_center,white,transparent)]",
+            "absolute inset-0 h-full w-full"
+          )}
+        />
+
+        <div className="relative z-10">
+          <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+            <Sword className="h-8 w-8" />
+            <span className="text-2xl font-bold">Promethean</span>
+          </Link>
+        </div>
+
+        <div className="relative z-10 space-y-4">
+          <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold leading-tight">
+            Start Tracking Your Success Today
+          </h1>
+          <p className="text-lg md:text-xl opacity-90 max-w-md">
+            Join the teams using Promethean to track, optimize, and scale their revenue.
+          </p>
+        </div>
+
+        <div className="relative z-10 text-sm opacity-75">
+          &copy; {new Date().getFullYear()} Promethean. All rights reserved.
+        </div>
       </div>
 
-      {/* Main Content */}
-      <div className="flex-1 flex items-center justify-center p-6">
-        <div className="w-full max-w-sm space-y-6">
-          <div className="space-y-2 text-center">
-            <h1 className="text-3xl font-bold tracking-tight">Create an account</h1>
+      {/* Right Side - Form Section */}
+      <div className="w-full md:w-1/2 bg-background flex items-center justify-center p-6 md:p-12">
+        <div className="w-full max-w-md space-y-8">
+          <div className="space-y-2">
+            <h2 className="text-3xl font-bold tracking-tight">Create an account</h2>
             <p className="text-muted-foreground">
-              Enter your email below to create your account
+              Get started with your free account
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-4">
               <Input
                 type="email"
@@ -128,15 +157,19 @@ export default function SignupPage() {
             </div>
 
             {error && (
-              <p className="text-sm text-destructive text-center">
-                {error}
-              </p>
+              <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+                <p className="text-sm text-destructive text-center">
+                  {error}
+                </p>
+              </div>
             )}
 
             {success && (
-              <p className="text-sm text-green-600 dark:text-green-400 text-center">
-                Account created! Redirecting...
-              </p>
+              <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20">
+                <p className="text-sm text-green-600 dark:text-green-400 text-center">
+                  Account created! Redirecting...
+                </p>
+              </div>
             )}
 
             <Button
@@ -145,8 +178,20 @@ export default function SignupPage() {
               className="w-full h-12 rounded-full"
             >
               {success ? "Redirecting..." : loading ? "Creating account..." : "Create account"}
+              <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </form>
+
+          <p className="text-xs text-center text-muted-foreground">
+            By creating an account, you agree to our{" "}
+            <Link href="#" className="underline hover:text-primary">
+              Terms of Service
+            </Link>{" "}
+            and{" "}
+            <Link href="#" className="underline hover:text-primary">
+              Privacy Policy
+            </Link>
+          </p>
 
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
@@ -159,7 +204,7 @@ export default function SignupPage() {
             </div>
           </div>
 
-          <Link href="/login">
+          <Link href="/login" className="block">
             <Button
               variant="outline"
               className="w-full h-12 rounded-full"
@@ -167,17 +212,6 @@ export default function SignupPage() {
               Sign in
             </Button>
           </Link>
-
-          <p className="text-xs text-center text-muted-foreground">
-            By clicking continue, you agree to our{" "}
-            <Link href="#" className="underline hover:text-primary">
-              Terms of Service
-            </Link>{" "}
-            and{" "}
-            <Link href="#" className="underline hover:text-primary">
-              Privacy Policy
-            </Link>
-          </p>
         </div>
       </div>
     </div>

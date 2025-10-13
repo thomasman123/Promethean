@@ -3,10 +3,12 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { Sword } from "lucide-react"
+import { Sword, ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { createBrowserClient } from "@supabase/ssr"
+import { AnimatedGridPattern } from "@/components/ui/animated-grid-pattern"
+import { cn } from "@/lib/utils"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -87,26 +89,53 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
-      {/* Header */}
-      <div className="flex items-center justify-between p-6">
-        <Link href="/" className="flex items-center gap-2">
-          <Sword className="h-6 w-6 text-primary" />
-          <span className="text-xl font-semibold">Promethean</span>
-        </Link>
+    <div className="min-h-screen flex flex-col md:flex-row">
+      {/* Left Side - Brand Section */}
+      <div className="relative w-full md:w-1/2 bg-gradient-to-br from-primary via-primary/90 to-primary/80 text-primary-foreground p-8 md:p-12 flex flex-col justify-between min-h-[40vh] md:min-h-screen">
+        {/* Animated Background Pattern */}
+        <AnimatedGridPattern
+          numSquares={30}
+          maxOpacity={0.15}
+          duration={3}
+          repeatDelay={1}
+          className={cn(
+            "[mask-image:radial-gradient(500px_circle_at_center,white,transparent)]",
+            "absolute inset-0 h-full w-full"
+          )}
+        />
+
+        <div className="relative z-10">
+          <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+            <Sword className="h-8 w-8" />
+            <span className="text-2xl font-bold">Promethean</span>
+          </Link>
+        </div>
+
+        <div className="relative z-10 space-y-4">
+          <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold leading-tight">
+            Turn Your Sales Data Into Revenue
+          </h1>
+          <p className="text-lg md:text-xl opacity-90 max-w-md">
+            Track performance, optimize conversions, and maximize ROI with real-time insights.
+          </p>
+        </div>
+
+        <div className="relative z-10 text-sm opacity-75">
+          &copy; {new Date().getFullYear()} Promethean. All rights reserved.
+        </div>
       </div>
 
-      {/* Main Content */}
-      <div className="flex-1 flex items-center justify-center p-6">
-        <div className="w-full max-w-sm space-y-6">
-          <div className="space-y-2 text-center">
-            <h1 className="text-3xl font-bold tracking-tight">Welcome back</h1>
+      {/* Right Side - Form Section */}
+      <div className="w-full md:w-1/2 bg-background flex items-center justify-center p-6 md:p-12">
+        <div className="w-full max-w-md space-y-8">
+          <div className="space-y-2">
+            <h2 className="text-3xl font-bold tracking-tight">Welcome back</h2>
             <p className="text-muted-foreground">
-              Enter your email to sign in to your account
+              Enter your credentials to access your account
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-4">
               <Input
                 type="email"
@@ -129,16 +158,29 @@ export default function LoginPage() {
               />
             </div>
 
+            <div className="flex items-center justify-end">
+              <Link 
+                href="/forgot-password" 
+                className="text-sm text-primary hover:underline"
+              >
+                Forgot password?
+              </Link>
+            </div>
+
             {error && (
-              <p className="text-sm text-destructive text-center">
-                {error}
-              </p>
+              <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+                <p className="text-sm text-destructive text-center">
+                  {error}
+                </p>
+              </div>
             )}
 
             {success && (
-              <p className="text-sm text-green-600 dark:text-green-400 text-center">
-                Login successful! Redirecting...
-              </p>
+              <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20">
+                <p className="text-sm text-green-600 dark:text-green-400 text-center">
+                  Login successful! Redirecting...
+                </p>
+              </div>
             )}
 
             <Button
@@ -147,14 +189,9 @@ export default function LoginPage() {
               className="w-full h-12 rounded-full"
             >
               {success ? "Redirecting..." : loading ? "Signing in..." : "Sign in"}
+              <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </form>
-
-          <div className="text-center mb-4">
-            <Link href="/forgot-password" className="text-sm text-muted-foreground hover:underline">
-              Forgot your password?
-            </Link>
-          </div>
 
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
@@ -167,12 +204,12 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <Link href="/signup">
+          <Link href="/signup" className="block">
             <Button
               variant="outline"
               className="w-full h-12 rounded-full"
             >
-              Sign up
+              Create an account
             </Button>
           </Link>
         </div>

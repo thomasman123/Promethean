@@ -4,11 +4,11 @@ import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { AlertCircle, Eye, EyeOff } from 'lucide-react'
+import { AlertCircle, Eye, EyeOff, Sword, Shield } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { createBrowserClient } from '@supabase/ssr'
+import { AnimatedGridPattern } from '@/components/ui/animated-grid-pattern'
+import { cn } from '@/lib/utils'
 import Link from 'next/link'
 
 function ResetPasswordInner() {
@@ -250,135 +250,192 @@ function ResetPasswordInner() {
   if (parsing) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
-        <Card className="w-full max-w-md">
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-              <p>Processing reset link...</p>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p>Processing reset link...</p>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <CardTitle>Reset Password</CardTitle>
-          <CardDescription>
-            Enter your new password below
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+    <div className="min-h-screen flex flex-col md:flex-row">
+      {/* Left Side - Brand Section */}
+      <div className="relative w-full md:w-1/2 bg-gradient-to-br from-primary via-primary/90 to-primary/80 text-primary-foreground p-8 md:p-12 flex flex-col justify-between min-h-[40vh] md:min-h-screen">
+        {/* Animated Background Pattern */}
+        <AnimatedGridPattern
+          numSquares={30}
+          maxOpacity={0.15}
+          duration={3}
+          repeatDelay={1}
+          className={cn(
+            "[mask-image:radial-gradient(500px_circle_at_center,white,transparent)]",
+            "absolute inset-0 h-full w-full"
+          )}
+        />
+
+        <div className="relative z-10">
+          <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+            <Sword className="h-8 w-8" />
+            <span className="text-2xl font-bold">Promethean</span>
+          </Link>
+        </div>
+
+        <div className="relative z-10 space-y-4">
+          <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold leading-tight">
+            Secure Your Account
+          </h1>
+          <p className="text-lg md:text-xl opacity-90 max-w-md">
+            Create a strong password to protect your sales data and insights.
+          </p>
+        </div>
+
+        <div className="relative z-10 text-sm opacity-75">
+          &copy; {new Date().getFullYear()} Promethean. All rights reserved.
+        </div>
+      </div>
+
+      {/* Right Side - Form Section */}
+      <div className="w-full md:w-1/2 bg-background flex items-center justify-center p-6 md:p-12">
+        <div className="w-full max-w-md space-y-8">
           {!hasSession ? (
-            <div className="space-y-4">
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
-                  {error || 'Invalid or expired reset link. Please request a new one.'}
-                </AlertDescription>
-              </Alert>
-              
+            // Error State
+            <>
+              <div className="space-y-4">
+                <div className="flex justify-center">
+                  <div className="flex items-center justify-center w-16 h-16 rounded-full bg-destructive/10">
+                    <AlertCircle className="h-8 w-8 text-destructive" />
+                  </div>
+                </div>
+                <div className="space-y-2 text-center">
+                  <h2 className="text-3xl font-bold tracking-tight">Invalid Reset Link</h2>
+                  <p className="text-muted-foreground">
+                    {error || 'This password reset link is invalid or has expired'}
+                  </p>
+                </div>
+              </div>
+
               <Button 
                 onClick={handleRequestNewLink}
-                className="w-full"
+                className="w-full h-12 rounded-full"
                 variant="outline"
               >
                 Request New Reset Link
               </Button>
-              
+
               {process.env.NODE_ENV === 'development' && debugInfo && (
-                <div className="mt-4 p-2 bg-gray-100 rounded text-xs">
+                <div className="mt-4 p-2 bg-muted rounded text-xs">
                   <strong>Debug Info:</strong>
-                  <pre>{JSON.stringify(debugInfo, null, 2)}</pre>
+                  <pre className="mt-2 overflow-auto">{JSON.stringify(debugInfo, null, 2)}</pre>
                 </div>
               )}
-            </div>
+
+              <Link href="/login" className="block text-center">
+                <Button variant="ghost" className="w-full h-12 rounded-full">
+                  Back to Login
+                </Button>
+              </Link>
+            </>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="password">New Password</Label>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Enter your new password"
-                    required
-                    autoFocus
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
-                  </Button>
+            // Form State
+            <>
+              <div className="space-y-4">
+                <div className="flex justify-center">
+                  <div className="flex items-center justify-center w-16 h-16 rounded-full bg-primary/10">
+                    <Shield className="h-8 w-8 text-primary" />
+                  </div>
+                </div>
+                <div className="space-y-2 text-center">
+                  <h2 className="text-3xl font-bold tracking-tight">Reset Password</h2>
+                  <p className="text-muted-foreground">
+                    Enter your new password below
+                  </p>
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirm New Password</Label>
-                <div className="relative">
-                  <Input
-                    id="confirmPassword"
-                    type={showConfirmPassword ? 'text' : 'password'}
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="Confirm your new password"
-                    required
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  >
-                    {showConfirmPassword ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
-                  </Button>
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="space-y-4">
+                  <div className="relative">
+                    <Input
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="New password"
+                      required
+                      autoFocus
+                      className="h-12 rounded-full px-5 pr-12"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-1 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full hover:bg-muted"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+
+                  <div className="relative">
+                    <Input
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Confirm new password"
+                      required
+                      className="h-12 rounded-full px-5 pr-12"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-1 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full hover:bg-muted"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    >
+                      {showConfirmPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
                 </div>
-              </div>
 
-              {error && (
-                <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
+                {error && (
+                  <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+                    <p className="text-sm text-destructive text-center flex items-center justify-center gap-2">
+                      <AlertCircle className="h-4 w-4" />
+                      {error}
+                    </p>
+                  </div>
+                )}
 
-              {success && (
-                <Alert>
-                  <AlertDescription className="text-green-600">{success}</AlertDescription>
-                </Alert>
-              )}
+                {success && (
+                  <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20">
+                    <p className="text-sm text-green-600 dark:text-green-400 text-center">
+                      {success}
+                    </p>
+                  </div>
+                )}
 
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? 'Updating Password...' : 'Update Password'}
-              </Button>
-            </form>
+                <Button type="submit" className="w-full h-12 rounded-full" disabled={loading}>
+                  {loading ? 'Updating Password...' : 'Update Password'}
+                </Button>
+              </form>
+
+              <Link href="/login" className="block text-center">
+                <Button variant="ghost" className="w-full h-12 rounded-full">
+                  Back to Login
+                </Button>
+              </Link>
+            </>
           )}
-
-          <div className="mt-6 text-center">
-            <Link href="/login" className="text-sm text-muted-foreground hover:underline">
-              Back to Login
-            </Link>
-          </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   )
 }
