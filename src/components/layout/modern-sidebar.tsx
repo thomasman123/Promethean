@@ -24,6 +24,7 @@ import {
   Sun,
   Moon,
   X,
+  Target,
 } from "lucide-react"
 import {
   DropdownMenu,
@@ -62,6 +63,7 @@ const navigationSections: NavSection[] = [
     items: [
       { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
       { name: "Canvas", href: "/canvas", icon: Palette },
+      { name: "KPIs", href: "/account/kpis", icon: Target },
     ]
   },
   {
