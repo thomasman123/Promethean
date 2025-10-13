@@ -146,15 +146,14 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // If still empty for a single account, compute a DB-only fallback from activity
+    // If still empty for a single account, try fetching directly from GHL API first
     if ((!ghlUsers || ghlUsers.length === 0) && accountIds.length === 1) {
       const targetId = accountIds[0]
-      const pendingUsers: any[] = []
-
+      
       // Get account GHL API credentials
       const { data: account } = await supabase
         .from('accounts')
-        .select('ghl_api_key, ghl_location_id')
+        .select('ghl_api_key, ghl_location_id, ghl_auth_type')
         .eq('id', targetId)
         .single()
 
@@ -162,6 +161,97 @@ export async function GET(request: NextRequest) {
         console.log('No GHL API key for fallback user enrichment')
         return NextResponse.json({ pendingUsers: [], count: 0, fallback: true })
       }
+
+      // Try fetching users directly from GHL API (for new accounts with no activity yet)
+      try {
+        console.log(`Attempting to fetch GHL users directly from API for account ${targetId}`)
+        const headers = {
+          'Authorization': `Bearer ${account.ghl_api_key}`,
+          'Version': '2021-07-28',
+          'Accept': 'application/json',
+        }
+
+        let usersResponse: Response | null = null
+        
+        // Try location-specific endpoint first if we have a location ID
+        if (account.ghl_location_id) {
+          try {
+            usersResponse = await fetch(`https://services.leadconnectorhq.com/locations/${account.ghl_location_id}/users/`, { headers })
+            if (!usersResponse.ok) usersResponse = null
+          } catch (e) {
+            console.warn('Location users endpoint failed:', e)
+          }
+        }
+
+        // Fallback to generic users endpoint
+        if (!usersResponse) {
+          usersResponse = await fetch('https://services.leadconnectorhq.com/users/', { headers })
+        }
+
+        if (usersResponse.ok) {
+          const usersData = await usersResponse.json()
+          const ghlUsersFromApi = usersData.users || usersData.data || []
+          
+          console.log(`Fetched ${ghlUsersFromApi.length} users from GHL API`)
+
+          // Filter out users already on the team and populate ghl_users table for future
+          const pendingUsers: any[] = []
+          for (const u of ghlUsersFromApi) {
+            const ghlUserId = u.id
+            const email = u.email || u.userEmail
+            const name = u.name || [u.firstName, u.lastName].filter(Boolean).join(' ') || 'Unknown'
+            const emailLower = (email || '').toLowerCase()
+
+            // Skip if already on team
+            if (email && existingEmails.has(emailLower)) continue
+            if (ghlUserId && existingGhlIds.has(ghlUserId)) continue
+
+            // Determine suggested role (default to setter for new accounts)
+            const suggestedRole = 'setter'
+
+            // Add to pending list
+            pendingUsers.push({
+              ghl_user_id: ghlUserId,
+              name,
+              email,
+              primary_role: suggestedRole,
+              roles: [suggestedRole],
+              activity_count: 0,
+              setter_activity_count: 0,
+              sales_rep_activity_count: 0,
+              last_seen_at: null,
+              account_id: targetId,
+            })
+
+            // Upsert into ghl_users table for future reference
+            try {
+              await supabase.rpc('upsert_ghl_user', {
+                p_account_id: targetId,
+                p_ghl_user_id: ghlUserId,
+                p_name: name,
+                p_email: email,
+                p_first_name: u.firstName || null,
+                p_last_name: u.lastName || null,
+                p_phone: u.phone || null,
+                p_primary_role: suggestedRole
+              })
+            } catch (e) {
+              console.warn(`Failed to upsert GHL user ${ghlUserId}:`, e)
+            }
+          }
+
+          console.log(`Returning ${pendingUsers.length} pending users from GHL API`)
+          return NextResponse.json({ pendingUsers, count: pendingUsers.length, source: 'ghl_api' })
+        } else {
+          console.warn(`GHL API users fetch failed: ${usersResponse.status}`)
+        }
+      } catch (e) {
+        console.warn('Failed to fetch users from GHL API:', e)
+      }
+
+      // If GHL API fetch failed, fall back to activity-based detection
+      console.log('Falling back to activity-based user detection')
+      const pendingUsers: any[] = []
 
       // Gather distinct GHL user IDs and rough names from activity tables
       const [{ data: appointments }, { data: discoveries }, { data: dials }] = await Promise.all([
