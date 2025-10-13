@@ -183,9 +183,9 @@ export async function GET(request: NextRequest) {
           }
         }
 
-        // Fallback to generic users endpoint
-        if (!usersResponse) {
-          usersResponse = await fetch('https://services.leadconnectorhq.com/users/', { headers })
+        // Fallback to generic users endpoint with locationId query parameter
+        if (!usersResponse && account.ghl_location_id) {
+          usersResponse = await fetch(`https://services.leadconnectorhq.com/users/?locationId=${account.ghl_location_id}`, { headers })
         }
 
         if (usersResponse.ok) {
@@ -193,6 +193,18 @@ export async function GET(request: NextRequest) {
           const ghlUsersFromApi = usersData.users || usersData.data || []
           
           console.log(`Fetched ${ghlUsersFromApi.length} users from GHL API`)
+
+          // Check invitation status for all emails
+          const allEmails = ghlUsersFromApi.map((u: any) => (u.email || u.userEmail || '').toLowerCase()).filter(Boolean)
+          const { data: invitations } = await supabase
+            .from('invitations')
+            .select('email, status, created_at')
+            .eq('account_id', targetId)
+            .in('email', allEmails)
+          
+          const invitationMap = new Map(
+            (invitations || []).map(inv => [inv.email.toLowerCase(), { status: inv.status, invited_at: inv.created_at }])
+          )
 
           // Filter out users already on the team and populate ghl_users table for future
           const pendingUsers: any[] = []
@@ -202,12 +214,19 @@ export async function GET(request: NextRequest) {
             const name = u.name || [u.firstName, u.lastName].filter(Boolean).join(' ') || 'Unknown'
             const emailLower = (email || '').toLowerCase()
 
+            // Get invitation status
+            const invitation = email ? invitationMap.get(emailLower) : null
+            const invitationStatus = invitation?.status || null
+
             // Skip if already on team
             if (email && existingEmails.has(emailLower)) continue
             if (ghlUserId && existingGhlIds.has(ghlUserId)) continue
+            // Skip if invitation was accepted (user should be in Team Members now)
+            if (invitationStatus === 'accepted') continue
 
             // Determine suggested role (default to setter for new accounts)
             const suggestedRole = 'setter'
+            const invitedAt = invitation?.invited_at || null
 
             // Add to pending list
             pendingUsers.push({
@@ -221,6 +240,8 @@ export async function GET(request: NextRequest) {
               sales_rep_activity_count: 0,
               last_seen_at: null,
               account_id: targetId,
+              invitation_status: invitationStatus,
+              invited_at: invitedAt,
             })
 
             // Upsert into ghl_users table for future reference
@@ -391,150 +412,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ pendingUsers, count: pendingUsers.length })
   } catch (e) {
     console.error('pending-ghl-users error', e)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
-  }
-}
-
-export async function POST(request: NextRequest) {
-  try {
-    const supabase = createServerClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return request.cookies.get(name)?.value
-          },
-          set() {},
-          remove() {},
-        },
-      }
-    )
-    
-    const { accountId, ghlUserId, email, fullName, role } = await request.json()
-    
-    if (!accountId || !ghlUserId) {
-      return NextResponse.json({ error: 'accountId and ghlUserId required' }, { status: 400 })
-    }
-
-    if (!email) {
-      return NextResponse.json({ error: 'Email is required to send invitation' }, { status: 400 })
-    }
-
-    // Verify user authentication and permissions
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    // Check global role
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
-
-    const isGlobalAdmin = profile?.role === 'admin'
-
-    if (!isGlobalAdmin) {
-      // Check for account-level access
-      const { data: access } = await supabase
-        .from('account_access')
-        .select('role')
-        .eq('user_id', user.id)
-        .eq('account_id', accountId)
-        .eq('is_active', true)
-        .single()
-
-      if (!access || !['admin', 'moderator'].includes(access.role)) {
-        return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
-      }
-    }
-
-    // Mark the GHL user as invited in ghl_users table
-    const { error: updateError } = await supabase
-      .from('ghl_users')
-      .update({ 
-        is_invited: true,
-        invited_at: new Date().toISOString(),
-        invited_by: user.id
-      })
-      .eq('account_id', accountId)
-      .eq('ghl_user_id', ghlUserId)
-
-    if (updateError) {
-      console.error('Error marking GHL user as invited:', updateError)
-      // Don't fail the request, just log it
-    }
-
-    // Send invitation email via Supabase Admin API
-    const supabaseAdmin = createServerClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return request.cookies.get(name)?.value
-          },
-          set() {},
-          remove() {},
-        },
-      }
-    )
-
-    // Create invitation
-    const { data: inviteData, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
-      data: {
-        full_name: fullName || email,
-        invited_by: user.id,
-        account_id: accountId,
-        ghl_user_id: ghlUserId,
-      },
-      redirectTo: `${request.nextUrl.origin}/reset-password`,
-    })
-
-    if (inviteError) {
-      console.error('Error sending invitation:', inviteError)
-      return NextResponse.json({ error: inviteError.message }, { status: 500 })
-    }
-
-    // Create account_access record with role
-    if (inviteData.user) {
-      const { error: accessError } = await supabase
-        .from('account_access')
-        .insert({
-          user_id: inviteData.user.id,
-          account_id: accountId,
-          role: role || 'setter',
-          is_active: false, // Will be activated when they accept the invitation
-          granted_at: new Date().toISOString(),
-          granted_by: user.id,
-        })
-
-      if (accessError) {
-        console.error('Error creating account access:', accessError)
-        // Don't fail the request
-      }
-
-      // Link GHL user to app user
-      const { error: linkError } = await supabase
-        .from('ghl_users')
-        .update({ app_user_id: inviteData.user.id })
-        .eq('account_id', accountId)
-        .eq('ghl_user_id', ghlUserId)
-
-      if (linkError) {
-        console.error('Error linking GHL user to app user:', linkError)
-      }
-    }
-
-    return NextResponse.json({ 
-      success: true,
-      message: 'Invitation sent successfully'
-    })
-
-  } catch (e) {
-    console.error('pending-ghl-users POST error', e)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 } 
