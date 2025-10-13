@@ -53,6 +53,7 @@ interface NavItem {
 interface NavSection {
   title: string
   items: NavItem[]
+  requireModerator?: boolean
 }
 
 const navigationSections: NavSection[] = [
@@ -70,6 +71,13 @@ const navigationSections: NavSection[] = [
       { name: "Appointments/Discoveries", href: "/update-data/appointments-discoveries", icon: Calendar },
       { name: "Payment Plans", href: "/update-data/payment-plans", icon: RefreshCw },
     ]
+  },
+  {
+    title: "MODERATION",
+    items: [
+      { name: "Moderate Data", href: "/update-data/moderate", icon: Shield },
+    ],
+    requireModerator: true // Only show for moderators/admins
   },
 ]
 
@@ -90,6 +98,7 @@ export function ModernSidebar() {
     { id: '1', title: 'Modern Sidebar Layout', href: '/dashboard' }
   ])
   const [overdueCount, setOverdueCount] = useState(0)
+  const [hasModeratorAccess, setHasModeratorAccess] = useState(false)
   const pathname = usePathname()
   const router = useRouter()
   const { user: effectiveUser } = useEffectiveUser()
@@ -138,6 +147,13 @@ export function ModernSidebar() {
     }
   }, [effectiveUser])
 
+  // Check moderator access
+  useEffect(() => {
+    if (effectiveUser && selectedAccountId) {
+      checkModeratorAccess()
+    }
+  }, [effectiveUser, selectedAccountId])
+
   const loadOverdueCount = async () => {
     try {
       const response = await fetch('/api/notifications/overdue')
@@ -147,6 +163,35 @@ export function ModernSidebar() {
       }
     } catch (error) {
       console.error('Error loading overdue count:', error)
+    }
+  }
+
+  const checkModeratorAccess = async () => {
+    if (!effectiveUser || !selectedAccountId) {
+      setHasModeratorAccess(false)
+      return
+    }
+    
+    try {
+      // Check if admin (global access)
+      if (currentUserRole === 'admin') {
+        setHasModeratorAccess(true)
+        return
+      }
+
+      // Check account-specific moderator access
+      const { data: access } = await supabase
+        .from('account_access')
+        .select('role')
+        .eq('user_id', effectiveUser.id)
+        .eq('account_id', selectedAccountId)
+        .in('role', ['admin', 'moderator'])
+        .single()
+      
+      setHasModeratorAccess(!!access)
+    } catch (error) {
+      console.error('Error checking moderator access:', error)
+      setHasModeratorAccess(false)
     }
   }
 
@@ -295,7 +340,7 @@ export function ModernSidebar() {
 
       {/* Navigation Items */}
       <nav className="flex-1 p-3 space-y-4 overflow-y-auto">
-        {navigationSections.map((section, sectionIndex) => (
+        {navigationSections.filter(section => !section.requireModerator || hasModeratorAccess).map((section, sectionIndex) => (
           <div key={section.title}>
             {/* Section Header */}
             {!isCollapsed && (
