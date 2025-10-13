@@ -297,20 +297,9 @@ function TeamContent() {
   // Invite a pending GHL user
   const handleInviteGhlUser = async (user: any) => {
     if (!selectedAccountId) return
-    
-    // Validate email
-    if (!user.email) {
-      toast({
-        title: 'Error',
-        description: 'User must have an email address to receive invitation',
-        variant: 'destructive'
-      })
-      return
-    }
-    
     setInvitingGhlId(user.ghl_user_id)
     try {
-      const response = await fetch('/api/team/pending-ghl-users', {
+      const response = await fetch('/api/team/pending-users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -325,18 +314,13 @@ function TeamContent() {
         const error = await response.json()
         throw new Error(error.error || 'Failed to invite user')
       }
-      toast({ 
-        title: 'Invitation sent', 
-        description: `Sent invitation to ${user.email}`
-      })
-      // Refresh the pending users list to remove invited user
-      const refreshResponse = await fetch(`/api/team/pending-ghl-users?accountId=${selectedAccountId}`)
-      if (refreshResponse.ok) {
-        const data = await refreshResponse.json()
-        setPendingUsers(data.pendingUsers || [])
-      }
-      // Also refresh team members to show them once they accept
-      loadTeamMembers()
+      toast({ title: 'Invitation sent', description: `Invited ${user.email || user.name}` })
+      // Update user status to show as invited (keep in list until they accept)
+      setPendingUsers(prev => prev.map(u => 
+        u.ghl_user_id === user.ghl_user_id 
+          ? { ...u, invitation_status: 'pending', invited_at: new Date().toISOString() }
+          : u
+      ))
     } catch (error) {
       console.error('Error inviting pending GHL user:', error)
       toast({
@@ -753,12 +737,27 @@ function TeamContent() {
                           <Button
                             size="sm"
                             onClick={() => handleInviteGhlUser(u)}
-                            disabled={!!invitingGhlId}
+                            disabled={!!invitingGhlId || u.invitation_status === 'pending' || u.invitation_status === 'accepted'}
+                            variant={u.invitation_status === 'pending' ? 'secondary' : 'default'}
                           >
                             {invitingGhlId === u.ghl_user_id ? (
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            ) : null}
-                            Invite
+                              <>
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                Inviting...
+                              </>
+                            ) : u.invitation_status === 'pending' ? (
+                              <>
+                                <UserCheck className="h-4 w-4 mr-2" />
+                                Invited
+                              </>
+                            ) : u.invitation_status === 'accepted' ? (
+                              <>
+                                <UserCheck className="h-4 w-4 mr-2" />
+                                Accepted
+                              </>
+                            ) : (
+                              'Invite'
+                            )}
                           </Button>
                         </TableCell>
                       </TableRow>
