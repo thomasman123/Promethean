@@ -8,7 +8,7 @@ import { format } from "date-fns"
 interface MetricWidgetProps {
   metric?: string // For KPI widgets
   metrics?: string[] // For chart widgets and data views
-  type: "kpi" | "bar" | "line" | "area" | "data"
+  type: "kpi" | "bar" | "line" | "area" | "data" | "kpi_progress"
   options?: Record<string, any> // Widget options/settings
   selectedUsers?: string[] // For data view widgets
 }
@@ -143,6 +143,11 @@ export function MetricWidget({ metric, metrics, type, options, selectedUsers }: 
   if (type === "data" && metrics && selectedUsers) {
     const DataViewWidget = require('./data-view-widget').DataViewWidget
     return <DataViewWidget metrics={metrics} selectedUsers={selectedUsers} options={options} />
+  }
+
+  if (type === "kpi_progress") {
+    const KPIProgressWidget = require('./kpi-progress-widget').KPIProgressWidget
+    return <KPIProgressWidget options={options} />
   }
   
   // Other chart types placeholder

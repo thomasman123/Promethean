@@ -20,7 +20,8 @@ import {
   Square,
   ArrowLeft,
   ArrowRight,
-  Table
+  Table,
+  Target
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { UnifiedMetricSelector } from "@/components/shared/unified-metric-selector"
@@ -36,7 +37,7 @@ interface AddWidgetModalProps {
 
 export interface WidgetConfig {
   id: string
-  type: "kpi" | "bar" | "line" | "area" | "data"
+  type: "kpi" | "bar" | "line" | "area" | "data" | "kpi_progress"
   title: string
   metric?: string // For single metric (KPI)
   metrics?: string[] // For multiple metrics (charts and data views)
@@ -77,6 +78,12 @@ const visualizationTypes = [
     name: "Data View",
     icon: Table,
     description: "Show metrics by user in a table format"
+  },
+  {
+    id: "kpi_progress",
+    name: "KPI Progress",
+    icon: Target,
+    description: "Track progress toward KPI targets"
   }
 ]
 // Helper function to get context-aware attribution labels
