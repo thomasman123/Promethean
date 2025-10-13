@@ -36,6 +36,7 @@ import {
   DropdownMenuSubTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { createBrowserClient } from "@supabase/ssr"
 import { useEffectiveUser } from "@/hooks/use-effective-user"
 import { useAccountsCache } from "@/hooks/use-accounts-cache"
@@ -88,6 +89,7 @@ export function ModernSidebar() {
   const [notifications, setNotifications] = useState<Notification[]>([
     { id: '1', title: 'Modern Sidebar Layout', href: '/dashboard' }
   ])
+  const [overdueCount, setOverdueCount] = useState(0)
   const pathname = usePathname()
   const router = useRouter()
   const { user: effectiveUser } = useEffectiveUser()
@@ -125,6 +127,28 @@ export function ModernSidebar() {
     }
     getCurrentUser()
   }, [])
+
+  // Load overdue count
+  useEffect(() => {
+    if (effectiveUser) {
+      loadOverdueCount()
+      // Refresh every 5 minutes
+      const interval = setInterval(loadOverdueCount, 5 * 60 * 1000)
+      return () => clearInterval(interval)
+    }
+  }, [effectiveUser])
+
+  const loadOverdueCount = async () => {
+    try {
+      const response = await fetch('/api/notifications/overdue')
+      if (response.ok) {
+        const data = await response.json()
+        setOverdueCount(data.count || 0)
+      }
+    } catch (error) {
+      console.error('Error loading overdue count:', error)
+    }
+  }
 
   const toggleCollapse = () => {
     const newState = !isCollapsed
@@ -287,13 +311,14 @@ export function ModernSidebar() {
               {section.items.map((item) => {
                 const Icon = item.icon
                 const active = isActive(item.href)
+                const showOverdueBadge = item.href === "/update-data/appointments-discoveries" && overdueCount > 0
 
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
                     className={cn(
-                      "flex items-center gap-2.5 px-3 py-1.5 rounded-lg transition-all duration-200 text-[13px] font-normal",
+                      "flex items-center gap-2.5 px-3 py-1.5 rounded-lg transition-all duration-200 text-[13px] font-normal relative",
                       active 
                         ? "bg-muted text-foreground" 
                         : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
@@ -303,7 +328,22 @@ export function ModernSidebar() {
                   >
                     <Icon className="h-[18px] w-[18px] flex-shrink-0" />
                     {!isCollapsed && (
-                      <span>{item.name}</span>
+                      <>
+                        <span className="flex-1">{item.name}</span>
+                        {showOverdueBadge && (
+                          <Badge 
+                            variant="destructive" 
+                            className="h-5 px-1.5 text-[10px] font-semibold ml-auto"
+                          >
+                            {overdueCount > 99 ? '99+' : overdueCount}
+                          </Badge>
+                        )}
+                      </>
+                    )}
+                    {isCollapsed && showOverdueBadge && (
+                      <div className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-red-500 text-[9px] text-white flex items-center justify-center font-bold">
+                        {overdueCount > 9 ? '9+' : overdueCount}
+                      </div>
                     )}
                   </Link>
                 )
