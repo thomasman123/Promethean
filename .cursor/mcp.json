@@ -11,6 +11,13 @@
       "env": {
         "SUPABASE_ACCESS_TOKEN": "sbp_0235fdaba2ec083e360668a1554d39923ef2fa11"
       }
+    },
+    "shadcn": {
+      "command": "npx",
+      "args": [
+        "shadcn@latest",
+        "mcp"
+      ]
     }
   }
-} 
+}
