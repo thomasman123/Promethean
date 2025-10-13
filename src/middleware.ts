@@ -66,6 +66,12 @@ export async function middleware(req: NextRequest) {
       }
     )
 
+    // Skip auth checks for password reset and forgot password routes
+    // These routes need to handle their own Supabase auth flow
+    if (pathname === '/reset-password' || pathname === '/forgot-password') {
+      return supabaseResponse
+    }
+
     // This will refresh session if expired - required for Server Components
     // https://supabase.com/docs/guides/auth/server-side/nextjs
     const { data: { user } } = await supabase.auth.getUser()
