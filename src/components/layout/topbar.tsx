@@ -26,6 +26,7 @@ import { useDashboard } from "@/lib/dashboard-context"
 import { useEffectiveUser } from "@/hooks/use-effective-user"
 import { useAccountsCache } from "@/hooks/use-accounts-cache"
 import { FollowUpNotifications } from "./follow-up-notifications"
+import { OverdueDataNotifications } from "./overdue-data-notifications"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { LocationCountrySelector } from "@/components/data/location-country-selector"
 import { ConnectedGithubGlobe } from "@/components/data/connected-github-globe"
@@ -598,7 +599,8 @@ export function TopBar({ onAddWidget }: TopBarProps) {
           </>
         )}
 
-        {/* Follow-up Notifications */}
+        {/* Notifications */}
+        <OverdueDataNotifications />
         <FollowUpNotifications />
 
         {/* Dark mode toggle - Updated to match new design */}
