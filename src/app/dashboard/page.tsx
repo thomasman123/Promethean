@@ -36,8 +36,7 @@ function DashboardContent() {
   const { selectedAccountId, currentViewId, setCurrentViewId } = useDashboard()
   const [layouts, setLayouts] = useState(defaultLayouts)
   const [widgets, setWidgets] = useState<WidgetConfig[]>([])
-  const [loading, setLoading] = useState(true)
-  const [accountsLoaded, setAccountsLoaded] = useState(false)
+  const [widgetsLoading, setWidgetsLoading] = useState(false)
   const [editingWidget, setEditingWidget] = useState<WidgetConfig | null>(null)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isAddWidgetModalOpen, setIsAddWidgetModalOpen] = useState(false)
@@ -85,31 +84,22 @@ function DashboardContent() {
     }
   }, [isClient, currentViewId])
 
-  // Monitor when accounts are loaded by checking if selectedAccountId is set
+  // Load view data when view changes (only if we have the required data)
   useEffect(() => {
-    if (selectedAccountId) {
-      console.log('🔍 [Dashboard] Accounts loaded, selectedAccountId set:', selectedAccountId)
-      setAccountsLoaded(true)
-    } else {
-      console.log('🔍 [Dashboard] Waiting for selectedAccountId to be set...')
-      setAccountsLoaded(false)
-    }
-  }, [selectedAccountId])
-
-  // Load view data when BOTH account is loaded AND view changes
-  useEffect(() => {
-    console.log('🔍 [Dashboard] Dependencies check - accountsLoaded:', accountsLoaded, 'currentViewId:', currentViewId || '<empty string>', 'selectedAccountId:', selectedAccountId || '<empty string>')
-    
-    if (accountsLoaded && currentViewId && selectedAccountId) {
-      console.log('✅ [Dashboard] All dependencies ready, loading view data')
+    if (currentViewId && selectedAccountId) {
+      console.log('✅ [Dashboard] Loading view data for view:', currentViewId)
       void loadViewData()
+    } else if (currentViewId && !selectedAccountId) {
+      console.log('⏳ [Dashboard] Have viewId but waiting for selectedAccountId...')
     } else {
-      console.log('⏳ [Dashboard] Waiting for dependencies - need accounts loaded AND view selected')
+      // No view selected - clear widgets
+      setWidgets([])
+      setLayouts(defaultLayouts)
     }
-  }, [accountsLoaded, currentViewId, selectedAccountId])
+  }, [currentViewId, selectedAccountId])
 
   const loadViewData = async () => {
-    setLoading(true)
+    setWidgetsLoading(true)
     try {
       console.log('🔍 [Dashboard] Loading view data for currentViewId:', currentViewId)
       const response = await fetch(`/api/dashboard/views?accountId=${selectedAccountId}`)
@@ -179,7 +169,7 @@ function DashboardContent() {
       setWidgets(defaultWidgets)
       setLayouts(defaultLayouts)
     } finally {
-      setLoading(false)
+      setWidgetsLoading(false)
     }
   }
 
@@ -362,21 +352,13 @@ function DashboardContent() {
 
   // Prevent hydration mismatch by not rendering until client-side
   if (!isClient) {
-    return (
-      <Loading text="Loading..." />
-    )
-  }
-
-  if (loading) {
-    return (
-      <Loading text="Loading dashboard..." />
-    )
+    return null
   }
 
   return (
     <>
       <div className="page-fade-in">
-        {/* Dashboard Controls */}
+        {/* Dashboard Controls - Always visible */}
         <DashboardControls
           currentUserId={currentUserId}
           currentViewId={currentViewId}
@@ -384,40 +366,52 @@ function DashboardContent() {
           onAddWidget={() => setIsAddWidgetModalOpen(true)}
         />
 
-          {!currentViewId ? (
-            <div className="flex items-center justify-center h-64">
-              <span className="text-muted-foreground">Please select or create a view to get started</span>
-            </div>
-          ) : (
-            <ResponsiveGridLayout
-              className="layout"
-              layouts={layouts}
-              onLayoutChange={handleLayoutChange}
-              breakpoints={{ lg: 1200, md: 768, sm: 0 }}
-              cols={{ lg: 6, md: 4, sm: 2 }}
-              rowHeight={120}
-              margin={[16, 16]}
-              containerPadding={[0, 0]}
-              resizeHandles={["se"]}
-              isDraggable={true}
-              isResizable={true}
-              compactType="vertical"
-              preventCollision={false}
-            >
-              {widgets.map((widget) => (
-                <div key={widget.id} className="h-full w-full">
-                  <Widget 
-                    title={widget.title}
-                    onRemove={() => handleRemoveWidget(widget.id)}
-                    onEdit={() => handleEditWidget(widget.id)}
-                    reducedPadding={['bar', 'line', 'area'].includes(widget.type)}
-                  >
-                    {renderWidgetContent(widget)}
-                  </Widget>
-                </div>
-              ))}
-            </ResponsiveGridLayout>
-          )}
+        {/* Content area - no view selected */}
+        {!currentViewId ? (
+          <div className="flex items-center justify-center h-64">
+            <span className="text-muted-foreground">Please select or create a view to get started</span>
+          </div>
+        ) : widgetsLoading ? (
+          // Show a minimal loading state while widgets are loading
+          <div className="flex items-center justify-center h-64">
+            <Loading text="Loading widgets..." />
+          </div>
+        ) : widgets.length === 0 ? (
+          // No widgets yet
+          <div className="flex items-center justify-center h-64">
+            <span className="text-muted-foreground">No widgets added yet. Click "Add Widget" to get started.</span>
+          </div>
+        ) : (
+          // Show widgets grid
+          <ResponsiveGridLayout
+            className="layout"
+            layouts={layouts}
+            onLayoutChange={handleLayoutChange}
+            breakpoints={{ lg: 1200, md: 768, sm: 0 }}
+            cols={{ lg: 6, md: 4, sm: 2 }}
+            rowHeight={120}
+            margin={[16, 16]}
+            containerPadding={[0, 0]}
+            resizeHandles={["se"]}
+            isDraggable={true}
+            isResizable={true}
+            compactType="vertical"
+            preventCollision={false}
+          >
+            {widgets.map((widget) => (
+              <div key={widget.id} className="h-full w-full">
+                <Widget 
+                  title={widget.title}
+                  onRemove={() => handleRemoveWidget(widget.id)}
+                  onEdit={() => handleEditWidget(widget.id)}
+                  reducedPadding={['bar', 'line', 'area'].includes(widget.type)}
+                >
+                  {renderWidgetContent(widget)}
+                </Widget>
+              </div>
+            ))}
+          </ResponsiveGridLayout>
+        )}
       </div>
 
       {/* Add Widget Modal */}
