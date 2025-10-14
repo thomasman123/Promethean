@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/database-temp.types";
-import { formatInTimeZone, utcToZonedTime } from 'date-fns-tz';
+import { toZonedTime, formatInTimeZone } from 'date-fns-tz';
 import { startOfWeek, startOfMonth } from 'date-fns';
 
 // SSE helper to send progress updates
@@ -282,7 +282,7 @@ function mapGHLContactToSupabase(ghlContact: any, accountId: string, accountTime
   const ghlCreatedAt = createdAtDate.toISOString();
   
   // Convert UTC timestamp to local timezone for date calculations
-  const localDate = utcToZonedTime(createdAtDate, timezone);
+  const localDate = toZonedTime(createdAtDate, timezone);
   
   // Calculate local date fields (YYYY-MM-DD format)
   const ghlLocalDate = formatInTimeZone(localDate, timezone, 'yyyy-MM-dd');

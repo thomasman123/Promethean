@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import type { Database } from '@/lib/database.types'
-import { formatInTimeZone, utcToZonedTime } from 'date-fns-tz'
+import { toZonedTime, formatInTimeZone } from 'date-fns-tz'
 import { startOfWeek, startOfMonth } from 'date-fns'
 
 const supabase = createClient<Database>(
@@ -181,7 +181,7 @@ function mapGHLContactToSupabase(ghlContact: GHLContactData, accountId: string, 
   const ghlCreatedAt = createdAtDate.toISOString()
   
   // Convert UTC timestamp to local timezone for date calculations
-  const localDate = utcToZonedTime(createdAtDate, timezone)
+  const localDate = toZonedTime(createdAtDate, timezone)
   
   // Calculate local date fields (YYYY-MM-DD format)
   const ghlLocalDate = formatInTimeZone(localDate, timezone, 'yyyy-MM-dd')
@@ -324,7 +324,7 @@ export async function backfillContactGHLDates(
             const timezone = ghlContact.timezone || accountTimezone
             
             // Convert UTC timestamp to local timezone for date calculations
-            const localDate = utcToZonedTime(createdAtDate, timezone)
+            const localDate = toZonedTime(createdAtDate, timezone)
             
             // Calculate local date fields (YYYY-MM-DD format)
             const ghlLocalDate = formatInTimeZone(localDate, timezone, 'yyyy-MM-dd')
