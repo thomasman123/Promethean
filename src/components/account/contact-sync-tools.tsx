@@ -66,9 +66,9 @@ export function ContactSyncTools({ accountId }: ContactSyncToolsProps) {
     setBackfillResult(null)
     
     try {
-      console.log('🔄 Starting full contact sync from GHL (backfill + new contacts)...')
+      console.log('🔄 Starting contact dates backfill...')
       
-      const response = await fetch('/api/admin/sync-all-contacts-stream', {
+      const response = await fetch('/api/admin/backfill-contact-dates', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -116,20 +116,19 @@ export function ContactSyncTools({ accountId }: ContactSyncToolsProps) {
                   inProgress: true,
                   stage: data.stage,
                   message: data.message,
-                  syncedCount: data.syncedCount || 0,
-                  totalEstimate: data.totalEstimate || 0,
+                  current: data.current || 0,
+                  total: data.total || 0,
                   progress: data.progress || 0,
-                  batchNumber: data.batchNumber,
                 })
               } else if (eventType === 'complete') {
                 setBackfillResult({
                   success: true,
-                  totalProcessed: data.syncedCount,
+                  processedCount: data.processedCount,
                   message: data.message,
                   progress: 100,
                 })
                 toast({
-                  title: "Contact sync completed",
+                  title: "Backfill completed",
                   description: data.message,
                 })
                 await loadContactStats()
@@ -139,7 +138,7 @@ export function ContactSyncTools({ accountId }: ContactSyncToolsProps) {
                   error: data.error,
                 })
                 toast({
-                  title: "Contact sync failed",
+                  title: "Backfill failed",
                   description: data.error || 'Unknown error',
                   variant: "destructive"
                 })
@@ -150,15 +149,15 @@ export function ContactSyncTools({ accountId }: ContactSyncToolsProps) {
       }
 
     } catch (error) {
-      console.error('❌ Contact sync error:', error)
+      console.error('❌ Contact dates backfill error:', error)
       toast({
-        title: "Sync error",
-        description: "Failed to start contact sync process",
+        title: "Backfill error",
+        description: "Failed to start backfill process",
         variant: "destructive"
       })
       setBackfillResult({
         success: false,
-        error: 'Failed to start sync process'
+        error: 'Failed to start backfill process'
       })
     } finally {
       setIsBackfillLoading(false)
@@ -309,9 +308,9 @@ export function ContactSyncTools({ accountId }: ContactSyncToolsProps) {
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <div>
-              <h4 className="font-medium">Backfill Leads</h4>
+              <h4 className="font-medium">Fix Lead Creation Dates</h4>
               <p className="text-sm text-muted-foreground">
-                Sync all contacts from GHL (updates existing + creates new ones)
+                Update existing contacts with correct GHL creation dates
               </p>
             </div>
             <Button
@@ -329,20 +328,25 @@ export function ContactSyncTools({ accountId }: ContactSyncToolsProps) {
             <Button
               variant="outline"
               onClick={handleBackfillDates}
-              disabled={isBackfillLoading || isSyncLoading || !accountId}
+              disabled={isBackfillLoading || isSyncLoading || !accountId || isComplete}
               className="flex-1"
             >
               <Database className="h-4 w-4 mr-2" />
               {isBackfillLoading ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Syncing Leads...
+                  Updating Dates...
                 </>
-              ) : 'Backfill Leads'}
+              ) : 'Fix Creation Dates'}
             </Button>
             
             {isComplete && (
               <Badge variant="default"><CheckCircle className="h-3 w-3 mr-1" />Complete</Badge>
+            )}
+            {needsBackfill && (
+              <Badge variant="secondary" className="bg-orange-100 text-orange-900">
+                {contactStats?.needBackfill} Need Fix
+              </Badge>
             )}
           </div>
 
@@ -354,21 +358,16 @@ export function ContactSyncTools({ accountId }: ContactSyncToolsProps) {
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-muted-foreground">{backfillResult.message}</span>
                     <span className="font-medium">
-                      {backfillResult.syncedCount || 0}
-                      {backfillResult.totalEstimate > 0 && ` / ${backfillResult.totalEstimate}`} contacts
+                      {backfillResult.current || 0}
+                      {backfillResult.total > 0 && ` / ${backfillResult.total}`} contacts
                     </span>
                   </div>
-                  {backfillResult.batchNumber && (
-                    <div className="text-xs text-muted-foreground">
-                      Processing batch {backfillResult.batchNumber}...
-                    </div>
-                  )}
                 </>
               )}
               {backfillResult.success && (
                 <div className="flex items-center gap-2 text-sm text-green-600">
                   <CheckCircle className="h-4 w-4" />
-                  <span>Last sync: {backfillResult.totalProcessed || 0} contacts processed</span>
+                  <span>Updated {backfillResult.processedCount || 0} contacts</span>
                 </div>
               )}
               {backfillResult.error && (
@@ -380,9 +379,19 @@ export function ContactSyncTools({ accountId }: ContactSyncToolsProps) {
             </div>
           )}
           
-          {!backfillResult && (
-            <p className="text-xs text-muted-foreground">
-              Fetches ALL contacts from GHL, updates existing ones with correct dates, and creates any missing contacts.
+          {!backfillResult && needsBackfill && (
+            <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
+              <p className="text-xs text-orange-800">
+                <strong>Important:</strong> {contactStats?.needBackfill} contacts are missing GHL creation dates.
+                This affects Lead to Appointment and Speed to Lead metrics. Click "Fix Creation Dates" to resolve.
+              </p>
+            </div>
+          )}
+          
+          {!backfillResult && !needsBackfill && isComplete && (
+            <p className="text-xs text-green-600 flex items-center gap-1">
+              <CheckCircle className="h-3 w-3" />
+              All contacts have correct creation dates!
             </p>
           )}
         </div>

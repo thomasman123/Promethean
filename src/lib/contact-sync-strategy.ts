@@ -227,73 +227,172 @@ function mapGHLContactToSupabase(ghlContact: GHLContactData, accountId: string, 
 }
 
 /**
- * Backfill existing contacts with GHL creation dates
+ * Backfill existing contacts with GHL creation dates and local date fields
+ * Uses GHL "Get Contacts By BusinessId" API to fetch dateAdded for each contact
  */
-export async function backfillContactGHLDates(accountId: string, accessToken: string): Promise<number> {
+export async function backfillContactGHLDates(
+  accountId: string, 
+  accessToken: string,
+  locationId: string,
+  onProgress?: (current: number, total: number, message: string) => void
+): Promise<number> {
   console.log('🔄 Starting contact GHL dates backfill for account:', accountId)
+  
+  // Get account timezone for local date calculations
+  const { data: account } = await supabase
+    .from('accounts')
+    .select('business_timezone')
+    .eq('id', accountId)
+    .single()
+  
+  const accountTimezone = account?.business_timezone || 'UTC'
   
   let processedCount = 0
   let hasMore = true
-  let offset = 0
+  let searchAfter: any[] = []
   const limit = 100
 
+  // First, get total count of contacts that need backfill
+  const { count: totalCount } = await supabase
+    .from('contacts')
+    .select('id', { count: 'exact', head: true })
+    .eq('account_id', accountId)
+    .is('ghl_created_at', null)
+    .not('ghl_contact_id', 'is', null)
+  
+  const total = totalCount || 0
+  console.log(`📊 Found ${total} contacts that need backfill`)
+  
+  if (onProgress) {
+    onProgress(0, total, 'Starting backfill...')
+  }
+
+  // Use GHL Search API to fetch contacts in batches with their dateAdded
   while (hasMore) {
-    // Get contacts without ghl_created_at
-    const { data: contacts, error } = await supabase
-      .from('contacts')
-      .select('id, ghl_contact_id')
-      .eq('account_id', accountId)
-      .is('ghl_created_at', null)
-      .not('ghl_contact_id', 'is', null)
-      .range(offset, offset + limit - 1)
+    try {
+      const requestBody: any = {
+        locationId: locationId,
+        pageLimit: limit
+      }
+      
+      if (searchAfter.length > 0) {
+        requestBody.searchAfter = searchAfter
+      }
 
-    if (error) {
-      console.error('❌ Error fetching contacts for backfill:', error)
-      break
-    }
+      const response = await fetch('https://services.leadconnectorhq.com/contacts/search', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Version': '2021-07-28',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody)
+      })
 
-    if (!contacts || contacts.length === 0) {
-      hasMore = false
-      break
-    }
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('❌ Failed to fetch contacts from GHL:', response.status, errorText)
+        break
+      }
 
-    // Process each contact
-    for (const contact of contacts) {
-      try {
-        const response = await fetch(`https://services.leadconnectorhq.com/contacts/${contact.ghl_contact_id}`, {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Version': '2021-07-28',
-          },
-        })
+      const json = await response.json()
+      const contacts = json.contacts || []
+      
+      if (!contacts || contacts.length === 0) {
+        hasMore = false
+        break
+      }
 
-        if (response.ok) {
-          const json = await response.json()
-          const ghlContact = json.contact || json
-          
-          if (ghlContact.dateAdded) {
-            await supabase
+      // Batch update contacts that need backfill
+      for (const ghlContact of contacts) {
+        try {
+          // Check if this contact exists in our DB and needs backfill
+          const { data: existingContact } = await supabase
+            .from('contacts')
+            .select('id, ghl_contact_id')
+            .eq('account_id', accountId)
+            .eq('ghl_contact_id', ghlContact.id)
+            .is('ghl_created_at', null)
+            .single()
+
+          if (existingContact && ghlContact.dateAdded) {
+            // Calculate all date fields based on dateAdded
+            const createdAtDate = new Date(ghlContact.dateAdded)
+            const ghlCreatedAt = createdAtDate.toISOString()
+            
+            // Use contact's timezone if available, otherwise use account timezone
+            const timezone = ghlContact.timezone || accountTimezone
+            
+            // Convert UTC timestamp to local timezone for date calculations
+            const localDate = utcToZonedTime(createdAtDate, timezone)
+            
+            // Calculate local date fields (YYYY-MM-DD format)
+            const ghlLocalDate = formatInTimeZone(localDate, timezone, 'yyyy-MM-dd')
+            
+            // Calculate start of week (Monday) in local timezone
+            const weekStart = startOfWeek(localDate, { weekStartsOn: 1 })
+            const ghlLocalWeek = formatInTimeZone(weekStart, timezone, 'yyyy-MM-dd')
+            
+            // Calculate start of month in local timezone
+            const monthStart = startOfMonth(localDate)
+            const ghlLocalMonth = formatInTimeZone(monthStart, timezone, 'yyyy-MM-dd')
+
+            // Update the contact with all date fields
+            const { error } = await supabase
               .from('contacts')
-              .update({ 
-                ghl_created_at: new Date(ghlContact.dateAdded).toISOString(),
+              .update({
+                ghl_created_at: ghlCreatedAt,
+                ghl_local_date: ghlLocalDate,
+                ghl_local_week: ghlLocalWeek,
+                ghl_local_month: ghlLocalMonth,
+                timezone: timezone,
                 updated_at: new Date().toISOString()
               })
-              .eq('id', contact.id)
+              .eq('id', existingContact.id)
             
-            processedCount++
+            if (!error) {
+              processedCount++
+              if (onProgress && processedCount % 10 === 0) {
+                onProgress(processedCount, total, `Processed ${processedCount} of ${total} contacts...`)
+              }
+            } else {
+              console.error('❌ Failed to update contact:', existingContact.id, error)
+            }
           }
+          
+        } catch (error) {
+          console.error('❌ Error processing contact:', ghlContact.id, error)
         }
-        
-        // Rate limiting - wait 100ms between API calls
-        await new Promise(resolve => setTimeout(resolve, 100))
-        
-      } catch (error) {
-        console.error('❌ Error processing contact in backfill:', contact.id, error)
       }
-    }
 
-    offset += limit
-    console.log(`🔄 Processed ${processedCount} contacts so far...`)
+      // Set up pagination for next request
+      if (contacts.length === limit) {
+        const lastContact = contacts[contacts.length - 1]
+        if (lastContact.searchAfter) {
+          searchAfter = lastContact.searchAfter
+        } else {
+          searchAfter = [
+            new Date(lastContact.dateAdded || lastContact.dateUpdated || new Date()).getTime(), 
+            lastContact.id
+          ]
+        }
+      } else {
+        hasMore = false
+      }
+      
+      // Rate limiting between batches (GHL allows 120 req/min)
+      await new Promise(resolve => setTimeout(resolve, 500))
+      
+      console.log(`🔄 Processed ${processedCount} contacts so far...`)
+      
+    } catch (error) {
+      console.error('❌ Error fetching contacts batch:', error)
+      break
+    }
+  }
+
+  if (onProgress) {
+    onProgress(processedCount, total, `Backfill complete! Updated ${processedCount} contacts.`)
   }
 
   console.log(`✅ Backfill complete. Processed ${processedCount} contacts`)
