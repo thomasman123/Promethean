@@ -83,7 +83,7 @@ export function OverdueDataNotifications() {
 
   const handleCompleteNow = () => {
     setIsOpen(false);
-    router.push('/update-data/appointments-discoveries');
+    router.push('/update-data/complete');
   };
 
   if (!user) return null;

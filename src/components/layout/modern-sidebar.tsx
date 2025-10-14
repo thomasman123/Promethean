@@ -25,6 +25,7 @@ import {
   Moon,
   X,
   Target,
+  CheckCircle2,
 } from "lucide-react"
 import {
   DropdownMenu,
@@ -69,6 +70,7 @@ const navigationSections: NavSection[] = [
   {
     title: "DATA",
     items: [
+      { name: "Complete Data", href: "/update-data/complete", icon: CheckCircle2 },
       { name: "Follow ups", href: "/update-data/follow-ups", icon: Calendar },
       { name: "Appointments/Discoveries", href: "/update-data/appointments-discoveries", icon: Calendar },
       { name: "Payment Plans", href: "/update-data/payment-plans", icon: RefreshCw },
@@ -358,7 +360,7 @@ export function ModernSidebar() {
               {section.items.map((item) => {
                 const Icon = item.icon
                 const active = isActive(item.href)
-                const showOverdueBadge = item.href === "/update-data/appointments-discoveries" && overdueCount > 0
+                const showOverdueBadge = item.href === "/update-data/complete" && overdueCount > 0
 
                 return (
                   <Link
