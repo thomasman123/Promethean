@@ -121,8 +121,8 @@ export function OverdueDataNotifications() {
         </div>
         <div className="max-h-96 overflow-y-auto">
           {loading ? (
-            <div className="p-4 text-center text-sm text-muted-foreground">
-              Loading...
+            <div className="p-4 flex justify-center">
+              <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
             </div>
           ) : items.length === 0 ? (
             <div className="p-8 text-center">

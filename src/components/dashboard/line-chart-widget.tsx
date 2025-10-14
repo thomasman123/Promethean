@@ -265,7 +265,9 @@ export function LineChartWidget({ metrics, options }: LineChartWidgetProps) {
   if (loading) {
     return (
       <div className="h-full flex items-center justify-center">
-        <span className="text-muted-foreground">Loading...</span>
+        <div className="flex flex-col items-center space-y-2">
+          <div className="w-8 h-8 border-3 border-primary border-t-transparent rounded-full animate-spin" />
+        </div>
       </div>
     )
   }

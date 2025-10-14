@@ -153,9 +153,15 @@ export function MetricWidget({ metric, metrics, type, options, selectedUsers }: 
   // Other chart types placeholder
   return (
     <div className="h-full flex items-center justify-center">
-      <span className="text-muted-foreground text-sm">
-        {loading ? 'Loading...' : `${metricInfo?.name || metric} ${type} chart (coming soon)`}
-      </span>
+      {loading ? (
+        <div className="flex flex-col items-center space-y-2">
+          <div className="w-8 h-8 border-3 border-primary border-t-transparent rounded-full animate-spin" />
+        </div>
+      ) : (
+        <span className="text-muted-foreground text-sm">
+          {`${metricInfo?.name || metric} ${type} chart (coming soon)`}
+        </span>
+      )}
     </div>
   )
 } 

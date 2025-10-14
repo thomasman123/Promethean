@@ -464,13 +464,18 @@ export function OrderedDataFlow({ className }: OrderedDataFlowProps) {
 
       {/* Loading State */}
       {(userLoading || loading) && (
-        <Card className={cn("w-full max-w-4xl mx-auto", className)}>
-          <CardContent className="flex items-center justify-center p-12">
-            <div className="text-center">
-              <div className="text-lg text-muted-foreground">Loading...</div>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="w-full max-w-md space-y-4">
+            <div className="text-center space-y-3">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-2">
+                <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+              </div>
+              <h3 className="text-lg font-semibold">Loading your data</h3>
+              <p className="text-sm text-muted-foreground">Preparing your workflow...</p>
             </div>
-          </CardContent>
-        </Card>
+            <Progress value={66} className="h-2" />
+          </div>
+        </div>
       )}
 
       {/* Empty State */}
