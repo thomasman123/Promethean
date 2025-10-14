@@ -32,17 +32,28 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Check if user has access to this account
-    const { data: accountAccess } = await supabase
-      .from('account_access')
+    // Check if user is a global admin first
+    const { data: profile } = await supabase
+      .from('profiles')
       .select('role')
-      .eq('user_id', user.id)
-      .eq('account_id', accountId)
-      .eq('is_active', true)
+      .eq('id', user.id)
       .single()
 
-    if (!accountAccess || !['admin', 'moderator'].includes(accountAccess.role)) {
-      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
+    const isGlobalAdmin = profile?.role === 'admin'
+
+    // If not global admin, check account-specific access
+    if (!isGlobalAdmin) {
+      const { data: accountAccess } = await supabase
+        .from('account_access')
+        .select('role')
+        .eq('user_id', user.id)
+        .eq('account_id', accountId)
+        .eq('is_active', true)
+        .single()
+
+      if (!accountAccess || !['admin', 'moderator'].includes(accountAccess.role)) {
+        return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
+      }
     }
 
     // Get account details for GHL API access
@@ -217,17 +228,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Check if user has permission to invite
-    const { data: accountAccess } = await supabase
-      .from('account_access')
+    // Check if user is a global admin first
+    const { data: profile } = await supabase
+      .from('profiles')
       .select('role')
-      .eq('user_id', user.id)
-      .eq('account_id', accountId)
-      .eq('is_active', true)
+      .eq('id', user.id)
       .single()
 
-    if (!accountAccess || !['admin', 'moderator'].includes(accountAccess.role)) {
-      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
+    const isGlobalAdmin = profile?.role === 'admin'
+
+    // If not global admin, check account-specific permission to invite
+    if (!isGlobalAdmin) {
+      const { data: accountAccess } = await supabase
+        .from('account_access')
+        .select('role')
+        .eq('user_id', user.id)
+        .eq('account_id', accountId)
+        .eq('is_active', true)
+        .single()
+
+      if (!accountAccess || !['admin', 'moderator'].includes(accountAccess.role)) {
+        return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
+      }
     }
 
     // Create invitation via existing invite API
