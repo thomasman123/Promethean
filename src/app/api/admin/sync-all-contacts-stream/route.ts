@@ -1,6 +1,8 @@
 import { NextRequest } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/database-temp.types";
+import { formatInTimeZone, utcToZonedTime } from 'date-fns-tz';
+import { startOfWeek, startOfMonth } from 'date-fns';
 
 // SSE helper to send progress updates
 function sendEvent(controller: ReadableStreamDefaultController, event: string, data: any) {
@@ -34,10 +36,10 @@ export async function POST(req: NextRequest) {
           progress: 0
         });
 
-        // Get account with GHL credentials
+        // Get account with GHL credentials and timezone
         const { data: account, error: accountError } = await supabase
           .from('accounts')
-          .select('id, name, ghl_api_key, ghl_location_id, ghl_refresh_token, ghl_token_expires_at, ghl_auth_type')
+          .select('id, name, ghl_api_key, ghl_location_id, ghl_refresh_token, ghl_token_expires_at, ghl_auth_type, business_timezone')
           .eq('id', accountId)
           .single();
 
@@ -185,8 +187,9 @@ export async function POST(req: NextRequest) {
 
           // Batch upsert all contacts at once (much faster than individual queries)
           try {
+            const accountTimezone = account.business_timezone || 'UTC';
             const contactsToUpsert = contacts.map((ghlContact: any) => 
-              mapGHLContactToSupabase(ghlContact, accountId)
+              mapGHLContactToSupabase(ghlContact, accountId, accountTimezone)
             );
 
             const { error: upsertError, count } = await supabase
@@ -265,11 +268,32 @@ export async function POST(req: NextRequest) {
   });
 }
 
-// Helper function to map GHL contact to Supabase format
-function mapGHLContactToSupabase(ghlContact: any, accountId: string) {
+// Helper function to map GHL contact to Supabase format with timezone-aware local dates
+function mapGHLContactToSupabase(ghlContact: any, accountId: string, accountTimezone: string = 'UTC') {
   const firstName = ghlContact.firstName || null;
   const lastName = ghlContact.lastName || null;
   const name = ghlContact.name || [firstName, lastName].filter(Boolean).join(' ') || null;
+  
+  // Use contact's timezone if available, otherwise use account timezone
+  const timezone = ghlContact.timezone || accountTimezone;
+  
+  // Calculate local dates based on when contact was created in GHL
+  const createdAtDate = ghlContact.dateAdded ? new Date(ghlContact.dateAdded) : new Date();
+  const ghlCreatedAt = createdAtDate.toISOString();
+  
+  // Convert UTC timestamp to local timezone for date calculations
+  const localDate = utcToZonedTime(createdAtDate, timezone);
+  
+  // Calculate local date fields (YYYY-MM-DD format)
+  const ghlLocalDate = formatInTimeZone(localDate, timezone, 'yyyy-MM-dd');
+  
+  // Calculate start of week (Monday) in local timezone
+  const weekStart = startOfWeek(localDate, { weekStartsOn: 1 }); // Monday = 1
+  const ghlLocalWeek = formatInTimeZone(weekStart, timezone, 'yyyy-MM-dd');
+  
+  // Calculate start of month in local timezone
+  const monthStart = startOfMonth(localDate);
+  const ghlLocalMonth = formatInTimeZone(monthStart, timezone, 'yyyy-MM-dd');
 
   return {
     account_id: accountId,
@@ -280,11 +304,26 @@ function mapGHLContactToSupabase(ghlContact: any, accountId: string) {
     email: ghlContact.email || null,
     phone: ghlContact.phone || null,
     source: ghlContact.source || null,
+    timezone: timezone,
     assigned_to: ghlContact.assignedTo || null,
     date_added: ghlContact.dateAdded ? new Date(ghlContact.dateAdded).toISOString() : new Date().toISOString(),
     date_updated: ghlContact.dateUpdated ? new Date(ghlContact.dateUpdated).toISOString() : new Date().toISOString(),
-    ghl_created_at: ghlContact.dateAdded ? new Date(ghlContact.dateAdded).toISOString() : new Date().toISOString(),
+    ghl_created_at: ghlCreatedAt,
+    ghl_local_date: ghlLocalDate,
+    ghl_local_week: ghlLocalWeek,
+    ghl_local_month: ghlLocalMonth,
     tags: Array.isArray(ghlContact.tags) ? ghlContact.tags : [],
+    custom_fields: ghlContact.customFields || null,
+    // Address fields
+    address: ghlContact.address1 || null,
+    city: ghlContact.city || null,
+    state: ghlContact.state || null,
+    country: ghlContact.country || null,
+    postal_code: ghlContact.postalCode || null,
+    // Additional fields
+    company: ghlContact.companyName || null,
+    website: ghlContact.website || null,
+    do_not_contact: ghlContact.dnd || false,
   };
 }
 
