@@ -81,6 +81,9 @@ export function OrderedDataFlow({ className }: OrderedDataFlowProps) {
   const [editForm, setEditForm] = useState<any>({})
   const [saving, setSaving] = useState(false)
   const [showSuccessAnimation, setShowSuccessAnimation] = useState(false)
+  const [testMode, setTestMode] = useState(false)
+  const [emptyTestMode, setEmptyTestMode] = useState(false)
+  const [hasModeratorAccess, setHasModeratorAccess] = useState(false)
   
   const { toast } = useToast()
   const { isImpersonating } = useImpersonation()
@@ -94,9 +97,15 @@ export function OrderedDataFlow({ className }: OrderedDataFlowProps) {
 
   useEffect(() => {
     if (effectiveUser) {
-      fetchOrderedData()
+      checkModeratorAccess()
     }
   }, [effectiveUser, selectedAccountId])
+
+  useEffect(() => {
+    if (effectiveUser) {
+      fetchOrderedData()
+    }
+  }, [effectiveUser, selectedAccountId, testMode, emptyTestMode])
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -132,18 +141,67 @@ export function OrderedDataFlow({ className }: OrderedDataFlowProps) {
     return () => window.removeEventListener('keydown', handleKeyPress)
   }, [editForm, currentIndex, items.length, saving])
 
+  const checkModeratorAccess = async () => {
+    if (!effectiveUser || !selectedAccountId) return
+    
+    try {
+      // Check if user is a global admin
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', effectiveUser.id)
+        .single()
+      
+      if (profile?.role === 'admin') {
+        setHasModeratorAccess(true)
+        return
+      }
+
+      // Check account-specific moderator access
+      const { data: access } = await supabase
+        .from('account_access')
+        .select('role')
+        .eq('user_id', effectiveUser.id)
+        .eq('account_id', selectedAccountId)
+        .in('role', ['admin', 'moderator'])
+        .single()
+      
+      setHasModeratorAccess(!!access)
+    } catch (error) {
+      console.error('Error checking moderator access:', error)
+      setHasModeratorAccess(false)
+    }
+  }
+
   const fetchOrderedData = async () => {
     if (!effectiveUser) return
     
     setLoading(true)
     try {
-      const queryParams = new URLSearchParams({
-        user_id: effectiveUser.id,
-        account_id: selectedAccountId || ''
-      })
+      let response, data
 
-      const response = await fetch(`/api/update-data/ordered-flow?${queryParams}`)
-      const data = await response.json()
+      // Use test data endpoint if in test mode
+      if (testMode && hasModeratorAccess) {
+        const queryParams = new URLSearchParams({
+          account_id: selectedAccountId || ''
+        })
+        response = await fetch(`/api/update-data/test-data?${queryParams}`)
+        data = await response.json()
+        
+        // If empty test mode, return empty array
+        if (emptyTestMode) {
+          setItems([])
+          setLoading(false)
+          return
+        }
+      } else {
+        const queryParams = new URLSearchParams({
+          user_id: effectiveUser.id,
+          account_id: selectedAccountId || ''
+        })
+        response = await fetch(`/api/update-data/ordered-flow?${queryParams}`)
+        data = await response.json()
+      }
 
       if (!response.ok) {
         throw new Error(data.error || 'Failed to fetch data')
@@ -208,6 +266,38 @@ export function OrderedDataFlow({ className }: OrderedDataFlowProps) {
   const saveItemData = async () => {
     const currentItem = items[currentIndex]
     if (!currentItem) return
+
+    // In test mode, just simulate save and move to next item
+    if (testMode && hasModeratorAccess) {
+      setSaving(true)
+      setShowSuccessAnimation(true)
+      
+      setTimeout(() => {
+        setShowSuccessAnimation(false)
+        setSaving(false)
+        
+        toast({
+          title: "Test Mode",
+          description: "No data saved in test mode. Moving to next item.",
+        })
+        
+        setTimeout(() => {
+          if (currentIndex < items.length - 1) {
+            handleNext()
+          } else {
+            // In test mode, reset to beginning or show empty state
+            if (emptyTestMode) {
+              setItems([])
+            } else {
+              setCurrentIndex(0)
+              initializeForm(items[0])
+            }
+          }
+        }, 500)
+      }, 1000)
+      
+      return
+    }
 
     setSaving(true)
     try {
@@ -306,6 +396,78 @@ export function OrderedDataFlow({ className }: OrderedDataFlowProps) {
 
   return (
     <div className={cn("w-full max-w-5xl mx-auto space-y-4 md:space-y-6 px-2 md:px-0", className)}>
+      {/* Moderator Test Mode Toggle */}
+      {hasModeratorAccess && (
+        <Card className="border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20">
+          <CardContent className="p-4">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <Badge variant="outline" className="bg-amber-100 dark:bg-amber-900 text-amber-900 dark:text-amber-100 border-amber-300 dark:border-amber-700">
+                    Moderator
+                  </Badge>
+                  <h3 className="font-semibold text-sm">Test Mode</h3>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  View realistic test data to demo the completion flow. No data will be saved.
+                </p>
+              </div>
+              <div className="flex flex-col md:flex-row gap-3 w-full md:w-auto">
+                <Button
+                  variant={testMode && !emptyTestMode ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => {
+                    setTestMode(!testMode || emptyTestMode)
+                    setEmptyTestMode(false)
+                    setCurrentIndex(0)
+                  }}
+                  className="w-full md:w-auto"
+                >
+                  {testMode && !emptyTestMode ? "✓ " : ""}Sample Data
+                </Button>
+                <Button
+                  variant={emptyTestMode ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => {
+                    setTestMode(true)
+                    setEmptyTestMode(!emptyTestMode)
+                    setCurrentIndex(0)
+                  }}
+                  className="w-full md:w-auto"
+                >
+                  {emptyTestMode ? "✓ " : ""}Empty State
+                </Button>
+                {testMode && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setTestMode(false)
+                      setEmptyTestMode(false)
+                      setCurrentIndex(0)
+                    }}
+                    className="w-full md:w-auto"
+                  >
+                    Exit Test Mode
+                  </Button>
+                )}
+              </div>
+            </div>
+            {testMode && !emptyTestMode && (
+              <div className="mt-3 pt-3 border-t border-amber-200 dark:border-amber-800">
+                <div className="flex flex-wrap gap-2 text-xs">
+                  <Badge variant="secondary">7 Test Items</Badge>
+                  <Badge variant="secondary">3 Discoveries</Badge>
+                  <Badge variant="secondary">4 Appointments</Badge>
+                  <Badge variant="destructive">Overdue Scenarios</Badge>
+                  <Badge variant="outline">Won/Lost/Follow-up Cases</Badge>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Progress Header */}
       <div className="flex items-center justify-between mb-4 md:mb-8">
         <div className="flex-1">
