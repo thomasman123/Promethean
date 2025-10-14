@@ -383,38 +383,14 @@ export function OrderedDataFlow({ className }: OrderedDataFlowProps) {
     }
   }
 
-  if (userLoading || loading) {
-    return (
-      <Card className={cn("w-full max-w-4xl mx-auto", className)}>
-        <CardContent className="flex items-center justify-center p-12">
-          <div className="text-center">
-            <div className="text-lg text-muted-foreground">Loading...</div>
-          </div>
-        </CardContent>
-      </Card>
-    )
-  }
-
-  if (items.length === 0) {
-    return (
-      <Card className={cn("w-full max-w-4xl mx-auto", className)}>
-        <CardContent className="flex flex-col items-center justify-center p-12 text-center">
-          <CheckCircle2 className="h-16 w-16 text-muted-foreground mb-4" />
-          <h3 className="text-xl font-semibold mb-2">All Caught Up!</h3>
-          <p className="text-muted-foreground">All appointments and discoveries have been updated.</p>
-        </CardContent>
-      </Card>
-    )
-  }
-
+  console.log('🎨 Rendering OrderedDataFlow, hasModeratorAccess:', hasModeratorAccess, 'items:', items.length)
+  
   const currentItem = items[currentIndex]
   const progress = ((currentIndex + 1) / items.length) * 100
-
-  console.log('🎨 Rendering OrderedDataFlow, hasModeratorAccess:', hasModeratorAccess)
   
   return (
     <div className={cn("w-full max-w-5xl mx-auto space-y-4 md:space-y-6 px-2 md:px-0", className)}>
-      {/* Moderator Test Mode Toggle */}
+      {/* Moderator Test Mode Toggle - Always show at top */}
       {hasModeratorAccess && (
         <Card className="border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20">
           <CardContent className="p-4">
@@ -486,23 +462,48 @@ export function OrderedDataFlow({ className }: OrderedDataFlowProps) {
         </Card>
       )}
 
-      {/* Progress Header */}
-      <div className="flex items-center justify-between mb-4 md:mb-8">
-        <div className="flex-1">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-xl md:text-2xl font-semibold">Update Data Flow</h2>
-            <span className="text-sm md:text-base text-muted-foreground font-medium">
-              {currentIndex + 1} of {items.length}
-            </span>
-          </div>
-          <Progress value={progress} className="h-2.5 md:h-3" />
-          <p className="text-xs md:text-sm text-muted-foreground mt-2">
-            Keyboard: 1-5 for rating, Enter to save, ← → to navigate
-          </p>
-        </div>
-      </div>
+      {/* Loading State */}
+      {(userLoading || loading) && (
+        <Card className={cn("w-full max-w-4xl mx-auto", className)}>
+          <CardContent className="flex items-center justify-center p-12">
+            <div className="text-center">
+              <div className="text-lg text-muted-foreground">Loading...</div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
-      {/* Main Card */}
+      {/* Empty State */}
+      {!userLoading && !loading && items.length === 0 && (
+        <Card className={cn("w-full max-w-4xl mx-auto", className)}>
+          <CardContent className="flex flex-col items-center justify-center p-12 text-center">
+            <CheckCircle2 className="h-16 w-16 text-muted-foreground mb-4" />
+            <h3 className="text-xl font-semibold mb-2">All Caught Up!</h3>
+            <p className="text-muted-foreground">All appointments and discoveries have been updated.</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Main Flow - Only show when we have items */}
+      {!userLoading && !loading && items.length > 0 && (
+        <>
+          {/* Progress Header */}
+          <div className="flex items-center justify-between mb-4 md:mb-8">
+            <div className="flex-1">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-xl md:text-2xl font-semibold">Update Data Flow</h2>
+                <span className="text-sm md:text-base text-muted-foreground font-medium">
+                  {currentIndex + 1} of {items.length}
+                </span>
+              </div>
+              <Progress value={((currentIndex + 1) / items.length) * 100} className="h-2.5 md:h-3" />
+              <p className="text-xs md:text-sm text-muted-foreground mt-2">
+                Keyboard: 1-5 for rating, Enter to save, ← → to navigate
+              </p>
+            </div>
+          </div>
+
+          {/* Main Card */}
       <Card className={cn(
         "border-2 transition-all duration-300",
         showSuccessAnimation && "border-green-500 shadow-lg shadow-green-500/20"
@@ -855,17 +856,19 @@ export function OrderedDataFlow({ className }: OrderedDataFlowProps) {
         </CardContent>
       </Card>
 
-      {/* Stats Footer */}
-      <div className="flex justify-center gap-8 text-sm text-muted-foreground">
-        <div className="flex items-center gap-2">
-          <CheckCircle2 className="h-4 w-4" />
-          <span>Completed Today: {currentIndex}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <Clock className="h-4 w-4" />
-          <span>Remaining: {items.length - currentIndex - 1}</span>
-        </div>
-      </div>
+          {/* Stats Footer */}
+          <div className="flex justify-center gap-8 text-sm text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4" />
+              <span>Completed Today: {currentIndex}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Clock className="h-4 w-4" />
+              <span>Remaining: {items.length - currentIndex - 1}</span>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   )
 } 
