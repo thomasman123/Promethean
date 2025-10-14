@@ -142,7 +142,15 @@ export function OrderedDataFlow({ className }: OrderedDataFlowProps) {
   }, [editForm, currentIndex, items.length, saving])
 
   const checkModeratorAccess = async () => {
-    if (!effectiveUser || !selectedAccountId) return
+    console.log('🔍 Checking moderator access...', { 
+      effectiveUser: effectiveUser?.id, 
+      selectedAccountId 
+    })
+    
+    if (!effectiveUser || !selectedAccountId) {
+      console.log('❌ Missing user or account:', { effectiveUser: !!effectiveUser, selectedAccountId })
+      return
+    }
     
     try {
       // Check if user is a global admin
@@ -152,7 +160,10 @@ export function OrderedDataFlow({ className }: OrderedDataFlowProps) {
         .eq('id', effectiveUser.id)
         .single()
       
+      console.log('👤 Profile role:', profile?.role)
+      
       if (profile?.role === 'admin') {
+        console.log('✅ Global admin access granted')
         setHasModeratorAccess(true)
         return
       }
@@ -166,9 +177,11 @@ export function OrderedDataFlow({ className }: OrderedDataFlowProps) {
         .in('role', ['admin', 'moderator'])
         .single()
       
+      console.log('🏢 Account access:', access)
       setHasModeratorAccess(!!access)
+      console.log('✅ Moderator access:', !!access)
     } catch (error) {
-      console.error('Error checking moderator access:', error)
+      console.error('❌ Error checking moderator access:', error)
       setHasModeratorAccess(false)
     }
   }
