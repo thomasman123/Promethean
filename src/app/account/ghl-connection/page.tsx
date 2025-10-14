@@ -791,7 +791,7 @@ function GHLConnectionContent() {
                     {userLoading || loading ? (
                       <>
                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Loading...
+                        Preparing...
                       </>
                     ) : (
                       <>
@@ -1120,7 +1120,7 @@ export default function GHLConnectionPage() {
     <LayoutWrapper>
       <Suspense fallback={
         <div className="page-fade-in">
-          <Loading text="Loading..." />
+          <Loading text="Loading connection settings" showProgress />
         </div>
       }>
         <GHLConnectionContent />
