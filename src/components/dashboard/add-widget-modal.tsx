@@ -136,7 +136,12 @@ export function AddWidgetModal({ open, onOpenChange, onAddWidget }: AddWidgetMod
 
   const handleNext = () => {
     if (currentStep === "visualization" && selectedVisualization) {
-      setCurrentStep("metric")
+      // KPI Progress widgets don't need metric selection
+      if (selectedVisualization === "kpi_progress") {
+        handleCreateKpiProgressWidget()
+      } else {
+        setCurrentStep("metric")
+      }
     } else if (currentStep === "metric" && isDataView && selectedMetrics.length > 0) {
       setCurrentStep("users")
       loadUsers()
@@ -211,6 +216,16 @@ export function AddWidgetModal({ open, onOpenChange, onAddWidget }: AddWidgetMod
       onAddWidget(widget)
       handleClose()
     }
+  }
+
+  const handleCreateKpiProgressWidget = () => {
+    const widget: WidgetConfig = {
+      id: `widget-${Date.now()}`,
+      type: "kpi_progress",
+      title: widgetTitle || "KPI Progress"
+    }
+    onAddWidget(widget)
+    handleClose()
   }
 
   const handleCreateWidget = () => {
