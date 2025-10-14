@@ -1,5 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import type { Database } from '@/lib/database.types'
+import { formatInTimeZone, utcToZonedTime } from 'date-fns-tz'
+import { startOfWeek, startOfMonth } from 'date-fns'
 
 const supabase = createClient<Database>(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -19,6 +21,15 @@ interface GHLContactData {
   tags?: string[]
   assignedTo?: string
   customFields?: any[]
+  address1?: string
+  city?: string
+  state?: string
+  country?: string
+  postalCode?: string
+  companyName?: string
+  website?: string
+  dnd?: boolean
+  timezone?: string
   [key: string]: any
 }
 
@@ -36,7 +47,16 @@ export async function processContactCreateWebhook(payload: any, accountId: strin
   console.log('👤 Processing ContactCreate webhook for contact:', payload.id)
   
   try {
-    const contactData = mapGHLContactToSupabase(payload, accountId)
+    // Get account timezone for local date calculations
+    const { data: account } = await supabase
+      .from('accounts')
+      .select('business_timezone')
+      .eq('id', accountId)
+      .single()
+    
+    const accountTimezone = account?.business_timezone || 'UTC'
+    
+    const contactData = mapGHLContactToSupabase(payload, accountId, accountTimezone)
     
     const { data: contact, error } = await supabase
       .from('contacts')
@@ -90,6 +110,15 @@ export async function ensureContactExists(
   console.log('🔄 Contact not found, fetching from GHL API:', ghlContactId)
   
   try {
+    // Get account timezone for local date calculations
+    const { data: account } = await supabase
+      .from('accounts')
+      .select('business_timezone')
+      .eq('id', accountId)
+      .single()
+    
+    const accountTimezone = account?.business_timezone || 'UTC'
+    
     const response = await fetch(`https://services.leadconnectorhq.com/contacts/${ghlContactId}`, {
       headers: {
         'Authorization': `Bearer ${accessToken}`,
@@ -111,7 +140,7 @@ export async function ensureContactExists(
     }
 
     // Create contact from GHL API data
-    const mappedContact = mapGHLContactToSupabase(contactData, accountId)
+    const mappedContact = mapGHLContactToSupabase(contactData, accountId, accountTimezone)
     
     const { data: newContact, error } = await supabase
       .from('contacts')
@@ -137,12 +166,33 @@ export async function ensureContactExists(
 }
 
 /**
- * Map GHL contact data to Supabase format
+ * Map GHL contact data to Supabase format with timezone-aware local dates
  */
-function mapGHLContactToSupabase(ghlContact: GHLContactData, accountId: string) {
+function mapGHLContactToSupabase(ghlContact: GHLContactData, accountId: string, accountTimezone: string = 'UTC') {
   const firstName = ghlContact.firstName || null
   const lastName = ghlContact.lastName || null
   const name = ghlContact.name || [firstName, lastName].filter(Boolean).join(' ') || null
+  
+  // Use contact's timezone if available, otherwise use account timezone
+  const timezone = ghlContact.timezone || accountTimezone
+  
+  // Calculate local dates based on when contact was created in GHL
+  const createdAtDate = ghlContact.dateAdded ? new Date(ghlContact.dateAdded) : new Date()
+  const ghlCreatedAt = createdAtDate.toISOString()
+  
+  // Convert UTC timestamp to local timezone for date calculations
+  const localDate = utcToZonedTime(createdAtDate, timezone)
+  
+  // Calculate local date fields (YYYY-MM-DD format)
+  const ghlLocalDate = formatInTimeZone(localDate, timezone, 'yyyy-MM-dd')
+  
+  // Calculate start of week (Monday) in local timezone
+  const weekStart = startOfWeek(localDate, { weekStartsOn: 1 }) // Monday = 1
+  const ghlLocalWeek = formatInTimeZone(weekStart, timezone, 'yyyy-MM-dd')
+  
+  // Calculate start of month in local timezone
+  const monthStart = startOfMonth(localDate)
+  const ghlLocalMonth = formatInTimeZone(monthStart, timezone, 'yyyy-MM-dd')
 
   return {
     account_id: accountId,
@@ -153,12 +203,26 @@ function mapGHLContactToSupabase(ghlContact: GHLContactData, accountId: string) 
     email: ghlContact.email || null,
     phone: ghlContact.phone || null,
     source: ghlContact.source || null,
+    timezone: timezone,
     assigned_to: ghlContact.assignedTo || null,
     date_added: ghlContact.dateAdded ? new Date(ghlContact.dateAdded).toISOString() : new Date().toISOString(),
     date_updated: ghlContact.dateUpdated ? new Date(ghlContact.dateUpdated).toISOString() : new Date().toISOString(),
-    ghl_created_at: ghlContact.dateAdded ? new Date(ghlContact.dateAdded).toISOString() : new Date().toISOString(),
+    ghl_created_at: ghlCreatedAt,
+    ghl_local_date: ghlLocalDate,
+    ghl_local_week: ghlLocalWeek,
+    ghl_local_month: ghlLocalMonth,
     tags: Array.isArray(ghlContact.tags) ? ghlContact.tags : [],
-    // Additional fields can be added here as needed
+    custom_fields: ghlContact.customFields || null,
+    // Address fields
+    address: ghlContact.address1 || null,
+    city: ghlContact.city || null,
+    state: ghlContact.state || null,
+    country: ghlContact.country || null,
+    postal_code: ghlContact.postalCode || null,
+    // Additional fields
+    company: ghlContact.companyName || null,
+    website: ghlContact.website || null,
+    do_not_contact: ghlContact.dnd || false,
   }
 }
 
@@ -242,6 +306,15 @@ export async function backfillContactGHLDates(accountId: string, accessToken: st
 export async function syncAllContactsFromGHL(accountId: string, accessToken: string, locationId: string): Promise<number> {
   console.log('🔄 Starting full contact sync from GHL for account:', accountId)
   
+  // Get account timezone for local date calculations
+  const { data: account } = await supabase
+    .from('accounts')
+    .select('business_timezone')
+    .eq('id', accountId)
+    .single()
+  
+  const accountTimezone = account?.business_timezone || 'UTC'
+  
   let syncedCount = 0
   let hasMore = true
   let searchAfter: any[] = []
@@ -302,7 +375,7 @@ export async function syncAllContactsFromGHL(accountId: string, accessToken: str
 
           if (!existingContact) {
             // Contact doesn't exist, create it
-            const contactData = mapGHLContactToSupabase(ghlContact, accountId)
+            const contactData = mapGHLContactToSupabase(ghlContact, accountId, accountTimezone)
             
             const { data: newContact, error } = await supabase
               .from('contacts')
@@ -318,7 +391,7 @@ export async function syncAllContactsFromGHL(accountId: string, accessToken: str
             }
           } else {
             // Contact exists, update it with latest GHL data
-            const contactData = mapGHLContactToSupabase(ghlContact, accountId)
+            const contactData = mapGHLContactToSupabase(ghlContact, accountId, accountTimezone)
             delete (contactData as any).account_id // Don't update account_id
             delete (contactData as any).ghl_contact_id // Don't update ghl_contact_id
             
