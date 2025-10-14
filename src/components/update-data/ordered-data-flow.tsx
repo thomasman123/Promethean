@@ -165,8 +165,9 @@ export function OrderedDataFlow({ className }: OrderedDataFlowProps) {
       console.log('👤 Profile role:', profile?.role)
       
       if (profile?.role === 'admin') {
-        console.log('✅ Global admin access granted')
+        console.log('✅ Global admin access granted, setting hasModeratorAccess to true')
         setHasModeratorAccess(true)
+        console.log('✅ hasModeratorAccess state updated')
         return
       }
 
@@ -409,6 +410,8 @@ export function OrderedDataFlow({ className }: OrderedDataFlowProps) {
   const currentItem = items[currentIndex]
   const progress = ((currentIndex + 1) / items.length) * 100
 
+  console.log('🎨 Rendering OrderedDataFlow, hasModeratorAccess:', hasModeratorAccess)
+  
   return (
     <div className={cn("w-full max-w-5xl mx-auto space-y-4 md:space-y-6 px-2 md:px-0", className)}>
       {/* Moderator Test Mode Toggle */}
