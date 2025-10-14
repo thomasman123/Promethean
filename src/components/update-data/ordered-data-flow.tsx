@@ -75,6 +75,8 @@ interface OrderedDataFlowProps {
 }
 
 export function OrderedDataFlow({ className }: OrderedDataFlowProps) {
+  console.log('🚀 OrderedDataFlow component mounted')
+  
   const [items, setItems] = useState<OrderedDataItem[]>([])
   const [loading, setLoading] = useState(true)
   const [currentIndex, setCurrentIndex] = useState(0)
