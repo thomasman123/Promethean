@@ -140,9 +140,9 @@ async function processCallMessage(message: any, account: any, accessToken: strin
 
     console.log('📞 Processing call:', message.id);
 
-    // Extract call data from message (Export Messages API includes all needed data in meta)
+    // Extract call data from message (Export Messages API includes all needed data)
     const contactId = message.contactId;
-    const userId = message.meta?.userId;
+    const userId = message.userId; // userId is at root level, NOT in meta
     const callDuration = message.meta?.callDuration ? parseInt(message.meta.callDuration) : 0;
     const callStatus = message.meta?.callStatus || message.status;
     const direction = message.direction;
@@ -210,16 +210,16 @@ async function processCallMessage(message: any, account: any, accessToken: strin
     }
 
     // Prepare dial data with same logic as webhook
-    // Note: callStatus can be 'answered', 'completed', 'voicemail', etc.
-    // We consider a call answered if duration > 30 and it was actually answered or completed (not voicemail)
+    // Answered is simply duration > 30 seconds (regardless of callStatus)
+    // Meaningful conversation is duration > 120 seconds
     const dialData = {
       account_id: account.id,
       setter: setterName,
       setter_user_id: linkedSetterUserId,
       duration: callDuration,
       call_recording_link: recordingUrl,
-      answered: callDuration > 30 && (callStatus === 'answered' || callStatus === 'completed') && callStatus !== 'voicemail',
-      meaningful_conversation: callDuration > 120 && (callStatus === 'answered' || callStatus === 'completed') && callStatus !== 'voicemail',
+      answered: callDuration > 30,
+      meaningful_conversation: callDuration > 120,
       date_called: new Date(dateAdded).toISOString(),
       contact_email_snapshot: contactEmail,
       contact_phone_snapshot: contactPhone,
