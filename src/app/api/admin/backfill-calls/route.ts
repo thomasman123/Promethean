@@ -257,22 +257,25 @@ async function processCallMessage(message: any, account: any, accessToken: strin
       console.error('❌ Error in contact upsert:', contactError);
     }
 
-    // Upsert dial to dials table (insert or update if ghl_message_id exists)
+    // Insert dial to dials table
+    // The unique constraint on (account_id, ghl_message_id) will prevent duplicates on re-runs
     const { data: savedDial, error: dialError } = await supabase
       .from('dials')
-      .upsert(dialData, { 
-        onConflict: 'account_id,ghl_message_id',
-        ignoreDuplicates: false 
-      })
+      .insert(dialData)
       .select()
       .single();
 
     if (dialError) {
+      // If duplicate, it's already been processed - skip it
+      if (dialError.code === '23505') { // Unique violation
+        console.log('⏭️ Dial already exists (duplicate ghl_message_id)');
+        return { success: false, reason: 'duplicate' };
+      }
       console.error('❌ Failed to save dial:', dialError);
       throw dialError;
     }
 
-    console.log('✅ Dial saved/updated successfully:', savedDial.id);
+    console.log('✅ Dial saved successfully:', savedDial.id);
 
     // Link to appointments within ±30 minutes (same logic as webhook)
     try {
