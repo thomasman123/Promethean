@@ -135,14 +135,38 @@ async function processCallMessage(message: any, account: any, accessToken: strin
   try {
     console.log('📞 Processing call:', message.id);
 
-    // Extract call data from message
-    const contactId = message.contactId;
-    const userId = message.meta?.userId;
-    const callDuration = message.meta?.duration || 0;
-    const callStatus = message.status;
-    const direction = message.direction;
-    const dateAdded = message.dateAdded;
-    const recordingUrl = message.attachments?.[0] || null;
+    // Fetch full message details by ID to get complete call metadata
+    let fullMessage: any;
+    try {
+      const messageResponse = await fetch(
+        `https://services.leadconnectorhq.com/conversations/messages/${message.id}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Version': '2021-04-15',
+          },
+        }
+      );
+
+      if (messageResponse.ok) {
+        fullMessage = await messageResponse.json();
+      } else {
+        console.error('Failed to fetch full message:', message.id);
+        fullMessage = message; // Fallback to basic message
+      }
+    } catch (e) {
+      console.error('Error fetching full message:', e);
+      fullMessage = message; // Fallback to basic message
+    }
+
+    // Extract call data from full message
+    const contactId = fullMessage.contactId;
+    const userId = fullMessage.meta?.userId;
+    const callDuration = fullMessage.meta?.duration || 0;
+    const callStatus = fullMessage.status;
+    const direction = fullMessage.direction;
+    const dateAdded = fullMessage.dateAdded;
+    const recordingUrl = fullMessage.attachments?.[0] || null;
 
     // Skip inbound calls
     if (direction !== 'outbound') {
@@ -210,19 +234,6 @@ async function processCallMessage(message: any, account: any, accessToken: strin
       }
     }
 
-    // Check if dial already exists
-    const { data: existingDial } = await supabase
-      .from('dials')
-      .select('id')
-      .eq('account_id', account.id)
-      .eq('date_called', new Date(dateAdded).toISOString())
-      .maybeSingle();
-
-    if (existingDial) {
-      console.log('⏭️ Dial already exists:', existingDial.id);
-      return { success: false, reason: 'duplicate' };
-    }
-
     // Prepare dial data with same logic as webhook
     const dialData = {
       account_id: account.id,
@@ -236,6 +247,7 @@ async function processCallMessage(message: any, account: any, accessToken: strin
       contact_email_snapshot: contactEmail,
       contact_phone_snapshot: contactPhone,
       contact_name_snapshot: contactName,
+      ghl_message_id: message.id, // Track GHL message ID for idempotency
     } as any;
 
     // Try to upsert contact first
@@ -268,10 +280,13 @@ async function processCallMessage(message: any, account: any, accessToken: strin
       console.error('❌ Error in contact upsert:', contactError);
     }
 
-    // Save to dials table
+    // Upsert dial to dials table (insert or update if ghl_message_id exists)
     const { data: savedDial, error: dialError } = await supabase
       .from('dials')
-      .insert(dialData)
+      .upsert(dialData, { 
+        onConflict: 'account_id,ghl_message_id',
+        ignoreDuplicates: false 
+      })
       .select()
       .single();
 
@@ -280,7 +295,7 @@ async function processCallMessage(message: any, account: any, accessToken: strin
       throw dialError;
     }
 
-    console.log('✅ Dial saved successfully:', savedDial.id);
+    console.log('✅ Dial saved/updated successfully:', savedDial.id);
 
     // Link to appointments within ±30 minutes (same logic as webhook)
     try {
