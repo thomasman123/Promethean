@@ -5,7 +5,7 @@ import { LayoutWrapper } from "@/components/layout/layout-wrapper"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { createBrowserClient } from "@supabase/ssr"
+import { supabase } from "@/lib/supabase"
 import { Database } from "@/lib/database.types"
 import { Calendar, Clock, TrendingUp, AlertCircle, CheckCircle2 } from "lucide-react"
 import { Input } from "@/components/ui/input"
@@ -39,11 +39,6 @@ function UpdateDataContent() {
   const { toast } = useToast()
   const { isImpersonating } = useImpersonation()
   const { user: effectiveUser, loading: userLoading } = useEffectiveUser()
-  
-  const supabase = createBrowserClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
 
   useEffect(() => {
     if (effectiveUser) {
