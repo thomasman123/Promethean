@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
 import { Target, TrendingUp, AlertCircle, CheckCircle2, Clock } from "lucide-react"
-import { createBrowserClient } from "@supabase/ssr"
+import { supabase } from "@/lib/supabase"
 import { Database } from "@/lib/database.types"
 import { useDashboard } from "@/lib/dashboard-context"
 import { useEffectiveUser } from "@/hooks/use-effective-user"
@@ -43,11 +43,6 @@ export function KPIProgressWidget({ options }: KPIProgressWidgetProps) {
   
   const { selectedAccountId } = useDashboard()
   const { user: effectiveUser } = useEffectiveUser()
-  
-  const supabase = createBrowserClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
 
   const showCount = options?.showCount || 5
   const compact = options?.compact || false

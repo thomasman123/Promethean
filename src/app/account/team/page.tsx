@@ -31,7 +31,7 @@ import {
 } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { createBrowserClient } from "@supabase/ssr"
+import { supabase } from "@/lib/supabase"
 import { Database } from "@/lib/database.types"
 import { useToast } from "@/hooks/use-toast"
 import { useDashboard } from "@/lib/dashboard-context"
@@ -107,11 +107,6 @@ function TeamContent() {
   const { toast } = useToast()
   const { selectedAccountId } = useDashboard()
   const { user: effectiveUser, loading: userLoading } = useEffectiveUser()
-
-  const supabase = createBrowserClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
 
   // Check user permissions
   useEffect(() => {
