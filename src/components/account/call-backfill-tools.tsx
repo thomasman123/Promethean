@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast"
 import { Phone, Loader2, Download, CheckCircle2, AlertCircle } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Progress } from "@/components/ui/progress"
-import { createClient } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase'
 
 interface CallBackfillToolsProps {
   accountId: string
@@ -30,7 +30,6 @@ export function CallBackfillTools({ accountId }: CallBackfillToolsProps) {
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<BackfillResult | null>(null)
   const { toast } = useToast()
-  const supabase = createClient()
 
   const handleBackfill = async () => {
     if (!startDate || !endDate) {
