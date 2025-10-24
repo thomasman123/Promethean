@@ -16,7 +16,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { createBrowserClient } from "@supabase/ssr"
+import { supabase } from "@/lib/supabase"
 import { Database } from "@/lib/database.types"
 import { useToast } from "@/hooks/use-toast"
 import { 
@@ -91,11 +91,6 @@ export function OrderedDataFlow({ className }: OrderedDataFlowProps) {
   const { isImpersonating } = useImpersonation()
   const { user: effectiveUser, loading: userLoading } = useEffectiveUser()
   const { selectedAccountId } = useDashboard()
-
-  const supabase = createBrowserClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
 
   useEffect(() => {
     if (effectiveUser) {
