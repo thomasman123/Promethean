@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast"
 import { Globe, RefreshCw, Save, AlertCircle } from "lucide-react"
 import { ContactSyncTools } from "@/components/account/contact-sync-tools"
 import { AppointmentBackfillTools } from "@/components/account/appointment-backfill-tools"
+import { CallBackfillTools } from "@/components/account/call-backfill-tools"
 import { Loading } from "@/components/ui/loading"
 
 const TIMEZONES = [
@@ -205,6 +206,9 @@ export function AccountSettingsTab({ selectedAccountId, hasAccess }: AccountSett
 
       {/* Appointment/Discovery Backfill */}
       <AppointmentBackfillTools accountId={selectedAccountId} />
+
+      {/* Call Backfill */}
+      <CallBackfillTools accountId={selectedAccountId} />
 
       {/* Advanced Tracking Link */}
       <Card>
