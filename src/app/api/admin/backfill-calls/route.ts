@@ -133,46 +133,21 @@ async function fetchGhlUserDetails(userId: string, accessToken: string, location
 // Process a single call message (same logic as webhook)
 async function processCallMessage(message: any, account: any, accessToken: string, supabase: any) {
   try {
-    console.log('📞 Processing call:', message.id);
-
-    // Fetch full message details by ID to get complete call metadata
-    let fullMessage: any;
-    try {
-      const messageResponse = await fetch(
-        `https://services.leadconnectorhq.com/conversations/messages/${message.id}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Version': '2021-04-15',
-          },
-        }
-      );
-
-      if (messageResponse.ok) {
-        fullMessage = await messageResponse.json();
-      } else {
-        console.error('Failed to fetch full message:', message.id);
-        fullMessage = message; // Fallback to basic message
-      }
-    } catch (e) {
-      console.error('Error fetching full message:', e);
-      fullMessage = message; // Fallback to basic message
-    }
-
-    // Extract call data from full message
-    const contactId = fullMessage.contactId;
-    const userId = fullMessage.meta?.userId;
-    const callDuration = fullMessage.meta?.duration || 0;
-    const callStatus = fullMessage.status;
-    const direction = fullMessage.direction;
-    const dateAdded = fullMessage.dateAdded;
-    const recordingUrl = fullMessage.attachments?.[0] || null;
-
-    // Skip inbound calls
-    if (direction !== 'outbound') {
-      console.log('⏭️ Skipping inbound call');
+    // Skip inbound calls early
+    if (message.direction !== 'outbound') {
       return { success: false, reason: 'inbound' };
     }
+
+    console.log('📞 Processing call:', message.id);
+
+    // Extract call data from message (Export Messages API includes all needed data in meta)
+    const contactId = message.contactId;
+    const userId = message.meta?.userId;
+    const callDuration = message.meta?.callDuration ? parseInt(message.meta.callDuration) : 0;
+    const callStatus = message.meta?.callStatus || message.status;
+    const direction = message.direction;
+    const dateAdded = message.dateAdded;
+    const recordingUrl = message.attachments?.[0] || null;
 
     // Fetch contact information
     let contactEmail = null;
@@ -241,8 +216,8 @@ async function processCallMessage(message: any, account: any, accessToken: strin
       setter_user_id: linkedSetterUserId,
       duration: callDuration,
       call_recording_link: recordingUrl,
-      answered: callDuration > 30 && callStatus === 'delivered' && direction === 'outbound',
-      meaningful_conversation: callDuration > 120 && callStatus === 'delivered' && direction === 'outbound',
+      answered: callDuration > 30 && callStatus === 'completed' && callStatus !== 'voicemail',
+      meaningful_conversation: callDuration > 120 && callStatus === 'completed' && callStatus !== 'voicemail',
       date_called: new Date(dateAdded).toISOString(),
       contact_email_snapshot: contactEmail,
       contact_phone_snapshot: contactPhone,
