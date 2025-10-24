@@ -349,13 +349,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user is admin
-    const { data: userData } = await supabase
-      .from('users')
-      .select('role, account_id')
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
       .eq('id', user.id)
       .single();
 
-    if (!userData || userData.role !== 'admin') {
+    if (!profile || profile.role !== 'admin') {
       return NextResponse.json({ error: 'Forbidden - Admin only' }, { status: 403 });
     }
 
