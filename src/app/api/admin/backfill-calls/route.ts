@@ -210,14 +210,16 @@ async function processCallMessage(message: any, account: any, accessToken: strin
     }
 
     // Prepare dial data with same logic as webhook
+    // Note: callStatus can be 'answered', 'completed', 'voicemail', etc.
+    // We consider a call answered if duration > 30 and it was actually answered or completed (not voicemail)
     const dialData = {
       account_id: account.id,
       setter: setterName,
       setter_user_id: linkedSetterUserId,
       duration: callDuration,
       call_recording_link: recordingUrl,
-      answered: callDuration > 30 && callStatus === 'completed' && callStatus !== 'voicemail',
-      meaningful_conversation: callDuration > 120 && callStatus === 'completed' && callStatus !== 'voicemail',
+      answered: callDuration > 30 && (callStatus === 'answered' || callStatus === 'completed') && callStatus !== 'voicemail',
+      meaningful_conversation: callDuration > 120 && (callStatus === 'answered' || callStatus === 'completed') && callStatus !== 'voicemail',
       date_called: new Date(dateAdded).toISOString(),
       contact_email_snapshot: contactEmail,
       contact_phone_snapshot: contactPhone,
