@@ -33,7 +33,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Progress } from "@/components/ui/progress"
 import { Switch } from "@/components/ui/switch"
-import { createBrowserClient } from "@supabase/ssr"
+import { supabase } from "@/lib/supabase"
 import { Database } from "@/lib/database.types"
 import { useToast } from "@/hooks/use-toast"
 import { Target, Plus, Edit, Trash2, TrendingUp, AlertCircle, CheckCircle2, Clock } from "lucide-react"
@@ -100,11 +100,6 @@ function KPIsContent() {
   const { toast } = useToast()
   const { user: effectiveUser, loading: userLoading } = useEffectiveUser()
   const { selectedAccountId } = useDashboard()
-
-  const supabase = createBrowserClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
 
   useEffect(() => {
     if (effectiveUser && selectedAccountId) {

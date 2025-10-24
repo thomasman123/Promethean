@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { AlertCircle, Eye, EyeOff, Sword, Shield } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { createBrowserClient } from '@supabase/ssr'
+import { supabase } from '@/lib/supabase'
 import { AnimatedGridPattern } from '@/components/ui/animated-grid-pattern'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
@@ -40,11 +40,6 @@ function ResetPasswordInner() {
   const [accessToken, setAccessToken] = useState<string | null>(queryAccessToken)
   const [refreshToken, setRefreshToken] = useState<string | null>(queryRefreshToken)
   const [linkType, setLinkType] = useState<string | null>(queryType)
-
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
 
   useEffect(() => {
     if (typeof window === 'undefined') return

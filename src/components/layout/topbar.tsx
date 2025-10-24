@@ -13,7 +13,7 @@ import {
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { createBrowserClient } from "@supabase/ssr"
+import { supabase } from "@/lib/supabase"
 import { DatePicker } from "@/components/ui/date-picker"
 import { ViewsManager } from "@/components/dashboard/views-manager"
 // Data view imports temporarily disabled
@@ -61,10 +61,6 @@ export function TopBar({ onAddWidget }: TopBarProps) {
   const [hasSettingsAccess, setHasSettingsAccess] = useState(false)
   const pathname = usePathname()
   const router = useRouter()
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
   const { dateRange, setDateRange, selectedAccountId, setSelectedAccountId, setCurrentViewId, currentViewId } = useDashboard()
   const { user: effectiveUser, loading: effectiveUserLoading } = useEffectiveUser()
   const { accounts, loading: accountsLoading, refreshAccounts } = useAccountsCache(effectiveUser?.id)

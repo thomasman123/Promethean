@@ -39,7 +39,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { createBrowserClient } from "@supabase/ssr"
+import { supabase } from "@/lib/supabase"
 import { useEffectiveUser } from "@/hooks/use-effective-user"
 import { useAccountsCache } from "@/hooks/use-accounts-cache"
 import { useDashboard } from "@/lib/dashboard-context"
@@ -108,11 +108,6 @@ export function ModernSidebar() {
   const { user: effectiveUser } = useEffectiveUser()
   const { accounts } = useAccountsCache(effectiveUser?.id)
   const { selectedAccountId, setSelectedAccountId } = useDashboard()
-  
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
 
   // Load collapsed state and theme from localStorage
   useEffect(() => {

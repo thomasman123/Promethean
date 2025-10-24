@@ -4,7 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { createBrowserClient } from "@supabase/ssr"
+import { supabase } from "@/lib/supabase"
 import { Sword, ArrowLeft, Mail, CheckCircle } from "lucide-react"
 import { AnimatedGridPattern } from "@/components/ui/animated-grid-pattern"
 import { cn } from "@/lib/utils"
@@ -14,11 +14,6 @@ export default function ForgotPasswordPage() {
   const [loading, setLoading] = useState(false)
   const [emailSent, setEmailSent] = useState(false)
   const [error, setError] = useState("")
-
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
 
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault()

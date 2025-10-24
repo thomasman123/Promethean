@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useEffectiveUser } from '@/hooks/use-effective-user';
-import { createBrowserClient } from '@supabase/ssr';
+import { supabase } from '@/lib/supabase';
 import { Database } from '@/lib/database.types';
 import { AlertCircle, Calendar, Users, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -28,11 +28,6 @@ export function OverdueDataNotifications() {
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
-
-  const supabase = createBrowserClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
 
   useEffect(() => {
     if (user) {

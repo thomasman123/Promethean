@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
-import { createBrowserClient } from "@supabase/ssr"
+import { supabase } from "@/lib/supabase"
 import { Database } from "@/lib/database.types"
 import { useToast } from "@/hooks/use-toast"
 import { useDashboard } from "@/lib/dashboard-context"
@@ -41,11 +41,6 @@ function AccountSettingsContent() {
   const { toast } = useToast()
   const { selectedAccountId } = useDashboard()
   const { user: effectiveUser, loading: userLoading } = useEffectiveUser()
-  
-  const supabase = createBrowserClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
 
   useEffect(() => {
     if (!userLoading && effectiveUser && selectedAccountId) {
