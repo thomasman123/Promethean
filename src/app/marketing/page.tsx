@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
-import { createBrowserClient } from '@supabase/ssr'
+import { supabase } from '@/lib/supabase'
 import type { Database } from '@/lib/database.types'
 import { Button } from '@/components/ui/button'
 import { ArrowRight, BarChart3, Globe, Shield } from 'lucide-react'
@@ -15,11 +15,6 @@ import { MetricCards } from '@/components/landing/metric-cards'
 export default function MarketingPage() {
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-
-  const supabase = createBrowserClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
 
   useEffect(() => {
     const checkAuth = async () => {

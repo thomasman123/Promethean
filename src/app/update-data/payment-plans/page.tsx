@@ -40,7 +40,7 @@ import { useDashboard } from "@/lib/dashboard-context"
 import { cn } from "@/lib/utils"
 import { format, isAfter, isBefore, addDays } from "date-fns"
 import { PaymentPlan } from "@/components/payment-plan"
-import { createBrowserClient } from "@supabase/ssr"
+import { supabase } from "@/lib/supabase"
 import { Database } from "@/lib/database.types"
 import { Loading } from "@/components/ui/loading"
 
@@ -110,11 +110,6 @@ function PaymentPlansContent() {
   const { isImpersonating } = useImpersonation()
   const { selectedAccountId } = useDashboard()
   const { toast } = useToast()
-
-  const supabase = createBrowserClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
 
   // Load payment plans data using direct Supabase client
   useEffect(() => {

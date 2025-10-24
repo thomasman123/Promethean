@@ -14,7 +14,7 @@ import { AccountSettingsTab } from "@/components/account/account-settings-tab"
 import { TeamTab } from "@/components/account/team-tab"
 import { useDashboard } from "@/lib/dashboard-context"
 import { useEffectiveUser } from "@/hooks/use-effective-user"
-import { createBrowserClient } from "@supabase/ssr"
+import { supabase } from "@/lib/supabase"
 import { Database } from "@/lib/database.types"
 
 interface AccountSettingsModalProps {
@@ -27,11 +27,6 @@ export function AccountSettingsModal({ open, onOpenChange, defaultTab = "account
   const [hasAccess, setHasAccess] = useState(false)
   const { selectedAccountId } = useDashboard()
   const { user: effectiveUser, loading: userLoading } = useEffectiveUser()
-  
-  const supabase = createBrowserClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
 
   // Check user permissions
   useEffect(() => {

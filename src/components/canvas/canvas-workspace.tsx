@@ -11,7 +11,7 @@ import { WidgetConfig } from '@/components/dashboard/add-widget-modal'
 import { useCanvas } from '@/lib/canvas-context'
 // import { useRealtimeCollaboration } from '@/hooks/use-realtime-collaboration' // Temporarily disabled
 import { startOfMonth } from 'date-fns'
-import { createBrowserClient } from '@supabase/ssr'
+import { supabase } from '@/lib/supabase'
 
 export function CanvasWorkspace() {
   const { selectedBoardId, addElement, elements, deleteElement, refreshElements } = useCanvas()
@@ -28,10 +28,6 @@ export function CanvasWorkspace() {
 
   // Get current user (only once on mount)
   useEffect(() => {
-    const supabase = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    )
 
     let mounted = true
 

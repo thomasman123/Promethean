@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label'
 import { Loader2, Building, UserCheck, UserX, Plus, Trash2 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
-import { createBrowserClient } from '@supabase/ssr'
+import { supabase } from '@/lib/supabase'
 import { Database } from '@/lib/database.types'
 
 interface UserAccountAccess {
@@ -43,11 +43,6 @@ export function UserAccountAccessManager({ open, onOpenChange, user }: UserAccou
   const [accounts, setAccounts] = useState<UserAccountAccess[]>([])
   const [originalAccess, setOriginalAccess] = useState<UserAccountAccess[]>([])
   const { toast } = useToast()
-
-  const supabase = createBrowserClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
 
   useEffect(() => {
     if (open && user) {

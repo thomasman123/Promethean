@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { createBrowserClient } from "@supabase/ssr"
+import { supabase } from "@/lib/supabase"
 import { Database } from "@/lib/database.types"
 import { useToast } from "@/hooks/use-toast"
 import { 
@@ -104,11 +104,6 @@ export function TeamTab({ selectedAccountId, hasAccess }: TeamTabProps) {
   const [invitingGhlId, setInvitingGhlId] = useState<string | null>(null)
   
   const { toast } = useToast()
-
-  const supabase = createBrowserClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
 
   // Load team members
   useEffect(() => {
