@@ -149,6 +149,16 @@ async function processCallMessage(message: any, account: any, accessToken: strin
     const dateAdded = message.dateAdded;
     const recordingUrl = message.attachments?.[0] || null;
 
+    // Debug log to see what we're getting
+    console.log('📋 Call data:', {
+      id: message.id,
+      userId,
+      callDuration,
+      metaCallDuration: message.meta?.callDuration,
+      callStatus,
+      hasRecording: !!recordingUrl
+    });
+
     // Fetch contact information
     let contactEmail = null;
     let contactPhone = null;
@@ -192,6 +202,8 @@ async function processCallMessage(message: any, account: any, accessToken: strin
         setterName = setterData.name || `${setterData.firstName || ''} ${setterData.lastName || ''}`.trim() || 'Unknown';
         setterEmail = setterData.email;
 
+        console.log('👤 Setter details:', { name: setterName, email: setterEmail });
+
         // Link to platform user by email
         if (setterEmail) {
           const { data: matchedUsers } = await supabase
@@ -204,6 +216,8 @@ async function processCallMessage(message: any, account: any, accessToken: strin
           if (matchedUsers && matchedUsers.length > 0) {
             linkedSetterUserId = matchedUsers[0].id;
             console.log('✅ Linked setter to platform user:', linkedSetterUserId);
+          } else {
+            console.log('⚠️ No platform user found for email:', setterEmail);
           }
         }
       }
@@ -257,25 +271,23 @@ async function processCallMessage(message: any, account: any, accessToken: strin
       console.error('❌ Error in contact upsert:', contactError);
     }
 
-    // Insert dial to dials table
-    // The unique constraint on (account_id, ghl_message_id) will prevent duplicates on re-runs
+    // Upsert dial to dials table
+    // Uses the unique index on (account_id, ghl_message_id) to update existing rows
     const { data: savedDial, error: dialError } = await supabase
       .from('dials')
-      .insert(dialData)
+      .upsert(dialData, {
+        onConflict: 'account_id, ghl_message_id',
+        ignoreDuplicates: false
+      })
       .select()
       .single();
 
     if (dialError) {
-      // If duplicate, it's already been processed - skip it
-      if (dialError.code === '23505') { // Unique violation
-        console.log('⏭️ Dial already exists (duplicate ghl_message_id)');
-        return { success: false, reason: 'duplicate' };
-      }
       console.error('❌ Failed to save dial:', dialError);
       throw dialError;
     }
 
-    console.log('✅ Dial saved successfully:', savedDial.id);
+    console.log('✅ Dial saved/updated successfully:', savedDial.id);
 
     // Link to appointments within ±30 minutes (same logic as webhook)
     try {
