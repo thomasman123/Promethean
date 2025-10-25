@@ -300,14 +300,20 @@ async function processCallMessage(message: any, account: any, accessToken: strin
       console.error('❌ Error in contact upsert:', contactError);
     }
 
-    // Upsert dial to dials table
-    // Uses the unique index on (account_id, ghl_message_id) to update existing rows
+    // Delete existing dial with same ghl_message_id, then insert
+    // This approach works better than upsert for partial unique indexes
+    if (dialData.ghl_message_id) {
+      await supabase
+        .from('dials')
+        .delete()
+        .eq('account_id', account.id)
+        .eq('ghl_message_id', dialData.ghl_message_id);
+    }
+
+    // Insert the dial
     const { data: savedDial, error: dialError } = await supabase
       .from('dials')
-      .upsert(dialData, {
-        onConflict: 'idx_dials_ghl_message_id',
-        ignoreDuplicates: false
-      })
+      .insert(dialData)
       .select()
       .single();
 
