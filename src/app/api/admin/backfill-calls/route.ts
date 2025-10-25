@@ -144,37 +144,11 @@ async function processCallMessage(message: any, account: any, accessToken: strin
     const contactId = message.contactId;
     const userId = message.userId; // userId is at root level, NOT in meta
     
-    // Try to get duration from meta first
-    let rawDuration = message.meta?.callDuration;
-    let callDuration = rawDuration ? (typeof rawDuration === 'number' ? rawDuration : parseInt(rawDuration)) : 0;
+    // Get duration from meta.call.duration (nested structure!)
+    const rawDuration = message.meta?.call?.duration;
+    const callDuration = rawDuration ? (typeof rawDuration === 'number' ? rawDuration : parseInt(rawDuration)) : 0;
     
-    // If duration is missing and has recording, try fetching full message details
-    if (callDuration === 0 && message.attachments && message.attachments.length > 0) {
-      try {
-        const fullMessageResponse = await fetch(
-          `https://services.leadconnectorhq.com/conversations/messages/${message.id}`,
-          {
-            headers: {
-              'Authorization': `Bearer ${accessToken}`,
-              'Version': '2021-04-15',
-            },
-          }
-        );
-        
-        if (fullMessageResponse.ok) {
-          const fullMessage = await fullMessageResponse.json();
-          if (fullMessage.meta?.callDuration) {
-            rawDuration = fullMessage.meta.callDuration;
-            callDuration = typeof rawDuration === 'number' ? rawDuration : parseInt(rawDuration);
-            console.log(`📞 Got duration from full message: ${callDuration}s`);
-          }
-        }
-      } catch (e) {
-        console.log('⚠️ Could not fetch full message for duration');
-      }
-    }
-    
-    const callStatus = message.meta?.callStatus || message.status;
+    const callStatus = message.meta?.call?.status || message.status;
     const direction = message.direction;
     const dateAdded = message.dateAdded;
     const recordingUrl = message.attachments?.[0] || null;
@@ -186,7 +160,8 @@ async function processCallMessage(message: any, account: any, accessToken: strin
       callDuration,
       rawDuration,
       callStatus,
-      hasRecording: !!recordingUrl
+      hasRecording: !!recordingUrl,
+      metaCall: message.meta?.call
     });
 
     // Fetch contact information
