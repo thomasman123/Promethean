@@ -380,7 +380,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get request body
-    const { accountId, startDate, endDate } = await request.json();
+    const { accountId, startDate, endDate, skip = 0, batchSize = 200 } = await request.json();
 
     if (!accountId || !startDate || !endDate) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -413,10 +413,10 @@ export async function POST(request: NextRequest) {
     // Fetch all outbound calls from GHL Export Messages API
     const allCalls = [];
     let cursor = null;
-    let hasMore = true;
+    let hasMorePages = true;
     let pageCount = 0;
 
-    while (hasMore) {
+    while (hasMorePages) {
       pageCount++;
       console.log(`📥 Fetching page ${pageCount}...`);
 
@@ -472,7 +472,7 @@ export async function POST(request: NextRequest) {
       allCalls.push(...messages);
 
       cursor = data.nextCursor;
-      hasMore = !!cursor && messages.length > 0;
+      hasMorePages = !!cursor && messages.length > 0;
 
       // Respect cursor validity (2 minutes), but we process fast enough
     }
@@ -482,10 +482,25 @@ export async function POST(request: NextRequest) {
     // Filter for outbound calls only
     const outboundCalls = allCalls.filter(msg => msg.direction === 'outbound');
     console.log(`📊 Outbound calls: ${outboundCalls.length}`);
+    
+    // Apply batch processing
+    const totalOutbound = outboundCalls.length;
+    const callsToProcess = outboundCalls.slice(skip, skip + batchSize);
+    const hasMore = (skip + batchSize) < totalOutbound;
+    
+    console.log(`📊 Processing batch: ${skip + 1} to ${skip + callsToProcess.length} of ${totalOutbound} (batchSize: ${batchSize})`);
+    if (hasMore) {
+      console.log(`⏭️ More calls remaining: ${totalOutbound - (skip + batchSize)} will need follow-up request`);
+    }
 
-    // Process each call
+    // Process each call in the batch
     const results = {
-      total: outboundCalls.length,
+      total: totalOutbound,
+      batchTotal: callsToProcess.length,
+      batchStart: skip,
+      batchEnd: skip + callsToProcess.length,
+      hasMore,
+      nextSkip: hasMore ? skip + batchSize : null,
       processed: 0,
       skipped: 0,
       errors: 0,
@@ -494,7 +509,7 @@ export async function POST(request: NextRequest) {
     };
 
     let processedCount = 0;
-    for (const call of outboundCalls) {
+    for (const call of callsToProcess) {
       const result = await processCallMessage(call, account, accessToken, supabase);
 
       processedCount++;
