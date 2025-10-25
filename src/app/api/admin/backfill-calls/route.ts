@@ -529,11 +529,12 @@ export async function POST(request: NextRequest) {
       
       // Log progress every 100 calls
       if (processedCount % 100 === 0) {
-        console.log(`📊 Progress: ${processedCount}/${outboundCalls.length} calls processed`);
+        console.log(`📊 Progress: ${processedCount}/${callsToProcess.length} calls processed in this batch`);
       }
     }
 
-    console.log('✅ Backfill complete:', results);
+    console.log('✅ Backfill batch complete:', results);
+    console.log(`🎯 Returning response - hasMore: ${results.hasMore}, nextSkip: ${results.nextSkip}`);
 
     return NextResponse.json({
       success: true,
