@@ -84,9 +84,14 @@ async function getValidGhlAccessToken(account: any, supabase: any, forceRefresh?
   }
 }
 
-// Helper to fetch GHL user details
+// Helper to fetch GHL user details (with caching)
 async function fetchGhlUserDetails(userId: string, accessToken: string, locationId: string): Promise<any | null> {
   try {
+    // Check cache first
+    if (userCache.has(userId)) {
+      return userCache.get(userId);
+    }
+
     console.log('🔍 Fetching user details from GHL for userId:', userId);
     
     // Try individual user endpoint first
@@ -100,6 +105,7 @@ async function fetchGhlUserDetails(userId: string, accessToken: string, location
     if (userResponse.ok) {
       const userData = await userResponse.json();
       console.log('✅ User data retrieved via individual endpoint');
+      userCache.set(userId, userData);
       return userData;
     }
     
@@ -122,10 +128,12 @@ async function fetchGhlUserDetails(userId: string, accessToken: string, location
       
       if (userData) {
         console.log('✅ User data retrieved via location users endpoint');
+        userCache.set(userId, userData);
         return userData;
       }
     }
     
+    userCache.set(userId, null);
     return null;
   } catch (error) {
     console.error('❌ Error fetching user from GHL:', error);
@@ -213,18 +221,31 @@ async function processCallMessage(message: any, account: any, accessToken: strin
         console.log('👤 Setter details:', { name: setterName, email: setterEmail });
 
         // Link to platform user by email (check profiles table, not users)
+        // Use cache to avoid repeated DB lookups for same email
         if (setterEmail) {
-          const { data: matchedProfiles } = await supabase
-            .from('profiles')
-            .select('id, email')
-            .ilike('email', setterEmail)
-            .limit(1);
-
-          if (matchedProfiles && matchedProfiles.length > 0) {
-            linkedSetterUserId = matchedProfiles[0].id;
-            console.log('✅ Linked setter to platform user:', linkedSetterUserId);
+          const cacheKey = setterEmail.toLowerCase();
+          
+          if (setterCache.has(cacheKey)) {
+            const cached = setterCache.get(cacheKey)!;
+            linkedSetterUserId = cached.id;
+            if (linkedSetterUserId) {
+              console.log('✅ Linked setter to platform user (cached):', linkedSetterUserId);
+            }
           } else {
-            console.log('⚠️ No platform user found for email:', setterEmail);
+            const { data: matchedProfiles } = await supabase
+              .from('profiles')
+              .select('id, email')
+              .ilike('email', setterEmail)
+              .limit(1);
+
+            if (matchedProfiles && matchedProfiles.length > 0) {
+              linkedSetterUserId = matchedProfiles[0].id;
+              setterCache.set(cacheKey, { id: linkedSetterUserId, email: setterEmail });
+              console.log('✅ Linked setter to platform user:', linkedSetterUserId);
+            } else {
+              setterCache.set(cacheKey, { id: null, email: setterEmail });
+              console.log('⚠️ No platform user found for email:', setterEmail);
+            }
           }
         }
       }
@@ -349,8 +370,16 @@ async function processCallMessage(message: any, account: any, accessToken: strin
   }
 }
 
+// Cache for user lookups within a single request to avoid redundant API calls
+const userCache = new Map<string, any>();
+const setterCache = new Map<string, { id: string | null, email: string | null }>();
+
 export async function POST(request: NextRequest) {
   try {
+    // Clear caches for this request
+    userCache.clear();
+    setterCache.clear();
+
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
     const supabase = createClient(supabaseUrl, serviceKey);
@@ -409,16 +438,20 @@ export async function POST(request: NextRequest) {
 
     console.log('🚀 Starting call backfill for account:', accountId);
     console.log('📅 Date range:', startDate, 'to', endDate);
+    console.log(`📊 Batch request: skip=${skip}, batchSize=${batchSize}`);
 
-    // Fetch all outbound calls from GHL Export Messages API
+    // Fetch ONLY enough messages to fill this batch (not all messages!)
+    // We need to account for filtering out inbound calls, so fetch a bit more
+    const messagesNeeded = skip + batchSize * 3; // Buffer for filtering
     const allCalls = [];
     let cursor = null;
     let hasMorePages = true;
     let pageCount = 0;
+    let totalAvailable = 0;
 
-    while (hasMorePages) {
+    while (hasMorePages && allCalls.length < messagesNeeded) {
       pageCount++;
-      console.log(`📥 Fetching page ${pageCount}...`);
+      console.log(`📥 Fetching page ${pageCount}... (have ${allCalls.length}, need ${messagesNeeded})`);
 
       const params = new URLSearchParams({
         locationId: account.ghl_location_id,
@@ -456,16 +489,16 @@ export async function POST(request: NextRequest) {
 
       const data = await response.json();
       const messages = data.messages || [];
+      totalAvailable = data.total || 0;
 
       console.log(`✅ Fetched ${messages.length} messages`);
       
       // Log full response on first page for debugging
       if (pageCount === 1) {
-        console.log('📋 FULL API RESPONSE STRUCTURE:', JSON.stringify({
-          total: data.total,
+        console.log('📋 API RESPONSE:', JSON.stringify({
+          total: totalAvailable,
           messageCount: messages.length,
-          hasNextCursor: !!data.nextCursor,
-          firstMessage: messages.length > 0 ? messages[0] : null
+          hasNextCursor: !!data.nextCursor
         }, null, 2));
       }
 
@@ -474,33 +507,58 @@ export async function POST(request: NextRequest) {
       cursor = data.nextCursor;
       hasMorePages = !!cursor && messages.length > 0;
 
-      // Respect cursor validity (2 minutes), but we process fast enough
+      // IMPORTANT: Stop fetching early if we have enough for this batch
+      if (allCalls.length >= messagesNeeded) {
+        console.log(`⏭️ Have enough messages for this batch. Stopping fetch early.`);
+        break;
+      }
     }
 
-    console.log(`📊 Total calls fetched: ${allCalls.length}`);
+    console.log(`📊 Total calls fetched: ${allCalls.length} of ${totalAvailable} available`);
 
     // Filter for outbound calls only
     const outboundCalls = allCalls.filter(msg => msg.direction === 'outbound');
-    console.log(`📊 Outbound calls: ${outboundCalls.length}`);
+    console.log(`📊 Outbound calls after filtering: ${outboundCalls.length}`);
     
     // Apply batch processing
-    const totalOutbound = outboundCalls.length;
     const callsToProcess = outboundCalls.slice(skip, skip + batchSize);
-    const hasMore = (skip + batchSize) < totalOutbound;
     
-    console.log(`📊 Processing batch: ${skip + 1} to ${skip + callsToProcess.length} of ${totalOutbound} (batchSize: ${batchSize})`);
-    if (hasMore) {
-      console.log(`⏭️ More calls remaining: ${totalOutbound - (skip + batchSize)} will need follow-up request`);
+    // Estimate if there are more (we don't know exact count until we fetch all)
+    // If we filled our buffer, assume there's more
+    const likelyHasMore = hasMorePages || outboundCalls.length > (skip + batchSize);
+    
+    console.log(`📊 Processing batch: ${skip + 1} to ${skip + callsToProcess.length} (batchSize: ${batchSize})`);
+    console.log(`📊 Estimated more to process: ${likelyHasMore}`);
+    
+    if (callsToProcess.length === 0 && !likelyHasMore) {
+      console.log(`✅ No more calls to process. Backfill complete.`);
+      return NextResponse.json({
+        success: true,
+        results: {
+          total: outboundCalls.length,
+          batchTotal: 0,
+          batchStart: skip,
+          batchEnd: skip,
+          hasMore: false,
+          nextSkip: null,
+          processed: 0,
+          skipped: 0,
+          errors: 0,
+          duplicates: 0,
+          inbound: 0
+        }
+      });
     }
 
     // Process each call in the batch
     const results = {
-      total: totalOutbound,
+      total: outboundCalls.length, // This is just what we fetched, not all calls in date range
+      totalAvailable: totalAvailable, // Total messages from API (includes inbound)
       batchTotal: callsToProcess.length,
       batchStart: skip,
       batchEnd: skip + callsToProcess.length,
-      hasMore,
-      nextSkip: hasMore ? skip + batchSize : null,
+      hasMore: likelyHasMore,
+      nextSkip: likelyHasMore ? skip + batchSize : null,
       processed: 0,
       skipped: 0,
       errors: 0,
