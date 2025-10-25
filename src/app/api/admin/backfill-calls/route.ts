@@ -481,9 +481,14 @@ export async function POST(request: NextRequest) {
 
       console.log(`✅ Fetched ${messages.length} messages`);
       
-      // Log first message for debugging (full raw response)
-      if (pageCount === 1 && messages.length > 0) {
-        console.log('📋 FULL RAW FIRST MESSAGE:', JSON.stringify(messages[0], null, 2));
+      // Log full response on first page for debugging
+      if (pageCount === 1) {
+        console.log('📋 FULL API RESPONSE STRUCTURE:', JSON.stringify({
+          total: data.total,
+          messageCount: messages.length,
+          hasNextCursor: !!data.nextCursor,
+          firstMessage: messages.length > 0 ? messages[0] : null
+        }, null, 2));
       }
 
       allCalls.push(...messages);
