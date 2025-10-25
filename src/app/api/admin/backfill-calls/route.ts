@@ -140,18 +140,46 @@ async function processCallMessage(message: any, account: any, accessToken: strin
 
     console.log('📞 Processing call:', message.id);
 
-    // Extract call data from message (Export Messages API includes all needed data)
+    // Extract call data from message
     const contactId = message.contactId;
     const userId = message.userId; // userId is at root level, NOT in meta
-    // callDuration can be a number or string in API, handle both
-    const rawDuration = message.meta?.callDuration;
-    const callDuration = rawDuration ? (typeof rawDuration === 'number' ? rawDuration : parseInt(rawDuration)) : 0;
+    
+    // Try to get duration from meta first
+    let rawDuration = message.meta?.callDuration;
+    let callDuration = rawDuration ? (typeof rawDuration === 'number' ? rawDuration : parseInt(rawDuration)) : 0;
+    
+    // If duration is missing and has recording, try fetching full message details
+    if (callDuration === 0 && message.attachments && message.attachments.length > 0) {
+      try {
+        const fullMessageResponse = await fetch(
+          `https://services.leadconnectorhq.com/conversations/messages/${message.id}`,
+          {
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'Version': '2021-04-15',
+            },
+          }
+        );
+        
+        if (fullMessageResponse.ok) {
+          const fullMessage = await fullMessageResponse.json();
+          if (fullMessage.meta?.callDuration) {
+            rawDuration = fullMessage.meta.callDuration;
+            callDuration = typeof rawDuration === 'number' ? rawDuration : parseInt(rawDuration);
+            console.log(`📞 Got duration from full message: ${callDuration}s`);
+          }
+        }
+      } catch (e) {
+        console.log('⚠️ Could not fetch full message for duration');
+      }
+    }
+    
     const callStatus = message.meta?.callStatus || message.status;
     const direction = message.direction;
     const dateAdded = message.dateAdded;
     const recordingUrl = message.attachments?.[0] || null;
 
-    // Debug log to see what we're getting
+    // Debug log
     console.log('📋 Call data:', {
       id: message.id,
       userId,
