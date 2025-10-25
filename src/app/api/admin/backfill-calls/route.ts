@@ -175,7 +175,7 @@ async function processCallMessage(message: any, account: any, accessToken: strin
       metaCall: message.meta?.call
     });
 
-    // Fetch contact information
+    // Fetch contact information (with caching)
     let contactEmail = null;
     let contactPhone = null;
     let contactName = null;
@@ -183,19 +183,32 @@ async function processCallMessage(message: any, account: any, accessToken: strin
 
     if (contactId) {
       try {
-        const contactResponse = await fetch(
-          `https://services.leadconnectorhq.com/contacts/${contactId}`,
-          {
-            headers: {
-              'Authorization': `Bearer ${accessToken}`,
-              'Version': '2021-07-28',
-            },
-          }
-        );
+        let contact = null;
+        
+        // Check cache first
+        if (contactCache.has(contactId)) {
+          contact = contactCache.get(contactId);
+        } else {
+          const contactResponse = await fetch(
+            `https://services.leadconnectorhq.com/contacts/${contactId}`,
+            {
+              headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Version': '2021-07-28',
+              },
+            }
+          );
 
-        if (contactResponse.ok) {
-          const contactData = await contactResponse.json();
-          const contact = contactData.contact || contactData;
+          if (contactResponse.ok) {
+            const contactData = await contactResponse.json();
+            contact = contactData.contact || contactData;
+            contactCache.set(contactId, contact); // Cache it
+          } else {
+            contactCache.set(contactId, null); // Cache the miss
+          }
+        }
+        
+        if (contact) {
           contactEmail = contact.email;
           contactPhone = contact.phone;
           contactName = contact.name || `${contact.firstName || ''} ${contact.lastName || ''}`.trim();
@@ -370,15 +383,17 @@ async function processCallMessage(message: any, account: any, accessToken: strin
   }
 }
 
-// Cache for user lookups within a single request to avoid redundant API calls
+// Cache for lookups within a single request to avoid redundant API calls
 const userCache = new Map<string, any>();
 const setterCache = new Map<string, { id: string | null, email: string | null }>();
+const contactCache = new Map<string, any>(); // Cache GHL contact lookups
 
 export async function POST(request: NextRequest) {
   try {
     // Clear caches for this request
     userCache.clear();
     setterCache.clear();
+    contactCache.clear();
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -409,7 +424,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get request body
-    const { accountId, startDate, endDate, skip = 0, batchSize = 50 } = await request.json();
+    const { accountId, startDate, endDate, skip = 0, batchSize = 25 } = await request.json();
 
     if (!accountId || !startDate || !endDate) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
