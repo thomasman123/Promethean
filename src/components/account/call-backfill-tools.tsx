@@ -93,7 +93,7 @@ export function CallBackfillTools({ accountId }: CallBackfillToolsProps) {
             startDate: new Date(startDate).toISOString(),
             endDate: new Date(endDate + 'T23:59:59').toISOString(),
             skip,
-            batchSize: 200
+            batchSize: 50
           })
         })
 

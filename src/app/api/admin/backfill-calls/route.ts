@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-// Configure maximum duration for this endpoint (Vercel Pro allows up to 300s)
-export const maxDuration = 300; // 5 minutes
+// Configure maximum duration for this endpoint
+export const maxDuration = 60; // 60 seconds
 
 // Helper to get valid GHL access token (same as webhook logic)
 async function getValidGhlAccessToken(account: any, supabase: any, forceRefresh?: boolean): Promise<string | null> {
@@ -380,7 +380,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get request body
-    const { accountId, startDate, endDate, skip = 0, batchSize = 200 } = await request.json();
+    const { accountId, startDate, endDate, skip = 0, batchSize = 50 } = await request.json();
 
     if (!accountId || !startDate || !endDate) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
