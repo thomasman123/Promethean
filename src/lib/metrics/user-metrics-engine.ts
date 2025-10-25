@@ -473,12 +473,17 @@ export class UserMetricsEngine {
     
     console.log(`Calculating dial metrics for users: ${userIds.join(', ')}`)
 
+    // Use local_date for consistency with main metrics engine
     let query = supabaseService
       .from('dials')
       .select('*')
       .eq('account_id', accountId)
-      .gte('date_called', startDate)
-      .lte('date_called', endDate)
+      .gte('local_date', startDate)
+      .lt('local_date', (() => {
+        const d = new Date(`${endDate}T00:00:00`);
+        d.setDate(d.getDate() + 1);
+        return d.toISOString().split('T')[0];
+      })())
 
     // Add metric-specific filters
     if (metric.query.where) {

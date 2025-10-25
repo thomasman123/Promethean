@@ -235,13 +235,21 @@ export class MetricsEngine {
         return { type: 'total', data: { value: 0 } }
       }
 
+      // Compute exclusive end date (next day) for date range filter
+      const endExclusive = (() => {
+        const d = new Date(`${endDate}T00:00:00`);
+        d.setDate(d.getDate() + 1);
+        return d.toISOString().split('T')[0];
+      })();
+
       // Query dials data for all users to calculate work hours on-demand
+      // Use local_date for consistency with other metrics
       const { data: dials, error } = await supabaseService
         .from('dials')
-        .select('setter_user_id, date_called, booked')
+        .select('setter_user_id, date_called, booked, local_date')
         .eq('account_id', accountId)
-        .gte('date_called', startDate)
-        .lte('date_called', endDate)
+        .gte('local_date', startDate)
+        .lt('local_date', endExclusive)
         .in('setter_user_id', userIds)
         .not('setter_user_id', 'is', null)
 
@@ -255,16 +263,14 @@ export class MetricsEngine {
       let totalBookings = 0
       let totalDials = 0
       
-      // Group dials by user and date (in their timezone)
+      // Group dials by user and date (use local_date directly from DB)
       const userDateDials = new Map<string, Map<string, any[]>>()
       
       dials?.forEach(dial => {
         if (!dial.setter_user_id) return
         
-        // Convert to user's local date
-        const localDate = new Date(dial.date_called).toLocaleDateString('en-CA', { 
-          timeZone: timezone 
-        })
+        // Use local_date directly from database (already in account timezone)
+        const localDate = dial.local_date
         
         if (!userDateDials.has(dial.setter_user_id)) {
           userDateDials.set(dial.setter_user_id, new Map())
