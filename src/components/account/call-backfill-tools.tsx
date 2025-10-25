@@ -29,6 +29,7 @@ export function CallBackfillTools({ accountId }: CallBackfillToolsProps) {
   const [endDate, setEndDate] = useState('')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<BackfillResult | null>(null)
+  const [batchProgress, setBatchProgress] = useState<{ current: number, total: number } | null>(null)
   const { toast } = useToast()
 
   const handleBackfill = async () => {
@@ -63,29 +64,75 @@ export function CallBackfillTools({ accountId }: CallBackfillToolsProps) {
         throw new Error('Not authenticated')
       }
 
-      const response = await fetch('/api/admin/backfill-calls', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify({
-          accountId,
-          startDate: new Date(startDate).toISOString(),
-          endDate: new Date(endDate + 'T23:59:59').toISOString()
-        })
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Backfill failed')
+      // Process in batches automatically
+      let skip = 0
+      let hasMore = true
+      const aggregatedResults: BackfillResult = {
+        total: 0,
+        processed: 0,
+        skipped: 0,
+        errors: 0,
+        duplicates: 0,
+        inbound: 0
       }
 
-      setResult(data.results)
+      while (hasMore) {
+        console.log(`📥 Processing batch starting at ${skip}...`)
+        
+        // Update progress UI
+        setBatchProgress({ current: skip, total: 0 })
+
+        const response = await fetch('/api/admin/backfill-calls', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`
+          },
+          body: JSON.stringify({
+            accountId,
+            startDate: new Date(startDate).toISOString(),
+            endDate: new Date(endDate + 'T23:59:59').toISOString(),
+            skip,
+            batchSize: 200
+          })
+        })
+
+        const data = await response.json()
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Backfill failed')
+        }
+
+        // Aggregate results
+        aggregatedResults.total = data.results.total
+        aggregatedResults.processed += data.results.processed
+        aggregatedResults.skipped += data.results.skipped
+        aggregatedResults.errors += data.results.errors
+        aggregatedResults.duplicates += data.results.duplicates
+        aggregatedResults.inbound += data.results.inbound
+
+        // Update progress
+        setBatchProgress({ 
+          current: skip + data.results.batchTotal, 
+          total: data.results.total 
+        })
+
+        // Check if more batches needed
+        hasMore = data.results.hasMore
+        if (hasMore) {
+          skip = data.results.nextSkip
+          console.log(`✅ Batch complete. Continuing with next batch at ${skip}...`)
+        } else {
+          console.log(`✅ All batches complete!`)
+        }
+      }
+      
+      setBatchProgress(null)
+
+      setResult(aggregatedResults)
       toast({
         title: "Backfill Complete",
-        description: `Successfully processed ${data.results.processed}/${data.results.total} outbound calls`,
+        description: `Successfully processed ${aggregatedResults.processed}/${aggregatedResults.total} outbound calls`,
       })
     } catch (error: any) {
       console.error('Backfill error:', error)
@@ -171,10 +218,18 @@ export function CallBackfillTools({ accountId }: CallBackfillToolsProps) {
         {loading && (
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm text-muted-foreground">
-              <span>Fetching and processing outbound calls...</span>
+              <span>
+                {batchProgress 
+                  ? `Processing calls ${batchProgress.current} of ${batchProgress.total}...`
+                  : 'Fetching and processing outbound calls...'
+                }
+              </span>
               <Loader2 className="h-4 w-4 animate-spin" />
             </div>
-            <Progress value={100} className="animate-pulse" />
+            <Progress 
+              value={batchProgress ? (batchProgress.current / batchProgress.total) * 100 : 100} 
+              className={!batchProgress ? "animate-pulse" : ""}
+            />
           </div>
         )}
 
