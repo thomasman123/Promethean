@@ -46,16 +46,15 @@ export function applyStandardFilters(filters: MetricFilters, baseTable: string):
 	const startStr = filters.dateRange.start
 	const endStr = filters.dateRange.end
 	
-	// Handle different table types for date filtering
+	// IMPORTANT: Always use local_date for filtering (day-level precision)
+	// Weekly/monthly columns are only for grouping in time series charts, not filtering
 	let dateCol: string
 	if (baseTable === 'contacts') {
-		// Contacts table now uses GHL local date columns for accurate lead tracking
-		const localCol = pickLocalDateColumn(baseTable, startStr, endStr)
-		dateCol = `ghl_${localCol}` // Use ghl_local_date, ghl_local_week, or ghl_local_month
+		// Contacts table uses GHL local date columns for accurate lead tracking
+		dateCol = 'ghl_local_date' // Always use daily precision for filtering
 	} else {
-		// Other tables use local date columns
-		const localCol = pickLocalDateColumn(baseTable, startStr, endStr)
-		dateCol = localCol // already denormalized on each table
+		// Other tables use local_date for filtering
+		dateCol = 'local_date' // Always use daily precision for filtering
 	}
 
 	// Compute exclusive end date (next day) for date range filters
