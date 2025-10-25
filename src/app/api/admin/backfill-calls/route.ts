@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
+// Configure maximum duration for this endpoint (Vercel Pro allows up to 300s)
+export const maxDuration = 300; // 5 minutes
+
 // Helper to get valid GHL access token (same as webhook logic)
 async function getValidGhlAccessToken(account: any, supabase: any, forceRefresh?: boolean): Promise<string | null> {
   try {
@@ -490,9 +493,12 @@ export async function POST(request: NextRequest) {
       inbound: 0
     };
 
+    let processedCount = 0;
     for (const call of outboundCalls) {
       const result = await processCallMessage(call, account, accessToken, supabase);
 
+      processedCount++;
+      
       if (result.success) {
         results.processed++;
       } else if (result.reason === 'duplicate') {
@@ -504,6 +510,11 @@ export async function POST(request: NextRequest) {
       } else {
         results.errors++;
         results.skipped++;
+      }
+      
+      // Log progress every 100 calls
+      if (processedCount % 100 === 0) {
+        console.log(`📊 Progress: ${processedCount}/${outboundCalls.length} calls processed`);
       }
     }
 
