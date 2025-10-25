@@ -143,7 +143,9 @@ async function processCallMessage(message: any, account: any, accessToken: strin
     // Extract call data from message (Export Messages API includes all needed data)
     const contactId = message.contactId;
     const userId = message.userId; // userId is at root level, NOT in meta
-    const callDuration = message.meta?.callDuration ? parseInt(message.meta.callDuration) : 0;
+    // callDuration can be a number or string in API, handle both
+    const rawDuration = message.meta?.callDuration;
+    const callDuration = rawDuration ? (typeof rawDuration === 'number' ? rawDuration : parseInt(rawDuration)) : 0;
     const callStatus = message.meta?.callStatus || message.status;
     const direction = message.direction;
     const dateAdded = message.dateAdded;
@@ -154,7 +156,7 @@ async function processCallMessage(message: any, account: any, accessToken: strin
       id: message.id,
       userId,
       callDuration,
-      metaCallDuration: message.meta?.callDuration,
+      rawDuration,
       callStatus,
       hasRecording: !!recordingUrl
     });
@@ -204,17 +206,16 @@ async function processCallMessage(message: any, account: any, accessToken: strin
 
         console.log('👤 Setter details:', { name: setterName, email: setterEmail });
 
-        // Link to platform user by email
+        // Link to platform user by email (check profiles table, not users)
         if (setterEmail) {
-          const { data: matchedUsers } = await supabase
-            .from('users')
+          const { data: matchedProfiles } = await supabase
+            .from('profiles')
             .select('id, email')
-            .eq('account_id', account.id)
             .ilike('email', setterEmail)
             .limit(1);
 
-          if (matchedUsers && matchedUsers.length > 0) {
-            linkedSetterUserId = matchedUsers[0].id;
+          if (matchedProfiles && matchedProfiles.length > 0) {
+            linkedSetterUserId = matchedProfiles[0].id;
             console.log('✅ Linked setter to platform user:', linkedSetterUserId);
           } else {
             console.log('⚠️ No platform user found for email:', setterEmail);
@@ -276,7 +277,7 @@ async function processCallMessage(message: any, account: any, accessToken: strin
     const { data: savedDial, error: dialError } = await supabase
       .from('dials')
       .upsert(dialData, {
-        onConflict: 'account_id, ghl_message_id',
+        onConflict: 'idx_dials_ghl_message_id',
         ignoreDuplicates: false
       })
       .select()
