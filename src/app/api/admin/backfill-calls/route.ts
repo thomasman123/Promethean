@@ -447,7 +447,7 @@ export async function POST(request: NextRequest) {
         channel: 'Call',
         startDate: startDate,
         endDate: endDate,
-        limit: '100',
+        limit: '500', // Max allowed by API
         sortBy: 'createdAt',
         sortOrder: 'desc'
       });
@@ -480,6 +480,11 @@ export async function POST(request: NextRequest) {
       const messages = data.messages || [];
 
       console.log(`✅ Fetched ${messages.length} messages`);
+      
+      // Log first message for debugging (full raw response)
+      if (pageCount === 1 && messages.length > 0) {
+        console.log('📋 FULL RAW FIRST MESSAGE:', JSON.stringify(messages[0], null, 2));
+      }
 
       allCalls.push(...messages);
 
