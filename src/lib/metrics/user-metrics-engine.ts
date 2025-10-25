@@ -477,8 +477,8 @@ export class UserMetricsEngine {
       .from('dials')
       .select('*')
       .eq('account_id', accountId)
-      .gte('created_at', startDate)
-      .lte('created_at', endDate)
+      .gte('date_called', startDate)
+      .lte('date_called', endDate)
 
     // Add metric-specific filters
     if (metric.query.where) {

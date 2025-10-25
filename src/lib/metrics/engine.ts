@@ -238,10 +238,10 @@ export class MetricsEngine {
       // Query dials data for all users to calculate work hours on-demand
       const { data: dials, error } = await supabaseService
         .from('dials')
-        .select('setter_user_id, created_at, booked')
+        .select('setter_user_id, date_called, booked')
         .eq('account_id', accountId)
-        .gte('created_at', startDate)
-        .lte('created_at', endDate)
+        .gte('date_called', startDate)
+        .lte('date_called', endDate)
         .in('setter_user_id', userIds)
         .not('setter_user_id', 'is', null)
 
@@ -262,7 +262,7 @@ export class MetricsEngine {
         if (!dial.setter_user_id) return
         
         // Convert to user's local date
-        const localDate = new Date(dial.created_at).toLocaleDateString('en-CA', { 
+        const localDate = new Date(dial.date_called).toLocaleDateString('en-CA', { 
           timeZone: timezone 
         })
         
@@ -289,11 +289,11 @@ export class MetricsEngine {
 
           // Sort by time to get first and last
           const sortedDials = dayDials.sort((a, b) => 
-            new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+            new Date(a.date_called).getTime() - new Date(b.date_called).getTime()
           )
 
-          const firstDial = new Date(sortedDials[0].created_at)
-          const lastDial = new Date(sortedDials[sortedDials.length - 1].created_at)
+          const firstDial = new Date(sortedDials[0].date_called)
+          const lastDial = new Date(sortedDials[sortedDials.length - 1].date_called)
           
           // Calculate work hours for this day (minimum 0.1 to avoid division by zero)
           const dayHours = Math.max(
