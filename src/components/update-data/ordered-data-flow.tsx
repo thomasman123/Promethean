@@ -45,6 +45,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar as CalendarComponent } from "@/components/ui/calendar"
 import { format } from "date-fns"
 import { PaymentPlan } from "@/components/payment-plan"
+import { useAccountTimezone } from "@/hooks/use-account-timezone"
 
 interface OrderedDataItem {
   id: string
@@ -91,6 +92,7 @@ export function OrderedDataFlow({ className }: OrderedDataFlowProps) {
   const { isImpersonating } = useImpersonation()
   const { user: effectiveUser, loading: userLoading } = useEffectiveUser()
   const { selectedAccountId } = useDashboard()
+  const { formatDate, timezone } = useAccountTimezone(selectedAccountId)
 
   useEffect(() => {
     if (effectiveUser) {
@@ -525,8 +527,11 @@ export function OrderedDataFlow({ className }: OrderedDataFlowProps) {
                   {currentItem.type === 'appointment' ? 'Appointment' : 'Discovery Call'}
                 </CardTitle>
                 <p className="text-sm md:text-base text-muted-foreground mt-1">
-                  {format(new Date(currentItem.date_booked_for), 'PPP')} at {' '}
-                  {format(new Date(currentItem.date_booked_for), 'p')}
+                  {formatDate(currentItem.date_booked_for, 'PPP')} at {' '}
+                  {formatDate(currentItem.date_booked_for, 'p')}
+                  {timezone !== 'UTC' && (
+                    <span className="text-xs ml-1">({timezone})</span>
+                  )}
                 </p>
               </div>
             </div>
