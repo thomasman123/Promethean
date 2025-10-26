@@ -40,11 +40,15 @@ export async function POST(req: NextRequest) {
   // Determine effective user id (impersonation if admin)
   const impersonatedCookie = req.cookies.get('impersonate_user_id')?.value || null;
   let effectiveUserId = user.id;
-  if (impersonatedCookie) {
-    const { data: adminProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
-    if (adminProfile?.role === 'admin') {
-      effectiveUserId = impersonatedCookie;
-    }
+  let isAdmin = false;
+  
+  const { data: userProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+  if (userProfile?.role === 'admin') {
+    isAdmin = true;
+  }
+  
+  if (impersonatedCookie && isAdmin) {
+    effectiveUserId = impersonatedCookie;
   }
 
   const body = await req.json();
@@ -67,7 +71,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
   }
 
-  // Authorization: only assigned sales_rep_user_id can update
+  // Authorization: only assigned sales_rep_user_id or admin can update
   const { data: appt, error: fetchErr } = await supabase
     .from('appointments')
     .select('id, sales_rep_user_id')
@@ -76,7 +80,8 @@ export async function POST(req: NextRequest) {
   if (fetchErr || !appt) {
     return NextResponse.json({ error: 'Appointment not found' }, { status: 404 });
   }
-  if ((appt as any).sales_rep_user_id !== effectiveUserId) {
+  // Allow update if user is admin OR is the assigned sales rep
+  if (!isAdmin && (appt as any).sales_rep_user_id !== effectiveUserId) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
