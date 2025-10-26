@@ -313,12 +313,12 @@ export async function POST(request: NextRequest) {
             // Find the most recent dial within ±30 minutes with the same contact
             const { data: matchingDials } = await supabase
               .from('dials')
-              .select('id, created_at')
+              .select('id, date_called')
               .eq('account_id', row.account_id)
               .eq('contact_id', updates.contact_id)
-              .gte('created_at', windowStart.toISOString())
-              .lte('created_at', windowEnd.toISOString())
-              .order('created_at', { ascending: false })
+              .gte('date_called', windowStart.toISOString())
+              .lte('date_called', windowEnd.toISOString())
+              .order('date_called', { ascending: false })
               .limit(1)
             
             if (matchingDials && matchingDials.length > 0) {
