@@ -1235,7 +1235,8 @@ async function processAppointmentWebhook(payload: any) {
           ghl_api_key, 
           ghl_refresh_token, 
           ghl_token_expires_at, 
-          ghl_auth_type
+          ghl_auth_type,
+          business_timezone
         )
       `)
       .eq('location_id', payload.locationId)
@@ -1807,6 +1808,22 @@ async function processAppointmentWebhook(payload: any) {
       sales_rep_user_id: linkedSalesRepUserId,
       contact_id: dialData.contact_id || null, // Link to contacts table - all contact data lives there
     };
+
+    // Calculate timezone-aware local dates explicitly based on account timezone
+    if (appointmentStartTime && account.business_timezone) {
+      try {
+        const { calculateLocalDatesForRecord } = await import('@/lib/timezone-utils');
+        const localDates = calculateLocalDatesForRecord(appointmentStartTime, account.business_timezone);
+        appointmentOrDiscoveryData.local_date = localDates.local_date;
+        appointmentOrDiscoveryData.local_week = localDates.local_week;
+        appointmentOrDiscoveryData.local_month = localDates.local_month;
+        
+        console.log(`🗓️ Local dates calculated for ${account.business_timezone}:`, localDates);
+      } catch (err) {
+        console.error('⚠️ Error calculating local dates, will rely on database triggers:', err);
+        // Database triggers will handle it as fallback
+      }
+    }
 
     console.log(`💾 Upserting into ${target_table} table...`, {
       ghl_appointment_id: appointmentOrDiscoveryData.ghl_appointment_id,
