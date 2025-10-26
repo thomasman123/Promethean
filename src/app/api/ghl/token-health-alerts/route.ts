@@ -5,9 +5,12 @@ import type { Database } from '@/lib/database.types'
 export async function POST(request: NextRequest) {
   console.log('🔍 Checking GHL token health for alerts...')
   
-  // Verify cron secret for security
+  // Verify cron secret for security (allow Vercel cron jobs)
   const cronSecret = request.headers.get('x-cron-secret')
-  if (cronSecret !== process.env.CRON_SECRET) {
+  const isVercelCron = request.headers.get('user-agent')?.includes('vercel-cron') || 
+                      request.headers.get('x-vercel-cron') === '1'
+  
+  if (!isVercelCron && cronSecret !== process.env.CRON_SECRET) {
     console.error('❌ Invalid cron secret')
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
