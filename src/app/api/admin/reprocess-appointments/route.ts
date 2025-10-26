@@ -274,6 +274,11 @@ export async function POST(request: NextRequest) {
           sales_rep_ghl_id: salesRepData?.id || null,
           ghl_source: fullAppointment?.createdBy?.source || fullAppointment?.source || null,
         }
+        
+        // Use dateAdded as the actual booking date (when appointment was created in GHL)
+        if (fullAppointment?.dateAdded) {
+          updates.date_booked = new Date(fullAppointment.dateAdded).toISOString()
+        }
 
         // Resolve contact_id and include in updates
         try {
@@ -295,6 +300,45 @@ export async function POST(request: NextRequest) {
           .from('appointments')
           .update(updates)
           .eq('id', row.id)
+
+        // ==========================================
+        // LINK DIAL TO APPOINTMENT (if date_booked was updated)
+        // ==========================================
+        if (updates.date_booked && updates.contact_id) {
+          try {
+            const bookingTime = new Date(updates.date_booked)
+            const windowStart = new Date(bookingTime.getTime() - 30 * 60 * 1000) // 30 minutes before
+            const windowEnd = new Date(bookingTime.getTime() + 30 * 60 * 1000)   // 30 minutes after
+            
+            // Find the most recent dial within ±30 minutes with the same contact
+            const { data: matchingDials } = await supabase
+              .from('dials')
+              .select('id, created_at')
+              .eq('account_id', row.account_id)
+              .eq('contact_id', updates.contact_id)
+              .gte('created_at', windowStart.toISOString())
+              .lte('created_at', windowEnd.toISOString())
+              .order('created_at', { ascending: false })
+              .limit(1)
+            
+            if (matchingDials && matchingDials.length > 0) {
+              const matchedDial = matchingDials[0]
+              
+              // Link the dial to this appointment
+              await supabase
+                .from('dials')
+                .update({
+                  booked: true,
+                  booked_appointment_id: row.id,
+                  sales_rep_user_id: null, // Will be set by auto-linking if applicable
+                })
+                .eq('id', matchedDial.id)
+            }
+          } catch (dialLinkErr) {
+            // Non-critical - don't fail the whole reprocess
+            console.error('Error linking dial:', dialLinkErr)
+          }
+        }
 
         results.push({ id: row.id as unknown as string, ghlAppointmentId: ghlId, status: 'updated' })
       } catch (e: any) {

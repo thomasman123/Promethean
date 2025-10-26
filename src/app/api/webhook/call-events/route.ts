@@ -1305,8 +1305,10 @@ async function processAppointmentWebhook(payload: any) {
     let setterEmail = null;
     let setterGhlId = null;
     
-    // PRIMARY STRATEGY: Always fetch appointment from GHL API to get createdBy.userId
+    // PRIMARY STRATEGY: Always fetch appointment from GHL API to get createdBy.userId AND dateAdded
     // This is the most reliable method as shown by successful backfill (85% success rate)
+    let actualDateBooked: string | null = null; // Will store dateAdded from GHL
+    
     if (currentAccessToken && (payload.appointment?.id || payload.id)) {
       try {
         const ghlAppointmentId = payload.appointment?.id || payload.id;
@@ -1327,6 +1329,12 @@ async function processAppointmentWebhook(payload: any) {
           // GHL API returns data under 'appointment' key
           const event = appointmentData.appointment || appointmentData.event || appointmentData;
           const createdByUserId = event.createdBy?.userId;
+          
+          // Extract dateAdded - this is the ACTUAL booking date from GHL
+          if (event.dateAdded) {
+            actualDateBooked = new Date(event.dateAdded).toISOString();
+            console.log('✅ Found actual booking date (dateAdded):', actualDateBooked);
+          }
           
           if (createdByUserId) {
             setterGhlId = createdByUserId;
@@ -1383,6 +1391,12 @@ async function processAppointmentWebhook(payload: any) {
                 const appointmentData = await retryResponse.json();
                 const event = appointmentData.appointment || appointmentData.event || appointmentData;
                 const createdByUserId = event.createdBy?.userId;
+                
+                // Extract dateAdded on retry too
+                if (event.dateAdded && !actualDateBooked) {
+                  actualDateBooked = new Date(event.dateAdded).toISOString();
+                  console.log('✅ Found actual booking date (dateAdded) on retry:', actualDateBooked);
+                }
                 
                 if (createdByUserId) {
                   setterGhlId = createdByUserId;
@@ -1801,7 +1815,7 @@ async function processAppointmentWebhook(payload: any) {
       account_id: account.id,
       ghl_appointment_id: ghlAppointmentId || null,
       date_booked_for: appointmentStartTime ? new Date(appointmentStartTime).toISOString() : null,
-      date_booked: new Date().toISOString(),
+      date_booked: actualDateBooked || new Date().toISOString(), // Use actual booking date from GHL dateAdded
       setter: setterName || 'Unknown',
       sales_rep: salesRepName || null,
       setter_user_id: linkedSetterUserId,
@@ -1854,6 +1868,72 @@ async function processAppointmentWebhook(payload: any) {
       console.error(`❌ ${target_table} upsert returned no data!`);
     } else {
       console.log(`✅ SUCCESS! ${target_table} record saved:`, savedRecord.id);
+      
+      // ==========================================
+      // LINK DIAL TO APPOINTMENT (if applicable)
+      // ==========================================
+      if (target_table === 'appointments' && actualDateBooked && dialData.contact_id) {
+        try {
+          console.log('🔗 Searching for dial to link with appointment...');
+          
+          const bookingTime = new Date(actualDateBooked);
+          const windowStart = new Date(bookingTime.getTime() - 30 * 60 * 1000); // 30 minutes before
+          const windowEnd = new Date(bookingTime.getTime() + 30 * 60 * 1000);   // 30 minutes after
+          
+          console.log('📍 Dial search window:', {
+            bookingTime: bookingTime.toISOString(),
+            windowStart: windowStart.toISOString(),
+            windowEnd: windowEnd.toISOString(),
+            contact_id: dialData.contact_id
+          });
+          
+          // Find the most recent dial within ±30 minutes with the same contact
+          const { data: matchingDials, error: dialLinkError } = await supabase
+            .from('dials')
+            .select('id, created_at, contact_email_snapshot, booked')
+            .eq('account_id', account.id)
+            .eq('contact_id', dialData.contact_id)
+            .gte('created_at', windowStart.toISOString())
+            .lte('created_at', windowEnd.toISOString())
+            .order('created_at', { ascending: false })
+            .limit(1);
+          
+          if (!dialLinkError && matchingDials && matchingDials.length > 0) {
+            const matchedDial = matchingDials[0];
+            const minutesDiff = Math.abs((new Date(matchedDial.created_at).getTime() - bookingTime.getTime()) / (1000 * 60));
+            
+            console.log('✅ Found matching dial within window:', {
+              dial_id: matchedDial.id,
+              dial_time: matchedDial.created_at,
+              minutes_difference: minutesDiff.toFixed(2),
+              currently_booked: matchedDial.booked
+            });
+            
+            // Link the dial to this appointment
+            const { error: updateDialError } = await supabase
+              .from('dials')
+              .update({
+                booked: true,
+                booked_appointment_id: savedRecord.id,
+                sales_rep_user_id: linkedSalesRepUserId
+              })
+              .eq('id', matchedDial.id);
+            
+            if (updateDialError) {
+              console.error('⚠️ Failed to link dial to appointment:', updateDialError);
+            } else {
+              console.log('✅ Successfully linked dial to appointment:', {
+                dial_id: matchedDial.id,
+                appointment_id: savedRecord.id
+              });
+            }
+          } else {
+            console.log('ℹ️ No matching dial found within ±30 minutes of booking time');
+          }
+        } catch (dialLinkErr) {
+          console.error('❌ Error during dial linking (non-critical):', dialLinkErr);
+        }
+      }
     }
     
     console.log('✅ Appointment/Discovery created via webhook pipeline:', ghlAppointmentId);
