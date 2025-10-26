@@ -156,6 +156,34 @@ export function getCurrentTimeFormatted(
   return formatInTimeZone(new Date(), accountTimezone, formatString)
 }
 
+/**
+ * Calculate timezone-aware local dates for appointments/discoveries/dials
+ * Returns local_date, local_week (Monday start), and local_month
+ */
+export function calculateLocalDatesForRecord(
+  utcTimestamp: string | Date,
+  accountTimezone: string
+): { local_date: string; local_week: string; local_month: string } {
+  const date = typeof utcTimestamp === 'string' ? parseISO(utcTimestamp) : utcTimestamp
+  const zonedDate = utcToZonedTime(date, accountTimezone)
+  
+  // Local date in YYYY-MM-DD format
+  const local_date = formatInTimeZone(zonedDate, accountTimezone, 'yyyy-MM-dd')
+  
+  // Start of week (Monday) in local timezone
+  const dayOfWeek = zonedDate.getDay()
+  const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1 // 0=Sunday, 1=Monday, etc.
+  const weekStart = new Date(zonedDate)
+  weekStart.setDate(weekStart.getDate() - daysToMonday)
+  const local_week = formatInTimeZone(weekStart, accountTimezone, 'yyyy-MM-dd')
+  
+  // Start of month in local timezone
+  const monthStart = new Date(zonedDate.getFullYear(), zonedDate.getMonth(), 1)
+  const local_month = formatInTimeZone(monthStart, accountTimezone, 'yyyy-MM-dd')
+  
+  return { local_date, local_week, local_month }
+}
+
 // Common format strings
 export const DATE_FORMATS = {
   SHORT_DATE: 'MMM d',

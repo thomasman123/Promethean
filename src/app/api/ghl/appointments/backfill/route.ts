@@ -33,14 +33,14 @@ export async function POST(request: NextRequest) {
 		const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 		const { data: account } = await supabase
 			.from('accounts')
-			.select('*')
+			.select('id, name, ghl_api_key, ghl_location_id, ghl_auth_type, ghl_refresh_token, ghl_token_expires_at, business_timezone')
 			.eq('id', accountId)
 			.single()
 		if (!account?.ghl_api_key) {
 			return NextResponse.json({ error: 'GHL not connected' }, { status: 400 })
 		}
 
-		console.log('✅ Found account with GHL connection:', account.name)
+		console.log('✅ Found account with GHL connection:', account.name, 'timezone:', account.business_timezone || 'UTC')
 
 		const headers: Record<string, string> = {
 			Authorization: `Bearer ${account.ghl_api_key}`,
