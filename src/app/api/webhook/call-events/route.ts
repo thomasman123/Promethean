@@ -1890,21 +1890,21 @@ async function processAppointmentWebhook(payload: any) {
           // Find the most recent dial within ±30 minutes with the same contact
           const { data: matchingDials, error: dialLinkError } = await supabase
             .from('dials')
-            .select('id, created_at, contact_email_snapshot, booked')
+            .select('id, date_called, contact_email_snapshot, booked')
             .eq('account_id', account.id)
             .eq('contact_id', dialData.contact_id)
-            .gte('created_at', windowStart.toISOString())
-            .lte('created_at', windowEnd.toISOString())
-            .order('created_at', { ascending: false })
+            .gte('date_called', windowStart.toISOString())
+            .lte('date_called', windowEnd.toISOString())
+            .order('date_called', { ascending: false })
             .limit(1);
           
           if (!dialLinkError && matchingDials && matchingDials.length > 0) {
             const matchedDial = matchingDials[0];
-            const minutesDiff = Math.abs((new Date(matchedDial.created_at).getTime() - bookingTime.getTime()) / (1000 * 60));
+            const minutesDiff = Math.abs((new Date(matchedDial.date_called).getTime() - bookingTime.getTime()) / (1000 * 60));
             
             console.log('✅ Found matching dial within window:', {
               dial_id: matchedDial.id,
-              dial_time: matchedDial.created_at,
+              dial_time: matchedDial.date_called,
               minutes_difference: minutesDiff.toFixed(2),
               currently_booked: matchedDial.booked
             });
