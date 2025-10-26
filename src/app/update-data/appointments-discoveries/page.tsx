@@ -48,6 +48,8 @@ import { CalendarIcon } from "lucide-react"
 import { format } from "date-fns"
 import { PaymentPlan } from "@/components/payment-plan"
 import { Loading } from "@/components/ui/loading"
+import { useAccountTimezone } from "@/hooks/use-account-timezone"
+import { formatInTimeZone } from "date-fns-tz"
 
 interface AppointmentData {
   id: string
@@ -134,6 +136,7 @@ function AppointmentsDiscoveriesContent() {
   const { isImpersonating } = useImpersonation()
   const { user: effectiveUser, loading: userLoading } = useEffectiveUser()
   const { selectedAccountId } = useDashboard()
+  const { timezone, formatDate } = useAccountTimezone(selectedAccountId)
 
   useEffect(() => {
     if (effectiveUser) {
@@ -679,7 +682,7 @@ function AppointmentsDiscoveriesContent() {
                               <TableCell>
                                 <div className="flex items-center gap-1">
                                   <Calendar className="h-3 w-3" />
-                                  {new Date(apt.date_booked_for).toLocaleDateString()}
+                                  {formatDate(apt.date_booked_for, 'MMM d, yyyy p')}
                                 </div>
                               </TableCell>
                               <TableCell>{apt.setter}</TableCell>
@@ -752,7 +755,7 @@ function AppointmentsDiscoveriesContent() {
                               <TableCell>
                                 <div className="flex items-center gap-1">
                                   <Calendar className="h-3 w-3" />
-                                  {new Date(disc.date_booked_for).toLocaleDateString()}
+                                  {formatDate(disc.date_booked_for, 'MMM d, yyyy p')}
                                 </div>
                               </TableCell>
                               <TableCell>{disc.sales_rep || '-'}</TableCell>
@@ -802,7 +805,10 @@ function AppointmentsDiscoveriesContent() {
                     <div className="flex items-center gap-4 text-sm text-muted-foreground">
                       <div className="flex items-center gap-1">
                         <Calendar className="h-4 w-4" />
-                        {new Date(selectedAppointment.date_booked_for).toLocaleString()}
+                        {formatDate(selectedAppointment.date_booked_for, 'MMM d, yyyy p')}
+                        {timezone !== 'UTC' && (
+                          <span className="text-xs">({timezone})</span>
+                        )}
                       </div>
                       <span>•</span>
                       <span>Setter: {selectedAppointment.setter}</span>
