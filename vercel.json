@@ -1,5 +1,5 @@
 {
-  "alias": ["app.getpromethean.com", "www.getpromethean.com", "getpromethean.com"],
+  "alias": ["www.getpromethean.com", "getpromethean.com"],
   "framework": "nextjs",
   "regions": ["iad1"],
   "headers": [

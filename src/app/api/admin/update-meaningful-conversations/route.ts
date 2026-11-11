@@ -8,72 +8,39 @@ export async function POST(req: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     { cookies: { get: (n: string) => req.cookies.get(n)?.value, set() {}, remove() {} } }
   );
-
   try {
-    const body = await req.json();
-    const { accountId, minDurationSeconds = 120 } = body as {
-      accountId?: string;
-      minDurationSeconds?: number;
-    };
-
-    console.log(`🔄 Updating meaningful conversations for account ${accountId || 'ALL'} with min duration ${minDurationSeconds}s`);
-
-    // Update meaningful_conversation based on duration
-    let query = supabase
-      .from('dials')
-      .update({ 
-        meaningful_conversation: false // Will be overridden by the SQL
-      })
-      .not('duration', 'is', null);
-
-    // Add account filter if specified
-    if (accountId) {
-      query = query.eq('account_id', accountId);
+    const { data: identity, error: identityError } = await supabase.auth.getUser();
+    if (identityError || !identity.user) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
     }
-
-    // We need to use raw SQL for the conditional update
-    const sqlQuery = accountId 
-      ? `UPDATE dials SET meaningful_conversation = (duration >= ${minDurationSeconds}), updated_at = NOW() WHERE duration IS NOT NULL AND account_id = '${accountId}'`
-      : `UPDATE dials SET meaningful_conversation = (duration >= ${minDurationSeconds}), updated_at = NOW() WHERE duration IS NOT NULL`;
-
-    const { error } = await supabase.rpc('execute_metrics_query_array', {
-      query_sql: sqlQuery,
-      query_params: {}
+    const { accountId, minDurationSeconds = 120 } = await req.json();
+    if (accountId != null && (typeof accountId !== "string" ||
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(accountId))) {
+      return NextResponse.json({ error: "Invalid account ID" }, { status: 400 });
+    }
+    if (!Number.isInteger(minDurationSeconds) || minDurationSeconds < 0 || minDurationSeconds > 2147483647) {
+      return NextResponse.json({ error: "Invalid minimum duration" }, { status: 400 });
+    }
+    // Typed SQL parameters; the database checks actual administrator identity.
+    // Never expose the service-only arbitrary-SQL metrics functions here.
+    const { data: count, error } = await supabase.rpc("update_meaningful_conversations", {
+      p_account_id: accountId ?? null,
+      p_min_duration_seconds: minDurationSeconds,
     });
-
     if (error) {
-      console.error('Error updating meaningful conversations:', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json(
+        { error: error.code === "42501" ? "Administrator access required" : "Update failed" },
+        { status: error.code === "42501" ? 403 : 500 }
+      );
     }
-
-    // Get updated counts
-    let countQuery = supabase
-      .from('dials')
-      .select('*', { count: 'exact', head: true })
-      .eq('meaningful_conversation', true);
-
-    if (accountId) {
-      countQuery = countQuery.eq('account_id', accountId);
-    }
-
-    const { count, error: countError } = await countQuery;
-
-    if (countError) {
-      console.error('Error getting updated count:', countError);
-    }
-
-    console.log(`✅ Updated meaningful conversations. New count: ${count}`);
-
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       meaningfulConversationsCount: count,
       minDurationSeconds,
-      accountId: accountId || 'ALL',
-      message: `Updated meaningful conversations based on ${minDurationSeconds}s minimum duration`
+      accountId: accountId ?? "ALL",
+      message: `Updated meaningful conversations based on ${minDurationSeconds}s minimum duration`,
     });
-
-  } catch (error) {
-    console.error('API error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  } catch {
+    return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
-} 
+}

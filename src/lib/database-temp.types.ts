@@ -181,6 +181,10 @@ export interface Database {
       // ... existing views ...
     }
     Functions: {
+      update_meaningful_conversations: {
+        Args: { p_account_id: string | null; p_min_duration_seconds: number }
+        Returns: number
+      }
       // ... existing functions ...
       extract_attribution_from_contact: {
         Args: { contact_data: Json }
